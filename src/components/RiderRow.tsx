@@ -1,5 +1,6 @@
 "use client";
 import type { Availability, Sex } from "@/calc/types";
+import { MoneyInput } from "./MoneyInput";
 
 export interface PayerState {
   age: number | "";
@@ -87,10 +88,9 @@ export function RiderRow({
             </select>
           ) : showSumAssured ? (
             <>
-              <input
-                type="number" inputMode="numeric" min={a.saMin} max={a.saMax} step={1000}
+              <MoneyInput
                 className="w-40 rounded border px-2 py-1 text-sm" placeholder="ทุนประกัน"
-                value={value} onChange={(e) => onChange(num(e.target.value))}
+                value={value} onChange={onChange} max={a.saMax}
               />
               <span className="text-xs text-slate-500">
                 {a.saMin?.toLocaleString("en-US")}{a.saMax !== undefined ? ` – ${a.saMax.toLocaleString("en-US")}` : ""}

@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { quote } from "@/calc/quote";
 import { getPlan, listPlans } from "@/calc/plans/registry";
-import { packageSeq, requiredRiders } from "@/calc/rules";
+import { baseAgeRange, packageSeq, requiredRiders } from "@/calc/rules";
 import type { QuoteInput, RiderInput } from "@/calc/types";
 import { QuoteForm, type FormState } from "@/components/QuoteForm";
 import { QuoteResultPanel } from "@/components/QuoteResultPanel";
@@ -53,11 +53,20 @@ export default function Home() {
   const [state, setStateRaw] = useState<FormState>(INITIAL);
   const plan = getPlan(state.planCode)!;
 
-  /** Switching plan resets variant and riders so stale codes never leak across plans. */
+  /**
+   * Switching plan resets variant and riders so stale codes never leak across plans, and
+   * either switch clamps the age into the new variant's issue range so the picker always
+   * shows a value that exists.
+   */
   const setState = (next: FormState) => {
     if (next.planCode !== state.planCode) {
       const p = getPlan(next.planCode)!;
       next = { ...next, variant: p.rates.base.variants[0], riders: {}, basis: "sumAssured" };
+    }
+    if (next.age !== "" && (next.planCode !== state.planCode || next.variant !== state.variant)) {
+      const p = getPlan(next.planCode)!;
+      const range = baseAgeRange(p.rules, next.variant, p.rates);
+      next = { ...next, age: Math.min(Math.max(next.age, range.min), range.max) };
     }
     setStateRaw(next);
   };

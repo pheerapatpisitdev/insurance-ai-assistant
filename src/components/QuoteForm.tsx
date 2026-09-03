@@ -4,6 +4,7 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import type { PlanBundle } from "@/calc/plans/registry";
 import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "@/calc/rules";
 import { RiderRow, type PayerState, type SubSelect } from "./RiderRow";
+import { MoneyInput } from "./MoneyInput";
 
 export interface RiderState {
   enabled: boolean;
@@ -42,6 +43,7 @@ export function QuoteForm({ state, plan, plans, availability, onChange }: QuoteF
   const setRider = (code: string, patch: Partial<RiderState>) =>
     onChange({ ...state, riders: { ...state.riders, [code]: { ...(state.riders[code] ?? EMPTY_RIDER), ...patch } } });
   const ageRange = baseAgeRange(plan.rules, state.variant, plan.rates);
+  const ages = Array.from({ length: ageRange.max - ageRange.min + 1 }, (_, i) => ageRange.min + i);
   const { min: saMin, max: saMax, exact: saExact } = baseSumAssuredLimits(plan.rules, state.variant);
   const { premiumBasis } = plan.rules.base;
   const required = new Set(requiredRiders(plan.rules, packageSeq(state.variant, plan.rates)));
@@ -76,9 +78,12 @@ export function QuoteForm({ state, plan, plans, availability, onChange }: QuoteF
       <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="block text-sm font-medium">อายุ</label>
-          <input type="number" inputMode="numeric" min={ageRange.min} max={ageRange.max} className="mt-1 w-full rounded border px-3 py-2"
-                 value={state.age} onChange={(e) => set({ age: num(e.target.value) })} />
-          <p className="mt-1 text-xs text-slate-500">{ageRange.min} - {ageRange.max} ปี</p>
+          <select className="mt-1 w-full rounded border px-3 py-2" value={state.age}
+                  onChange={(e) => set({ age: num(e.target.value) })}>
+            {state.age === "" && <option value="">เลือกอายุ</option>}
+            {ages.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">รับประกัน {ageRange.min} - {ageRange.max} ปี</p>
         </div>
         <div>
           <label className="block text-sm font-medium">เพศ</label>
@@ -111,20 +116,21 @@ export function QuoteForm({ state, plan, plans, availability, onChange }: QuoteF
       {state.basis === "premium" && premiumBasis ? (
         <div>
           <label className="block text-sm font-medium">เบี้ยประกันภัยที่ต้องการชำระ ({PAY_MODE_LABEL[state.mode]})</label>
-          <input type="number" inputMode="numeric" min={0} step={100} className="mt-1 w-full rounded border px-3 py-2"
-                 value={state.targetPremium} onChange={(e) => set({ targetPremium: num(e.target.value) })} />
-          <p className="mt-1 text-xs text-slate-500">ระบบจะหาทุนประกันสูงสุดที่เบี้ยนี้ซื้อได้</p>
+          <MoneyInput className="mt-1 w-full rounded border px-3 py-2" value={state.targetPremium}
+                      onChange={(targetPremium) => set({ targetPremium })}
+                      hint="ระบบจะหาทุนประกันสูงสุดที่เบี้ยนี้ซื้อได้" />
         </div>
       ) : (
         <div>
           <label className="block text-sm font-medium">จำนวนเงินเอาประกันภัย (สัญญาหลัก)</label>
-          <input type="number" inputMode="numeric" min={saMin} max={saMax} step={10000} className="mt-1 w-full rounded border px-3 py-2"
-                 value={state.sumAssured} onChange={(e) => set({ sumAssured: num(e.target.value) })} />
-          <p className="mt-1 text-xs text-slate-500">
-            {saExact
+          <MoneyInput
+            className="mt-1 w-full rounded border px-3 py-2"
+            value={state.sumAssured}
+            onChange={(sumAssured) => set({ sumAssured })}
+            hint={saExact
               ? `แพ็กเกจนี้กำหนดทุน ${saMin.toLocaleString("en-US")} บาทเท่านั้น`
               : `ขั้นต่ำ ${saMin.toLocaleString("en-US")} บาท${saMax ? ` สูงสุด ${saMax.toLocaleString("en-US")} บาท` : ""}`}
-          </p>
+          />
         </div>
       )}
 
