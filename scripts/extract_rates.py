@@ -199,7 +199,281 @@ def extract_ishield():
     write_json(OUT_DIR / "ishield.json", out)
 
 
-EXTRACTORS = {"plb": extract_plb, "ishield": extract_ishield}
+# --------------------------------------------------------------------- W family
+# ไอสมาร์ท 80/6, ไลฟ์เทรเชอร์ and ไลฟ์ โพรเทค+ share one workbook layout: the same
+# sheets, the same rider list and the same Cal formulas. Only row positions on the
+# input sheet, the Premium&Maturity sheet name and the package list differ, so every
+# anchor below is found by label rather than hard-coded.
+
+W_FAMILY = {
+    "ISMART": "ไอสมาร์ท 80-6_A2026-1.xlsx",
+    "LIFETREASURE": "ไลฟ์เทรเชอร์_A2026-1.xlsx",
+    "LIFEPROTECT": "Sales proposal_Life Protect Plus 9 19 99_2026821_update benefit graph.xlsx",
+}
+IHU_PLAN_NO = {"SMART": 1, "BRONZE": 2, "SILVER": 3, "GOLD": 4, "DIAMOND": 5, "PLATINUM": 6}
+IHU_TERRITORY = {"ประเทศไทย": "", "เอเชีย": "A", "ทั่วโลก": "W"}
+IHU_COVERAGE = {"Full Coverage": "", "Deductible": "D", "Co-Payment": "C"}
+RRSS_PLAN_NO = {"แผน S": 1, "แผน M": 2, "แผน L": 3, "แผน XL": 4}
+CI123_COMPONENTS = [
+    # (component key in 'Rate CI 123', share of the CI 123 sum assured, cap)
+    ("Major CI", 1.0, None),
+    ("Critical Care Benefit", 0.25, None),
+    ("Juvenile CI", 0.25, None),
+    ("Pre-Early CI", 0.20, 100000),
+    ("Early to Intermediate CI", 0.25, None),
+    ("Special conditions", 0.10, None),
+]
+
+
+def find_row(ws, label, col=1, first=1, last=140):
+    for r in range(first, last + 1):
+        v = ws.cell(r, col).value
+        if isinstance(v, str) and v.strip() == label:
+            return r
+    raise AssertionError(f"{ws.title}: label {label!r} not found in column {col}")
+
+
+def keyed_age_table(ws, header_row, first_row, last_row, key_col_offset=0, first_col=2):
+    """Header row holds '<key>-<sex>' labels; each following row is one age (row = age + first_row)."""
+    out = {}
+    for c in range(first_col, ws.max_column + 1):
+        head = ws.cell(header_row, c).value
+        if not isinstance(head, str) or "-" not in head:
+            continue
+        key, sex = head.rsplit("-", 1)
+        key, sex = key.strip(), sex.strip()
+        if sex not in ("M", "F"):
+            continue
+        table = {}
+        for r in range(first_row, last_row + 1):
+            v = ws.cell(r, c).value
+            if isinstance(v, (int, float)) and v > 0:
+                table[str(r - first_row)] = v
+        if table:
+            out.setdefault(key, {}).setdefault(sex, {}).update(table)
+    return out
+
+
+def rate_rider_key_block(ws, codes):
+    """Rate Rider cols X/Y/Z: key '<CODE>-<age>', Y = male rate, Z = female rate."""
+    out = {c: {"M": {}, "F": {}} for c in codes}
+    for r in range(2, ws.max_row + 1):
+        key = ws.cell(r, 24).value
+        if not isinstance(key, str) or "-" not in key:
+            continue
+        code, age = key.rsplit("-", 1)
+        if code in out and age.isdigit():
+            out[code]["M"][age] = ws.cell(r, 25).value
+            out[code]["F"][age] = ws.cell(r, 26).value
+    return out
+
+
+def extract_w_family(plan_code, filename):
+    src = XLSX_DIR / filename
+    wb = openpyxl.load_workbook(src, data_only=True)
+    inp, cal = wb["กรอกข้อมูล"], wb["Cal"]
+    pm_name = next(n for n in wb.sheetnames if n.startswith("Premium&Maturity"))
+    pm, rr, pb, wp = wb[pm_name], wb["Rate Rider"], wb["Rate PB"], wb["Rate WP"]
+
+    # --- metadata (label anchors, because row positions differ per file) ---
+    eff_row = find_row(inp, "Effective Date", col=4, first=40, last=90)
+    meta = {
+        "planCode": plan_code,
+        "planName": cell(inp, eff_row + 2, 5),
+        "version": cell(inp, eff_row + 1, 5),
+        "effectiveText": cell(inp, eff_row, 5),
+        "expiresOn": cell(inp, eff_row, 7).strftime("%Y-%m-%d"),
+        "sourceFile": src.name,
+    }
+
+    # --- packages: the plan's "variants" (Premium Payment Term table) ---
+    pkg_row = find_row(inp, "Premium Payment Term", col=1, first=40, last=110)
+    plancode_to_term = {}
+    for r in range(27, 40):
+        code, term = cell(cal, r, 14), cell(cal, r, 15)
+        if isinstance(code, str) and term is not None:
+            plancode_to_term[code] = str(term)
+    packages = []
+    for r in range(pkg_row + 1, pkg_row + 12):
+        name, plancode = cell(inp, r, 1), cell(inp, r, 6)
+        if not isinstance(name, str) or not isinstance(plancode, str) or plancode not in plancode_to_term:
+            continue
+        packages.append({
+            "code": f"{plancode}#{len(packages)}" if any(p["plancode"] == plancode for p in packages) else plancode,
+            "plancode": plancode,
+            "name": name.strip(),
+            "ageMin": cell(inp, r, 3),
+            "ageMax": cell(inp, r, 4),
+            "seq": cell(inp, r, 5),
+            "payTerm": cell(inp, r, 8),
+            "rateKey": plancode_to_term[plancode],
+        })
+    assert packages, f"{plan_code}: no packages found"
+
+    # --- base rates: Premium&Maturity header row 2 = '<termCode><sex>', sheet row = age + 6 ---
+    base_rates = {}
+    for c in range(2, pm.max_column + 1):
+        head = cell(pm, 2, c)
+        if not isinstance(head, str) or len(head) < 2:
+            continue
+        term, sex = head[:-1], head[-1]
+        if sex not in ("M", "F"):
+            continue
+        table = {}
+        for r in range(6, 87):
+            v = cell(pm, r, c)
+            if isinstance(v, (int, float)):
+                table[str(r - 6)] = v
+        if table:
+            base_rates.setdefault(term, {})[sex] = table
+    for p in packages:
+        assert p["rateKey"] in base_rates, f"{plan_code}: no base rates for {p['rateKey']}"
+
+    # --- high sum-assured discount: Cal A27:E34, columns keyed by the rate key ---
+    disc_header = {str(cell(cal, 27, c)): c for c in range(2, 7) if cell(cal, 27, c) is not None}
+    disc_thresholds = [cell(cal, r, 1) for r in range(28, 34)]
+    # iSmart hard-codes Cal!F13 = 0, i.e. the discount table is not applied.
+    uses_discount = isinstance(openpyxl.load_workbook(src)["Cal"]["F13"].value, str)
+    discount = {k: [cell(cal, r, c) or 0 for r in range(28, 34)] for k, c in disc_header.items()} if uses_discount else {}
+    # Cal!F13 looks the discount column up by LEFT(rateKey, 2), so "19H" and "19L" share the "19" column.
+    discount_prefix = 2
+
+    # --- riders ---
+    def pb_block(first, last, header_row):
+        periods = {c: cell(pb, header_row, c) for c in range(6, 90) if isinstance(cell(pb, header_row, c), (int, float))}
+        out = {}
+        for r in range(first, last + 1):
+            code, sex, age = cell(pb, r, 1), cell(pb, r, 2), cell(pb, r, 4)
+            if not isinstance(age, (int, float)) or sex not in ("M", "F"):
+                continue
+            row = {str(int(p)): cell(pb, r, c) for c, p in periods.items() if p <= 25 and cell(pb, r, c) is not None}
+            if row:
+                out.setdefault(code, {}).setdefault(sex, {})[str(int(age))] = row
+        return out
+
+    pb_rates = pb_block(5, 227, 4)
+    pb_rates.update(pb_block(231, 437, 230))
+
+    # WP: male block key in col A with periods from col D; female block key in col CH (86) with periods from col CK
+    wp_rates = {}
+    for key_col, first_period_col in ((1, 4), (86, 89)):
+        for r in range(5, wp.max_row + 1):
+            key = cell(wp, r, key_col)
+            if not isinstance(key, str) or len(key) < 4:
+                continue
+            code, rest = key[:-3], key[-3:]
+            sex, age = rest[0], rest[1:]
+            if sex not in ("M", "F") or not age.isdigit():
+                continue
+            row = {}
+            for c in range(first_period_col, first_period_col + 60):
+                period = cell(wp, 4, c)
+                v = cell(wp, r, c)
+                if isinstance(period, (int, float)) and isinstance(v, (int, float)):
+                    row[str(int(period))] = v
+            if row:
+                wp_rates.setdefault(code, {}).setdefault(sex, {})[age] = row
+    assert wp_rates, f"{plan_code}: no WP rates"
+
+    ap = [cell(rr, r, 29) for r in range(3, 7)]
+    ecare = [cell(rr, r, 30) for r in range(3, 7)]
+    meb_plans, meb = meb_table(rr, 4, 5, 73)
+    key_rates = rate_rider_key_block(rr, ["DCI", "PLS05", "PLS10", "PLS12", "PLS15", "CPR", "HIC"])
+
+    # MEX: 'Rate rider_MEX' row 5 = '<sex>-<plan>', rows 6.. = ages
+    mex_ws = wb["Rate rider_MEX"]
+    mex = {}
+    mex_plans = []
+    for c in range(2, 12):
+        head = cell(mex_ws, 5, c)
+        if not isinstance(head, str) or "-" not in head:
+            continue
+        sex, plan = head.split("-")
+        if plan not in mex_plans:
+            mex_plans.append(plan)
+        for r in range(6, 96):
+            age = cell(mex_ws, r, 1)
+            v = cell(mex_ws, r, c)
+            if isinstance(age, (int, float)) and isinstance(v, (int, float)) and v > 0:
+                mex.setdefault(plan, {}).setdefault(sex, {})[str(int(age))] = v
+
+    ihu = keyed_age_table(wb["iHealthy Ultra Rate"], 9, 13, 111)
+    rrss = keyed_age_table(wb["CI MED EX RATE"], 9, 13, 111)
+
+    # CI 123: 'Rate CI 123' key in col F, rates from col G (age 0) onwards
+    ci_ws = wb["Rate CI 123"]
+    ci_rates = {}
+    for r in range(2, ci_ws.max_row + 1):
+        head = cell(ci_ws, r, 6)
+        if not isinstance(head, str) or "-" not in head:
+            continue
+        comp, sex = head.rsplit("-", 1)
+        comp, sex = comp.strip(), sex.strip().upper()
+        if sex not in ("M", "F"):
+            continue
+        table = {}
+        for c in range(7, ci_ws.max_column + 1):
+            v = cell(ci_ws, r, c)
+            if isinstance(v, (int, float)):
+                table[str(c - 7)] = v
+        if table:
+            ci_rates.setdefault(comp.lower(), {}).setdefault(sex, table)
+    for comp, _, _ in CI123_COMPONENTS:
+        assert comp.lower() in ci_rates, f"{plan_code}: CI 123 component {comp} missing"
+
+    # Re-key the base rates and the discount by package code so the engine sees the same
+    # shape as PLB/iShield: base.rates[variant][sex][age] and discount.byVariant[variant].
+    rates_by_variant = {p["code"]: base_rates[p["rateKey"]] for p in packages}
+    discount_by_variant = {p["code"]: discount.get(p["rateKey"][:discount_prefix], [0] * len(disc_thresholds)) for p in packages}
+
+    out = {
+        **meta,
+        "modeFactors": mode_factors(cal),
+        "base": {
+            "variants": [p["code"] for p in packages],
+            "packages": packages,
+            "payTerm": {p["code"]: p["payTerm"] for p in packages},
+            "rates": rates_by_variant,
+        },
+        "discount": {"thresholds": disc_thresholds, "byVariant": discount_by_variant},
+        "riders": {
+            "PB": {"kind": "premiumBased", "by": "payer", "rates": pb_rates,
+                   "options": {"FIT": {"name": "สัญญาเพิ่มเติมพีบี ฟิต", "parent": "PBPDD", "spouse": "PBSDD"},
+                               "BEYOND": {"name": "สัญญาเพิ่มเติมพีบี บียอนด์", "parent": "PBPDDCI", "spouse": "PBSDDCI"}}},
+            "WP": {"kind": "premiumBased", "by": "insured", "rates": wp_rates,
+                   "options": {"FIT": {"name": "สัญญาเพิ่มเติมดับบลิวพี ฟิต", "parent": "WPTPD", "spouse": "WPTPD"},
+                               "BEYOND": {"name": "สัญญาเพิ่มเติมดับบลิวพี บียอนด์", "parent": "WPTPDCI", "spouse": "WPTPDCI"}}},
+            "AP": {"kind": "flatRateByClass", "rates": ap},
+            "ECARE": {"kind": "flatRateByClass", "rates": ecare},
+            "MEB": {"kind": "fixedByAgePlan", "plans": meb_plans, "premiums": meb},
+            "MEX": {"kind": "fixedByKeyAge", "keyBy": "plan", "plans": mex_plans, "rates": mex},
+            "IHU": {"kind": "fixedByKeyAge", "keyBy": "ihealthyUltra", "rates": ihu,
+                    "planNo": IHU_PLAN_NO, "territory": IHU_TERRITORY, "coverage": IHU_COVERAGE},
+            "RRSS": {"kind": "fixedByKeyAge", "keyBy": "rokeRaiSoShield", "rates": rrss, "planNo": RRSS_PLAN_NO},
+            "DCI": {"kind": "ratePerThousandByVariantAgeSex", "variants": ["DCI"], "rates": {"DCI": key_rates["DCI"]},
+                    "discountThresholds": [], "discountValues": []},
+            "PLS": {"kind": "ratePerThousandByVariantAgeSex", "variants": ["PLS05", "PLS10", "PLS12", "PLS15"],
+                    "rates": {k: key_rates[k] for k in ("PLS05", "PLS10", "PLS12", "PLS15")},
+                    "discountThresholds": [500000, 1000000], "discountValues": [0.5, 1]},
+            "CPR": {"kind": "ratePerThousandByVariantAgeSex", "variants": ["CPR"], "rates": {"CPR": key_rates["CPR"]},
+                    "discountThresholds": [], "discountValues": []},
+            "HIC": {"kind": "ratePerThousandByVariantAgeSex", "variants": ["HIC"], "rates": {"HIC": key_rates["HIC"]},
+                    "discountThresholds": [], "discountValues": [], "rounding": "round"},
+            "CI123": {"kind": "compositeCI", "rates": ci_rates, "minAnnual": 1000,
+                      "components": [{"key": k.lower(), "share": s, "cap": c} for k, s, c in CI123_COMPONENTS]},
+        },
+    }
+    write_json(OUT_DIR / f"{plan_code.lower()}.json", out)
+
+
+EXTRACTORS = {
+    "plb": extract_plb,
+    "ishield": extract_ishield,
+    "ismart": lambda: extract_w_family("ISMART", W_FAMILY["ISMART"]),
+    "lifetreasure": lambda: extract_w_family("LIFETREASURE", W_FAMILY["LIFETREASURE"]),
+    "lifeprotect": lambda: extract_w_family("LIFEPROTECT", W_FAMILY["LIFEPROTECT"]),
+}
+
 
 
 def main(argv):

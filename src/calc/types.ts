@@ -32,6 +32,8 @@ export interface RatePerThousandByVariantAgeSex {
   /** rider's own sum-assured discount tiers (ascending thresholds) */
   discountThresholds: number[];
   discountValues: number[];
+  /** HIC rounds half-up instead of down (Excel ROUND vs ROUNDDOWN) */
+  rounding?: "round" | "roundDown";
 }
 export interface PayorBenefit {
   kind: "payorBenefit";
@@ -40,7 +42,50 @@ export interface PayorBenefit {
   /** option code → display name and plancodes for insured ≤15 (parent) / ≥16 (spouse) */
   options: Record<string, { name: string; parent: string; spouse: string }>;
 }
-export type RiderRates = RatePerThousandByAgeClass | FixedByAgePlan | FlatRateByClass | RatePerThousandByVariantAgeSex | PayorBenefit;
+/**
+ * Riders whose premium is a rate per 100 baht of the base plan's annual premium.
+ * `by: "payer"` keys the rate on the payer (PB); `by: "insured"` on the insured (WP).
+ */
+export interface PremiumBased {
+  kind: "premiumBased";
+  by: "payer" | "insured";
+  /** plancode → sex → age → waive period (years) → rate per 100 baht of base annual premium */
+  rates: Record<string, Record<Sex, Record<string, Record<string, number>>>>;
+  options: Record<string, { name: string; parent: string; spouse: string }>;
+}
+/** Riders quoted as a fixed annual premium looked up by a composed key and the insured's age. */
+export interface FixedByKeyAge {
+  kind: "fixedByKeyAge";
+  /** how the option the user picks becomes a rate key */
+  keyBy: "plan" | "ihealthyUltra" | "rokeRaiSoShield";
+  /** key → sex → age → annual premium */
+  rates: Record<string, Record<Sex, Record<string, number>>>;
+  /** keyBy "plan": the selectable plan amounts */
+  plans?: string[];
+  /** keyBy "ihealthyUltra"/"rokeRaiSoShield": plan name → number used in the key */
+  planNo?: Record<string, number>;
+  /** keyBy "ihealthyUltra": territory and coverage name → key letter */
+  territory?: Record<string, string>;
+  coverage?: Record<string, string>;
+}
+/** A rider made of several benefit components, each a share of one sum assured. */
+export interface CompositeCI {
+  kind: "compositeCI";
+  /** component key → sex → age → rate per 1,000 */
+  rates: Record<string, Record<Sex, Record<string, number>>>;
+  components: { key: string; share: number; cap: number | null }[];
+  /** the whole rider is void below this annual premium */
+  minAnnual: number;
+}
+export type RiderRates =
+  | RatePerThousandByAgeClass
+  | FixedByAgePlan
+  | FlatRateByClass
+  | RatePerThousandByVariantAgeSex
+  | PayorBenefit
+  | PremiumBased
+  | FixedByKeyAge
+  | CompositeCI;
 
 export interface PlanRates {
   planCode: string;
@@ -52,8 +97,10 @@ export interface PlanRates {
   modeFactors: Record<PayMode, number>;
   base: {
     variants: string[];
-    /** variant → premium-paying term in years (needed by payor-benefit riders) */
+    /** variant → premium-paying term in years (needed by premium-based riders) */
     payTerm?: Record<string, number>;
+    /** the W family sells packages: each variant carries its own issue-age range and label */
+    packages?: BasePackage[];
     /** variant → sex → age → rate per 1,000 */
     rates: Record<string, Record<Sex, Record<string, number>>>;
   };
@@ -63,6 +110,17 @@ export interface PlanRates {
     byVariant: Record<string, number[]>;
   };
   riders: Record<string, RiderRates>;
+}
+
+export interface BasePackage {
+  code: string;
+  plancode: string;
+  name: string;
+  ageMin: number;
+  ageMax: number;
+  seq: number;
+  payTerm: number;
+  rateKey: string;
 }
 
 // ---------- data/rules/<plan>.json ----------
@@ -112,8 +170,11 @@ export interface RiderInput {
   code: string;
   sumAssured?: number;
   plan?: number;
-  /** PB: "FIT" | "BEYOND"; PLS: "PLS05" … */
+  /** PB/WP: "FIT" | "BEYOND"; PLS: "PLS05" …; MEX: "1200" …; iHealthy Ultra: "PLATINUM" … */
   option?: string;
+  /** iHealthy Ultra only */
+  territory?: string;
+  coverage?: string;
 }
 export interface Payer {
   age: number;

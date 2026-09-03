@@ -1,6 +1,6 @@
 import type { PayMode, PlanRates, Sex } from "../types";
 import { variantRate } from "../lookup";
-import { applyModeFactor, premiumPerThousand, toHundredths } from "../money";
+import { applyModeFactor, applyModeFactorToFixed, premiumPerThousand, toHundredths } from "../money";
 
 export interface VariantRiderInput {
   variant: string;
@@ -28,6 +28,11 @@ export function variantRiderPremium(rates: PlanRates, code: string, input: Varia
   });
   const net100 = toHundredths(rate) - toHundredths(discount);
   const factor100 = toHundredths(rates.modeFactors[input.mode]);
+  if (rider.rounding === "round") {
+    // Excel ROUND((rate × SA)/1000, 2) — HIC is the only rider that rounds half-up.
+    const annual = Math.round((net100 * input.sumAssured) / 1000);
+    return { rate, discount, annual, modal: applyModeFactorToFixed(annual, factor100) };
+  }
   return {
     rate,
     discount,
