@@ -42,13 +42,10 @@ export function satangToBaht(satang: number): number {
 }
 
 /**
- * A premium for display. Satang are shown only when there are any: a whole-baht premium
- * reads as 8,470, while 3,572.50 keeps both places rather than losing the half baht.
+ * A premium for display, in whole baht rounded to the nearest. The arithmetic above stays
+ * exact to the satang — this only decides what is read out loud, and satang are noise in
+ * a figure someone repeats over the phone.
  */
 export function formatBaht(satang: number): string {
-  const whole = satang % 100 === 0;
-  return (satang / 100).toLocaleString("en-US", {
-    minimumFractionDigits: whole ? 0 : 2,
-    maximumFractionDigits: whole ? 0 : 2,
-  });
+  return Math.round(satang / 100).toLocaleString("en-US");
 }

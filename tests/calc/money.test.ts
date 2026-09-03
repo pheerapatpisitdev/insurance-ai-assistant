@@ -33,17 +33,17 @@ describe("money", () => {
     expect(applyModeFactorToFixed(12_345, 9)).toBe(1_111); // 111.105 → 111.10
   });
 
-  it("satangToBaht and formatBaht", () => {
+  it("satangToBaht keeps the exact amount", () => {
     expect(satangToBaht(284_440)).toBe(2844.4);
-    expect(formatBaht(284_440)).toBe("2,844.40");
   });
 
-  it("formatBaht drops satang that are not there", () => {
+  it("formatBaht shows whole baht, rounded to the nearest", () => {
     expect(formatBaht(847_000)).toBe("8,470");
-    expect(formatBaht(27_000)).toBe("270");
+    expect(formatBaht(284_440)).toBe("2,844");
+    expect(formatBaht(136_012)).toBe("1,360");
+    expect(formatBaht(32_152)).toBe("322");
+    // half a baht rounds up, away from zero
+    expect(formatBaht(357_250)).toBe("3,573");
     expect(formatBaht(0)).toBe("0");
-    // a half-baht still needs both places, or 1,360.12 would read as 1,360.1
-    expect(formatBaht(136_012)).toBe("1,360.12");
-    expect(formatBaht(357_250)).toBe("3,572.50");
   });
 });
