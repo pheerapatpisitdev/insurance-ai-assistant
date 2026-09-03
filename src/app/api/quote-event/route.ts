@@ -21,7 +21,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
     const supabase = await supabaseServer();
-    await supabase.schema("ins").from("quote_events").insert(row);
+    const { error } = await supabase.schema("ins").from("quote_events").insert(row);
+    if (error) {
+      console.error("quote-event insert failed:", error.code, error.message);
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });
