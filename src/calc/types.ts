@@ -303,3 +303,25 @@ export interface QuoteResult {
   deathBenefit?: DeathBenefit;
   meta: { planName: string; version: string; expiresOn: string; expired: boolean };
 }
+
+// ---------- data/bundles/<bundle>.json ----------
+/** One sellable step of a bundle: every sum assured in it is fixed. */
+export interface BundleTier {
+  no: number;
+  sumAssured: number;
+  riders: RiderInput[];
+}
+/**
+ * A ready-made arrangement of one base plan and its riders, defined by the agency rather
+ * than the workbook. It carries no rates of its own: premiums still come from the plan it
+ * points at, so a new rate table flows through without touching the bundle.
+ */
+export interface Bundle {
+  code: string;
+  name: string;
+  planCode: string;
+  variant: string;
+  /** what a tier is called on screen, e.g. "แผน" → "แผน 3" */
+  tierLabel: string;
+  tiers: BundleTier[];
+}

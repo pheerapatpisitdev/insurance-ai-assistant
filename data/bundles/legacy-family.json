@@ -1,0 +1,109 @@
+{
+  "code": "LEGACY_FAMILY",
+  "name": "มรดกเพื่อครอบครัว",
+  "planCode": "LIFEPROTECT",
+  "variant": "WLF99H",
+  "tierLabel": "แผน",
+  "tiers": [
+    {
+      "no": 1,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 800000
+        }
+      ]
+    },
+    {
+      "no": 2,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 1800000
+        }
+      ]
+    },
+    {
+      "no": 3,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 2800000
+        }
+      ]
+    },
+    {
+      "no": 4,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 3800000
+        }
+      ]
+    },
+    {
+      "no": 5,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 4800000
+        }
+      ]
+    },
+    {
+      "no": 6,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 5800000
+        }
+      ]
+    },
+    {
+      "no": 7,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 6800000
+        }
+      ]
+    },
+    {
+      "no": 8,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 7800000
+        }
+      ]
+    },
+    {
+      "no": 9,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 8800000
+        }
+      ]
+    },
+    {
+      "no": 10,
+      "sumAssured": 200000,
+      "riders": [
+        {
+          "code": "DCI",
+          "sumAssured": 9800000
+        }
+      ]
+    }
+  ]
+}
