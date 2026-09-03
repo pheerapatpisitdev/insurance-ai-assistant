@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { quote } from "@/calc/quote";
 import { summaryText } from "@/lib/summary";
 import { getBundle } from "@/calc/bundles/registry";
-import { bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
+import { bundleModePremiums, bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
 
 describe("summaryText", () => {
   it("renders a compact Thai summary", () => {
@@ -21,18 +21,41 @@ describe("summaryText", () => {
     ].join("\n"));
   });
 
-  it("names the bundle and tier above the plan when the arrangement came from one", () => {
+  it("answers a bundle in full: no payment mode chosen, no price per line, all three totals", () => {
     const bundle = getBundle("LEGACY_FAMILY")!;
     const who = { age: 40, sex: "F" as const, mode: "annual" as const };
     const input = bundleQuoteInput(bundle, 3, who)!;
     const result = quoteBundle(bundle, 3, who, new Date("2026-09-04"))!;
-    const text = summaryText(input, result, { name: bundle.name, tier: describeTier(bundle, 3)! });
-    expect(text.split("\n").slice(0, 5)).toEqual([
+    const text = summaryText(input, result, {
+      name: bundle.name,
+      tier: describeTier(bundle, 3)!,
+      modes: bundleModePremiums(bundle, 3, { age: 40, sex: "F" }, new Date("2026-09-04"))!,
+    });
+    expect(text).toBe([
       "ชุดมรดกเพื่อครอบครัว — มรดก 3 ล้าน",
       "Life Protect+ 100 — ชำระเบี้ยครบอายุ 99 ปี",
-      "เพศหญิง อายุ 40 ปี ชำระรายปี",
-      "- Life Protect+ 100 — ชำระเบี้ยครบอายุ 99 ปี ทุน 150,000 บาท: 2,430.00 บาท",
-      "- สัญญาเพิ่มเติมโรคร้ายแรง (DCI) ทุน 2,850,000 บาท: 12,682.50 บาท",
-    ]);
+      "เพศหญิง อายุ 40 ปี",
+      "- Life Protect+ 100 — ชำระเบี้ยครบอายุ 99 ปี ทุน 150,000 บาท",
+      "- สัญญาเพิ่มเติมโรคร้ายแรง (DCI) ทุน 2,850,000 บาท",
+      "ผลประโยชน์กรณีเสียชีวิต",
+      "- ก่อนอายุ 60 ปี: 3,150,000 บาท",
+      "- อายุ 60 ปีขึ้นไป: 3,000,000 บาท",
+      "เบี้ยประกันที่ต้องชำระ",
+      "- รายปี: 15,112.50 บาท",
+      "- ราย 6 เดือน: 7,858.50 บาท",
+      "- รายเดือน: 1,360.12 บาท",
+      "(ตารางเบี้ย A2026-1)",
+    ].join("\n"));
+  });
+
+  it("marks the mode a bundle cannot be paid in", () => {
+    const bundle = getBundle("LEGACY_FAMILY")!;
+    const who = { age: 20, sex: "M" as const, mode: "annual" as const };
+    const text = summaryText(
+      bundleQuoteInput(bundle, 1, who)!,
+      quoteBundle(bundle, 1, who, new Date("2026-09-04"))!,
+      { name: bundle.name, tier: describeTier(bundle, 1)!, modes: bundleModePremiums(bundle, 1, { age: 20, sex: "M" }, new Date("2026-09-04"))! },
+    );
+    expect(text).toContain("- รายเดือน: 321.52 บาท (ต่ำกว่าขั้นต่ำ 1,000 บาท)");
   });
 });

@@ -32,8 +32,9 @@ export function BundleForm({ state, bundle, plans, bundles, onChange, onPlanChan
         </select>
       </div>
 
+      {/* no งวดชำระ picker: the quote prices every mode, so there is nothing left to choose */}
       <InsuredFields
-        age={state.age} sex={state.sex} mode={state.mode} ageRange={bundleAgeRange(bundle)}
+        age={state.age} sex={state.sex} ageRange={bundleAgeRange(bundle)}
         onChange={(patch) => onChange({ ...state, ...patch })}
       />
 

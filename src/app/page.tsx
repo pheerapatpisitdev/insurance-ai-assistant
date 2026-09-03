@@ -103,7 +103,8 @@ export default function Home() {
   }, [state, plan]);
   const eligibleCodes = useMemo(() => new Set(availability.filter((a) => a.eligible).map((a) => a.code)), [availability]);
   const bundle = state.bundleCode ? getBundle(state.bundleCode) : undefined;
-  const who = state.age === "" ? undefined : { age: state.age, sex: state.sex, mode: state.mode };
+  // A bundle prices every mode, so its own quote is taken on the annual basis and the picker is gone.
+  const who = state.age === "" ? undefined : { age: state.age, sex: state.sex, mode: bundle ? ("annual" as const) : state.mode };
   const input = useMemo(
     () => (bundle && who ? bundleQuoteInput(bundle, state.tier, who) ?? null : bundle ? null : toQuoteInput(state, eligibleCodes)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -121,9 +122,11 @@ export default function Home() {
   );
   const summary = useMemo(
     () => (input && result
-      ? summaryText(input, result, bundle ? { name: bundle.name, tier: describeTier(bundle, state.tier) ?? "" } : undefined)
+      ? summaryText(input, result, bundle && modePremiums
+        ? { name: bundle.name, tier: describeTier(bundle, state.tier) ?? "", modes: modePremiums }
+        : undefined)
       : ""),
-    [input, result, bundle, state.tier],
+    [input, result, bundle, state.tier, modePremiums],
   );
 
   return (
