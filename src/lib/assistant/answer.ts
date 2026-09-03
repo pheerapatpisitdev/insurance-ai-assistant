@@ -61,8 +61,11 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
 
   const range = baseAgeRange(plan.rules, variant, plan.rates);
   if (age < range.min || age > range.max) {
+    const label = plan.variantLabels[variant];
+    const planLabel = plan.planLabel ?? planCode;
+    const named = label.includes(planLabel) ? label : `${planLabel} (${label})`;
     return {
-      reply: `${plan.variantLabels[variant]} รับอายุ ${range.min} ถึง ${range.max} ปี อายุ ${age} ปีจึงสมัครแบบนี้ไม่ได้ครับ ลองแบบอื่นได้ไหมครับ`,
+      reply: `${named} รับอายุ ${range.min}-${range.max} ปี อายุ ${age} ปีจึงสมัครแบบนี้ไม่ได้ครับ ลองแบบอื่นได้ไหมครับ`,
       sources: [],
     };
   }
