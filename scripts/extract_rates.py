@@ -496,12 +496,59 @@ def extract_w_family(plan_code, filename):
     write_json(OUT_DIR / f"{plan_code.lower()}.json", out)
 
 
+# ---------------------------------------------------------------------------
+# Cash surrender values (ไลฟ์ โพรเทค+ only)
+# ---------------------------------------------------------------------------
+
+# The workbook shows the surrender value as ROUND(factor * sumAssured / 1000, 0), where the
+# factor comes from TABCV(<sex>) keyed on the package code, the age at issue and the policy
+# year. Coverage runs to age 99 and the table's last entry is the age-98 policy year, so a
+# row holds exactly 99 - age values; anything past that in the sheet is filler.
+LAST_COVERED_AGE = 98
+CV_SHEETS = {"M": "TABCV(Male) (as of 220626", "F": "TABCV(Female) (as of 220626)"}
+
+
+def extract_lifeprotect_cash_values():
+    filename = W_FAMILY["LIFEPROTECT"]
+    wb = openpyxl.load_workbook(XLSX_DIR / filename, data_only=True)
+    factors = {}
+    for sex, sheet in CV_SHEETS.items():
+        ws = wb[sheet]
+        header = [cell(ws, 1, c) for c in range(1, 5)]
+        assert header == ["Key", "CVPLAN", "CVSEX", "CVAGE"], header
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            variant, row_sex, age = row[1], row[2], row[3]
+            if variant is None:
+                continue
+            assert row_sex == sex, f"{sheet} row for {variant} says sex {row_sex}"
+            years = LAST_COVERED_AGE + 1 - age
+            values = [int(v or 0) for v in row[4:4 + years]]
+            assert len(values) == years, f"{variant} {sex} age {age}: {len(values)} of {years} years"
+            factors.setdefault(variant, {}).setdefault(sex, {})[age] = values
+
+    variants = sorted(factors)
+    assert variants == ["WLF09H", "WLF09L", "WLF19H", "WLF19L", "WLF99H", "WLF99HX", "WLF99L", "WLF99LX"], variants
+    for variant, by_sex in factors.items():
+        assert sorted(by_sex) == ["F", "M"], variant
+        for sex, by_age in by_sex.items():
+            assert sorted(by_age) == list(range(0, 81)), f"{variant} {sex} ages"
+
+    write_json(OUT_DIR.parent / "cash-values" / "lifeprotect.json", {
+        "planCode": "LIFEPROTECT",
+        "source": filename,
+        "lastCoveredAge": LAST_COVERED_AGE,
+        "note": "surrender value = round(factor * sumAssured / 1000); factor per policy year, from year 1",
+        "factors": factors,
+    })
+
+
 EXTRACTORS = {
     "plb": extract_plb,
     "ishield": extract_ishield,
     "ismart": lambda: extract_w_family("ISMART", W_FAMILY["ISMART"]),
     "lifetreasure": lambda: extract_w_family("LIFETREASURE", W_FAMILY["LIFETREASURE"]),
     "lifeprotect": lambda: extract_w_family("LIFEPROTECT", W_FAMILY["LIFEPROTECT"]),
+    "lifeprotect-cv": extract_lifeprotect_cash_values,
 }
 
 

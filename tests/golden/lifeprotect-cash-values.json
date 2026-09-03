@@ -1,0 +1,1692 @@
+[
+ {
+  "age": 35,
+  "sex": "M",
+  "variant": "WLF99H",
+  "sumAssured": 1000000,
+  "rows": [
+   {
+    "age": 35,
+    "policyYear": 1,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 36,
+    "policyYear": 2,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 37,
+    "policyYear": 3,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 38,
+    "policyYear": 4,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 39,
+    "policyYear": 5,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 40,
+    "policyYear": 6,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 41,
+    "policyYear": 7,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 42,
+    "policyYear": 8,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 43,
+    "policyYear": 9,
+    "cashValue": 11000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 44,
+    "policyYear": 10,
+    "cashValue": 23000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 45,
+    "policyYear": 11,
+    "cashValue": 35000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 46,
+    "policyYear": 12,
+    "cashValue": 48000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 47,
+    "policyYear": 13,
+    "cashValue": 60000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 48,
+    "policyYear": 14,
+    "cashValue": 73000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 49,
+    "policyYear": 15,
+    "cashValue": 86000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 50,
+    "policyYear": 16,
+    "cashValue": 99000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 51,
+    "policyYear": 17,
+    "cashValue": 113000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 52,
+    "policyYear": 18,
+    "cashValue": 127000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 53,
+    "policyYear": 19,
+    "cashValue": 140000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 54,
+    "policyYear": 20,
+    "cashValue": 154000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 55,
+    "policyYear": 21,
+    "cashValue": 168000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 56,
+    "policyYear": 22,
+    "cashValue": 182000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 57,
+    "policyYear": 23,
+    "cashValue": 196000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 58,
+    "policyYear": 24,
+    "cashValue": 211000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 59,
+    "policyYear": 25,
+    "cashValue": 225000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 60,
+    "policyYear": 26,
+    "cashValue": 243000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 61,
+    "policyYear": 27,
+    "cashValue": 262000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 62,
+    "policyYear": 28,
+    "cashValue": 281000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 63,
+    "policyYear": 29,
+    "cashValue": 300000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 64,
+    "policyYear": 30,
+    "cashValue": 320000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 65,
+    "policyYear": 31,
+    "cashValue": 340000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 66,
+    "policyYear": 32,
+    "cashValue": 360000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 67,
+    "policyYear": 33,
+    "cashValue": 381000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 68,
+    "policyYear": 34,
+    "cashValue": 401000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 69,
+    "policyYear": 35,
+    "cashValue": 422000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 70,
+    "policyYear": 36,
+    "cashValue": 444000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 71,
+    "policyYear": 37,
+    "cashValue": 465000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 72,
+    "policyYear": 38,
+    "cashValue": 487000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 73,
+    "policyYear": 39,
+    "cashValue": 509000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 74,
+    "policyYear": 40,
+    "cashValue": 531000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 75,
+    "policyYear": 41,
+    "cashValue": 553000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 76,
+    "policyYear": 42,
+    "cashValue": 576000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 77,
+    "policyYear": 43,
+    "cashValue": 599000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 78,
+    "policyYear": 44,
+    "cashValue": 622000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 79,
+    "policyYear": 45,
+    "cashValue": 646000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 80,
+    "policyYear": 46,
+    "cashValue": 671000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 81,
+    "policyYear": 47,
+    "cashValue": 687000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 82,
+    "policyYear": 48,
+    "cashValue": 704000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 83,
+    "policyYear": 49,
+    "cashValue": 721000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 84,
+    "policyYear": 50,
+    "cashValue": 738000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 85,
+    "policyYear": 51,
+    "cashValue": 755000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 86,
+    "policyYear": 52,
+    "cashValue": 773000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 87,
+    "policyYear": 53,
+    "cashValue": 792000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 88,
+    "policyYear": 54,
+    "cashValue": 812000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 89,
+    "policyYear": 55,
+    "cashValue": 832000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 90,
+    "policyYear": 56,
+    "cashValue": 854000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 91,
+    "policyYear": 57,
+    "cashValue": 879000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 92,
+    "policyYear": 58,
+    "cashValue": 905000,
+    "deathBenefit": 1007576
+   },
+   {
+    "age": 93,
+    "policyYear": 59,
+    "cashValue": 932000,
+    "deathBenefit": 1024948
+   },
+   {
+    "age": 94,
+    "policyYear": 60,
+    "cashValue": 961000,
+    "deathBenefit": 1042320
+   },
+   {
+    "age": 95,
+    "policyYear": 61,
+    "cashValue": 992000,
+    "deathBenefit": 1059692
+   },
+   {
+    "age": 96,
+    "policyYear": 62,
+    "cashValue": 1026000,
+    "deathBenefit": 1077064
+   },
+   {
+    "age": 97,
+    "policyYear": 63,
+    "cashValue": 1065000,
+    "deathBenefit": 1094436
+   },
+   {
+    "age": 98,
+    "policyYear": 64,
+    "cashValue": 1112000,
+    "deathBenefit": 1112000
+   }
+  ]
+ },
+ {
+  "age": 45,
+  "sex": "F",
+  "variant": "WLF19H",
+  "sumAssured": 500000,
+  "rows": [
+   {
+    "age": 45,
+    "policyYear": 1,
+    "cashValue": 0,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 46,
+    "policyYear": 2,
+    "cashValue": 0,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 47,
+    "policyYear": 3,
+    "cashValue": 0,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 48,
+    "policyYear": 4,
+    "cashValue": 7000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 49,
+    "policyYear": 5,
+    "cashValue": 19500,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 50,
+    "policyYear": 6,
+    "cashValue": 34000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 51,
+    "policyYear": 7,
+    "cashValue": 50000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 52,
+    "policyYear": 8,
+    "cashValue": 65000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 53,
+    "policyYear": 9,
+    "cashValue": 80000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 54,
+    "policyYear": 10,
+    "cashValue": 95500,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 55,
+    "policyYear": 11,
+    "cashValue": 111500,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 56,
+    "policyYear": 12,
+    "cashValue": 127500,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 57,
+    "policyYear": 13,
+    "cashValue": 144000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 58,
+    "policyYear": 14,
+    "cashValue": 161000,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 59,
+    "policyYear": 15,
+    "cashValue": 178500,
+    "deathBenefit": 1000000
+   },
+   {
+    "age": 60,
+    "policyYear": 16,
+    "cashValue": 197500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 61,
+    "policyYear": 17,
+    "cashValue": 217000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 62,
+    "policyYear": 18,
+    "cashValue": 237000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 63,
+    "policyYear": 19,
+    "cashValue": 258000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 64,
+    "policyYear": 20,
+    "cashValue": 264500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 65,
+    "policyYear": 21,
+    "cashValue": 271000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 66,
+    "policyYear": 22,
+    "cashValue": 278000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 67,
+    "policyYear": 23,
+    "cashValue": 284500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 68,
+    "policyYear": 24,
+    "cashValue": 291500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 69,
+    "policyYear": 25,
+    "cashValue": 298500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 70,
+    "policyYear": 26,
+    "cashValue": 305500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 71,
+    "policyYear": 27,
+    "cashValue": 312500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 72,
+    "policyYear": 28,
+    "cashValue": 320000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 73,
+    "policyYear": 29,
+    "cashValue": 327000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 74,
+    "policyYear": 30,
+    "cashValue": 334000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 75,
+    "policyYear": 31,
+    "cashValue": 341500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 76,
+    "policyYear": 32,
+    "cashValue": 348500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 77,
+    "policyYear": 33,
+    "cashValue": 356000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 78,
+    "policyYear": 34,
+    "cashValue": 363500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 79,
+    "policyYear": 35,
+    "cashValue": 371000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 80,
+    "policyYear": 36,
+    "cashValue": 379000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 81,
+    "policyYear": 37,
+    "cashValue": 384500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 82,
+    "policyYear": 38,
+    "cashValue": 390500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 83,
+    "policyYear": 39,
+    "cashValue": 396000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 84,
+    "policyYear": 40,
+    "cashValue": 401500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 85,
+    "policyYear": 41,
+    "cashValue": 407500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 86,
+    "policyYear": 42,
+    "cashValue": 413000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 87,
+    "policyYear": 43,
+    "cashValue": 418500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 88,
+    "policyYear": 44,
+    "cashValue": 424000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 89,
+    "policyYear": 45,
+    "cashValue": 429500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 90,
+    "policyYear": 46,
+    "cashValue": 435000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 91,
+    "policyYear": 47,
+    "cashValue": 440500,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 92,
+    "policyYear": 48,
+    "cashValue": 446000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 93,
+    "policyYear": 49,
+    "cashValue": 452000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 94,
+    "policyYear": 50,
+    "cashValue": 459000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 95,
+    "policyYear": 51,
+    "cashValue": 466000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 96,
+    "policyYear": 52,
+    "cashValue": 475000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 97,
+    "policyYear": 53,
+    "cashValue": 486000,
+    "deathBenefit": 500000
+   },
+   {
+    "age": 98,
+    "policyYear": 54,
+    "cashValue": 500000,
+    "deathBenefit": 500000
+   }
+  ]
+ },
+ {
+  "age": 0,
+  "sex": "F",
+  "variant": "WLF09L",
+  "sumAssured": 300000,
+  "rows": [
+   {
+    "age": 0,
+    "policyYear": 1,
+    "cashValue": 0,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 1,
+    "policyYear": 2,
+    "cashValue": 0,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 2,
+    "policyYear": 3,
+    "cashValue": 1200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 3,
+    "policyYear": 4,
+    "cashValue": 6300,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 4,
+    "policyYear": 5,
+    "cashValue": 12900,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 5,
+    "policyYear": 6,
+    "cashValue": 18600,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 6,
+    "policyYear": 7,
+    "cashValue": 24600,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 7,
+    "policyYear": 8,
+    "cashValue": 30900,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 8,
+    "policyYear": 9,
+    "cashValue": 37200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 9,
+    "policyYear": 10,
+    "cashValue": 38400,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 10,
+    "policyYear": 11,
+    "cashValue": 39300,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 11,
+    "policyYear": 12,
+    "cashValue": 40200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 12,
+    "policyYear": 13,
+    "cashValue": 41400,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 13,
+    "policyYear": 14,
+    "cashValue": 42300,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 14,
+    "policyYear": 15,
+    "cashValue": 43500,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 15,
+    "policyYear": 16,
+    "cashValue": 44700,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 16,
+    "policyYear": 17,
+    "cashValue": 45600,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 17,
+    "policyYear": 18,
+    "cashValue": 46800,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 18,
+    "policyYear": 19,
+    "cashValue": 48000,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 19,
+    "policyYear": 20,
+    "cashValue": 49200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 20,
+    "policyYear": 21,
+    "cashValue": 50700,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 21,
+    "policyYear": 22,
+    "cashValue": 51900,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 22,
+    "policyYear": 23,
+    "cashValue": 53100,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 23,
+    "policyYear": 24,
+    "cashValue": 54600,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 24,
+    "policyYear": 25,
+    "cashValue": 56100,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 25,
+    "policyYear": 26,
+    "cashValue": 57600,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 26,
+    "policyYear": 27,
+    "cashValue": 58800,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 27,
+    "policyYear": 28,
+    "cashValue": 60600,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 28,
+    "policyYear": 29,
+    "cashValue": 62100,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 29,
+    "policyYear": 30,
+    "cashValue": 63600,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 30,
+    "policyYear": 31,
+    "cashValue": 65400,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 31,
+    "policyYear": 32,
+    "cashValue": 66900,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 32,
+    "policyYear": 33,
+    "cashValue": 68700,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 33,
+    "policyYear": 34,
+    "cashValue": 70500,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 34,
+    "policyYear": 35,
+    "cashValue": 72300,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 35,
+    "policyYear": 36,
+    "cashValue": 74400,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 36,
+    "policyYear": 37,
+    "cashValue": 76200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 37,
+    "policyYear": 38,
+    "cashValue": 78300,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 38,
+    "policyYear": 39,
+    "cashValue": 80400,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 39,
+    "policyYear": 40,
+    "cashValue": 82500,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 40,
+    "policyYear": 41,
+    "cashValue": 84600,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 41,
+    "policyYear": 42,
+    "cashValue": 86700,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 42,
+    "policyYear": 43,
+    "cashValue": 89100,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 43,
+    "policyYear": 44,
+    "cashValue": 91500,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 44,
+    "policyYear": 45,
+    "cashValue": 93900,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 45,
+    "policyYear": 46,
+    "cashValue": 96300,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 46,
+    "policyYear": 47,
+    "cashValue": 98700,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 47,
+    "policyYear": 48,
+    "cashValue": 101400,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 48,
+    "policyYear": 49,
+    "cashValue": 103800,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 49,
+    "policyYear": 50,
+    "cashValue": 106500,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 50,
+    "policyYear": 51,
+    "cashValue": 109500,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 51,
+    "policyYear": 52,
+    "cashValue": 112200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 52,
+    "policyYear": 53,
+    "cashValue": 115200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 53,
+    "policyYear": 54,
+    "cashValue": 118200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 54,
+    "policyYear": 55,
+    "cashValue": 121200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 55,
+    "policyYear": 56,
+    "cashValue": 124200,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 56,
+    "policyYear": 57,
+    "cashValue": 127500,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 57,
+    "policyYear": 58,
+    "cashValue": 130800,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 58,
+    "policyYear": 59,
+    "cashValue": 134100,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 59,
+    "policyYear": 60,
+    "cashValue": 137400,
+    "deathBenefit": 450000
+   },
+   {
+    "age": 60,
+    "policyYear": 61,
+    "cashValue": 141000,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 61,
+    "policyYear": 62,
+    "cashValue": 144600,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 62,
+    "policyYear": 63,
+    "cashValue": 148500,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 63,
+    "policyYear": 64,
+    "cashValue": 152400,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 64,
+    "policyYear": 65,
+    "cashValue": 156300,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 65,
+    "policyYear": 66,
+    "cashValue": 160200,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 66,
+    "policyYear": 67,
+    "cashValue": 164400,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 67,
+    "policyYear": 68,
+    "cashValue": 168600,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 68,
+    "policyYear": 69,
+    "cashValue": 172800,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 69,
+    "policyYear": 70,
+    "cashValue": 177000,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 70,
+    "policyYear": 71,
+    "cashValue": 181500,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 71,
+    "policyYear": 72,
+    "cashValue": 186000,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 72,
+    "policyYear": 73,
+    "cashValue": 190500,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 73,
+    "policyYear": 74,
+    "cashValue": 195000,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 74,
+    "policyYear": 75,
+    "cashValue": 199800,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 75,
+    "policyYear": 76,
+    "cashValue": 204300,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 76,
+    "policyYear": 77,
+    "cashValue": 209400,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 77,
+    "policyYear": 78,
+    "cashValue": 214200,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 78,
+    "policyYear": 79,
+    "cashValue": 219300,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 79,
+    "policyYear": 80,
+    "cashValue": 224400,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 80,
+    "policyYear": 81,
+    "cashValue": 229800,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 81,
+    "policyYear": 82,
+    "cashValue": 233100,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 82,
+    "policyYear": 83,
+    "cashValue": 236400,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 83,
+    "policyYear": 84,
+    "cashValue": 239700,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 84,
+    "policyYear": 85,
+    "cashValue": 243000,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 85,
+    "policyYear": 86,
+    "cashValue": 246300,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 86,
+    "policyYear": 87,
+    "cashValue": 249600,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 87,
+    "policyYear": 88,
+    "cashValue": 252900,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 88,
+    "policyYear": 89,
+    "cashValue": 255900,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 89,
+    "policyYear": 90,
+    "cashValue": 259200,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 90,
+    "policyYear": 91,
+    "cashValue": 262500,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 91,
+    "policyYear": 92,
+    "cashValue": 265800,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 92,
+    "policyYear": 93,
+    "cashValue": 269100,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 93,
+    "policyYear": 94,
+    "cashValue": 272400,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 94,
+    "policyYear": 95,
+    "cashValue": 276300,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 95,
+    "policyYear": 96,
+    "cashValue": 280500,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 96,
+    "policyYear": 97,
+    "cashValue": 285600,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 97,
+    "policyYear": 98,
+    "cashValue": 291900,
+    "deathBenefit": 300000
+   },
+   {
+    "age": 98,
+    "policyYear": 99,
+    "cashValue": 300000,
+    "deathBenefit": 300000
+   }
+  ]
+ },
+ {
+  "age": 60,
+  "sex": "M",
+  "variant": "WLF99L",
+  "sumAssured": 2000000,
+  "rows": [
+   {
+    "age": 60,
+    "policyYear": 1,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 61,
+    "policyYear": 2,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 62,
+    "policyYear": 3,
+    "cashValue": 0,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 63,
+    "policyYear": 4,
+    "cashValue": 38000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 64,
+    "policyYear": 5,
+    "cashValue": 110000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 65,
+    "policyYear": 6,
+    "cashValue": 192000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 66,
+    "policyYear": 7,
+    "cashValue": 284000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 67,
+    "policyYear": 8,
+    "cashValue": 366000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 68,
+    "policyYear": 9,
+    "cashValue": 452000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 69,
+    "policyYear": 10,
+    "cashValue": 538000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 70,
+    "policyYear": 11,
+    "cashValue": 626000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 71,
+    "policyYear": 12,
+    "cashValue": 716000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 72,
+    "policyYear": 13,
+    "cashValue": 808000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 73,
+    "policyYear": 14,
+    "cashValue": 902000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 74,
+    "policyYear": 15,
+    "cashValue": 998000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 75,
+    "policyYear": 16,
+    "cashValue": 1100000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 76,
+    "policyYear": 17,
+    "cashValue": 1204000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 77,
+    "policyYear": 18,
+    "cashValue": 1312000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 78,
+    "policyYear": 19,
+    "cashValue": 1424000,
+    "deathBenefit": 2000000
+   },
+   {
+    "age": 79,
+    "policyYear": 20,
+    "cashValue": 1540000,
+    "deathBenefit": 2100800
+   },
+   {
+    "age": 80,
+    "policyYear": 21,
+    "cashValue": 1658000,
+    "deathBenefit": 2205840
+   },
+   {
+    "age": 81,
+    "policyYear": 22,
+    "cashValue": 1772000,
+    "deathBenefit": 2310880
+   },
+   {
+    "age": 82,
+    "policyYear": 23,
+    "cashValue": 1886000,
+    "deathBenefit": 2415920
+   },
+   {
+    "age": 83,
+    "policyYear": 24,
+    "cashValue": 2000000,
+    "deathBenefit": 2520960
+   },
+   {
+    "age": 84,
+    "policyYear": 25,
+    "cashValue": 2116000,
+    "deathBenefit": 2626000
+   },
+   {
+    "age": 85,
+    "policyYear": 26,
+    "cashValue": 2234000,
+    "deathBenefit": 2731040
+   },
+   {
+    "age": 86,
+    "policyYear": 27,
+    "cashValue": 2354000,
+    "deathBenefit": 2836080
+   },
+   {
+    "age": 87,
+    "policyYear": 28,
+    "cashValue": 2476000,
+    "deathBenefit": 2941120
+   },
+   {
+    "age": 88,
+    "policyYear": 29,
+    "cashValue": 2598000,
+    "deathBenefit": 3046160
+   },
+   {
+    "age": 89,
+    "policyYear": 30,
+    "cashValue": 2724000,
+    "deathBenefit": 3151200
+   },
+   {
+    "age": 90,
+    "policyYear": 31,
+    "cashValue": 2850000,
+    "deathBenefit": 3256240
+   },
+   {
+    "age": 91,
+    "policyYear": 32,
+    "cashValue": 2978000,
+    "deathBenefit": 3361280
+   },
+   {
+    "age": 92,
+    "policyYear": 33,
+    "cashValue": 3110000,
+    "deathBenefit": 3466320
+   },
+   {
+    "age": 93,
+    "policyYear": 34,
+    "cashValue": 3248000,
+    "deathBenefit": 3571360
+   },
+   {
+    "age": 94,
+    "policyYear": 35,
+    "cashValue": 3390000,
+    "deathBenefit": 3676400
+   },
+   {
+    "age": 95,
+    "policyYear": 36,
+    "cashValue": 3540000,
+    "deathBenefit": 3781440
+   },
+   {
+    "age": 96,
+    "policyYear": 37,
+    "cashValue": 3704000,
+    "deathBenefit": 3886480
+   },
+   {
+    "age": 97,
+    "policyYear": 38,
+    "cashValue": 3886000,
+    "deathBenefit": 3991520
+   },
+   {
+    "age": 98,
+    "policyYear": 39,
+    "cashValue": 4096000,
+    "deathBenefit": 4096560
+   }
+  ]
+ },
+ {
+  "age": 80,
+  "sex": "F",
+  "variant": "WLF19L",
+  "sumAssured": 150000,
+  "rows": [
+   {
+    "age": 80,
+    "policyYear": 1,
+    "cashValue": 0,
+    "deathBenefit": 150000
+   },
+   {
+    "age": 81,
+    "policyYear": 2,
+    "cashValue": 15600,
+    "deathBenefit": 150000
+   },
+   {
+    "age": 82,
+    "policyYear": 3,
+    "cashValue": 36450,
+    "deathBenefit": 150000
+   },
+   {
+    "age": 83,
+    "policyYear": 4,
+    "cashValue": 57150,
+    "deathBenefit": 150000
+   },
+   {
+    "age": 84,
+    "policyYear": 5,
+    "cashValue": 78300,
+    "deathBenefit": 150000
+   },
+   {
+    "age": 85,
+    "policyYear": 6,
+    "cashValue": 103050,
+    "deathBenefit": 150000
+   },
+   {
+    "age": 86,
+    "policyYear": 7,
+    "cashValue": 130950,
+    "deathBenefit": 164377
+   },
+   {
+    "age": 87,
+    "policyYear": 8,
+    "cashValue": 153750,
+    "deathBenefit": 187860
+   },
+   {
+    "age": 88,
+    "policyYear": 9,
+    "cashValue": 176850,
+    "deathBenefit": 211342
+   },
+   {
+    "age": 89,
+    "policyYear": 10,
+    "cashValue": 200400,
+    "deathBenefit": 234825
+   },
+   {
+    "age": 90,
+    "policyYear": 11,
+    "cashValue": 224400,
+    "deathBenefit": 258307
+   },
+   {
+    "age": 91,
+    "policyYear": 12,
+    "cashValue": 248700,
+    "deathBenefit": 281790
+   },
+   {
+    "age": 92,
+    "policyYear": 13,
+    "cashValue": 273600,
+    "deathBenefit": 305272
+   },
+   {
+    "age": 93,
+    "policyYear": 14,
+    "cashValue": 299100,
+    "deathBenefit": 328755
+   },
+   {
+    "age": 94,
+    "policyYear": 15,
+    "cashValue": 325350,
+    "deathBenefit": 352237
+   },
+   {
+    "age": 95,
+    "policyYear": 16,
+    "cashValue": 352650,
+    "deathBenefit": 375720
+   },
+   {
+    "age": 96,
+    "policyYear": 17,
+    "cashValue": 381450,
+    "deathBenefit": 399202
+   },
+   {
+    "age": 97,
+    "policyYear": 18,
+    "cashValue": 412200,
+    "deathBenefit": 422685
+   },
+   {
+    "age": 98,
+    "policyYear": 19,
+    "cashValue": 446100,
+    "deathBenefit": 446167
+   }
+  ]
+ }
+]

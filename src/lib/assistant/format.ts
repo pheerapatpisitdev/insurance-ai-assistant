@@ -1,4 +1,5 @@
 import type { QuoteInput, QuoteResult } from "@/calc/types";
+import { cashValueHighlights, cashValueSchedule, maturityValue } from "@/calc/cash-value";
 
 const SEX_TH = { M: "ชาย", F: "หญิง" } as const;
 const MODE_NOUN = { annual: "รายปี", semi: "ราย 6 เดือน", monthly: "รายเดือน" } as const;
@@ -38,9 +39,18 @@ export function quoteReply(input: QuoteInput, result: QuoteResult): string {
   const db = result.deathBenefit;
   if (db) {
     blocks.push(db.alreadyPastAge
-      ? `กรณีเสียชีวิต ${db.sumFrom.toLocaleString("en-US")} บาท`
-      : `กรณีเสียชีวิต\n- ก่อนอายุ ${db.beforeAge} ปี ${db.sumBefore.toLocaleString("en-US")} บาท\n- อายุ ${db.beforeAge} ปีขึ้นไป ${db.sumFrom.toLocaleString("en-US")} บาท`);
+      ? `กรณีเสียชีวิต (ขั้นต่ำ) ${db.sumFrom.toLocaleString("en-US")} บาท`
+      : `กรณีเสียชีวิต (ขั้นต่ำ)\n- ก่อนอายุ ${db.beforeAge} ปี ${db.sumBefore.toLocaleString("en-US")} บาท\n- อายุ ${db.beforeAge} ปีขึ้นไป ${db.sumFrom.toLocaleString("en-US")} บาท`);
   }
+
+  const schedule = cashValueSchedule(input.planCode, input.variant, input.sex, input.age, result.sumAssured);
+  const highlights = cashValueHighlights(schedule);
+  if (highlights.length) {
+    blocks.push(["มูลค่าเวนคืน (ณ สิ้นปีกรมธรรม์)",
+      ...highlights.map((r) => `- อายุ ${r.age} ปี ${r.amount.toLocaleString("en-US")} บาท`)].join("\n"));
+  }
+  const maturity = maturityValue(schedule);
+  if (maturity) blocks.push(`อยู่ครบสัญญา อายุ ${maturity.age} ปี รับ ${maturity.amount.toLocaleString("en-US")} บาท`);
 
   const notes = result.warnings.map((w) => `⚠ ${w.message}`);
   if (notes.length) blocks.push(notes.join("\n"));
