@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { verifySignature, hashUserId } from "@/lib/line/verify";
-import { claimEvent, loadSession, saveSession } from "@/lib/line/session";
+import { claimEvent, loadSession, saveSession } from "@/lib/chat/session";
 import { push, reply } from "@/lib/line/client";
 import { answerQuestion } from "@/lib/assistant/answer";
 import { allow } from "@/lib/assistant/rate-limit";
@@ -55,7 +55,7 @@ async function handle(event: LineEvent): Promise<void> {
   if (!text || !userId || !replyToken) return;
 
   // a redelivery of an event already answered must not answer it a second time
-  if (event.webhookEventId && !(await claimEvent(event.webhookEventId))) return;
+  if (event.webhookEventId && !(await claimEvent("line", event.webhookEventId))) return;
 
   const userHash = hashUserId(userId);
   if (!allow(`line:${userHash}`)) {
@@ -63,13 +63,13 @@ async function handle(event: LineEvent): Promise<void> {
     return;
   }
 
-  const session = await loadSession(userHash);
+  const session = await loadSession("line", userHash);
   const history: ChatMessage[] = [...session.messages, { role: "user", content: text }];
 
   try {
     const answer = await answerQuestion(history, session.slots);
     await say(replyToken, userId, answer.reply);
-    await saveSession(userHash, [...history, { role: "assistant", content: answer.reply }], answer.slots);
+    await saveSession("line", userHash, [...history, { role: "assistant", content: answer.reply }], answer.slots);
   } catch (e) {
     await say(replyToken, userId, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);
     throw e;
