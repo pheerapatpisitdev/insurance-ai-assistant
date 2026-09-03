@@ -16,7 +16,7 @@ describe("data/rates/ishield.json", () => {
     expect(d.base.rates.WLCI10.M["35"]).toBe(66.98);
     expect(d.base.rates.WLCI05.M["0"]).toBe(75.46);
     expect(d.base.rates.WLCI20.F["0"]).toBe(18.97);
-    expect(d.base.rates.WLCI20.F["57"]).toBeUndefined();
+    expect((d.base.rates.WLCI20.F as Record<string, number>)["57"]).toBeUndefined();
   });
   it("discount all zero", () => {
     expect(d.discount.thresholds).toEqual([350000, 500000, 700000, 1000000, 3000000, 5000000]);

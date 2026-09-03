@@ -71,7 +71,7 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   const expired = today.toISOString().slice(0, 10) > rates.expiresOn;
 
   return {
-    items, totalAnnual, totalModal, warnings, availability,
+    items, totalAnnual, totalModal, warnings, availability, sumAssured: input.sumAssured,
     meta: { planName: rates.planName, version: rates.version, expiresOn: rates.expiresOn, expired },
   };
 }

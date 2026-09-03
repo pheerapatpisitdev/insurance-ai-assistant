@@ -19,7 +19,28 @@ export interface FixedByAgePlan {
   /** age → premium per plan (same order as `plans`); 0 = not offered */
   premiums: Record<string, number[]>;
 }
-export type RiderRates = RatePerThousandByAgeClass | FixedByAgePlan;
+export interface FlatRateByClass {
+  kind: "flatRateByClass";
+  /** [class1, class2, class3, class4] rate per 1,000, independent of age */
+  rates: number[];
+}
+export interface RatePerThousandByVariantAgeSex {
+  kind: "ratePerThousandByVariantAgeSex";
+  variants: string[];
+  /** variant → sex → age → rate per 1,000 */
+  rates: Record<string, Record<Sex, Record<string, number>>>;
+  /** rider's own sum-assured discount tiers (ascending thresholds) */
+  discountThresholds: number[];
+  discountValues: number[];
+}
+export interface PayorBenefit {
+  kind: "payorBenefit";
+  /** plancode → payer sex → payer age → waive period (years) → rate per 100 baht of base annual premium */
+  rates: Record<string, Record<Sex, Record<string, Record<string, number>>>>;
+  /** option code → display name and plancodes for insured ≤15 (parent) / ≥16 (spouse) */
+  options: Record<string, { name: string; parent: string; spouse: string }>;
+}
+export type RiderRates = RatePerThousandByAgeClass | FixedByAgePlan | FlatRateByClass | RatePerThousandByVariantAgeSex | PayorBenefit;
 
 export interface PlanRates {
   planCode: string;
@@ -31,6 +52,8 @@ export interface PlanRates {
   modeFactors: Record<PayMode, number>;
   base: {
     variants: string[];
+    /** variant → premium-paying term in years (needed by payor-benefit riders) */
+    payTerm?: Record<string, number>;
     /** variant → sex → age → rate per 1,000 */
     rates: Record<string, Record<Sex, Record<string, number>>>;
   };
@@ -53,6 +76,10 @@ export interface RiderRule {
   saMaxCap?: number;
   /** for plan riders: highest plan allowed per age band (ascending ageMax) */
   planMaxByAge?: { ageMax: number; planMax: number }[];
+  /** stricter max for young insureds (e.g. AP under 16) */
+  juvenile?: { ageMax: number; saMaxMultipleOfBase: number; saMaxCap: number };
+  /** payor-benefit riders: allowed payer age */
+  payer?: { ageMin: number; ageMax: number };
 }
 export interface CombinedRule {
   code: string;
@@ -63,7 +90,16 @@ export interface CombinedRule {
 }
 export interface PlanRules {
   planCode: string;
-  base: { ageMin: number; ageMax: number; saMin: number };
+  base: {
+    ageMin: number;
+    ageMax: number;
+    saMin: number;
+    saMax?: number;
+    /** per-variant override of ageMax */
+    ageMaxByVariant?: Record<string, number>;
+    /** plan supports "premium → sum assured" input */
+    premiumBasis?: boolean;
+  };
   minMonthlyTotal: number;
   riders: Record<string, RiderRule>;
   combined: CombinedRule[];
@@ -74,6 +110,12 @@ export interface RiderInput {
   code: string;
   sumAssured?: number;
   plan?: number;
+  /** PB: "FIT" | "BEYOND"; PLS: "PLS05" … */
+  option?: string;
+}
+export interface Payer {
+  age: number;
+  sex: Sex;
 }
 export interface QuoteInput {
   planCode: string;
@@ -81,7 +123,12 @@ export interface QuoteInput {
   age: number;
   sex: Sex;
   mode: PayMode;
+  /** used when basis is "sumAssured" (default) */
   sumAssured: number;
+  /** "premium": derive sum assured from targetPremium (modal, baht) */
+  basis?: "sumAssured" | "premium";
+  targetPremium?: number;
+  payer?: Payer;
   riders: RiderInput[];
 }
 
@@ -109,6 +156,8 @@ export interface Availability {
   saMin?: number;
   saMax?: number;
   plans?: number[];
+  options?: { code: string; name: string }[];
+  needsPayer?: boolean;
   reason?: string;
 }
 export interface QuoteResult {
@@ -118,5 +167,7 @@ export interface QuoteResult {
   totalModal: number;
   warnings: Warning[];
   availability: Availability[];
+  /** sum assured actually used (derived when basis is "premium") */
+  sumAssured: number;
   meta: { planName: string; version: string; expiresOn: string; expired: boolean };
 }
