@@ -7,110 +7,110 @@
     {
       "no": 1,
       "name": "มรดก 1 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 800000
+          "sumAssured": 850000
         }
       ]
     },
     {
       "no": 2,
       "name": "มรดก 2 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 1800000
+          "sumAssured": 1850000
         }
       ]
     },
     {
       "no": 3,
       "name": "มรดก 3 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 2800000
+          "sumAssured": 2850000
         }
       ]
     },
     {
       "no": 4,
       "name": "มรดก 4 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 3800000
+          "sumAssured": 3850000
         }
       ]
     },
     {
       "no": 5,
       "name": "มรดก 5 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 4800000
+          "sumAssured": 4850000
         }
       ]
     },
     {
       "no": 6,
       "name": "มรดก 6 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 5800000
+          "sumAssured": 5850000
         }
       ]
     },
     {
       "no": 7,
       "name": "มรดก 7 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 6800000
+          "sumAssured": 6850000
         }
       ]
     },
     {
       "no": 8,
       "name": "มรดก 8 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 7800000
+          "sumAssured": 7850000
         }
       ]
     },
     {
       "no": 9,
       "name": "มรดก 9 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 8800000
+          "sumAssured": 8850000
         }
       ]
     },
     {
       "no": 10,
       "name": "มรดก 10 ล้าน",
-      "sumAssured": 200000,
+      "sumAssured": 150000,
       "riders": [
         {
           "code": "DCI",
-          "sumAssured": 9800000
+          "sumAssured": 9850000
         }
       ]
     }

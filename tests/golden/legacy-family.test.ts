@@ -6,7 +6,7 @@ import type { PayMode, Sex } from "@/calc/types";
 /**
  * Anchors read straight off the Life Protect+ 100 (WLF99H) and DCI rate tables, so a wrong
  * sum assured or a dropped mode factor in the bundle layer shows up as a baht figure.
- * Base premium = rate × 200,000 / 1,000; DCI = rate × tier sum assured / 1,000.
+ * Base premium = rate × 150,000 / 1,000; DCI = rate × tier sum assured / 1,000.
  */
 const bundle = getBundle("LEGACY_FAMILY")!;
 const TODAY = new Date("2026-09-04");
@@ -17,12 +17,12 @@ const baht = (sex: Sex, age: number, tier: number, mode: PayMode = "annual") => 
 
 describe("มรดกเพื่อครอบครัว — annual premium against the rate tables", () => {
   const cases: [Sex, number, [number, number, number]][] = [
-    ["M", 20, [3_980, 13_380, 25_130]],
-    ["M", 40, [8_496, 30_576, 58_176]],
-    ["M", 65, [46_260, 211_060, 417_060]],
-    ["F", 20, [3_316, 10_996, 20_596]],
-    ["F", 40, [6_800, 24_600, 46_850]],
-    ["F", 65, [36_960, 165_560, 326_310]],
+    ["M", 20, [3_572.5, 12_972.5, 24_722.5]],
+    ["M", 40, [7_752, 29_832, 57_432]],
+    ["M", 65, [44_995, 209_795, 415_795]],
+    ["F", 20, [2_967, 10_647, 20_247]],
+    ["F", 40, [6_212.5, 24_012.5, 46_262.5]],
+    ["F", 65, [35_757.5, 164_357.5, 325_107.5]],
   ];
   for (const [sex, age, [t1, t5, t10]] of cases) {
     it(`${sex === "M" ? "ชาย" : "หญิง"} ${age} ปี`, () => {
@@ -35,9 +35,9 @@ describe("มรดกเพื่อครอบครัว — annual premium
 
 describe("มรดกเพื่อครอบครัว — mode factor and edges", () => {
   it("applies the monthly factor to both lines", () => {
-    expect(baht("M", 40, 1, "monthly")).toBe(764.64);
-    expect(baht("M", 40, 5, "monthly")).toBe(2_751.84);
-    expect(baht("F", 40, 10, "monthly")).toBe(4_216.5);
+    expect(baht("M", 40, 1, "monthly")).toBe(697.68);
+    expect(baht("M", 40, 5, "monthly")).toBe(2_684.88);
+    expect(baht("F", 40, 10, "monthly")).toBe(4_163.62);
   });
 
   it("refuses ages outside the 20-65 window DCI leaves", () => {
@@ -49,9 +49,9 @@ describe("มรดกเพื่อครอบครัว — mode factor an
   });
 
   it("flags the 1,000 baht monthly minimum without hiding the premium", () => {
-    expect(baht("M", 20, 5, "monthly")).toBe(1_204.2); // over the minimum, no warning
+    expect(baht("M", 20, 5, "monthly")).toBe(1_167.52); // over the minimum, no warning
     const tooSmall = quoteBundle(bundle, 5, { age: 20, sex: "F", mode: "monthly" }, TODAY)!;
-    expect(tooSmall.totalModal / 100).toBe(989.64);
+    expect(tooSmall.totalModal / 100).toBe(958.23);
     expect(tooSmall.warnings.map((w) => w.code)).toContain("MIN_MONTHLY");
   });
 });

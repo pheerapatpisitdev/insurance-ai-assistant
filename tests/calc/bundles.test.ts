@@ -14,11 +14,11 @@ describe("bundle registry", () => {
     expect(bundle.variant).toBe("WLF99H");
     expect(bundle.tiers).toHaveLength(10);
     expect(bundle.tiers.map((t) => t.no)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    // every tier keeps the base at 200,000 and steps DCI up by a million
-    expect(bundle.tiers.map((t) => t.sumAssured)).toEqual(Array(10).fill(200_000));
+    // every tier keeps the base at its 150,000 minimum and lets DCI make up the round million
+    expect(bundle.tiers.map((t) => t.sumAssured)).toEqual(Array(10).fill(150_000));
     expect(bundle.tiers.map((t) => t.riders[0].sumAssured)).toEqual([
-      800_000, 1_800_000, 2_800_000, 3_800_000, 4_800_000,
-      5_800_000, 6_800_000, 7_800_000, 8_800_000, 9_800_000,
+      850_000, 1_850_000, 2_850_000, 3_850_000, 4_850_000,
+      5_850_000, 6_850_000, 7_850_000, 8_850_000, 9_850_000,
     ]);
     expect(bundle.tiers.every((t) => t.riders.length === 1 && t.riders[0].code === "DCI")).toBe(true);
   });
@@ -38,8 +38,8 @@ describe("bundleQuoteInput", () => {
       age: 40,
       sex: "F",
       mode: "annual",
-      sumAssured: 200_000,
-      riders: [{ code: "DCI", sumAssured: 2_800_000 }],
+      sumAssured: 150_000,
+      riders: [{ code: "DCI", sumAssured: 2_850_000 }],
     });
   });
 
@@ -82,7 +82,7 @@ describe("quoteBundle", () => {
   it("still prices a bundle whose monthly premium falls under the minimum", () => {
     const result = quoteBundle(bundle, 1, { age: 20, sex: "M", mode: "monthly" }, TODAY)!;
     // every line is sellable — only the payment mode is out of reach, so show what it costs
-    expect(result.totalModal).toBe(35_820);
+    expect(result.totalModal).toBe(32_152);
     expect(result.warnings.map((w) => w.code)).toContain("MIN_MONTHLY");
     expect(result.warnings.map((w) => w.code)).not.toContain("BUNDLE_INCOMPLETE");
     expect(result.items.every((i) => i.eligible)).toBe(true);
