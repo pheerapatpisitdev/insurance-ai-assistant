@@ -8,9 +8,9 @@ describe("summaryText", () => {
       riders: [{ code: "AP", sumAssured: 1_000_000 }] };
     const text = summaryText(input, quote(input, new Date("2026-09-03")));
     expect(text).toBe([
-      "โพรเทคชั่นไลฟ์ (PLB) PLB12",
+      "Protection Life (PLB) PLB12",
       "เพศชาย อายุ 35 ปี ชำระรายเดือน",
-      "- โพรเทคชั่นไลฟ์ (PLB) PLB12 ทุน 1,000,000 บาท: 492.30 บาท",
+      "- Protection Life (PLB) PLB12 ทุน 1,000,000 บาท: 492.30 บาท",
       "- สัญญาเพิ่มเติมอุบัติเหตุ (AP) ทุน 1,000,000 บาท: 270.00 บาท",
       "รวมเบี้ยต่องวด (รายเดือน): 762.30 บาท",
       "รวมเบี้ยรายปี: 8,470.00 บาท",

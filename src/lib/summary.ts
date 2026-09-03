@@ -6,7 +6,7 @@ const sexTh = (s: "M" | "F") => (s === "M" ? "ชาย" : "หญิง");
 
 export function summaryText(input: QuoteInput, result: QuoteResult): string {
   const lines: string[] = [];
-  lines.push(`${result.meta.planName} ${input.variant}`);
+  lines.push(result.items[0]?.name ?? `${result.meta.planName} ${input.variant}`);
   lines.push(`เพศ${sexTh(input.sex)} อายุ ${input.age} ปี ชำระ${PAY_MODE_LABEL[input.mode]}`);
   if (input.basis === "premium") {
     lines.push(`เบี้ยที่ต้องการ ${(input.targetPremium ?? 0).toLocaleString("en-US")} บาท → ทุนประกัน ${result.sumAssured.toLocaleString("en-US")} บาท`);

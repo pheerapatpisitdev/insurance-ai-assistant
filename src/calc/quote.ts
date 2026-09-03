@@ -1,5 +1,5 @@
 import type { Availability, PlanRates, QuoteInput, QuoteItem, QuoteResult, RiderInput, Warning } from "./types";
-import { getPlan } from "./plans/registry";
+import { getPlan, productLabel } from "./plans/registry";
 import { basePremium, type BasePremiumResult } from "./base-premium";
 import { sumAssuredFromPremium } from "./sa-from-premium";
 import { ratePerThousandRiderPremium } from "./riders/rate-per-thousand";
@@ -136,9 +136,10 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   const pkg = rates.base.packages?.find((p) => p.code === input.variant);
   // ไลฟ์ โพรเทค+ ships one Thai name in the workbook header (the "+100" one) but sells two
   // products, so name the row from the package's own product when it has one.
+  const planName = plan.planLabel ?? rates.planName;
   const baseName = pkg
-    ? `${pkg.productName ?? rates.planName} — ${pkg.name}`
-    : `${rates.planName} ${input.variant}`;
+    ? `${productLabel(pkg) ?? planName} — ${pkg.name}`
+    : `${planName} ${input.variant}`;
   const ageRange = baseAgeRange(rules, input.variant, rates);
   const inAgeRange = input.age >= ageRange.min && input.age <= ageRange.max;
   const saLimits = baseSumAssuredLimits(rules, input.variant);

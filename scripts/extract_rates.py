@@ -296,9 +296,9 @@ def extract_w_family(plan_code, filename):
     # before that table, whose own columns G and I would otherwise overwrite these entries.
     boosters = {}
     for r in range(55, pkg_row):
-        name, factor = cell(inp, r, 7), cell(inp, r, 9)
+        name, name_en, factor = cell(inp, r, 7), cell(inp, r, 8), cell(inp, r, 9)
         if isinstance(name, str) and isinstance(factor, (int, float)):
-            boosters[factor] = name.strip()
+            boosters[factor] = (name.strip(), name_en.strip() if isinstance(name_en, str) else None)
     plancode_to_term = {}
     for r in range(27, 40):
         code, term = cell(cal, r, 14), cell(cal, r, 15)
@@ -329,7 +329,9 @@ def extract_w_family(plan_code, filename):
         if isinstance(booster, (int, float)):
             pkg["booster"] = booster
             if booster in boosters:
-                pkg["productName"] = boosters[booster]
+                pkg["productName"], name_en = boosters[booster]
+                if name_en:
+                    pkg["productNameEn"] = name_en
         packages.append(pkg)
     assert packages, f"{plan_code}: no packages found"
 

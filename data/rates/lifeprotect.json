@@ -32,7 +32,8 @@
     "payTerm": 9,
     "rateKey": "09L",
     "booster": 0.5,
-    "productName": "ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล)"
+    "productName": "ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล)",
+    "productNameEn": "Life Protect+ 50 (Non-Participating)"
    },
    {
     "code": "WLF19L",
@@ -44,7 +45,8 @@
     "payTerm": 19,
     "rateKey": "19L",
     "booster": 0.5,
-    "productName": "ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล)"
+    "productName": "ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล)",
+    "productNameEn": "Life Protect+ 50 (Non-Participating)"
    },
    {
     "code": "WLF99L",
@@ -57,7 +59,8 @@
     "rateKey": "99L",
     "payTermToAge": 99,
     "booster": 0.5,
-    "productName": "ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล)"
+    "productName": "ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล)",
+    "productNameEn": "Life Protect+ 50 (Non-Participating)"
    },
    {
     "code": "WLF09H",
@@ -69,7 +72,8 @@
     "payTerm": 9,
     "rateKey": "09H",
     "booster": 1,
-    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)"
+    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
+    "productNameEn": "Life Protect+ 100 (Non-Participating)"
    },
    {
     "code": "WLF19H",
@@ -81,7 +85,8 @@
     "payTerm": 19,
     "rateKey": "19H",
     "booster": 1,
-    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)"
+    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
+    "productNameEn": "Life Protect+ 100 (Non-Participating)"
    },
    {
     "code": "WLF99H",
@@ -94,7 +99,8 @@
     "rateKey": "99H",
     "payTermToAge": 99,
     "booster": 1,
-    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)"
+    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
+    "productNameEn": "Life Protect+ 100 (Non-Participating)"
    },
    {
     "code": "WLF99HX",
@@ -107,7 +113,8 @@
     "rateKey": "99HX",
     "payTermToAge": 99,
     "booster": 1,
-    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)"
+    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
+    "productNameEn": "Life Protect+ 100 (Non-Participating)"
    },
    {
     "code": "WLF99HX#7",
@@ -120,7 +127,8 @@
     "rateKey": "99HX",
     "payTermToAge": 99,
     "booster": 1,
-    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)"
+    "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
+    "productNameEn": "Life Protect+ 100 (Non-Participating)"
    }
   ],
   "payTerm": {

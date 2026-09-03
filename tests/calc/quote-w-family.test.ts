@@ -11,7 +11,7 @@ describe("quote (ไอสมาร์ท 80/6)", () => {
   it("base only: 287 × 1,000 = 287,000.00", () => {
     const r = quote(ismart, new Date("2026-09-03"));
     expect(r.items[0]).toMatchObject({ code: "W80F06", annual: 28_700_000, modal: 28_700_000, eligible: true });
-    expect(r.items[0].name).toBe("ไอสมาร์ท 80/6 (ไม่มีเงินปันผล) — ชำระเบี้ย 6 ปี");
+    expect(r.items[0].name).toBe("iSmart 80/6 — ชำระเบี้ย 6 ปี");
     expect(r.totalModal).toBe(28_700_000);
     expect(r.availability.map((a) => a.code)).toEqual(
       ["PB", "WP", "AP", "ECARE", "MEX", "MEB", "DCI", "PLS", "CPR", "HIC", "IHU", "RRSS", "CI123"],
@@ -111,10 +111,10 @@ describe("quote (ไลฟ์ โพรเทค+)", () => {
   };
   it("names the row after the package's own product, not the workbook header", () => {
     const plus50 = quote({ ...lpp, variant: "WLF99L", age: 35, sex: "M", sumAssured: 1_000_000 });
-    expect(plus50.items[0].name).toBe("ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล) — ชำระเบี้ยครบอายุ 99 ปี");
+    expect(plus50.items[0].name).toBe("Life Protect+ 50 — ชำระเบี้ยครบอายุ 99 ปี");
     expect(plus50.items[0].annual).toBe(1_530_000); // 15.3 per 1,000
     const plus100 = quote({ ...lpp, variant: "WLF99H", age: 35, sex: "M", sumAssured: 1_000_000 });
-    expect(plus100.items[0].name).toBe("ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล) — ชำระเบี้ยครบอายุ 99 ปี");
+    expect(plus100.items[0].name).toBe("Life Protect+ 100 — ชำระเบี้ยครบอายุ 99 ปี");
     expect(plus100.items[0].annual).toBe(1_720_000); // 17.2 per 1,000
   });
 

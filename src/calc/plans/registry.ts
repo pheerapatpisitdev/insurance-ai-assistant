@@ -1,4 +1,4 @@
-import type { PlanRates, PlanRules } from "../types";
+import type { BasePackage, PlanRates, PlanRules } from "../types";
 import plbRates from "../../../data/rates/plb.json";
 import plbRules from "../../../data/rules/plb.json";
 import ishieldRates from "../../../data/rates/ishield.json";
@@ -20,14 +20,25 @@ export interface PlanBundle {
   variantLabels: Record<string, string>;
 }
 
+/** "(Non-Participating)" / "(ไม่มีเงินปันผล)" adds nothing on screen, so it is trimmed off. */
+const NON_PARTICIPATING = /\s*\((?:ไม่มีเงินปันผล|Non-Participating)\)\s*/gi;
+export function trimSuffix(name: string): string {
+  return name.replace(NON_PARTICIPATING, "").trim();
+}
+
+/** A package's product name in English where the workbook has one, else Thai. */
+export function productLabel(pkg: BasePackage): string | undefined {
+  const raw = pkg.productNameEn ?? pkg.productName;
+  return raw ? trimSuffix(raw) : undefined;
+}
+
 /** The three W-family plans share a rider order and take their variant labels from the package table. */
 function wFamily(code: string, rates: unknown, rules: unknown, planLabel?: string): Record<string, PlanBundle> {
   const r = rates as PlanRates;
   const packages = r.base.packages ?? [];
   // ไลฟ์ โพรเทค+ sells the same payment terms under two products, so the term alone would
   // show up twice with identical text. Put the product in front when there is more than one.
-  const products = new Set(packages.map((p) => p.productName).filter(Boolean));
-  const short = (name: string) => name.replace(/\s*\(ไม่มีเงินปันผล\)\s*/, "").trim();
+  const products = new Set(packages.map((p) => productLabel(p)).filter(Boolean));
   return {
     [code]: {
       rates: r,
@@ -36,7 +47,7 @@ function wFamily(code: string, rates: unknown, rules: unknown, planLabel?: strin
       riderOrder: ["PB", "WP", "AP", "ECARE", "MEX", "MEB", "DCI", "PLS", "CPR", "HIC", "IHU", "RRSS", "CI123"],
       variantLabels: Object.fromEntries(packages.map((p) => [
         p.code,
-        products.size > 1 && p.productName ? `${short(p.productName)} · ${p.name}` : p.name,
+        products.size > 1 && productLabel(p) ? `${productLabel(p)} · ${p.name}` : p.name,
       ])),
     },
   };
@@ -44,6 +55,7 @@ function wFamily(code: string, rates: unknown, rules: unknown, planLabel?: strin
 
 const PLANS: Record<string, PlanBundle> = {
   PLB: {
+    planLabel: "Protection Life (PLB)",
     rates: plbRates as unknown as PlanRates,
     rules: plbRules as unknown as PlanRules,
     riderOrder: ["AP", "ECARE", "MEB"],
@@ -55,6 +67,7 @@ const PLANS: Record<string, PlanBundle> = {
     },
   },
   ISHIELD: {
+    planLabel: "iShield",
     rates: ishieldRates as unknown as PlanRates,
     rules: ishieldRules as unknown as PlanRules,
     riderOrder: ["PB", "AP", "ECARE", "MEB", "PLS"],
@@ -65,9 +78,9 @@ const PLANS: Record<string, PlanBundle> = {
       WLCI20: "iShield 20 (ชำระเบี้ย 20 ปี)",
     },
   },
-  ...wFamily("ISMART", ismartRates, ismartRules),
-  ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules),
-  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "ไลฟ์ โพรเทค+ 50 / 100 (ไม่มีเงินปันผล)"),
+  ...wFamily("ISMART", ismartRates, ismartRules, "iSmart 80/6"),
+  ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules, "Life Treasure"),
+  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect+ 50 / 100"),
 };
 
 export function listPlans(): { code: string; name: string }[] {

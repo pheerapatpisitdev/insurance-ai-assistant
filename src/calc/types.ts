@@ -128,6 +128,7 @@ export interface BasePackage {
   /** ไลฟ์ โพรเทค+ sells the same terms under two products; the booster tells them apart */
   booster?: number;
   productName?: string;
+  productNameEn?: string;
 }
 
 // ---------- data/rules/<plan>.json ----------
