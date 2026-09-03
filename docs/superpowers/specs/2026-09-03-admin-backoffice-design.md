@@ -97,7 +97,14 @@
 - กุญแจ AI: ตรวจว่าค่าเต็มไม่เคยถูกส่งกลับไปเบราว์เซอร์
 - ชุดเทสเดิม 242 ข้อต้องยังผ่านทั้งหมด
 
-## 9. สิ่งที่ผู้ใช้ต้องทำ
+## 9. การตั้งค่าใน Vercel (ทำแล้ว 2026-09-03)
+
+- ปิด Deployment Protection (Vercel Authentication) เพื่อให้ทุกคนเปิดเว็บคำนวณได้โดยไม่ต้องล็อกอิน Vercel
+- ใส่ตัวแปร 4 ตัวครบทั้ง production, preview และ development:
+  `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PIN`, `ADMIN_SESSION_SECRET`
+- โดเมนที่ใช้งานได้: https://insurance-ai-assistant-pheerapatpisit.vercel.app และ https://www.advisortool.app
+
+## 10. สิ่งที่ผู้ใช้ต้องทำ
 
 - ใส่ค่า 3 บรรทัดในไฟล์ `.env.local` (และตั้งค่าเดียวกันใน Vercel เมื่อ deploy):
   `SUPABASE_SERVICE_ROLE_KEY` จากหน้า Project Settings → API keys, `ADMIN_PIN` รหัส 6 หลักที่เลือกเอง

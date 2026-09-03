@@ -14,3 +14,4 @@ npm-debug.log*
 ไฟล์คำนวน/
 .golden-cache/
 /.next-build/
+/.vercel
