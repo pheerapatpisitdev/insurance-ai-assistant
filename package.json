@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "extract": "python3 scripts/extract_rates.py",
-    "golden": "python3 scripts/make_golden.py"
+    "golden": "python3 scripts/make_golden.py",
+    "verify": "tsc --noEmit && next lint && vitest run && NEXT_DIST_DIR=.next-build next build"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

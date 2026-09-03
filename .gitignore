@@ -13,3 +13,4 @@ npm-debug.log*
 # ไฟล์ Excel ของบริษัท (ใหญ่และเป็นข้อมูลภายใน) ไม่เก็บใน git
 ไฟล์คำนวน/
 .golden-cache/
+/.next-build/
