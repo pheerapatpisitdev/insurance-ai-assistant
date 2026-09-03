@@ -50,19 +50,39 @@ export async function routeMessage(history: ChatMessage[]): Promise<Routed> {
   return clean(parsed, history);
 }
 
+/**
+ * How people actually write each plan's name. The model is asked for a plan code too, but
+ * it sometimes leaves it out, and a quote on the wrong plan is the one mistake a customer
+ * would not forgive — so the name written in the message wins over whatever the model said.
+ */
+const PLAN_ALIASES: [string, RegExp][] = [
+  ["LIFEPROTECT", /ไลฟ์\s*โพรเทค|life\s*protect|โพรเทค\s*\+|lpp/i],
+  ["ISHIELD", /i\s*shield|ไอ\s*ชิลด์|ไอ\s*ชิว|ไอ\s*ชีลด์/i],
+  ["ISMART", /i\s*smart|ไอ\s*สมาร์ท|ไอ\s*สมาท|80\s*\/\s*6/i],
+  ["LIFETREASURE", /ไลฟ์\s*เทรเชอร์|life\s*treasure|เทรเชอร์/i],
+  ["PLB", /\bplb\b|protection\s*life|โพรเทคชั่น\s*ไลฟ์|โปรเทคชั่น\s*ไลฟ์/i],
+];
+
+/** The plan named in a message, or undefined when none is. */
+export function planNamedIn(text: string): string | undefined {
+  return PLAN_ALIASES.find(([, re]) => re.test(text))?.[0];
+}
+
 /** Anything the model returns is checked here, so a hallucinated plan code never reaches the engine. */
 function clean(raw: Routed, history: ChatMessage[]): Routed {
   const out: Routed = { intent: ["quote", "plan_info", "doc_qa", "other"].includes(raw.intent) ? raw.intent : "other" };
-  const plan = raw.planCode ? getPlan(raw.planCode) : undefined;
-  if (plan && raw.planCode) {
-    out.planCode = raw.planCode;
+  const last = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+  const planCode = planNamedIn(last) ?? raw.planCode;
+  const plan = planCode ? getPlan(planCode) : undefined;
+  if (plan && planCode) {
+    out.planCode = planCode;
+    // a variant only makes sense on the plan it belongs to
     if (raw.variant && raw.variant in plan.variantLabels) out.variant = raw.variant;
   }
   if (typeof raw.age === "number" && raw.age >= 0 && raw.age <= 99) out.age = Math.trunc(raw.age);
   if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
   if (typeof raw.sumAssured === "number" && raw.sumAssured > 0) out.sumAssured = Math.trunc(raw.sumAssured);
   if (raw.mode === "annual" || raw.mode === "semi" || raw.mode === "monthly") out.mode = raw.mode;
-  const last = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
   out.question = typeof raw.question === "string" && raw.question.trim() ? raw.question.trim() : last;
   return out;
 }
