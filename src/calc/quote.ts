@@ -234,7 +234,7 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   return {
     items, totalAnnual, totalModal, warnings, availability, sumAssured: sa,
     deathBenefit: deathBenefitFor(rules, pkg, input.age, sa, live ? riderDeathCover : 0),
-    meta: { planName: rates.planName, version: rates.version, expiresOn: rates.expiresOn, expired },
+    meta: { planName: rates.planName, version: rates.version, expiresOn: rates.expiresOn, expired, minMonthlyTotal: rules.minMonthlyTotal },
   };
 }
 

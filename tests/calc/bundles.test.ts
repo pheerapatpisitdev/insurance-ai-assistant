@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getBundle, listBundles } from "@/calc/bundles/registry";
-import { bundleAgeRange, bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
+import { bundleAgeRange, bundleModePremiums, bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
 import { quote } from "@/calc/quote";
 
 describe("bundle registry", () => {
@@ -127,5 +127,28 @@ describe("describeTier", () => {
 
   it("has nothing to describe for a tier the bundle does not sell", () => {
     expect(describeTier(bundle, 11)).toBeUndefined();
+  });
+});
+
+describe("bundleModePremiums", () => {
+  const bundle = getBundle("LEGACY_FAMILY")!;
+  const TODAY = new Date("2026-09-04");
+
+  it("prices all three payment modes at once", () => {
+    expect(bundleModePremiums(bundle, 3, { age: 40, sex: "F" }, TODAY)).toEqual([
+      { mode: "annual", total: 1_511_250, belowMinimum: false },
+      { mode: "semi", total: 785_850, belowMinimum: false },
+      { mode: "monthly", total: 136_012, belowMinimum: false },
+    ]);
+  });
+
+  it("marks a monthly premium that falls under the minimum without hiding it", () => {
+    const modes = bundleModePremiums(bundle, 1, { age: 20, sex: "M" }, TODAY)!;
+    expect(modes.find((m) => m.mode === "monthly")).toEqual({ mode: "monthly", total: 32_152, belowMinimum: true });
+    expect(modes.every((m) => m.total > 0)).toBe(true);
+  });
+
+  it("prices nothing for a tier the bundle does not sell", () => {
+    expect(bundleModePremiums(bundle, 11, { age: 40, sex: "F" }, TODAY)).toBeUndefined();
   });
 });

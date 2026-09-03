@@ -303,7 +303,7 @@ export interface QuoteResult {
   sumAssured: number;
   /** the plan's death benefit, when it steps down at a given age */
   deathBenefit?: DeathBenefit;
-  meta: { planName: string; version: string; expiresOn: string; expired: boolean };
+  meta: { planName: string; version: string; expiresOn: string; expired: boolean; minMonthlyTotal: number };
 }
 
 // ---------- data/bundles/<bundle>.json ----------

@@ -5,7 +5,7 @@ import { getPlan, listPlans } from "@/calc/plans/registry";
 import { baseAgeRange, packageSeq, requiredRiders } from "@/calc/rules";
 import type { QuoteInput, RiderInput } from "@/calc/types";
 import { getBundle, listBundles } from "@/calc/bundles/registry";
-import { bundleAgeRange, bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
+import { bundleAgeRange, bundleModePremiums, bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
 import { QuoteForm, type FormState } from "@/components/QuoteForm";
 import { BundleForm } from "@/components/BundleForm";
 import { BUNDLE_PREFIX } from "@/components/PlanSelect";
@@ -114,6 +114,11 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [input, bundle, state.tier, state.age, state.sex, state.mode],
   );
+  const modePremiums = useMemo(
+    () => (bundle && who ? bundleModePremiums(bundle, state.tier, { age: who.age, sex: who.sex }) : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bundle, state.tier, state.age, state.sex],
+  );
   const summary = useMemo(
     () => (input && result
       ? summaryText(input, result, bundle ? { name: bundle.name, tier: describeTier(bundle, state.tier) ?? "" } : undefined)
@@ -141,7 +146,8 @@ export default function Home() {
         <div className="rounded-lg border bg-white p-4">
           {result && input ? (
             <QuoteResultPanel result={result} mode={input.mode} summary={summary}
-                              derivedSumAssured={input.basis === "premium"} linePremiums={!bundle} />
+                              derivedSumAssured={input.basis === "premium"} linePremiums={!bundle}
+                              modePremiums={modePremiums} />
           ) : (
             <p className="text-sm text-slate-500">กรอกอายุและจำนวนเงินเอาประกันภัย (หรือเบี้ยที่ต้องการ) เพื่อคำนวณ</p>
           )}

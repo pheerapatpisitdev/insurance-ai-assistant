@@ -1,4 +1,5 @@
 import type { QuoteResult, PayMode } from "@/calc/types";
+import type { ModePremium } from "@/calc/bundles/quote";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { WarningList } from "./WarningList";
@@ -11,9 +12,11 @@ export interface QuoteResultPanelProps {
   derivedSumAssured: boolean;
   /** off for a bundle: the parts are not sold separately, so a price per line invites a question with no answer */
   linePremiums?: boolean;
+  /** when given, every payment mode is priced at once instead of only the one picked */
+  modePremiums?: ModePremium[];
 }
 
-export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, linePremiums = true }: QuoteResultPanelProps) {
+export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, linePremiums = true, modePremiums }: QuoteResultPanelProps) {
   // A bundle is sold whole, so a total of 0 is not a price — say so instead of showing it.
   const incomplete = result.warnings.find((w) => w.code === "BUNDLE_INCOMPLETE");
   return (
@@ -54,6 +57,23 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, lin
           <div className="text-lg font-semibold text-red-900">เสนอชุดนี้ไม่ได้</div>
           <div className="mt-1 text-sm text-red-800">{incomplete.message}</div>
         </div>
+      ) : modePremiums ? (
+        <div className="rounded-lg bg-emerald-50 p-4">
+          <div className="text-sm text-emerald-800">เบี้ยประกันที่ต้องชำระ</div>
+          <dl className="mt-2 space-y-1">
+            {modePremiums.map((m) => (
+              <div key={m.mode} className="flex items-baseline justify-between gap-3">
+                <dt className={`text-sm ${m.mode === mode ? "font-semibold text-emerald-900" : "text-emerald-800"}`}>
+                  {PAY_MODE_LABEL[m.mode]}
+                  {m.belowMinimum && <span className="ml-1 text-xs text-emerald-700">(ต่ำกว่าขั้นต่ำ {result.meta.minMonthlyTotal.toLocaleString("en-US")} บาท)</span>}
+                </dt>
+                <dd className={`tabular-nums ${m.mode === mode ? "text-2xl font-semibold text-emerald-900" : "text-emerald-800"}`}>
+                  {formatBaht(m.total)} บาท
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       ) : (
         <div className="rounded-lg bg-emerald-50 p-4">
           <div className="text-sm text-emerald-800">รวมเบี้ยต่องวด ({PAY_MODE_LABEL[mode]})</div>
@@ -86,7 +106,8 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, lin
       )}
 
       {/* the bundle's own refusal already headlines the panel; the list keeps the reasons behind it */}
-      <WarningList warnings={result.warnings.filter((w) => w !== incomplete)} />
+      {/* the bundle's own refusal headlines the panel and the monthly minimum is marked beside its figure */}
+      <WarningList warnings={result.warnings.filter((w) => w !== incomplete && !(modePremiums && w.code === "MIN_MONTHLY"))} />
       <CopySummaryButton text={summary} />
     </section>
   );

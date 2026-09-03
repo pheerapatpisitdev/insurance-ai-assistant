@@ -14,7 +14,7 @@ describe("quote (PLB)", () => {
     expect(r.totalModal).toBe(547_000);
     expect(r.totalAnnual).toBe(547_000);
     expect(r.warnings).toEqual([]);
-    expect(r.meta).toEqual({ planName: "โพรเทคชั่นไลฟ์ (PLB)", version: "A2026-1", expiresOn: "2027-03-31", expired: false });
+    expect(r.meta).toEqual({ planName: "โพรเทคชั่นไลฟ์ (PLB)", version: "A2026-1", expiresOn: "2027-03-31", expired: false, minMonthlyTotal: 1_000 });
     expect(r.availability.map((a) => a.code)).toEqual(["AP", "ECARE", "MEB"]);
   });
 

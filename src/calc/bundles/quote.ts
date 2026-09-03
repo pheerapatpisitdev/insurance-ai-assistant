@@ -82,3 +82,33 @@ export function bundleAgeRange(bundle: Bundle): { min: number; max: number } {
 export function describeTier(bundle: Bundle, tierNo: number): string | undefined {
   return bundle.tiers.find((t) => t.no === tierNo)?.name;
 }
+
+export interface ModePremium {
+  mode: PayMode;
+  /** the premium for one instalment, in satang */
+  total: number;
+  /** true when this instalment falls under the plan's monthly minimum */
+  belowMinimum: boolean;
+}
+
+const MODES: PayMode[] = ["annual", "semi", "monthly"];
+
+/**
+ * What the tier costs in each of the three payment modes. A customer choosing a legacy
+ * plan asks what it costs a year and what it costs a month in the same breath, so the
+ * answer is quoted once rather than found by switching a picker back and forth.
+ */
+export function bundleModePremiums(
+  bundle: Bundle, tierNo: number, who: Omit<BundleInsured, "mode">, today: Date = new Date(),
+): ModePremium[] | undefined {
+  const priced = MODES.map((mode) => {
+    const result = quoteBundle(bundle, tierNo, { ...who, mode }, today);
+    if (!result) return undefined;
+    return {
+      mode,
+      total: result.totalModal,
+      belowMinimum: result.warnings.some((w) => w.code === "MIN_MONTHLY"),
+    };
+  });
+  return priced.every((p) => p !== undefined) ? (priced as ModePremium[]) : undefined;
+}
