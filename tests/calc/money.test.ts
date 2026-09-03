@@ -36,6 +36,14 @@ describe("money", () => {
   it("satangToBaht and formatBaht", () => {
     expect(satangToBaht(284_440)).toBe(2844.4);
     expect(formatBaht(284_440)).toBe("2,844.40");
-    expect(formatBaht(0)).toBe("0.00");
+  });
+
+  it("formatBaht drops satang that are not there", () => {
+    expect(formatBaht(847_000)).toBe("8,470");
+    expect(formatBaht(27_000)).toBe("270");
+    expect(formatBaht(0)).toBe("0");
+    // a half-baht still needs both places, or 1,360.12 would read as 1,360.1
+    expect(formatBaht(136_012)).toBe("1,360.12");
+    expect(formatBaht(357_250)).toBe("3,572.50");
   });
 });
