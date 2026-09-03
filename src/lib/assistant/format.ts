@@ -60,14 +60,18 @@ export function quoteReply(input: QuoteInput, result: QuoteResult): string {
 
 /**
  * The footer carries the disclaimer and at most one invitation, because a phone screen full
- * of "you could also ask for..." buries the number the customer wanted.
+ * of "you could also ask for..." buries the number the customer wanted. An amount nobody
+ * asked for outranks the others: quoting the plan's minimum without saying so lets a
+ * customer read a ten-million figure as the one they requested.
  */
-export function quoteFooter(assumedTerm: boolean, mode: QuoteInput["mode"]): string {
-  const hint = assumedTerm
-    ? "อยากได้ระยะเวลาชำระเบี้ยแบบอื่น บอกได้ครับ"
-    : mode === "annual"
-      ? "อยากดูแบบราย 6 เดือน หรือรายเดือน บอกได้ครับ"
-      : null;
+export function quoteFooter(assumedTerm: boolean, assumedAmount: boolean, mode: QuoteInput["mode"]): string {
+  const hint = assumedAmount
+    ? "คิดจากทุนประกันขั้นต่ำของแบบนี้ ถ้าต้องการทุนอื่น บอกได้ครับ"
+    : assumedTerm
+      ? "อยากได้ระยะเวลาชำระเบี้ยแบบอื่น บอกได้ครับ"
+      : mode === "annual"
+        ? "อยากดูแบบราย 6 เดือน หรือรายเดือน บอกได้ครับ"
+        : null;
   return ["เบี้ยประมาณการจากตารางเบี้ยบริษัท ไม่ใช่ใบเสนอราคา", hint]
     .filter(Boolean)
     .map((l) => `· ${l}`)

@@ -61,22 +61,34 @@ describe("quote reply", () => {
 
 describe("quote footer", () => {
   it("always says the number is not a formal quotation", () => {
-    expect(quoteFooter(false, "monthly")).toContain("ไม่ใช่ใบเสนอราคา");
+    expect(quoteFooter(false, false, "monthly")).toContain("ไม่ใช่ใบเสนอราคา");
   });
 
   it("offers other payment terms when one was assumed", () => {
-    expect(quoteFooter(true, "annual")).toContain("ระยะเวลาชำระเบี้ยแบบอื่น");
+    expect(quoteFooter(true, false, "annual")).toContain("ระยะเวลาชำระเบี้ยแบบอื่น");
   });
 
   it("offers other frequencies only when the term was the customer's own choice", () => {
-    expect(quoteFooter(false, "annual")).toContain("ราย 6 เดือน");
-    expect(quoteFooter(true, "annual")).not.toContain("ราย 6 เดือน");
+    expect(quoteFooter(false, false, "annual")).toContain("ราย 6 เดือน");
+    expect(quoteFooter(true, false, "annual")).not.toContain("ราย 6 เดือน");
+  });
+
+  it("says so when the amount was the plan's minimum rather than the customer's", () => {
+    expect(quoteFooter(false, true, "annual")).toContain("ทุนประกันขั้นต่ำ");
+  });
+
+  it("puts the assumed amount ahead of the other invitations, being the bigger surprise", () => {
+    const footer = quoteFooter(true, true, "annual");
+    expect(footer).toContain("ทุนประกันขั้นต่ำ");
+    expect(footer).not.toContain("ระยะเวลาชำระเบี้ยแบบอื่น");
   });
 
   it("stays at two lines so the premium is not buried", () => {
-    for (const assumed of [true, false]) {
-      for (const mode of ["annual", "semi", "monthly"] as const) {
-        expect(quoteFooter(assumed, mode).split("\n").length).toBeLessThanOrEqual(2);
+    for (const term of [true, false]) {
+      for (const amount of [true, false]) {
+        for (const mode of ["annual", "semi", "monthly"] as const) {
+          expect(quoteFooter(term, amount, mode).split("\n").length).toBeLessThanOrEqual(2);
+        }
       }
     }
   });

@@ -33,9 +33,11 @@ export function toParts(text: string): string[] {
 }
 
 async function post(path: string, body: unknown): Promise<void> {
-  const res = await fetch(`${GRAPH}/${path}?access_token=${encodeURIComponent(token())}`, {
+  // the token goes in the header, not the query string: a URL is written to access logs and
+  // proxy caches, and this one can send messages as the page
+  const res = await fetch(`${GRAPH}/${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", authorization: `Bearer ${token()}` },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Messenger ${res.status}: ${(await res.text()).slice(0, 300)}`);

@@ -9,7 +9,7 @@ import { replaceCodes } from "./codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { embedTexts } from "@/lib/ai/client";
 import { allPlanFacts, planFacts } from "./catalogue";
-import { mergeSlots, routeMessage, type Routed } from "./route";
+import { mergeSlots, recentTurns, routeMessage, type Routed } from "./route";
 
 export interface Source {
   title: string;
@@ -76,6 +76,11 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
   if (!saLimits.exact && sumAssured < saLimits.min) {
     return { reply: `แบบนี้ทุนประกันขั้นต่ำ ${saLimits.min.toLocaleString("en-US")} บาทครับ ระบุทุนใหม่ได้ไหมครับ`, sources: [] };
   }
+  // the engine prices an amount over the maximum and only flags it, which in a chat reads as
+  // a quote the customer could act on; refusing says plainly that it cannot be issued
+  if (saLimits.max !== undefined && sumAssured > saLimits.max) {
+    return { reply: `แบบนี้ทุนประกันสูงสุด ${saLimits.max.toLocaleString("en-US")} บาทครับ ระบุทุนใหม่ได้ไหมครับ`, sources: [] };
+  }
 
   // riders the package forces on are added, because the engine treats them as part of the plan
   const seq = packageSeq(variant, plan.rates);
@@ -87,7 +92,8 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
   };
   const result = quote(input);
   const assumedTerm = !slots.variant && Object.keys(plan.variantLabels).length > 1;
-  return { reply: `${quoteReply(input, result)}\n\n${quoteFooter(assumedTerm, input.mode)}`, sources: [] };
+  const assumedAmount = !saLimits.exact && slots.sumAssured === undefined;
+  return { reply: `${quoteReply(input, result)}\n\n${quoteFooter(assumedTerm, assumedAmount, input.mode)}`, sources: [] };
 }
 
 // ---------- plan information ----------
@@ -177,7 +183,7 @@ async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "sl
 ถ้าถูกถามเรื่องนอกเหนือจากประกัน ให้บอกว่าช่วยเรื่องนี้ไม่ได้ แล้วชวนกลับมาเรื่องประกัน
 ตอบไม่เกิน 3 บรรทัด ข้อความธรรมดา ห้ามใช้มาร์กดาวน์`,
       },
-      ...history.slice(-4),
+      ...recentTurns(history, 4),
     ],
     maxTokens: 300,
   });

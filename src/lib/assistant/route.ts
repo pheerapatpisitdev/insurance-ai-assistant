@@ -38,11 +38,23 @@ intent มี 4 แบบ
 รายการแบบประกัน
 `;
 
+/**
+ * The last few turns, always beginning with something the customer said. Cutting a
+ * conversation to a fixed length can land on an assistant turn, and providers differ on
+ * whether they accept a reply with nothing to reply to — one refuses outright. Starting on
+ * a user turn keeps every provider in the failover chain usable.
+ */
+export function recentTurns(history: ChatMessage[], count: number): ChatMessage[] {
+  const recent = history.slice(-count);
+  const first = recent.findIndex((m) => m.role === "user");
+  return first < 0 ? [] : recent.slice(first);
+}
+
 /** Reads the conversation and returns what the user is asking for. Cheap model, strict JSON. */
 export async function routeMessage(history: ChatMessage[]): Promise<Routed> {
   const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM + planCatalogue() },
-    ...history.slice(-6),
+    ...recentTurns(history, 6),
   ];
   const r = await chat({ tier: "small", task: "route", messages, maxTokens: 300, json: true });
   const parsed = parseJsonReply<Routed>(r.text);
@@ -95,11 +107,13 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
   if (!previous) return current;
   const merged: Routed = { ...current };
   if (merged.planCode === undefined) merged.planCode = previous.planCode;
-  // a variant belongs to its plan, so it only carries over when the plan did not change
-  if (merged.variant === undefined && merged.planCode === previous.planCode) merged.variant = previous.variant;
+  // the payment term and the amount belong to the plan they were named for; carrying either
+  // across a switch quotes ไลฟ์เทรเชอร์ at a Life Protect+ customer's one million
+  const samePlan = merged.planCode === previous.planCode;
+  if (merged.variant === undefined && samePlan) merged.variant = previous.variant;
+  if (merged.sumAssured === undefined && samePlan) merged.sumAssured = previous.sumAssured;
   if (merged.age === undefined) merged.age = previous.age;
   if (merged.sex === undefined) merged.sex = previous.sex;
-  if (merged.sumAssured === undefined) merged.sumAssured = previous.sumAssured;
   if (merged.mode === undefined) merged.mode = previous.mode;
   return merged;
 }
