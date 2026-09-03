@@ -82,7 +82,8 @@
       "ageMin": 20,
       "ageMax": 65,
       "saMin": 200000,
-      "saMaxCap": 10000000
+      "saMaxCap": 10000000,
+      "paysOnDeath": true
     },
     "PLS": {
       "name": "สัญญาเพิ่มเติม PLS",

@@ -226,9 +226,14 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   });
   const expired = today.toISOString().slice(0, 10) > rates.expiresOn;
 
+  // Riders that pay out on death add their sum assured to what the family receives.
+  const riderDeathCover = items
+    .filter((i) => i.eligible && rules.riders[i.code]?.paysOnDeath)
+    .reduce((sum, i) => sum + i.amount, 0);
+
   return {
     items, totalAnnual, totalModal, warnings, availability, sumAssured: sa,
-    deathBenefit: deathBenefitFor(rules, pkg, input.age, sa),
+    deathBenefit: deathBenefitFor(rules, pkg, input.age, sa, live ? riderDeathCover : 0),
     meta: { planName: rates.planName, version: rates.version, expiresOn: rates.expiresOn, expired },
   };
 }
@@ -239,16 +244,17 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
  * assured` on top. An insured already at that age gets the plain sum assured only.
  */
 function deathBenefitFor(
-  rules: PlanRules, pkg: BasePackage | undefined, age: number, sa: number,
+  rules: PlanRules, pkg: BasePackage | undefined, age: number, sa: number, riderCover: number,
 ): DeathBenefit | undefined {
   const beforeAge = rules.base.extraDeathBenefitBeforeAge;
   if (beforeAge === undefined || sa <= 0) return undefined;
   const booster = pkg?.booster ?? 0;
   const alreadyPastAge = age >= beforeAge;
+  // The booster multiplies the base plan only; a rider adds its own sum assured to both figures.
   return {
     beforeAge,
-    sumBefore: alreadyPastAge ? sa : sa + Math.round(sa * booster),
-    sumFrom: sa,
+    sumBefore: (alreadyPastAge ? sa : sa + Math.round(sa * booster)) + riderCover,
+    sumFrom: sa + riderCover,
     alreadyPastAge,
   };
 }

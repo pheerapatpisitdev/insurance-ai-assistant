@@ -146,6 +146,8 @@ export interface RiderRule {
   juvenile?: { ageMax: number; saMaxMultipleOfBase: number; saMaxCap: number };
   /** payor-benefit riders: allowed payer age */
   payer?: { ageMin: number; ageMax: number };
+  /** the rider's sum assured is also payable on death, so it belongs in the death benefit */
+  paysOnDeath?: boolean;
 }
 export interface CombinedRule {
   code: string;

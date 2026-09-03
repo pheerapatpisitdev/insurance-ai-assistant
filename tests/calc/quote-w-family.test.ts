@@ -165,6 +165,18 @@ describe("death benefit (ไลฟ์ โพรเทค+)", () => {
     expect(r.deathBenefit).toMatchObject({ sumBefore: 1_000_000, sumFrom: 500_000 });
   });
 
+  it("counts a DCI sum assured, which pays on death as well", () => {
+    const r = quote({ ...lpp, variant: "WLF99H", sumAssured: 200_000, riders: [{ code: "DCI", sumAssured: 2_800_000 }] });
+    // the +100 booster doubles the base only; DCI is added on top of both figures
+    expect(r.deathBenefit).toEqual({ beforeAge: 60, sumBefore: 3_200_000, sumFrom: 3_000_000, alreadyPastAge: false });
+  });
+
+  it("leaves out a rider the insured is too old to buy", () => {
+    // DCI stops at 65 while the plan issues to 80, so there is no DCI cover to add
+    const r = quote({ ...lpp, variant: "WLF99H", age: 70, sumAssured: 200_000, riders: [{ code: "DCI", sumAssured: 2_800_000 }] });
+    expect(r.deathBenefit).toEqual({ beforeAge: 60, sumBefore: 200_000, sumFrom: 200_000, alreadyPastAge: true });
+  });
+
   it("plans without a stepped death benefit report none", () => {
     expect(quote({ planCode: "PLB", variant: "PLB12", age: 35, sex: "M", mode: "annual", sumAssured: 1_000_000, riders: [] }).deathBenefit)
       .toBeUndefined();

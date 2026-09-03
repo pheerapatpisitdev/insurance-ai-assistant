@@ -111,6 +111,13 @@ describe("describeTier", () => {
     expect(describeTier(bundle, 10)).toBe("มรดก 10 ล้าน");
   });
 
+  it("names every tier after the death benefit it leaves from age 60", () => {
+    for (const tier of bundle.tiers) {
+      const r = quoteBundle(bundle, tier.no, { age: 40, sex: "F", mode: "annual" }, new Date("2026-09-04"))!;
+      expect(`มรดก ${r.deathBenefit!.sumFrom / 1_000_000} ล้าน`).toBe(tier.name);
+    }
+  });
+
   it("names every tier after what it actually covers", () => {
     for (const tier of bundle.tiers) {
       const covered = tier.sumAssured + tier.riders.reduce((sum, r) => sum + (r.sumAssured ?? 0), 0);
