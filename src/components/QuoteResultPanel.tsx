@@ -5,6 +5,8 @@ import { WarningList } from "./WarningList";
 import { CopySummaryButton } from "./CopySummaryButton";
 
 export function QuoteResultPanel({ result, mode, summary, derivedSumAssured }: { result: QuoteResult; mode: PayMode; summary: string; derivedSumAssured: boolean }) {
+  // A bundle is sold whole, so a total of 0 is not a price — say so instead of showing it.
+  const incomplete = result.warnings.find((w) => w.code === "BUNDLE_INCOMPLETE");
   return (
     <section className="space-y-4">
       {derivedSumAssured && (
@@ -36,13 +38,20 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured }: {
         </table>
       </div>
 
-      <div className="rounded-lg bg-emerald-50 p-4">
-        <div className="text-sm text-emerald-800">รวมเบี้ยต่องวด ({PAY_MODE_LABEL[mode]})</div>
-        <div className="text-3xl font-semibold tabular-nums text-emerald-900">{formatBaht(result.totalModal)} บาท</div>
-        <div className="mt-1 text-sm text-emerald-800">รวมเบี้ยรายปี {formatBaht(result.totalAnnual)} บาท</div>
-      </div>
+      {incomplete ? (
+        <div className="rounded-lg bg-red-50 p-4">
+          <div className="text-lg font-semibold text-red-900">เสนอชุดนี้ไม่ได้</div>
+          <div className="mt-1 text-sm text-red-800">{incomplete.message}</div>
+        </div>
+      ) : (
+        <div className="rounded-lg bg-emerald-50 p-4">
+          <div className="text-sm text-emerald-800">รวมเบี้ยต่องวด ({PAY_MODE_LABEL[mode]})</div>
+          <div className="text-3xl font-semibold tabular-nums text-emerald-900">{formatBaht(result.totalModal)} บาท</div>
+          <div className="mt-1 text-sm text-emerald-800">รวมเบี้ยรายปี {formatBaht(result.totalAnnual)} บาท</div>
+        </div>
+      )}
 
-      {result.deathBenefit && (
+      {result.deathBenefit && !incomplete && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
           <div className="font-medium text-slate-700">ผลประโยชน์กรณีเสียชีวิต</div>
           {result.deathBenefit.alreadyPastAge ? (
@@ -65,7 +74,8 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured }: {
         </div>
       )}
 
-      <WarningList warnings={result.warnings} />
+      {/* the bundle's own refusal already headlines the panel; the list keeps the reasons behind it */}
+      <WarningList warnings={result.warnings.filter((w) => w !== incomplete)} />
       <CopySummaryButton text={summary} />
     </section>
   );

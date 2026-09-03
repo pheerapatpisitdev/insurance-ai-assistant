@@ -1,5 +1,7 @@
 import type { Bundle, PayMode, QuoteInput, QuoteResult, Sex } from "../types";
 import { quote } from "../quote";
+import { getPlan } from "../plans/registry";
+import { baseAgeRange } from "../rules";
 
 export interface BundleInsured {
   age: number;
@@ -46,4 +48,37 @@ export function quoteBundle(
       message: `ชุด${bundle.name} ${bundle.tierLabel} ${tierNo} ใช้กับกรณีนี้ไม่ได้`,
     }],
   };
+}
+
+/**
+ * The ages the bundle as a whole can be issued at: the base plan's range narrowed by every
+ * rider it locks in. The age picker offers only these, so the common refusal — a rider that
+ * starts later or ends earlier than the plan — never reaches the quote.
+ */
+export function bundleAgeRange(bundle: Bundle): { min: number; max: number } {
+  const plan = getPlan(bundle.planCode);
+  if (!plan) return { min: 0, max: 0 };
+  const range = baseAgeRange(plan.rules, bundle.variant, plan.rates);
+  let { min, max } = range;
+  for (const code of new Set(bundle.tiers.flatMap((t) => t.riders.map((r) => r.code)))) {
+    const rule = plan.rules.riders[code];
+    if (!rule) continue;
+    min = Math.max(min, rule.ageMin);
+    max = Math.min(max, rule.ageMax);
+  }
+  return { min, max: Math.max(min, max) };
+}
+
+const fmt = (n: number) => n.toLocaleString("en-US");
+
+/**
+ * The tier as it reads in the picker — "แผน 3 — หลัก 200,000 / DCI 2,800,000". Sums are
+ * spelled out rather than hidden behind a tier number, so the agent picks by what is covered.
+ */
+export function describeTier(bundle: Bundle, tierNo: number): string | undefined {
+  const tier = bundle.tiers.find((t) => t.no === tierNo);
+  if (!tier) return undefined;
+  const parts = [`หลัก ${fmt(tier.sumAssured)}`];
+  for (const r of tier.riders) parts.push(`${r.code} ${fmt(r.sumAssured ?? r.plan ?? 0)}`);
+  return `${bundle.tierLabel} ${tierNo} — ${parts.join(" / ")}`;
 }

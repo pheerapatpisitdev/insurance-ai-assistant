@@ -4,14 +4,18 @@ import { quote } from "@/calc/quote";
 import { getPlan, listPlans } from "@/calc/plans/registry";
 import { baseAgeRange, packageSeq, requiredRiders } from "@/calc/rules";
 import type { QuoteInput, RiderInput } from "@/calc/types";
+import { getBundle, listBundles } from "@/calc/bundles/registry";
+import { bundleAgeRange, bundleQuoteInput, quoteBundle } from "@/calc/bundles/quote";
 import { QuoteForm, type FormState } from "@/components/QuoteForm";
+import { BundleForm } from "@/components/BundleForm";
+import { BUNDLE_PREFIX } from "@/components/PlanSelect";
 import { QuoteResultPanel } from "@/components/QuoteResultPanel";
 import { ExpiryBanner } from "@/components/ExpiryBanner";
 import { summaryText } from "@/lib/summary";
 
 /** Life Protect+ 100 paid to age 99 is the plan agents quote most, so start there. */
 const INITIAL: FormState = {
-  planCode: "LIFEPROTECT", variant: "WLF99H", age: 35, sex: "M", mode: "annual",
+  planCode: "LIFEPROTECT", bundleCode: null, tier: 1, variant: "WLF99H", age: 35, sex: "M", mode: "annual",
   basis: "sumAssured", sumAssured: 1_000_000, targetPremium: "",
   payer: { age: "", sex: "M" }, riders: {},
 };
@@ -59,6 +63,13 @@ export default function Home() {
    * shows a value that exists.
    */
   const setState = (next: FormState) => {
+    if (next.bundleCode) {
+      const b = getBundle(next.bundleCode)!;
+      const range = bundleAgeRange(b);
+      const age = next.age === "" ? "" : Math.min(Math.max(next.age, range.min), range.max);
+      setStateRaw({ ...next, planCode: b.planCode, variant: b.variant, age });
+      return;
+    }
     if (next.planCode !== state.planCode) {
       const p = getPlan(next.planCode)!;
       next = { ...next, variant: p.rates.base.variants[0], riders: {}, basis: "sumAssured" };
@@ -69,6 +80,15 @@ export default function Home() {
       next = { ...next, age: Math.min(Math.max(next.age, range.min), range.max) };
     }
     setStateRaw(next);
+  };
+
+  /** The picker offers plans and bundles in one list; a bundle value carries the prefix. */
+  const onPlanChange = (value: string) => {
+    if (!value.startsWith(BUNDLE_PREFIX)) {
+      setState({ ...state, bundleCode: null, planCode: value });
+      return;
+    }
+    setState({ ...state, bundleCode: value.slice(BUNDLE_PREFIX.length), tier: 1, riders: {}, basis: "sumAssured" });
   };
 
   // availability for the form must exist even when the input is incomplete
@@ -82,18 +102,41 @@ export default function Home() {
     return quote(probe).availability;
   }, [state, plan]);
   const eligibleCodes = useMemo(() => new Set(availability.filter((a) => a.eligible).map((a) => a.code)), [availability]);
-  const input = useMemo(() => toQuoteInput(state, eligibleCodes), [state, eligibleCodes]);
-  const result = useMemo(() => (input ? quote(input) : null), [input]);
-  const summary = useMemo(() => (input && result ? summaryText(input, result) : ""), [input, result]);
+  const bundle = state.bundleCode ? getBundle(state.bundleCode) : undefined;
+  const who = state.age === "" ? undefined : { age: state.age, sex: state.sex, mode: state.mode };
+  const input = useMemo(
+    () => (bundle && who ? bundleQuoteInput(bundle, state.tier, who) ?? null : bundle ? null : toQuoteInput(state, eligibleCodes)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state, eligibleCodes, bundle],
+  );
+  const result = useMemo(
+    () => (bundle ? (who ? quoteBundle(bundle, state.tier, who) ?? null : null) : input ? quote(input) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [input, bundle, state.tier, state.age, state.sex, state.mode],
+  );
+  const summary = useMemo(
+    () => (input && result
+      ? summaryText(input, result, bundle ? { name: bundle.name, tier: `${bundle.tierLabel} ${state.tier}` } : undefined)
+      : ""),
+    [input, result, bundle, state.tier],
+  );
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
       <h1 className="mb-1 text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
-      <p className="mb-4 text-sm text-slate-500">{plan.planLabel ?? plan.rates.planName} · ตารางเบี้ย {plan.rates.version}</p>
+      <p className="mb-4 text-sm text-slate-500">
+        {bundle ? `ชุด${bundle.name}` : plan.planLabel ?? plan.rates.planName} · ตารางเบี้ย {plan.rates.version}
+      </p>
       <ExpiryBanner expired={result?.meta.expired ?? false} expiresOn={plan.rates.expiresOn} version={plan.rates.version} />
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border bg-white p-4">
-          <QuoteForm state={state} plan={plan} plans={listPlans()} availability={availability} onChange={setState} />
+          {bundle ? (
+            <BundleForm state={state} bundle={bundle} plans={listPlans()} bundles={listBundles()}
+                        onChange={setState} onPlanChange={onPlanChange} />
+          ) : (
+            <QuoteForm state={state} plan={plan} plans={listPlans()} bundles={listBundles()}
+                       availability={availability} onChange={setState} onPlanChange={onPlanChange} />
+          )}
         </div>
         <div className="rounded-lg border bg-white p-4">
           {result && input ? (

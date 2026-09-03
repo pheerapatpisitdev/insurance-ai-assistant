@@ -5,6 +5,8 @@ import type { PlanBundle } from "@/calc/plans/registry";
 import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "@/calc/rules";
 import { RiderRow, type PayerState, type SubSelect } from "./RiderRow";
 import { MoneyInput } from "./MoneyInput";
+import { InsuredFields } from "./InsuredFields";
+import { PlanSelect } from "./PlanSelect";
 
 export interface RiderState {
   enabled: boolean;
@@ -15,6 +17,10 @@ export interface RiderState {
 }
 export interface FormState {
   planCode: string;
+  /** set when the quote comes from a ready-made bundle instead of a plan picked apart by hand */
+  bundleCode: string | null;
+  /** which tier of that bundle */
+  tier: number;
   variant: string;
   age: number | "";
   sex: Sex;
@@ -33,17 +39,16 @@ export interface QuoteFormProps {
   plan: PlanBundle;
   plans: { code: string; name: string }[];
   availability: Availability[];
+  bundles: { code: string; name: string }[];
   onChange: (next: FormState) => void;
+  onPlanChange: (value: string) => void;
 }
 
-const num = (v: string): number | "" => (v === "" ? "" : Number(v));
-
-export function QuoteForm({ state, plan, plans, availability, onChange }: QuoteFormProps) {
+export function QuoteForm({ state, plan, plans, availability, bundles, onChange, onPlanChange }: QuoteFormProps) {
   const set = (patch: Partial<FormState>) => onChange({ ...state, ...patch });
   const setRider = (code: string, patch: Partial<RiderState>) =>
     onChange({ ...state, riders: { ...state.riders, [code]: { ...(state.riders[code] ?? EMPTY_RIDER), ...patch } } });
   const ageRange = baseAgeRange(plan.rules, state.variant, plan.rates);
-  const ages = Array.from({ length: ageRange.max - ageRange.min + 1 }, (_, i) => ageRange.min + i);
   const { min: saMin, max: saMax, exact: saExact } = baseSumAssuredLimits(plan.rules, state.variant);
   const { premiumBasis } = plan.rules.base;
   const required = new Set(requiredRiders(plan.rules, packageSeq(state.variant, plan.rates)));
@@ -67,38 +72,18 @@ export function QuoteForm({ state, plan, plans, availability, onChange }: QuoteF
     <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
       <div>
         <label className="block text-sm font-medium">แบบประกันหลัก</label>
-        <select className="mt-1 w-full rounded border px-3 py-2" value={state.planCode} onChange={(e) => set({ planCode: e.target.value })}>
-          {plans.map((p) => <option key={p.code} value={p.code}>{p.name}</option>)}
-        </select>
+        <div className="mt-1">
+          <PlanSelect value={state.planCode} plans={plans} bundles={bundles} onChange={onPlanChange} />
+        </div>
         <select className="mt-2 w-full rounded border px-3 py-2" value={state.variant} onChange={(e) => set({ variant: e.target.value })}>
           {plan.rates.base.variants.map((v) => <option key={v} value={v}>{plan.variantLabels[v] ?? v}</option>)}
         </select>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="block text-sm font-medium">อายุ</label>
-          <select className="mt-1 w-full rounded border px-3 py-2" value={state.age}
-                  onChange={(e) => set({ age: num(e.target.value) })}>
-            {state.age === "" && <option value="">เลือกอายุ</option>}
-            {ages.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-          <p className="mt-1 text-xs text-slate-500">รับประกัน {ageRange.min} - {ageRange.max} ปี</p>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">เพศ</label>
-          <select className="mt-1 w-full rounded border px-3 py-2" value={state.sex} onChange={(e) => set({ sex: e.target.value as Sex })}>
-            <option value="M">ชาย</option>
-            <option value="F">หญิง</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">งวดชำระ</label>
-          <select className="mt-1 w-full rounded border px-3 py-2" value={state.mode} onChange={(e) => set({ mode: e.target.value as PayMode })}>
-            {(Object.keys(PAY_MODE_LABEL) as PayMode[]).map((m) => <option key={m} value={m}>{PAY_MODE_LABEL[m]}</option>)}
-          </select>
-        </div>
-      </div>
+      <InsuredFields
+        age={state.age} sex={state.sex} mode={state.mode} ageRange={ageRange}
+        onChange={(patch) => set(patch)}
+      />
 
       {premiumBasis && (
         <div className="flex gap-4 text-sm">

@@ -4,8 +4,15 @@ import { formatBaht } from "@/calc/money";
 
 const sexTh = (s: "M" | "F") => (s === "M" ? "ชาย" : "หญิง");
 
-export function summaryText(input: QuoteInput, result: QuoteResult): string {
+/** Names the ready-made arrangement a quote came from, e.g. `{ name: "มรดกเพื่อครอบครัว", tier: "แผน 3" }`. */
+export interface SummaryBundle {
+  name: string;
+  tier: string;
+}
+
+export function summaryText(input: QuoteInput, result: QuoteResult, bundle?: SummaryBundle): string {
   const lines: string[] = [];
+  if (bundle) lines.push(`ชุด${bundle.name} — ${bundle.tier}`);
   lines.push(result.items[0]?.name ?? `${result.meta.planName} ${input.variant}`);
   lines.push(`เพศ${sexTh(input.sex)} อายุ ${input.age} ปี ชำระ${PAY_MODE_LABEL[input.mode]}`);
   if (input.basis === "premium") {

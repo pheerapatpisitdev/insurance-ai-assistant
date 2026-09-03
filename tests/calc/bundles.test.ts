@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getBundle, listBundles } from "@/calc/bundles/registry";
-import { bundleQuoteInput, quoteBundle } from "@/calc/bundles/quote";
+import { bundleAgeRange, bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
 import { quote } from "@/calc/quote";
 
 describe("bundle registry", () => {
@@ -92,5 +92,25 @@ describe("quoteBundle", () => {
     const result = quoteBundle(bundle, 5, { age: 40, sex: "M", mode: "monthly" }, TODAY)!;
     expect(result.warnings.map((w) => w.code)).not.toContain("BUNDLE_INCOMPLETE");
     expect(result.totalModal).toBeGreaterThan(0);
+  });
+});
+
+describe("bundleAgeRange", () => {
+  it("narrows the base plan's range to what every rider in the bundle also accepts", () => {
+    // Life Protect+ 100 issues from 0 to 80; DCI only from 20 to 65
+    expect(bundleAgeRange(getBundle("LEGACY_FAMILY")!)).toEqual({ min: 20, max: 65 });
+  });
+});
+
+describe("describeTier", () => {
+  const bundle = getBundle("LEGACY_FAMILY")!;
+
+  it("spells out every sum assured the tier locks in", () => {
+    expect(describeTier(bundle, 3)).toBe("แผน 3 — หลัก 200,000 / DCI 2,800,000");
+    expect(describeTier(bundle, 10)).toBe("แผน 10 — หลัก 200,000 / DCI 9,800,000");
+  });
+
+  it("has nothing to describe for a tier the bundle does not sell", () => {
+    expect(describeTier(bundle, 11)).toBeUndefined();
   });
 });
