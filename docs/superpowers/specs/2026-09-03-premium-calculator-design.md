@@ -195,9 +195,14 @@ type QuoteResult = {
 
 Deployed: https://insurance-ai-assistant-pheerapatpisit.vercel.app (2026-09-03, auto-deploys from `main`)
 
-Plans live: PLB. iShield is merged to `main` but not yet live — Vercel is returning BLOCKED for new
-deployments on this account (see https://vercel.com/docs/deployments/troubleshoot-project-collaboration#account-configuration).
-Once the account issue is cleared, redeploy the latest `main` commit from the Vercel dashboard.
+Plans live: all five, once the deploy below succeeds.
+
+**Deploy gotcha (2026-09-03):** Vercel blocked every deployment with "the commit email
+could not be matched to a GitHub account". The repo's `user.email` was
+`pheerapatpisit.ai@gmail.com` while the GitHub account (`pheerapatpisitdev`) uses
+`pheerapatpisit.dev@gmail.com`. Fixed by setting the repo's git email to the GitHub one;
+commits made from here on deploy normally. Older commits keep the old author email, which
+is harmless — Vercel only checks the commit being deployed.
 
 ## 10. สิ่งที่ผู้ใช้ต้องช่วย
 - ตรวจทานไฟล์ `data/rules/<plan>.json` ทุกแบบ ว่ากฎตรงกับที่สอนตัวแทน
