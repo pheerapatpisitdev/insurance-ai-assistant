@@ -3,6 +3,12 @@ import plbRates from "../../../data/rates/plb.json";
 import plbRules from "../../../data/rules/plb.json";
 import ishieldRates from "../../../data/rates/ishield.json";
 import ishieldRules from "../../../data/rules/ishield.json";
+import ismartRates from "../../../data/rates/ismart.json";
+import ismartRules from "../../../data/rules/ismart.json";
+import lifetreasureRates from "../../../data/rates/lifetreasure.json";
+import lifetreasureRules from "../../../data/rules/lifetreasure.json";
+import lifeprotectRates from "../../../data/rates/lifeprotect.json";
+import lifeprotectRules from "../../../data/rules/lifeprotect.json";
 
 export interface PlanBundle {
   rates: PlanRates;
@@ -10,6 +16,19 @@ export interface PlanBundle {
   /** rider codes in display order */
   riderOrder: string[];
   variantLabels: Record<string, string>;
+}
+
+/** The three W-family plans share a rider order and take their variant labels from the package table. */
+function wFamily(code: string, rates: unknown, rules: unknown): Record<string, PlanBundle> {
+  const r = rates as PlanRates;
+  return {
+    [code]: {
+      rates: r,
+      rules: rules as PlanRules,
+      riderOrder: ["PB", "WP", "AP", "ECARE", "MEX", "MEB", "DCI", "PLS", "CPR", "HIC", "IHU", "RRSS", "CI123"],
+      variantLabels: Object.fromEntries((r.base.packages ?? []).map((p) => [p.code, p.name])),
+    },
+  };
 }
 
 const PLANS: Record<string, PlanBundle> = {
@@ -35,6 +54,9 @@ const PLANS: Record<string, PlanBundle> = {
       WLCI20: "iShield 20 (ชำระเบี้ย 20 ปี)",
     },
   },
+  ...wFamily("ISMART", ismartRates, ismartRules),
+  ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules),
+  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules),
 };
 
 export function listPlans(): { code: string; name: string }[] {

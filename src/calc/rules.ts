@@ -15,9 +15,70 @@ function fmt(n: number): string {
   return n.toLocaleString("en-US");
 }
 
-/** Issue-age range of the base plan for a variant (Excel J7:M7 in iShield; global in PLB). */
-export function baseAgeRange(rules: PlanRules, variant: string): { min: number; max: number } {
+/**
+ * Issue-age range of the base plan for a variant: from the package table when the plan sells
+ * packages (the W family), else from the rules (iShield's per-variant maximum, PLB's global one).
+ */
+export function baseAgeRange(rules: PlanRules, variant: string, rates?: PlanRates): { min: number; max: number } {
+  const pkg = rates?.base.packages?.find((p) => p.code === variant);
+  if (pkg) return { min: pkg.ageMin, max: pkg.ageMax };
   return { min: rules.base.ageMin, max: rules.base.ageMaxByVariant?.[variant] ?? rules.base.ageMax };
+}
+
+/** Minimum sum assured for a variant, and whether that minimum is the only value allowed. */
+export function baseSumAssuredLimits(rules: PlanRules, variant: string): { min: number; exact: boolean; max?: number } {
+  const min = rules.base.saMinByVariant?.[variant] ?? rules.base.saMin;
+  return { min, exact: rules.base.saExactVariants?.includes(variant) ?? false, max: rules.base.saMax };
+}
+
+/** Package sequence number of a variant, used by the package rules. */
+export function packageSeq(variant: string, rates: PlanRates): number | undefined {
+  return rates.base.packages?.find((p) => p.code === variant)?.seq;
+}
+
+/** Riders the chosen package does not sell. */
+export function disabledRiders(rules: PlanRules, seq: number | undefined): Set<string> {
+  const out = new Set<string>();
+  if (seq === undefined) return out;
+  for (const p of rules.packages ?? []) {
+    if (p.seq.includes(seq)) for (const c of p.disable ?? []) out.add(c);
+  }
+  return out;
+}
+
+/** Riders the chosen package makes mandatory. */
+export function requiredRiders(rules: PlanRules, seq: number | undefined): string[] {
+  if (seq === undefined) return [];
+  return (rules.packages ?? []).filter((p) => p.seq.includes(seq)).flatMap((p) => p.require ?? []);
+}
+
+export interface RiderConflict {
+  code: string;
+  riders: string[];
+  message: string;
+}
+
+/**
+ * Rider-to-rider rules that do not depend on sums assured: mutually exclusive pairs,
+ * riders that require a companion, and riders that conflict with others.
+ */
+export function checkRiderRelations(rules: PlanRules, chosen: Set<string>): RiderConflict[] {
+  const out: RiderConflict[] = [];
+  for (const e of rules.exclusive ?? []) {
+    if (e.riders.every((c) => chosen.has(c))) out.push({ code: e.code, riders: [...e.riders], message: e.message });
+  }
+  for (const r of rules.requires ?? []) {
+    if (chosen.has(r.rider) && !r.needs.every((c) => chosen.has(c))) {
+      out.push({ code: `${r.rider}_REQUIRES`, riders: [r.rider], message: r.message });
+    }
+  }
+  for (const c of rules.conflicts ?? []) {
+    const clash = c.with.filter((w) => chosen.has(w));
+    if (chosen.has(c.rider) && clash.length > 0) {
+      out.push({ code: `${c.rider}_CONFLICT`, riders: [c.rider], message: c.message });
+    }
+  }
+  return out;
 }
 
 function allowedPlans(rates: PlanRates, rules: PlanRules, code: string, age: number): number[] | undefined {
@@ -32,8 +93,16 @@ function allowedPlans(rates: PlanRates, rules: PlanRules, code: string, age: num
 function riderOptions(rates: PlanRates, code: string): { code: string; name: string }[] | undefined {
   const rider = rates.riders[code];
   if (!rider) return undefined;
-  if (rider.kind === "payorBenefit") return Object.entries(rider.options).map(([c, o]) => ({ code: c, name: o.name }));
-  if (rider.kind === "ratePerThousandByVariantAgeSex") return rider.variants.map((v) => ({ code: v, name: v }));
+  if (rider.kind === "payorBenefit" || rider.kind === "premiumBased") {
+    return Object.entries(rider.options).map(([c, o]) => ({ code: c, name: o.name }));
+  }
+  if (rider.kind === "ratePerThousandByVariantAgeSex") {
+    return rider.variants.length > 1 ? rider.variants.map((v) => ({ code: v, name: v })) : undefined;
+  }
+  if (rider.kind === "fixedByKeyAge") {
+    if (rider.keyBy === "plan") return (rider.plans ?? []).map((p) => ({ code: p, name: p }));
+    return Object.keys(rider.planNo ?? {}).map((p) => ({ code: p, name: p }));
+  }
   return undefined;
 }
 
@@ -58,7 +127,8 @@ export function riderAvailability(rules: PlanRules, rates: PlanRates, code: stri
     saMax: saMaxFor(rule, ctx),
     plans: allowedPlans(rates, rules, code, ctx.age),
     options: riderOptions(rates, code),
-    needsPayer: rates.riders[code]?.kind === "payorBenefit" || undefined,
+    needsPayer: rates.riders[code]?.kind === "payorBenefit"
+      || (rates.riders[code]?.kind === "premiumBased" && (rates.riders[code] as { by: string }).by === "payer") || undefined,
     reason: eligible ? undefined : CANNOT_BUY,
   };
 }
@@ -74,7 +144,7 @@ export function checkRiderInput(
 ): string | undefined {
   const a = riderAvailability(rules, rates, code, ctx);
   if (!a.eligible) return CANNOT_BUY;
-  if (a.options && (!input.option || !a.options.some((o) => o.code === input.option))) return CHOOSE_OPTION;
+  if (a.options && a.options.length > 0 && (!input.option || !a.options.some((o) => o.code === input.option))) return CHOOSE_OPTION;
   if (a.needsPayer) {
     const p = rules.riders[code].payer;
     if (!payer) return PAYER_MISSING;
@@ -103,7 +173,7 @@ export function checkCombined(rules: PlanRules, baseSumAssured: number, riders: 
   const out: CombinedViolation[] = [];
   for (const c of rules.combined) {
     const total = riders.filter((r) => c.riders.includes(r.code)).reduce((s, r) => s + (r.sumAssured ?? 0), 0);
-    const limit = Math.min(c.maxMultipleOfBase * baseSumAssured, c.cap);
+    const limit = c.maxMultipleOfBase === undefined ? c.cap : Math.min(c.maxMultipleOfBase * baseSumAssured, c.cap);
     if (total > limit) out.push({ code: c.code, codes: [...c.riders], message: c.message });
   }
   return out;

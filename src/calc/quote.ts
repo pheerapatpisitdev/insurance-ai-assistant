@@ -6,15 +6,25 @@ import { ratePerThousandRiderPremium } from "./riders/rate-per-thousand";
 import { fixedPlanRiderPremium } from "./riders/fixed-by-plan";
 import { variantRiderPremium } from "./riders/variant-rate";
 import { payorBenefitPremium } from "./riders/payor-benefit";
-import { CANNOT_BUY, NOT_COVERED, baseAgeRange, checkCombined, checkMonthlyMinimum, checkRiderInput, riderAvailability } from "./rules";
+import { premiumBasedRiderPremium } from "./riders/premium-based";
+import { fixedByKeyAgePremium } from "./riders/fixed-by-key-age";
+import { compositeCIPremium } from "./riders/composite-ci";
+import {
+  CANNOT_BUY, NOT_COVERED, baseAgeRange, baseSumAssuredLimits, checkCombined, checkMonthlyMinimum,
+  checkRiderInput, checkRiderRelations, disabledRiders, packageSeq, requiredRiders, riderAvailability,
+} from "./rules";
 
 function fmt(n: number): string {
   return n.toLocaleString("en-US");
 }
 
 /** Resolve the sum assured to quote on, emitting min/max warnings. Returns 0 when premium-basis SA is out of range (Excel D26). */
-function resolveSumAssured(input: QuoteInput, rates: PlanRates, saMin: number, saMax: number | undefined, warnings: Warning[]): number {
-  const minMsg = { level: "error" as const, code: "BASE_SA_MIN", message: `จำนวนเงินเอาประกันภัยขั้นต่ำ ${fmt(saMin)} บาท` };
+function resolveSumAssured(
+  input: QuoteInput, rates: PlanRates, saMin: number, saMax: number | undefined, exact: boolean, warnings: Warning[],
+): number {
+  const minMsg = exact
+    ? { level: "error" as const, code: "BASE_SA_EXACT", message: `จำนวนเงินเอาประกันภัยต้องเป็น ${fmt(saMin)} บาทเท่านั้น` }
+    : { level: "error" as const, code: "BASE_SA_MIN", message: `จำนวนเงินเอาประกันภัยขั้นต่ำ ${fmt(saMin)} บาท` };
   const maxMsg = saMax === undefined ? undefined
     : { level: "error" as const, code: "BASE_SA_MAX", message: `จำนวนเงินเอาประกันภัยสูงสุด ${saMax / 1_000_000} ล้านบาท` };
   if (input.basis === "premium") {
@@ -23,14 +33,16 @@ function resolveSumAssured(input: QuoteInput, rates: PlanRates, saMin: number, s
     if (maxMsg && saMax !== undefined && sa > saMax) { warnings.push(maxMsg); return 0; }
     return sa;
   }
-  if (input.sumAssured < saMin) warnings.push(minMsg);
+  if (exact ? input.sumAssured !== saMin : input.sumAssured < saMin) warnings.push(minMsg);
   if (maxMsg && saMax !== undefined && input.sumAssured > saMax) warnings.push(maxMsg);
   return input.sumAssured;
 }
 
-interface RiderPremium { annual: number; modal: number; name?: string; amountLabel?: string }
+interface RiderPremium { annual: number; modal: number; name?: string; amountLabel?: string; extraRows?: QuoteItem[] }
 
-function riderPremium(rates: PlanRates, code: string, ri: RiderInput, input: QuoteInput, sa: number, bp: BasePremiumResult | undefined): RiderPremium | undefined | typeof NOT_COVERED {
+function riderPremium(
+  rates: PlanRates, code: string, ri: RiderInput, input: QuoteInput, sa: number, bp: BasePremiumResult | undefined,
+): RiderPremium | undefined | typeof NOT_COVERED {
   const rider = rates.riders[code];
   switch (rider.kind) {
     case "ratePerThousandByAgeClass":
@@ -39,7 +51,10 @@ function riderPremium(rates: PlanRates, code: string, ri: RiderInput, input: Quo
     case "fixedByAgePlan":
       return fixedPlanRiderPremium(rates, code, { age: input.age, plan: ri.plan ?? 0, mode: input.mode });
     case "ratePerThousandByVariantAgeSex":
-      return variantRiderPremium(rates, code, { variant: ri.option ?? "", sex: input.sex, age: input.age, sumAssured: ri.sumAssured ?? 0, mode: input.mode });
+      return variantRiderPremium(rates, code, {
+        variant: ri.option ?? rider.variants[0], sex: input.sex, age: input.age,
+        sumAssured: ri.sumAssured ?? 0, mode: input.mode,
+      });
     case "payorBenefit": {
       if (!bp || !input.payer) return NOT_COVERED;
       const r = payorBenefitPremium(rates, code, {
@@ -47,13 +62,51 @@ function riderPremium(rates: PlanRates, code: string, ri: RiderInput, input: Quo
         payTerm: rates.base.payTerm?.[input.variant] ?? 0, baseAnnual: bp.annual, mode: input.mode,
       });
       if (!r) return undefined;
+      return { ...r, name: rider.options[ri.option ?? ""]?.name, amountLabel: payerLabel(input) };
+    }
+    case "premiumBased": {
+      if (!bp) return NOT_COVERED;
+      if (rider.by === "payer" && !input.payer) return NOT_COVERED;
+      const r = premiumBasedRiderPremium(rates, code, {
+        option: ri.option ?? "", insuredAge: input.age, insuredSex: input.sex, payer: input.payer,
+        payTerm: rates.base.payTerm?.[input.variant] ?? 0, baseAnnual: bp.annual, mode: input.mode,
+      });
+      if (!r) return undefined;
       return {
         ...r,
         name: rider.options[ri.option ?? ""]?.name,
-        amountLabel: `ผู้ชำระเบี้ย ${input.payer.sex === "M" ? "ชาย" : "หญิง"} ${input.payer.age} ปี`,
+        amountLabel: rider.by === "payer" ? payerLabel(input) : `ยกเว้นเบี้ย ${r.period} ปี`,
       };
     }
+    case "fixedByKeyAge": {
+      const r = fixedByKeyAgePremium(rates, code, {
+        age: input.age, sex: input.sex, mode: input.mode,
+        selection: { option: ri.option, territory: ri.territory, coverage: ri.coverage },
+      });
+      if (!r) return undefined;
+      const label = rider.keyBy === "plan" ? `แผน ${r.key}` : [ri.option, ri.territory, ri.coverage].filter(Boolean).join(" · ");
+      return { ...r, amountLabel: label };
+    }
+    case "compositeCI": {
+      const r = compositeCIPremium(rates, code, {
+        age: input.age, sex: input.sex, sumAssured: ri.sumAssured ?? 0, mode: input.mode,
+      });
+      if (!r) return undefined;
+      if (r.belowMinimum) return NOT_COVERED;
+      // The workbook shows the main benefit on its own row and the endorsements underneath.
+      const [main, ...rest] = r.components;
+      const extraRows: QuoteItem[] = rest.map((c) => ({
+        code: `${code}:${c.key}`, name: `บันทึกฯ ${c.key}`, amount: c.sumAssured,
+        annual: c.annual, modal: c.modal, eligible: true,
+      }));
+      return { annual: main.annual, modal: main.modal, extraRows };
+    }
   }
+}
+
+function payerLabel(input: QuoteInput): string | undefined {
+  if (!input.payer) return undefined;
+  return `ผู้ชำระเบี้ย ${input.payer.sex === "M" ? "ชาย" : "หญิง"} ${input.payer.age} ปี`;
 }
 
 /** Pure function: QuoteInput → QuoteResult. `today` is injectable for tests. */
@@ -65,13 +118,15 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   const items: QuoteItem[] = [];
 
   // ---- sum assured & base ----
-  const baseName = `${rates.planName} ${input.variant}`;
-  const ageRange = baseAgeRange(rules, input.variant);
+  const pkg = rates.base.packages?.find((p) => p.code === input.variant);
+  const baseName = pkg ? `${rates.planName} — ${pkg.name}` : `${rates.planName} ${input.variant}`;
+  const ageRange = baseAgeRange(rules, input.variant, rates);
   const inAgeRange = input.age >= ageRange.min && input.age <= ageRange.max;
+  const saLimits = baseSumAssuredLimits(rules, input.variant);
   // Excel D26: an un-issuable base plan zeroes the sum assured, so nothing is covered and the total is 0.
   const sa = !inAgeRange && rules.base.saZeroWhenIneligible
     ? 0
-    : resolveSumAssured(input, rates, rules.base.saMin, rules.base.saMax, warnings);
+    : resolveSumAssured(input, rates, saLimits.min, saLimits.max, saLimits.exact, warnings);
   const bp = inAgeRange && sa > 0
     ? basePremium(rates, { variant: input.variant, sex: input.sex, age: input.age, sumAssured: sa, mode: input.mode })
     : undefined;
@@ -84,17 +139,35 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
 
   // ---- riders ----
   const ctx = { age: input.age, baseSumAssured: sa };
+  const seq = packageSeq(input.variant, rates);
+  const disabled = disabledRiders(rules, seq);
+  const chosen = new Set(input.riders.filter((r) => !disabled.has(r.code)).map((r) => r.code));
   const combined = checkCombined(rules, sa, input.riders);
   for (const c of combined) warnings.push({ level: "error", code: c.code, message: c.message });
+  const relations = checkRiderRelations(rules, chosen);
+  for (const r of relations) warnings.push({ level: "error", code: r.code, message: r.message });
+
+  const missing = requiredRiders(rules, seq).filter((c) => !chosen.has(c));
+  for (const code of missing) {
+    const rule = (rules.packages ?? []).find((p) => seq !== undefined && p.seq.includes(seq) && (p.require ?? []).includes(code));
+    warnings.push({ level: "error", code: `PACKAGE_REQUIRES_${code}`, message: rule?.requiredMessage ?? `แพ็กเกจนี้ต้องซื้อ ${code}` });
+  }
 
   for (const code of plan.riderOrder) {
     const ri = input.riders.find((r) => r.code === code);
     if (!ri) continue;
     const rule = rules.riders[code];
     const amount = ri.plan ?? ri.sumAssured ?? 0;
-    const name = ri.option && rates.riders[code].kind === "ratePerThousandByVariantAgeSex" ? `${rule.name} (${ri.option})` : rule.name;
+    const name = ri.option && rates.riders[code].kind === "ratePerThousandByVariantAgeSex" && rates.riders[code].variants.length > 1
+      ? `${rule.name} (${ri.option})`
+      : rule.name;
+    const packageMessage = disabled.has(code)
+      ? (rules.packages ?? []).find((p) => seq !== undefined && p.seq.includes(seq) && (p.disable ?? []).includes(code))?.disabledMessage ?? CANNOT_BUY
+      : undefined;
     const excludedBy = combined.find((c) => c.codes.includes(code));
-    const message = excludedBy?.message ?? checkRiderInput(rules, rates, code, ctx, ri, input.payer);
+    const relation = relations.find((r) => r.riders.includes(code));
+    const message = packageMessage ?? excludedBy?.message ?? relation?.message
+      ?? checkRiderInput(rules, rates, code, ctx, ri, input.payer);
     if (message) {
       items.push({ code, name, amount, annual: 0, modal: 0, eligible: false, message });
       continue;
@@ -105,16 +178,26 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
       continue;
     }
     items.push({ code, name: premium.name ?? name, amount, amountLabel: premium.amountLabel, annual: premium.annual, modal: premium.modal, eligible: true });
+    for (const extra of premium.extraRows ?? []) items.push(extra);
   }
 
+  // A package whose mandatory rider is missing quotes nothing (Excel F37/F38).
+  const voided = missing.length > 0;
+
   // ---- totals & global checks (Excel: total is 0 when no sum assured) ----
-  const totalAnnual = sa > 0 ? items.reduce((s, i) => s + i.annual, 0) : 0;
-  const totalModal = sa > 0 ? items.reduce((s, i) => s + i.modal, 0) : 0;
+  const live = sa > 0 && !voided;
+  const totalAnnual = live ? items.reduce((s, i) => s + i.annual, 0) : 0;
+  const totalModal = live ? items.reduce((s, i) => s + i.modal, 0) : 0;
   // Excel E65 flags the monthly minimum from the total alone, even when nothing is covered.
   const mm = checkMonthlyMinimum(rules, input.mode, totalModal);
   if (mm) warnings.push(mm);
 
-  const availability: Availability[] = plan.riderOrder.map((code) => riderAvailability(rules, rates, code, ctx));
+  const availability: Availability[] = plan.riderOrder.map((code) => {
+    const a = riderAvailability(rules, rates, code, ctx);
+    if (!disabled.has(code)) return a;
+    const msg = (rules.packages ?? []).find((p) => seq !== undefined && p.seq.includes(seq) && (p.disable ?? []).includes(code))?.disabledMessage;
+    return { ...a, eligible: false, reason: msg ?? CANNOT_BUY };
+  });
   const expired = today.toISOString().slice(0, 10) > rates.expiresOn;
 
   return {

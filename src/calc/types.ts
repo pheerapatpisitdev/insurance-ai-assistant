@@ -142,9 +142,39 @@ export interface RiderRule {
 export interface CombinedRule {
   code: string;
   riders: string[];
-  maxMultipleOfBase: number;
+  /** omit for a plain cap with no relation to the base sum assured */
+  maxMultipleOfBase?: number;
   cap: number;
   message: string;
+}
+/** Two riders that cannot be bought together. */
+export interface ExclusiveRule {
+  code: string;
+  riders: string[];
+  message: string;
+}
+/** A rider that may only be bought alongside another. */
+export interface RequiresRule {
+  rider: string;
+  needs: string[];
+  message: string;
+}
+/** A rider that may not be bought alongside certain others. */
+export interface ConflictRule {
+  rider: string;
+  with: string[];
+  message: string;
+}
+/** What a package (base variant) does to the rider list. */
+export interface PackageRule {
+  /** package sequence numbers this applies to */
+  seq: number[];
+  /** riders the package does not sell */
+  disable?: string[];
+  /** riders the package requires; the quote is void without them */
+  require?: string[];
+  disabledMessage?: string;
+  requiredMessage?: string;
 }
 export interface PlanRules {
   planCode: string;
@@ -159,10 +189,18 @@ export interface PlanRules {
     premiumBasis?: boolean;
     /** sum assured becomes 0 (nothing is covered, total 0) when the base plan cannot be issued */
     saZeroWhenIneligible?: boolean;
+    /** per-package minimum, overriding saMin */
+    saMinByVariant?: Record<string, number>;
+    /** packages that accept exactly their minimum and nothing else */
+    saExactVariants?: string[];
   };
   minMonthlyTotal: number;
   riders: Record<string, RiderRule>;
   combined: CombinedRule[];
+  exclusive?: ExclusiveRule[];
+  requires?: RequiresRule[];
+  conflicts?: ConflictRule[];
+  packages?: PackageRule[];
 }
 
 // ---------- engine I/O ----------
