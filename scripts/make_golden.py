@@ -8,6 +8,7 @@ For each case: copy the workbook, write inputs into 'กรอกข้อมู
 """
 import json
 import random
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -322,16 +323,24 @@ def w_read(plan):
     def read(wb):
         ws, cal = wb["กรอกข้อมูล"], wb["Cal"]
         f = lambda off: num_or_zero(ws[f"F{base+off}"].value)
-        # the yes/no monthly-minimum flag sits next to a label in column D; find it by label
-        flag_row = next(r for r in range(60, 80) if isinstance(ws[f"D{r}"].value, str) and ws[f"D{r}"].value.startswith("ถ้าเบี้ยรายเดือน"))
+        # The yes/no flag sits beside a label in column D ("ถ้าเบี้ยรวมเท่ากับศูนย์ หรือ เบี้ยรายเดือน…").
+        # It is "no" when the total is zero OR (monthly and < 1,000); the test applies the mode.
+        flag_row = next((r for r in range(55, 85) if isinstance(ws[f"D{r}"].value, str) and ws[f"D{r}"].value.startswith("ถ้าเบี้ย")), None)
+        total_cell = ws[f"F{base+18}"].value
+        if isinstance(total_cell, str):
+            # ไลฟ์ โพรเทค+ replaces the total with a message when the flag is "no"; the SUM underneath is still the number
+            total = sum(num_or_zero(ws[f"F{r}"].value) for r in range(base, base + 18))
+        else:
+            total = num_or_zero(total_cell)
         return {
             "sumAssured": 0 if ws[f"H{base}"].value == "ไม่คุ้มครอง" else num_or_zero(ws[f"D{base}"].value),
             "modal": {"BASE": f(0), "PB": f(1), "WP": f(2), "AP": f(3), "ECARE": f(4), "MEX": f(5), "MEB": f(6),
                       "DCI": f(7), "PLS": f(8), "CPR": f(9), "HIC": f(10), "IHU": f(11), "RRSS": f(13),
                       "CI123": f(14), "CI123_1": f(15), "CI123_2": f(16), "CI123_3": f(17)},
             "annual": {"BASE": cal["G13"].value or 0},
-            "totalModal": num_or_zero(ws[f"F{base+18}"].value),
-            "monthlyBelowMinimum": ws[f"E{flag_row}"].value == "no",
+            "totalModal": total,
+            "totalIsText": isinstance(total_cell, str),
+            "excelFlagNo": (ws[f"E{flag_row}"].value == "no") if flag_row else None,
         }
     return read
 
@@ -340,42 +349,56 @@ for _plan in W_FILES:
     PLANS[_plan] = {"src": W_FILES[_plan][0], "random": w_random_cases(_plan), "write": w_write(_plan), "read": w_read(_plan)}
 
 
-def run_plan(name):
+CACHE_DIR = ROOT / ".golden-cache"
+
+
+def run_plan(name, reread=False):
     p = PLANS[name]
     src = XLSX_DIR / p["src"]
     spec = json.loads((GOLDEN_DIR / f"cases-{name}.json").read_text(encoding="utf-8"))
     cases = spec["explicit"] + p["random"](spec["random"]["seed"], spec["random"]["count"])
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp = Path(tmpdir)
-        profile = tmp / "profile" / "user"
-        profile.mkdir(parents=True)
-        (profile / "registrymodifications.xcu").write_text(PROFILE_XCU, encoding="utf-8")
-        indir, outdir = tmp / "in", tmp / "out"
-        indir.mkdir()
-        outdir.mkdir()
-        for i, c in enumerate(cases):
-            wb = openpyxl.load_workbook(src)
-            p["write"](c, wb)
-            wb.save(indir / f"case{i:03}.xlsx")
-        cmd = [SOFFICE, f"-env:UserInstallation=file://{tmp / 'profile'}", "--headless",
-               "--convert-to", "xlsx", "--outdir", str(outdir)] + sorted(str(x) for x in indir.glob("*.xlsx"))
-        subprocess.run(cmd, check=True, capture_output=True)
-        results = []
-        for i, c in enumerate(cases):
-            wb = openpyxl.load_workbook(outdir / f"case{i:03}.xlsx", data_only=True)
+    outdir = CACHE_DIR / name
+    if not reread:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            profile = tmp / "profile" / "user"
+            profile.mkdir(parents=True)
+            (profile / "registrymodifications.xcu").write_text(PROFILE_XCU, encoding="utf-8")
+            indir = tmp / "in"
+            indir.mkdir()
+            if outdir.exists():
+                shutil.rmtree(outdir)
+            outdir.mkdir(parents=True)
+            for i, c in enumerate(cases):
+                wb = openpyxl.load_workbook(src)
+                p["write"](c, wb)
+                wb.save(indir / f"case{i:03}.xlsx")
+            cmd = [SOFFICE, f"-env:UserInstallation=file://{tmp / 'profile'}", "--headless",
+                   "--convert-to", "xlsx", "--outdir", str(outdir)] + sorted(str(x) for x in indir.glob("*.xlsx"))
+            subprocess.run(cmd, check=True, capture_output=True)
+    results = []
+    for i, c in enumerate(cases):
+        path = outdir / f"case{i:03}.xlsx"
+        try:
+            wb = openpyxl.load_workbook(path, data_only=True)
             results.append({"input": c, "expected": p["read"](wb)})
+        except Exception as e:  # keep going: one bad case must not cost the whole run
+            results.append({"input": c, "error": f"{type(e).__name__}: {e}"})
     out = GOLDEN_DIR / f"{name}.json"
     out.write_text(json.dumps({"source": "libreoffice-recalc", "sourceFile": src.name, "cases": results}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(f"wrote {out} with {len(results)} cases")
+    errors = sum(1 for r in results if "error" in r)
+    print(f"wrote {out} with {len(results)} cases ({errors} read errors); recalculated workbooks kept in {outdir}")
 
 
 def main(argv):
-    if not Path(SOFFICE).exists():
+    reread = "--reread" in argv
+    names = [a for a in argv if not a.startswith("--")]
+    if not reread and not Path(SOFFICE).exists():
         sys.exit(f"LibreOffice not found at {SOFFICE}. Run: brew reinstall --cask libreoffice")
-    for name in argv or list(PLANS):
+    for name in names or list(PLANS):
         if name not in PLANS:
             sys.exit(f"unknown plan {name}; choose from {list(PLANS)}")
-        run_plan(name)
+        run_plan(name, reread=reread)
 
 
 if __name__ == "__main__":

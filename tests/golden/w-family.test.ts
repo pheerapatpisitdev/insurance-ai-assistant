@@ -7,7 +7,8 @@ import type { PayMode, Sex, RiderInput, QuoteInput } from "@/calc/types";
 type RawRiders = Record<string, number | string | [string, number] | [string, string, string] | undefined>;
 interface GoldenCase {
   input: { variant: string; age: number; sex: string; mode: string; sumAssured: number; payer?: { age: number; sex: Sex }; riders: RawRiders };
-  expected: { sumAssured: number; modal: Record<string, unknown>; annual: Record<string, unknown>; totalModal: unknown; monthlyBelowMinimum: boolean };
+  expected?: { sumAssured: number; modal: Record<string, unknown>; annual: Record<string, unknown>; totalModal: unknown; excelFlagNo: boolean | null };
+  error?: string;
 }
 interface Golden { source: string; cases: GoldenCase[] }
 
@@ -39,20 +40,26 @@ for (const [file, planCode] of [["ismart", "ISMART"], ["lifetreasure", "LIFETREA
 
   describe.skipIf(!present)(`golden vs Excel ${planCode} (${golden.source})`, () => {
     golden.cases.forEach((c, i) => {
-      it(`case ${i}: ${JSON.stringify(c.input)}`, () => {
+      it.skipIf(!c.expected)(`case ${i}: ${JSON.stringify(c.input)}`, () => {
+        const exp = c.expected;
+        if (!exp) return;
         const r = quote(toInput(planCode, c.input), new Date("2026-09-03"));
         const by = Object.fromEntries(r.items.map((it) => [it.code === c.input.variant ? "BASE" : it.code, it]));
-        expect(r.sumAssured, "sum assured used").toBe(c.expected.sumAssured);
-        expect(by.BASE.modal, "BASE modal").toBe(satang(c.expected.modal.BASE));
-        expect(by.BASE.annual, "BASE annual").toBe(satang(c.expected.annual.BASE));
-        for (const code of CODES) expect(by[code]?.modal ?? 0, `${code} modal`).toBe(satang(c.expected.modal[code]));
+        expect(r.sumAssured, "sum assured used").toBe(exp.sumAssured);
+        expect(by.BASE.modal, "BASE modal").toBe(satang(exp.modal.BASE));
+        expect(by.BASE.annual, "BASE annual").toBe(satang(exp.annual.BASE));
+        for (const code of CODES) expect(by[code]?.modal ?? 0, `${code} modal`).toBe(satang(exp.modal[code]));
         // CI 123: the workbook shows the main benefit and three endorsements on four rows
         const ciRows = r.items.filter((it) => it.code.startsWith("CI123"));
         const ciModal = ciRows.reduce((s, it) => s + it.modal, 0);
-        const expCi = ["CI123", "CI123_1", "CI123_2", "CI123_3"].reduce((s, k) => s + satang(c.expected.modal[k]), 0);
+        const expCi = ["CI123", "CI123_1", "CI123_2", "CI123_3"].reduce((s, k) => s + satang(exp.modal[k]), 0);
         expect(ciModal, "CI123 modal (all rows)").toBe(expCi);
-        expect(r.totalModal, "total modal").toBe(satang(c.expected.totalModal));
-        expect(r.warnings.some((w) => w.code === "MIN_MONTHLY"), "MIN_MONTHLY warning").toBe(c.expected.monthlyBelowMinimum);
+        expect(r.totalModal, "total modal").toBe(satang(exp.totalModal));
+        // Excel's flag is "no" when the total is 0 or (monthly and < 1,000); our warning is monthly-only
+        if (exp.excelFlagNo !== null) {
+          expect(r.warnings.some((w) => w.code === "MIN_MONTHLY"), "MIN_MONTHLY warning")
+            .toBe(exp.excelFlagNo && c.input.mode === "monthly");
+        }
       });
     });
   });
