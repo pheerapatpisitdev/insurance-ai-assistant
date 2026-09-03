@@ -3,7 +3,7 @@ import type { ModePremium } from "@/calc/mode-premiums";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { WarningList } from "./WarningList";
-import { CopySummaryButton } from "./CopySummaryButton";
+import { ShareToLineButton } from "./ShareToLineButton";
 
 export interface QuoteResultPanelProps {
   result: QuoteResult;
@@ -108,7 +108,7 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, lin
       {/* the bundle's own refusal already headlines the panel; the list keeps the reasons behind it */}
       {/* the bundle's own refusal headlines the panel and the monthly minimum is marked beside its figure */}
       <WarningList warnings={result.warnings.filter((w) => w !== incomplete && !(modePremiums && w.code === "MIN_MONTHLY"))} />
-      <CopySummaryButton text={summary} />
+      <ShareToLineButton text={summary} />
     </section>
   );
 }
