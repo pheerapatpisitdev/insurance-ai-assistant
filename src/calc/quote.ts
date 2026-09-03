@@ -134,7 +134,11 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
 
   // ---- sum assured & base ----
   const pkg = rates.base.packages?.find((p) => p.code === input.variant);
-  const baseName = pkg ? `${rates.planName} — ${pkg.name}` : `${rates.planName} ${input.variant}`;
+  // ไลฟ์ โพรเทค+ ships one Thai name in the workbook header (the "+100" one) but sells two
+  // products, so name the row from the package's own product when it has one.
+  const baseName = pkg
+    ? `${pkg.productName ?? rates.planName} — ${pkg.name}`
+    : `${rates.planName} ${input.variant}`;
   const ageRange = baseAgeRange(rules, input.variant, rates);
   const inAgeRange = input.age >= ageRange.min && input.age <= ageRange.max;
   const saLimits = baseSumAssuredLimits(rules, input.variant);

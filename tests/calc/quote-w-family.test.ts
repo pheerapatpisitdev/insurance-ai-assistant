@@ -109,6 +109,15 @@ describe("quote (ไลฟ์ โพรเทค+)", () => {
   const lpp: QuoteInput = {
     planCode: "LIFEPROTECT", variant: "WLF19H", age: 45, sex: "F", mode: "annual", sumAssured: 500_000, riders: [],
   };
+  it("names the row after the package's own product, not the workbook header", () => {
+    const plus50 = quote({ ...lpp, variant: "WLF99L", age: 35, sex: "M", sumAssured: 1_000_000 });
+    expect(plus50.items[0].name).toBe("ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล) — ชำระเบี้ยครบอายุ 99 ปี");
+    expect(plus50.items[0].annual).toBe(1_530_000); // 15.3 per 1,000
+    const plus100 = quote({ ...lpp, variant: "WLF99H", age: 35, sex: "M", sumAssured: 1_000_000 });
+    expect(plus100.items[0].name).toBe("ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล) — ชำระเบี้ยครบอายุ 99 ปี");
+    expect(plus100.items[0].annual).toBe(1_720_000); // 17.2 per 1,000
+  });
+
   it("base 32 × 500 = 16,000.00", () => {
     expect(quote(lpp, new Date("2026-09-03")).items[0]).toMatchObject({ annual: 1_600_000, eligible: true });
   });
