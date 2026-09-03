@@ -9,6 +9,7 @@ const STATUS: Record<string, { label: string; className: string }> = {
   uploaded: { label: "รออ่าน", className: "bg-slate-100 text-slate-700" },
   processing: { label: "กำลังอ่าน", className: "bg-sky-100 text-sky-800" },
   ready: { label: "ค้นหาได้", className: "bg-emerald-100 text-emerald-800" },
+  partial: { label: "ค้นหาได้บางส่วน", className: "bg-amber-100 text-amber-800" },
   failed: { label: "อ่านไม่ได้", className: "bg-red-100 text-red-800" },
 };
 
@@ -95,7 +96,7 @@ export function KnowledgeClient({ docs, plans }: { docs: DocRow[]; plans: { code
                              onChange={(e) => run(() => setDocActive(d.id, e.target.checked))} />
                     </td>
                     <td className="py-1.5 pl-3 whitespace-nowrap">
-                      {d.status !== "ready" && (
+                      {d.status !== "ready" && d.status !== "partial" && (
                         <button type="button" disabled={pending} className="mr-3 text-xs text-sky-700 underline"
                                 onClick={() => run(() => reingestDoc(d.id))}>
                           อ่านใหม่
