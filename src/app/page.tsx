@@ -9,8 +9,9 @@ import { QuoteResultPanel } from "@/components/QuoteResultPanel";
 import { ExpiryBanner } from "@/components/ExpiryBanner";
 import { summaryText } from "@/lib/summary";
 
+/** Life Protect+ 100 paid to age 99 is the plan agents quote most, so start there. */
 const INITIAL: FormState = {
-  planCode: "PLB", variant: "PLB12", age: 35, sex: "M", mode: "annual",
+  planCode: "LIFEPROTECT", variant: "WLF99H", age: 35, sex: "M", mode: "annual",
   basis: "sumAssured", sumAssured: 1_000_000, targetPremium: "",
   payer: { age: "", sex: "M" }, riders: {},
 };

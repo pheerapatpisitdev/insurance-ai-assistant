@@ -83,8 +83,16 @@ const PLANS: Record<string, PlanBundle> = {
   ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect+ 50 / 100"),
 };
 
+/** Display order for the plan picker; anything not listed follows in definition order. */
+const PLAN_ORDER = ["LIFEPROTECT", "ISMART", "LIFETREASURE", "ISHIELD", "PLB"];
+
 export function listPlans(): { code: string; name: string }[] {
-  return Object.entries(PLANS).map(([code, p]) => ({ code, name: p.planLabel ?? p.rates.planName }));
+  const entries = Object.entries(PLANS).map(([code, p]) => ({ code, name: p.planLabel ?? p.rates.planName }));
+  return entries.sort((a, b) => {
+    const ia = PLAN_ORDER.indexOf(a.code);
+    const ib = PLAN_ORDER.indexOf(b.code);
+    return (ia < 0 ? PLAN_ORDER.length : ia) - (ib < 0 ? PLAN_ORDER.length : ib);
+  });
 }
 
 export function getPlan(code: string): PlanBundle | undefined {
