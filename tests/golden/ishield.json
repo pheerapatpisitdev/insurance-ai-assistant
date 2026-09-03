@@ -1,0 +1,2223 @@
+{
+ "source": "libreoffice-recalc",
+ "sourceFile": "iShield_A2026-1_01042026.xlsx",
+ "cases": [
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 35,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 500000,
+    "riders": {}
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 33490,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 33490,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 33490,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 11,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 500000,
+    "payer": {
+     "age": 35,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 22105,
+     "PB": 360.31,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 950,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 22105,
+     "PB": 360.31,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 950,
+     "PLS": 0
+    },
+    "totalModal": 23415.31,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 11,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "payer": {
+     "age": 35,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 600000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 1989.45,
+     "PB": 32.42,
+     "AP": 162,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 22105,
+     "PB": 360.31,
+     "AP": 1800,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 2183.87,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 35,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 40,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "PLS": [
+      "PLS10",
+      1000000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 17576,
+     "PB": 1321.71,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 795.6
+    },
+    "annual": {
+     "BASE": 33800,
+     "PB": 2541.76,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 1530
+    },
+    "totalModal": 19693.31,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 35,
+    "sex": "M",
+    "mode": "semi",
+    "basis": "premium",
+    "targetPremium": 52000,
+    "riders": {}
+   },
+   "expected": {
+    "sumAssured": 1492983,
+    "modal": {
+     "BASE": 52000,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 100000,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 52000,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 35,
+    "sex": "M",
+    "mode": "monthly",
+    "basis": "premium",
+    "targetPremium": 500,
+    "riders": {
+     "AP": 100000
+    }
+   },
+   "expected": {
+    "sumAssured": 0,
+    "modal": {
+     "BASE": 0,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 0,
+     "PB": 0,
+     "AP": 300,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 0,
+    "monthlyBelowMinimum": true
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 0,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 100000,
+    "payer": {
+     "age": 20,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 200000
+    }
+   },
+   "expected": {
+    "sumAssured": 100000,
+    "modal": {
+     "BASE": 6892,
+     "PB": 9.64,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 6892,
+     "PB": 9.64,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "totalModal": 7501.64,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 52,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 5000000,
+    "riders": {
+     "AP": 10000000,
+     "ECARE": 100000
+    }
+   },
+   "expected": {
+    "sumAssured": 5000000,
+    "modal": {
+     "BASE": 985500,
+     "PB": 0,
+     "AP": "AP+ECARE เกินกว่าที่กำหนด",
+     "ECARE": "AP+ECARE เกินกว่าที่กำหนด",
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 985500,
+     "PB": 0,
+     "AP": 30000,
+     "ECARE": 650,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 985500,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 56,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 250000,
+    "riders": {
+     "MEB": 5000,
+     "PLS": [
+      "PLS15",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 250000,
+    "modal": {
+     "BASE": 1621.12,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 900,
+     "PLS": 411.48
+    },
+    "annual": {
+     "BASE": 18012.5,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 10000,
+     "PLS": 4572
+    },
+    "totalModal": 2932.6,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 52,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 600000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 9678.24,
+     "PB": 0,
+     "AP": "AP+ECARE เกินกว่าที่กำหนด",
+     "ECARE": "AP+ECARE เกินกว่าที่กำหนด",
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 18612,
+     "PB": 0,
+     "AP": 3000,
+     "ECARE": 3900,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 9678.24,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 8,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 150000,
+    "payer": {
+     "age": 70,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "MEB": 500,
+     "AP": 300000
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 5700,
+     "PB": 3361.29,
+     "AP": 900,
+     "ECARE": 0,
+     "MEB": 475,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 5700,
+     "PB": 3361.29,
+     "AP": 900,
+     "ECARE": 0,
+     "MEB": 475,
+     "PLS": 0
+    },
+    "totalModal": 10436.29,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 15,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 2000000,
+    "payer": {
+     "age": 45,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT"
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 65440,
+     "PB": 824.54,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 65440,
+     "PB": 824.54,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 66264.54,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 59,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 123456,
+    "riders": {
+     "PLS": [
+      "PLS05",
+      500000
+     ],
+     "ECARE": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 0,
+    "modal": {
+     "BASE": 0,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": "PLS05 เกินกว่าที่กำหนด"
+    },
+    "annual": {
+     "BASE": 0,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEB": "#N/A",
+     "PLS": 11020
+    },
+    "totalModal": 0,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 20,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 100000,
+    "riders": {
+     "PLS": [
+      "PLS12",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 100000,
+    "modal": {
+     "BASE": 228.51,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 47.52
+    },
+    "annual": {
+     "BASE": 2539,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 528
+    },
+    "totalModal": 276.03,
+    "monthlyBelowMinimum": true
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 16,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 750000,
+    "payer": {
+     "age": 60,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "ECARE": 300000,
+     "MEB": 2000
+    }
+   },
+   "expected": {
+    "sumAssured": 750000,
+    "modal": {
+     "BASE": 36187.5,
+     "PB": 2048.21,
+     "AP": 0,
+     "ECARE": 1950,
+     "MEB": 2600,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 36187.5,
+     "PB": 2048.21,
+     "AP": 0,
+     "ECARE": 1950,
+     "MEB": 2600,
+     "PLS": 0
+    },
+    "totalModal": 42785.71,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 12,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "riders": {
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 12562.68,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 494,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 24159,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 950,
+     "PLS": 0
+    },
+    "totalModal": 13056.68,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 47,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 3000000,
+    "payer": {
+     "age": 23,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 500000,
+     "PLS": [
+      "PLS15",
+      500000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 3000000,
+    "modal": {
+     "BASE": 14949.9,
+     "PB": 255.64,
+     "AP": 135,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 257.4
+    },
+    "annual": {
+     "BASE": 166110,
+     "PB": 2840.48,
+     "AP": 1500,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 2860
+    },
+    "totalModal": 15597.94,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 11,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "payer": {
+     "age": 68,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 500000,
+     "MEB": 500
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 3568.95,
+     "PB": 326.91,
+     "AP": 135,
+     "ECARE": 0,
+     "MEB": 42.75,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 39655,
+     "PB": 3632.39,
+     "AP": 1500,
+     "ECARE": 0,
+     "MEB": 475,
+     "PLS": 0
+    },
+    "totalModal": 4073.61,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 27,
+    "sex": "F",
+    "mode": "semi",
+    "basis": "premium",
+    "targetPremium": 3000,
+    "payer": {
+     "age": 37,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 2500000,
+     "ECARE": 100000
+    }
+   },
+   "expected": {
+    "sumAssured": 111011,
+    "modal": {
+     "BASE": 3000,
+     "PB": 57.59,
+     "AP": "AP+ECARE เกินกว่าที่กำหนด",
+     "ECARE": "AP+ECARE เกินกว่าที่กำหนด",
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 5769.24,
+     "PB": 110.76,
+     "AP": 7500,
+     "ECARE": 650,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 3057.59,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 22,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "riders": {
+     "ECARE": 300000,
+     "PLS": [
+      "PLS10",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 4619.16,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 1014,
+     "MEB": 0,
+     "PLS": 541.32
+    },
+    "annual": {
+     "BASE": 8883,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 1950,
+     "MEB": "#N/A",
+     "PLS": 1041
+    },
+    "totalModal": 6174.48,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 8,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 500000,
+    "riders": {
+     "MEB": 500
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 9880,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 247,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 19000,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 475,
+     "PLS": 0
+    },
+    "totalModal": 10127,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 28,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 5000000,
+    "payer": {
+     "age": 25,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 100000,
+     "PLS": [
+      "PLS15",
+      500000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 5000000,
+    "modal": {
+     "BASE": 106418,
+     "PB": 2607.23,
+     "AP": 156,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 967.2
+    },
+    "annual": {
+     "BASE": 204650,
+     "PB": 5013.92,
+     "AP": 300,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 1860
+    },
+    "totalModal": 110148.43,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 48,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 750000,
+    "payer": {
+     "age": 62,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 200000,
+     "ECARE": 300000,
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "sumAssured": 750000,
+    "modal": {
+     "BASE": 69552.6,
+     "PB": 1759.68,
+     "AP": 312,
+     "ECARE": 1014,
+     "MEB": 3900,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 133755,
+     "PB": 3384,
+     "AP": 600,
+     "ECARE": 1950,
+     "MEB": 7500,
+     "PLS": 0
+    },
+    "totalModal": 76538.28,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 43,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 750000,
+    "riders": {
+     "AP": 500000,
+     "PLS": [
+      "PLS15",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 750000,
+    "modal": {
+     "BASE": 4769.55,
+     "PB": 0,
+     "AP": 135,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 122.85
+    },
+    "annual": {
+     "BASE": 52995,
+     "PB": 0,
+     "AP": 1500,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 1365
+    },
+    "totalModal": 5027.4,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 15,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 47,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 1000000,
+     "MEB": 500
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 49056.8,
+     "PB": 681.88,
+     "AP": 1560,
+     "ECARE": 0,
+     "MEB": 247,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 94340,
+     "PB": 1311.32,
+     "AP": 3000,
+     "ECARE": 0,
+     "MEB": 475,
+     "PLS": 0
+    },
+    "totalModal": 51545.68,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 31,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 5000000,
+    "riders": {
+     "AP": 1000000,
+     "PLS": [
+      "PLS15",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 5000000,
+    "modal": {
+     "BASE": 91156,
+     "PB": 0,
+     "AP": 1560,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 744.12
+    },
+    "annual": {
+     "BASE": 175300,
+     "PB": 0,
+     "AP": 3000,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 1431
+    },
+    "totalModal": 93460.12,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 1,
+    "sex": "M",
+    "mode": "monthly",
+    "basis": "premium",
+    "targetPremium": 10000,
+    "payer": {
+     "age": 43,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT"
+    }
+   },
+   "expected": {
+    "sumAssured": 4229582,
+    "modal": {
+     "BASE": 10000,
+     "PB": 193.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 111111.11,
+     "PB": 2155.55,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "totalModal": 10193.99,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 27,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 150000,
+    "payer": {
+     "age": 36,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "ECARE": 100000,
+     "PLS": [
+      "PLS12",
+      500000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 701.59,
+     "PB": 12.06,
+     "AP": 0,
+     "ECARE": 58.5,
+     "MEB": 0,
+     "PLS": 67.95
+    },
+    "annual": {
+     "BASE": 7795.5,
+     "PB": 134.08,
+     "AP": 0,
+     "ECARE": 650,
+     "MEB": "#N/A",
+     "PLS": 755
+    },
+    "totalModal": 840.1,
+    "monthlyBelowMinimum": true
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 26,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 300000,
+    "payer": {
+     "age": 61,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 200000,
+     "PLS": [
+      "PLS12",
+      1000000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 9537,
+     "PB": 2339.42,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 2870
+    },
+    "annual": {
+     "BASE": 9537,
+     "PB": 2339.42,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 2870
+    },
+    "totalModal": 15346.42,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 20,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 500000,
+    "payer": {
+     "age": 27,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT"
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 8236.8,
+     "PB": 156.49,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 15840,
+     "PB": 300.96,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 8393.29,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 33,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 250000,
+    "payer": {
+     "age": 48,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 200000,
+     "PLS": [
+      "PLS10",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 250000,
+    "modal": {
+     "BASE": 729.45,
+     "PB": 96.72,
+     "AP": 54,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 62.91
+    },
+    "annual": {
+     "BASE": 8105,
+     "PB": 1074.72,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 699
+    },
+    "totalModal": 943.08,
+    "monthlyBelowMinimum": true
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 25,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 100000,
+    "riders": {
+     "AP": 100000,
+     "ECARE": 300000,
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "sumAssured": 100000,
+    "modal": {
+     "BASE": 2015.52,
+     "PB": 0,
+     "AP": 156,
+     "ECARE": 1014,
+     "MEB": 676,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 3876,
+     "PB": 0,
+     "AP": 300,
+     "ECARE": 1950,
+     "MEB": 1300,
+     "PLS": 0
+    },
+    "totalModal": 3861.52,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 26,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 3000000,
+    "riders": {
+     "ECARE": 100000
+    }
+   },
+   "expected": {
+    "sumAssured": 3000000,
+    "modal": {
+     "BASE": 10654.2,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 58.5,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 118380,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 650,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 10712.7,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 41,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 300000,
+    "payer": {
+     "age": 48,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "MEB": 500,
+     "PLS": [
+      "PLS10",
+      1000000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 1451.25,
+     "PB": 43.97,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 67.5,
+     "PLS": 542.7
+    },
+    "annual": {
+     "BASE": 16125,
+     "PB": 488.58,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 750,
+     "PLS": 6030
+    },
+    "totalModal": 2105.42,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 10,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 500000,
+    "riders": {
+     "AP": 200000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 20308.6,
+     "PB": 0,
+     "AP": 312,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 39055,
+     "PB": 0,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 20620.6,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 21,
+    "sex": "F",
+    "mode": "monthly",
+    "basis": "premium",
+    "targetPremium": 1000,
+    "payer": {
+     "age": 70,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "MEB": 3000
+    }
+   },
+   "expected": {
+    "sumAssured": 237367,
+    "modal": {
+     "BASE": 1000,
+     "PB": 349.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 351,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 11111.14,
+     "PB": 3888.88,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 3900,
+     "PLS": 0
+    },
+    "totalModal": 1700.99,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 33,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 100000,
+    "riders": {
+     "AP": 500000,
+     "ECARE": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 100000,
+    "modal": {
+     "BASE": 6437,
+     "PB": 0,
+     "AP": "AP+ECARE เกินกว่าที่กำหนด",
+     "ECARE": "AP+ECARE เกินกว่าที่กำหนด",
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 6437,
+     "PB": 0,
+     "AP": 1500,
+     "ECARE": 3250,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 6437,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 52,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 750000,
+    "riders": {
+     "AP": 100000,
+     "ECARE": 500000,
+     "MEB": 4000
+    }
+   },
+   "expected": {
+    "sumAssured": 750000,
+    "modal": {
+     "BASE": 55417.5,
+     "PB": 0,
+     "AP": 300,
+     "ECARE": 3250,
+     "MEB": 8000,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 55417.5,
+     "PB": 0,
+     "AP": 300,
+     "ECARE": 3250,
+     "MEB": 8000,
+     "PLS": 0
+    },
+    "totalModal": 66967.5,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 41,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 5000000,
+    "riders": {
+     "AP": 200000,
+     "ECARE": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 5000000,
+    "modal": {
+     "BASE": 676200,
+     "PB": 0,
+     "AP": 600,
+     "ECARE": 3250,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 676200,
+     "PB": 0,
+     "AP": 600,
+     "ECARE": 3250,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 680050,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 11,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 300000,
+    "riders": {
+     "AP": 200000,
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 13263,
+     "PB": 0,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": 950,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 13263,
+     "PB": 0,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": 950,
+     "PLS": 0
+    },
+    "totalModal": 14813,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 50,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 2000000,
+    "payer": {
+     "age": 33,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 100740,
+     "PB": 6185.43,
+     "AP": 3000,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 100740,
+     "PB": 6185.43,
+     "AP": 3000,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 109925.43,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 50,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 2000000,
+    "payer": {
+     "age": 68,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 10000000,
+     "MEB": 4000,
+     "PLS": [
+      "PLS15",
+      1000000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 17280,
+     "PB": 2854.65,
+     "AP": 2700,
+     "ECARE": 0,
+     "MEB": 540,
+     "PLS": 1319.4
+    },
+    "annual": {
+     "BASE": 192000,
+     "PB": 31718.4,
+     "AP": 30000,
+     "ECARE": 0,
+     "MEB": 6000,
+     "PLS": 14660
+    },
+    "totalModal": 24694.05,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 18,
+    "sex": "M",
+    "mode": "annual",
+    "basis": "premium",
+    "targetPremium": 3000,
+    "riders": {}
+   },
+   "expected": {
+    "sumAssured": 0,
+    "modal": {
+     "BASE": 0,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 0,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 0,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 12,
+    "sex": "M",
+    "mode": "semi",
+    "basis": "premium",
+    "targetPremium": 20000,
+    "payer": {
+     "age": 51,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "sumAssured": 1239895,
+    "modal": {
+     "BASE": 20000,
+     "PB": 1403.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 494,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 38461.54,
+     "PB": 2699.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 950,
+     "PLS": 0
+    },
+    "totalModal": 21897.99,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 37,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 5000000,
+    "payer": {
+     "age": 41,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 200000,
+     "ECARE": 100000,
+     "MEB": 3000
+    }
+   },
+   "expected": {
+    "sumAssured": 5000000,
+    "modal": {
+     "BASE": 91650,
+     "PB": 5856.43,
+     "AP": 312,
+     "ECARE": 338,
+     "MEB": 2028,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 176250,
+     "PB": 11262.37,
+     "AP": 600,
+     "ECARE": 650,
+     "MEB": 3900,
+     "PLS": 0
+    },
+    "totalModal": 100184.43,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 16,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 750000,
+    "riders": {
+     "ECARE": 300000,
+     "MEB": 3000
+    }
+   },
+   "expected": {
+    "sumAssured": 750000,
+    "modal": {
+     "BASE": 5792.85,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 175.5,
+     "MEB": 351,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 64365,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 1950,
+     "MEB": 3900,
+     "PLS": 0
+    },
+    "totalModal": 6319.35,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 46,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "payer": {
+     "age": 62,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "MEB": 4000,
+     "PLS": [
+      "PLS12",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 11865.36,
+     "PB": 1656.4,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 3120,
+     "PLS": 801.84
+    },
+    "annual": {
+     "BASE": 22818,
+     "PB": 3185.39,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 6000,
+     "PLS": 1542
+    },
+    "totalModal": 17443.6,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 31,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 100000,
+    "riders": {
+     "AP": 100000,
+     "ECARE": 300000
+    }
+   },
+   "expected": {
+    "sumAssured": 100000,
+    "modal": {
+     "BASE": 3251.56,
+     "PB": 0,
+     "AP": 156,
+     "ECARE": 1014,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 6253,
+     "PB": 0,
+     "AP": 300,
+     "ECARE": 1950,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 4421.56,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI20",
+    "age": 37,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 2000000,
+    "riders": {
+     "ECARE": 500000,
+     "MEB": 2000
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 79960,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEB": 2600,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 79960,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEB": 2600,
+     "PLS": 0
+    },
+    "totalModal": 85810,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 40,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 100000,
+    "payer": {
+     "age": 58,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 200000,
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "sumAssured": 100000,
+    "modal": {
+     "BASE": 13256,
+     "PB": 721.12,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": 1300,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 13256,
+     "PB": 721.12,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": 1300,
+     "PLS": 0
+    },
+    "totalModal": 15877.12,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 15,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 250000,
+    "riders": {
+     "MEB": 500
+    }
+   },
+   "expected": {
+    "sumAssured": 250000,
+    "modal": {
+     "BASE": 12264.2,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 247,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 23585,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 475,
+     "PLS": 0
+    },
+    "totalModal": 12511.2,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 52,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 150000,
+    "riders": {
+     "AP": 750000,
+     "MEB": 2000,
+     "PLS": [
+      "PLS05",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 2660.85,
+     "PB": 0,
+     "AP": 202.5,
+     "ECARE": 0,
+     "MEB": 360,
+     "PLS": 353.43
+    },
+    "annual": {
+     "BASE": 29565,
+     "PB": 0,
+     "AP": 2250,
+     "ECARE": 0,
+     "MEB": 4000,
+     "PLS": 3927
+    },
+    "totalModal": 3576.78,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 36,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "riders": {
+     "ECARE": 300000,
+     "PLS": [
+      "PLS12",
+      500000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 5518.35,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 175.5,
+     "MEB": 0,
+     "PLS": 103.5
+    },
+    "annual": {
+     "BASE": 61315,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 1950,
+     "MEB": "#N/A",
+     "PLS": 1150
+    },
+    "totalModal": 5797.35,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 10,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 250000,
+    "riders": {}
+   },
+   "expected": {
+    "sumAssured": 250000,
+    "modal": {
+     "BASE": 977.85,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 10865,
+     "PB": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 977.85,
+    "monthlyBelowMinimum": true
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 52,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 300000,
+    "riders": {
+     "AP": 200000,
+     "PLS": [
+      "PLS05",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 22167,
+     "PB": 0,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 3927
+    },
+    "annual": {
+     "BASE": 22167,
+     "PB": 0,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 3927
+    },
+    "totalModal": 26694,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 36,
+    "sex": "M",
+    "mode": "monthly",
+    "basis": "premium",
+    "targetPremium": 20000,
+    "payer": {
+     "age": 65,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "ECARE": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 4620966,
+    "modal": {
+     "BASE": 20000,
+     "PB": 8221.99,
+     "AP": 0,
+     "ECARE": 292.5,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 222222.25,
+     "PB": 91355.54,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 28514.49,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI10",
+    "age": 46,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 58,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "ECARE": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 76060,
+     "PB": 7065.97,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 76060,
+     "PB": 7065.97,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 86375.97,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 41,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 750000,
+    "riders": {
+     "AP": 3750000
+    }
+   },
+   "expected": {
+    "sumAssured": 750000,
+    "modal": {
+     "BASE": 3628.12,
+     "PB": 0,
+     "AP": 1012.5,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 40312.5,
+     "PB": 0,
+     "AP": 11250,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 4640.62,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI15",
+    "age": 38,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 2000000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 100000
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 52239.2,
+     "PB": 0,
+     "AP": 1560,
+     "ECARE": 338,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 100460,
+     "PB": 0,
+     "AP": 3000,
+     "ECARE": 650,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 54137.2,
+    "monthlyBelowMinimum": false
+   }
+  },
+  {
+   "input": {
+    "variant": "WLCI05",
+    "age": 13,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 100000,
+    "payer": {
+     "age": 46,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 200000
+    }
+   },
+   "expected": {
+    "sumAssured": 100000,
+    "modal": {
+     "BASE": 9116,
+     "PB": 126.71,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": 0,
+     "PLS": 0
+    },
+    "annual": {
+     "BASE": 9116,
+     "PB": 126.71,
+     "AP": 600,
+     "ECARE": 0,
+     "MEB": "#N/A",
+     "PLS": 0
+    },
+    "totalModal": 9842.71,
+    "monthlyBelowMinimum": false
+   }
+  }
+ ]
+}

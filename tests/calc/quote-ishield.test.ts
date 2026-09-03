@@ -91,4 +91,13 @@ describe("quote (iShield)", () => {
     expect(r10.warnings).toContainEqual({ level: "error", code: "BASE_AGE", message: "อายุรับประกัน 0 - 51 ปี" });
     expect(quote({ ...base, variant: "WLCI15", age: 52 }).items[0].eligible).toBe(true);
   });
+
+  it("age over the variant maximum zeroes the sum assured and the whole quote (Excel D26/F32)", () => {
+    const r = quote({ ...base, age: 59, sumAssured: 123_456, riders: [{ code: "ECARE", sumAssured: 500_000 }, { code: "PLS", option: "PLS05", sumAssured: 500_000 }] });
+    expect(r.sumAssured).toBe(0);
+    expect(r.items[0]).toMatchObject({ amount: 0, eligible: false, message: "ไม่คุ้มครอง" });
+    expect(by(r).ECARE.modal).toBe(0);
+    expect(by(r).PLS.modal).toBe(0);
+    expect(r.totalModal).toBe(0);
+  });
 });

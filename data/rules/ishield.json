@@ -1,7 +1,7 @@
 {
   "planCode": "ISHIELD",
   "base": {
-    "ageMin": 0, "ageMax": 56, "saMin": 100000, "saMax": 5000000, "premiumBasis": true,
+    "ageMin": 0, "ageMax": 56, "saMin": 100000, "saMax": 5000000, "premiumBasis": true, "saZeroWhenIneligible": true,
     "ageMaxByVariant": { "WLCI05": 52, "WLCI10": 51, "WLCI15": 56, "WLCI20": 52 }
   },
   "minMonthlyTotal": 1000,

@@ -99,6 +99,8 @@ export interface PlanRules {
     ageMaxByVariant?: Record<string, number>;
     /** plan supports "premium → sum assured" input */
     premiumBasis?: boolean;
+    /** sum assured becomes 0 (nothing is covered, total 0) when the base plan cannot be issued */
+    saZeroWhenIneligible?: boolean;
   };
   minMonthlyTotal: number;
   riders: Record<string, RiderRule>;

@@ -65,10 +65,13 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   const items: QuoteItem[] = [];
 
   // ---- sum assured & base ----
-  const sa = resolveSumAssured(input, rates, rules.base.saMin, rules.base.saMax, warnings);
   const baseName = `${rates.planName} ${input.variant}`;
   const ageRange = baseAgeRange(rules, input.variant);
   const inAgeRange = input.age >= ageRange.min && input.age <= ageRange.max;
+  // Excel D26: an un-issuable base plan zeroes the sum assured, so nothing is covered and the total is 0.
+  const sa = !inAgeRange && rules.base.saZeroWhenIneligible
+    ? 0
+    : resolveSumAssured(input, rates, rules.base.saMin, rules.base.saMax, warnings);
   const bp = inAgeRange && sa > 0
     ? basePremium(rates, { variant: input.variant, sex: input.sex, age: input.age, sumAssured: sa, mode: input.mode })
     : undefined;
@@ -107,8 +110,9 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   // ---- totals & global checks (Excel: total is 0 when no sum assured) ----
   const totalAnnual = sa > 0 ? items.reduce((s, i) => s + i.annual, 0) : 0;
   const totalModal = sa > 0 ? items.reduce((s, i) => s + i.modal, 0) : 0;
+  // Excel E65 flags the monthly minimum from the total alone, even when nothing is covered.
   const mm = checkMonthlyMinimum(rules, input.mode, totalModal);
-  if (mm && sa > 0) warnings.push(mm);
+  if (mm) warnings.push(mm);
 
   const availability: Availability[] = plan.riderOrder.map((code) => riderAvailability(rules, rates, code, ctx));
   const expired = today.toISOString().slice(0, 10) > rates.expiresOn;

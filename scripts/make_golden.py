@@ -163,7 +163,9 @@ def ishield_read(wb):
         "annual": {"BASE": cal["G13"].value or 0, "PB": cal["G14"].value or 0, "AP": cal["G16"].value or 0,
                    "ECARE": cal["G17"].value or 0, "MEB": cal["G19"].value or 0, "PLS": cal["G21"].value or 0},
         "totalModal": num_or_zero(ws["F32"].value),
-        "monthlyMessage": ws["C37"].value,
+        # E65 = IF(AND(mode="รายเดือน", total<1000), "no", "yes") — the real monthly-minimum flag.
+        # (C37 is a different message: "sum assured is zero".)
+        "monthlyBelowMinimum": ws["E65"].value == "no",
     }
 
 

@@ -44,8 +44,7 @@ describe(`golden vs Excel iShield (${golden.source})`, () => {
         expect(by[code]?.modal ?? 0, `${code} modal`).toBe(satang(modal[code]));
       }
       expect(r.totalModal, "total modal").toBe(satang(c.expected.totalModal));
-      const excelSaysLow = typeof c.expected.monthlyMessage === "string" && c.expected.monthlyMessage.length > 0;
-      expect(r.warnings.some((w) => w.code === "MIN_MONTHLY"), "MIN_MONTHLY warning").toBe(excelSaysLow);
+      expect(r.warnings.some((w) => w.code === "MIN_MONTHLY"), "MIN_MONTHLY warning").toBe(c.expected.monthlyBelowMinimum);
     });
   });
 });
