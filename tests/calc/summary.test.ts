@@ -3,6 +3,7 @@ import { quote } from "@/calc/quote";
 import { summaryText } from "@/lib/summary";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleModePremiums, bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
+import { quoteModePremiums } from "@/calc/mode-premiums";
 
 describe("summaryText", () => {
   it("renders a compact Thai summary", () => {
@@ -20,14 +21,30 @@ describe("summaryText", () => {
     ].join("\n"));
   });
 
+  it("lists all three payment modes for a plan quoted by hand, keeping the line prices", () => {
+    const input = { planCode: "PLB", variant: "PLB12", age: 35, sex: "M" as const, mode: "monthly" as const, sumAssured: 1_000_000,
+      riders: [{ code: "AP", sumAssured: 1_000_000 }] };
+    const today = new Date("2026-09-03");
+    const text = summaryText(input, quote(input, today), { modes: quoteModePremiums(input, today)! });
+    expect(text).toBe([
+      "Protection Life (ชำระเบี้ย 12 ปี)",
+      "เพศชาย อายุ 35 ปี ชำระรายเดือน",
+      "- Protection Life (ชำระเบี้ย 12 ปี) ทุน 1,000,000 บาท: 492 บาท",
+      "- สัญญาเพิ่มเติมอุบัติเหตุ (AP) ทุน 1,000,000 บาท: 270 บาท",
+      "เบี้ยประกันที่ต้องชำระ",
+      "- รายปี: 8,470 บาท",
+      "- ราย 6 เดือน: 4,404 บาท",
+      "- รายเดือน: 762 บาท (ต่ำกว่าขั้นต่ำ 1,000 บาท)",
+    ].join("\n"));
+  });
+
   it("answers a bundle in full: no payment mode chosen, no price per line, all three totals", () => {
     const bundle = getBundle("LEGACY_FAMILY")!;
     const who = { age: 40, sex: "F" as const, mode: "annual" as const };
     const input = bundleQuoteInput(bundle, 3, who)!;
     const result = quoteBundle(bundle, 3, who, new Date("2026-09-04"))!;
     const text = summaryText(input, result, {
-      name: bundle.name,
-      tier: describeTier(bundle, 3)!,
+      bundle: { name: bundle.name, tier: describeTier(bundle, 3)! },
       modes: bundleModePremiums(bundle, 3, { age: 40, sex: "F" }, new Date("2026-09-04"))!,
     });
     expect(text).toBe([
@@ -52,7 +69,10 @@ describe("summaryText", () => {
     const text = summaryText(
       bundleQuoteInput(bundle, 1, who)!,
       quoteBundle(bundle, 1, who, new Date("2026-09-04"))!,
-      { name: bundle.name, tier: describeTier(bundle, 1)!, modes: bundleModePremiums(bundle, 1, { age: 20, sex: "M" }, new Date("2026-09-04"))! },
+      {
+        bundle: { name: bundle.name, tier: describeTier(bundle, 1)! },
+        modes: bundleModePremiums(bundle, 1, { age: 20, sex: "M" }, new Date("2026-09-04"))!,
+      },
     );
     expect(text).toContain("- รายเดือน: 321 บาท (ต่ำกว่าขั้นต่ำ 1,000 บาท)");
   });

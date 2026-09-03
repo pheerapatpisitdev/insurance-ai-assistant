@@ -13,6 +13,7 @@ import { BUNDLE_PREFIX } from "@/components/PlanSelect";
 import { QuoteResultPanel } from "@/components/QuoteResultPanel";
 import { ExpiryBanner } from "@/components/ExpiryBanner";
 import { summaryText } from "@/lib/summary";
+import { quoteModePremiums } from "@/calc/mode-premiums";
 
 /** Life Protect+ 100 paid to age 99 is the plan agents quote most, so start there. */
 const INITIAL: FormState = {
@@ -122,16 +123,21 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [input, bundle, state.tier, state.age, state.sex, state.mode],
   );
+  // Every plan quotes all three instalments, not only the one the picker is showing.
   const modePremiums = useMemo(
-    () => (bundle && who ? bundleModePremiums(bundle, state.tier, { age: who.age, sex: who.sex }) : undefined),
+    () => {
+      if (bundle) return who ? bundleModePremiums(bundle, state.tier, { age: who.age, sex: who.sex }) : undefined;
+      return input ? quoteModePremiums(input) : undefined;
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bundle, state.tier, state.age, state.sex],
+    [bundle, state.tier, state.age, state.sex, input],
   );
   const summary = useMemo(
     () => (input && result
-      ? summaryText(input, result, bundle && modePremiums
-        ? { name: bundle.name, tier: describeTier(bundle, state.tier) ?? "", modes: modePremiums }
-        : undefined)
+      ? summaryText(input, result, {
+        bundle: bundle ? { name: bundle.name, tier: describeTier(bundle, state.tier) ?? "" } : undefined,
+        modes: modePremiums,
+      })
       : ""),
     [input, result, bundle, state.tier, modePremiums],
   );

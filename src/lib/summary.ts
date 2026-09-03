@@ -9,11 +9,19 @@ const sexTh = (s: "M" | "F") => (s === "M" ? "ชาย" : "หญิง");
 export interface SummaryBundle {
   name: string;
   tier: string;
-  /** every payment mode priced, since a bundle does not ask the customer to pick one first */
-  modes: ModePremium[];
 }
 
-export function summaryText(input: QuoteInput, result: QuoteResult, bundle?: SummaryBundle): string {
+export interface SummaryOptions {
+  bundle?: SummaryBundle;
+  /**
+   * Every payment mode priced. The customer asks what it costs a year and what it costs a
+   * month in the same breath, so all three are quoted rather than only the one on screen.
+   */
+  modes?: ModePremium[];
+}
+
+export function summaryText(input: QuoteInput, result: QuoteResult, options: SummaryOptions = {}): string {
+  const { bundle, modes } = options;
   const lines: string[] = [];
   if (bundle) lines.push(`ชุด${bundle.name} — ${bundle.tier}`);
   lines.push(result.items[0]?.name ?? `${result.meta.planName} ${input.variant}`);
@@ -47,9 +55,9 @@ export function summaryText(input: QuoteInput, result: QuoteResult, bundle?: Sum
       lines.push(`- อายุ ${db.beforeAge} ปีขึ้นไป: ${db.sumFrom.toLocaleString("en-US")} บาท`);
     }
   }
-  if (bundle) {
+  if (modes) {
     lines.push("เบี้ยประกันที่ต้องชำระ");
-    for (const m of bundle.modes) {
+    for (const m of modes) {
       const note = m.belowMinimum ? ` (ต่ำกว่าขั้นต่ำ ${result.meta.minMonthlyTotal.toLocaleString("en-US")} บาท)` : "";
       lines.push(`- ${PAY_MODE_LABEL[m.mode]}: ${formatBaht(m.total)} บาท${note}`);
     }
@@ -57,9 +65,9 @@ export function summaryText(input: QuoteInput, result: QuoteResult, bundle?: Sum
     lines.push(`รวมเบี้ยต่องวด (${PAY_MODE_LABEL[input.mode]}): ${formatBaht(result.totalModal)} บาท`);
     lines.push(`รวมเบี้ยรายปี: ${formatBaht(result.totalAnnual)} บาท`);
   }
-  // A bundle marks the monthly minimum beside the figure it belongs to, so the warning would repeat it.
+  // The mode list marks the monthly minimum beside the figure it belongs to, so the warning would repeat it.
   for (const w of result.warnings) {
-    if (bundle && w.code === "MIN_MONTHLY") continue;
+    if (modes && w.code === "MIN_MONTHLY") continue;
     lines.push(`⚠ ${w.message}`);
   }
   return lines.join("\n");
