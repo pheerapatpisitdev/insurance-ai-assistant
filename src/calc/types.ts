@@ -137,6 +137,8 @@ export interface QuoteItem {
   name: string;
   /** sum assured, or plan amount for plan riders */
   amount: number;
+  /** optional replacement for the formatted amount (e.g. payer description) */
+  amountLabel?: string;
   /** satang; 0 when not eligible/excluded */
   annual: number;
   modal: number;

@@ -1,0 +1,49 @@
+{
+  "planCode": "ISHIELD",
+  "base": {
+    "ageMin": 0, "ageMax": 56, "saMin": 100000, "saMax": 5000000, "premiumBasis": true,
+    "ageMaxByVariant": { "WLCI05": 52, "WLCI10": 51, "WLCI15": 56, "WLCI20": 52 }
+  },
+  "minMonthlyTotal": 1000,
+  "riders": {
+    "PB": {
+      "name": "สัญญาเพิ่มเติมพีบี (ผู้ชำระเบี้ย)",
+      "ageMin": 0, "ageMax": 70,
+      "payer": { "ageMin": 20, "ageMax": 70 }
+    },
+    "AP": {
+      "name": "สัญญาเพิ่มเติมอุบัติเหตุ (AP)",
+      "ageMin": 0, "ageMax": 60,
+      "saMin": 100000, "saMaxMultipleOfBase": 5, "saMaxCap": 10000000,
+      "juvenile": { "ageMax": 15, "saMaxMultipleOfBase": 2, "saMaxCap": 1000000 }
+    },
+    "ECARE": {
+      "name": "สัญญาเพิ่มเติมอุบัติเหตุ (ECARE)",
+      "ageMin": 16, "ageMax": 60,
+      "saMin": 100000, "saMaxMultipleOfBase": 5, "saMaxCap": 10000000
+    },
+    "MEB": {
+      "name": "สัญญาเพิ่มเติมค่ารักษาพยาบาล (MEB)",
+      "ageMin": 6, "ageMax": 65,
+      "planMaxByAge": [
+        { "ageMax": 10, "planMax": 500 },
+        { "ageMax": 15, "planMax": 1000 },
+        { "ageMax": 65, "planMax": 5000 }
+      ]
+    },
+    "PLS": {
+      "name": "สัญญาเพิ่มเติม PLS",
+      "ageMin": 20, "ageMax": 59,
+      "saMin": 300000, "saMaxMultipleOfBase": 5
+    }
+  },
+  "combined": [
+    {
+      "code": "AP_ECARE_5X",
+      "riders": ["AP", "ECARE"],
+      "maxMultipleOfBase": 5,
+      "cap": 10000000,
+      "message": "AP+ECARE เกินกว่าที่กำหนด"
+    }
+  ]
+}
