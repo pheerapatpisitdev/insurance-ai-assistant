@@ -20,6 +20,16 @@ export function summaryText(input: QuoteInput, result: QuoteResult): string {
     const value = it.eligible ? `${formatBaht(it.modal)} บาท` : (it.message ?? "-");
     lines.push(`- ${it.name} ${amount}: ${value}`);
   }
+  const db = result.deathBenefit;
+  if (db) {
+    lines.push("ผลประโยชน์กรณีเสียชีวิต");
+    if (db.alreadyPastAge) {
+      lines.push(`- ทุกช่วงอายุ: ${db.sumFrom.toLocaleString("en-US")} บาท`);
+    } else {
+      lines.push(`- ก่อนอายุ ${db.beforeAge} ปี: ${db.sumBefore.toLocaleString("en-US")} บาท`);
+      lines.push(`- อายุ ${db.beforeAge} ปีขึ้นไป: ${db.sumFrom.toLocaleString("en-US")} บาท`);
+    }
+  }
   lines.push(`รวมเบี้ยต่องวด (${PAY_MODE_LABEL[input.mode]}): ${formatBaht(result.totalModal)} บาท`);
   lines.push(`รวมเบี้ยรายปี: ${formatBaht(result.totalAnnual)} บาท`);
   for (const w of result.warnings) lines.push(`⚠ ${w.message}`);

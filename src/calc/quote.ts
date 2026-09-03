@@ -1,4 +1,4 @@
-import type { Availability, PlanRates, QuoteInput, QuoteItem, QuoteResult, RiderInput, Warning } from "./types";
+import type { Availability, BasePackage, DeathBenefit, PlanRates, QuoteInput, QuoteItem, PlanRules, QuoteResult, RiderInput, Warning } from "./types";
 import { getPlan, productLabel } from "./plans/registry";
 import { basePremium, type BasePremiumResult } from "./base-premium";
 import { sumAssuredFromPremium } from "./sa-from-premium";
@@ -228,6 +228,27 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
 
   return {
     items, totalAnnual, totalModal, warnings, availability, sumAssured: sa,
+    deathBenefit: deathBenefitFor(rules, pkg, input.age, sa),
     meta: { planName: rates.planName, version: rates.version, expiresOn: rates.expiresOn, expired },
+  };
+}
+
+/**
+ * Excel สรุปผลประโยชน์ K7/K8: the sum assured is payable on death at any time, and death
+ * before the anniversary at `extraDeathBenefitBeforeAge` pays an extra `booster × sum
+ * assured` on top. An insured already at that age gets the plain sum assured only.
+ */
+function deathBenefitFor(
+  rules: PlanRules, pkg: BasePackage | undefined, age: number, sa: number,
+): DeathBenefit | undefined {
+  const beforeAge = rules.base.extraDeathBenefitBeforeAge;
+  if (beforeAge === undefined || sa <= 0) return undefined;
+  const booster = pkg?.booster ?? 0;
+  const alreadyPastAge = age >= beforeAge;
+  return {
+    beforeAge,
+    sumBefore: alreadyPastAge ? sa : sa + Math.round(sa * booster),
+    sumFrom: sa,
+    alreadyPastAge,
   };
 }

@@ -12,7 +12,8 @@
     "saExactVariants": [
       "WLF99HX",
       "WLF99HX#7"
-    ]
+    ],
+    "extraDeathBenefitBeforeAge": 60
   },
   "minMonthlyTotal": 1000,
   "riders": {

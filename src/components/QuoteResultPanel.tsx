@@ -42,6 +42,29 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured }: {
         <div className="mt-1 text-sm text-emerald-800">รวมเบี้ยรายปี {formatBaht(result.totalAnnual)} บาท</div>
       </div>
 
+      {result.deathBenefit && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+          <div className="font-medium text-slate-700">ผลประโยชน์กรณีเสียชีวิต</div>
+          {result.deathBenefit.alreadyPastAge ? (
+            <div className="mt-1 flex justify-between gap-3">
+              <span className="text-slate-600">ทุกช่วงอายุ</span>
+              <span className="font-semibold tabular-nums">{result.deathBenefit.sumFrom.toLocaleString("en-US")} บาท</span>
+            </div>
+          ) : (
+            <>
+              <div className="mt-1 flex justify-between gap-3">
+                <span className="text-slate-600">เสียชีวิตก่อนอายุ {result.deathBenefit.beforeAge} ปี</span>
+                <span className="font-semibold tabular-nums">{result.deathBenefit.sumBefore.toLocaleString("en-US")} บาท</span>
+              </div>
+              <div className="mt-0.5 flex justify-between gap-3">
+                <span className="text-slate-600">อายุ {result.deathBenefit.beforeAge} ปีขึ้นไป</span>
+                <span className="font-semibold tabular-nums">{result.deathBenefit.sumFrom.toLocaleString("en-US")} บาท</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <WarningList warnings={result.warnings} />
       <CopySummaryButton text={summary} />
     </section>

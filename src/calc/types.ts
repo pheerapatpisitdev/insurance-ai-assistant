@@ -204,6 +204,11 @@ export interface PlanRules {
     saMinByVariant?: Record<string, number>;
     /** packages that accept exactly their minimum and nothing else */
     saExactVariants?: string[];
+    /**
+     * Death before the policy anniversary at this age pays an extra multiple of the sum
+     * assured on top of it (ไลฟ์ โพรเทค+: the package's booster, 0.5 or 1).
+     */
+    extraDeathBenefitBeforeAge?: number;
   };
   minMonthlyTotal: number;
   riders: Record<string, RiderRule>;
@@ -274,6 +279,17 @@ export interface Availability {
   needsPayer?: boolean;
   reason?: string;
 }
+export interface DeathBenefit {
+  /** the age at which the extra amount stops */
+  beforeAge: number;
+  /** payable on death before that age */
+  sumBefore: number;
+  /** payable from that age onward */
+  sumFrom: number;
+  /** true when the insured is already at or past that age, so only sumFrom applies */
+  alreadyPastAge: boolean;
+}
+
 export interface QuoteResult {
   items: QuoteItem[];
   /** satang */
@@ -283,5 +299,7 @@ export interface QuoteResult {
   availability: Availability[];
   /** sum assured actually used (derived when basis is "premium") */
   sumAssured: number;
+  /** the plan's death benefit, when it steps down at a given age */
+  deathBenefit?: DeathBenefit;
   meta: { planName: string; version: string; expiresOn: string; expired: boolean };
 }

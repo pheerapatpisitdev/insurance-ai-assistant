@@ -139,3 +139,36 @@ describe("quote (ไลฟ์ โพรเทค+)", () => {
     expect(r.totalModal).toBeGreaterThan(0);
   });
 });
+
+describe("death benefit (ไลฟ์ โพรเทค+)", () => {
+  const lpp = {
+    planCode: "LIFEPROTECT", age: 35, sex: "M" as const, mode: "annual" as const, sumAssured: 1_000_000, riders: [],
+  };
+
+  it("+100 pays double before 60 and the sum assured from 60 (Excel K7/K8)", () => {
+    const r = quote({ ...lpp, variant: "WLF99H" });
+    expect(r.deathBenefit).toEqual({ beforeAge: 60, sumBefore: 2_000_000, sumFrom: 1_000_000, alreadyPastAge: false });
+  });
+
+  it("+50 adds half the sum assured before 60", () => {
+    const r = quote({ ...lpp, variant: "WLF99L" });
+    expect(r.deathBenefit).toEqual({ beforeAge: 60, sumBefore: 1_500_000, sumFrom: 1_000_000, alreadyPastAge: false });
+  });
+
+  it("an insured already 60 or older gets the sum assured only", () => {
+    const r = quote({ ...lpp, variant: "WLF99H", age: 60 });
+    expect(r.deathBenefit).toEqual({ beforeAge: 60, sumBefore: 1_000_000, sumFrom: 1_000_000, alreadyPastAge: true });
+  });
+
+  it("matches the shipped workbook: age 45, +100, sum assured 500,000", () => {
+    const r = quote({ ...lpp, variant: "WLF19H", age: 45, sex: "F", sumAssured: 500_000 });
+    expect(r.deathBenefit).toMatchObject({ sumBefore: 1_000_000, sumFrom: 500_000 });
+  });
+
+  it("plans without a stepped death benefit report none", () => {
+    expect(quote({ planCode: "PLB", variant: "PLB12", age: 35, sex: "M", mode: "annual", sumAssured: 1_000_000, riders: [] }).deathBenefit)
+      .toBeUndefined();
+    expect(quote({ planCode: "ISMART", variant: "W80F06", age: 44, sex: "F", mode: "annual", sumAssured: 1_000_000, riders: [] }).deathBenefit)
+      .toBeUndefined();
+  });
+});
