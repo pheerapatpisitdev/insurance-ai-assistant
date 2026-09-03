@@ -1,6 +1,6 @@
 import type { QuoteInput, QuoteResult } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
-import type { ModePremium } from "@/calc/bundles/quote";
+import type { ModePremium } from "@/calc/mode-premiums";
 import { formatBaht } from "@/calc/money";
 
 const sexTh = (s: "M" | "F") => (s === "M" ? "ชาย" : "หญิง");
@@ -62,6 +62,5 @@ export function summaryText(input: QuoteInput, result: QuoteResult, bundle?: Sum
     if (bundle && w.code === "MIN_MONTHLY") continue;
     lines.push(`⚠ ${w.message}`);
   }
-  lines.push(`(ตารางเบี้ย ${result.meta.version})`);
   return lines.join("\n");
 }

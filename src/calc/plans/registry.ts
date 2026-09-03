@@ -17,6 +17,8 @@ export interface PlanBundle {
   planLabel?: string;
   /** rider codes in display order */
   riderOrder: string[];
+  /** what to quote when nobody picks a term; falls back to the first variant */
+  defaultVariant?: string;
   variantLabels: Record<string, string>;
 }
 
@@ -33,7 +35,7 @@ export function productLabel(pkg: BasePackage): string | undefined {
 }
 
 /** The three W-family plans share a rider order and take their variant labels from the package table. */
-function wFamily(code: string, rates: unknown, rules: unknown, planLabel?: string): Record<string, PlanBundle> {
+function wFamily(code: string, rates: unknown, rules: unknown, planLabel?: string, defaultVariant?: string): Record<string, PlanBundle> {
   const r = rates as PlanRates;
   const packages = r.base.packages ?? [];
   // ไลฟ์ โพรเทค+ sells the same payment terms under two products, so the term alone would
@@ -44,6 +46,7 @@ function wFamily(code: string, rates: unknown, rules: unknown, planLabel?: strin
       rates: r,
       rules: rules as PlanRules,
       planLabel,
+      defaultVariant,
       riderOrder: ["PB", "WP", "AP", "ECARE", "MEX", "MEB", "DCI", "PLS", "CPR", "HIC", "IHU", "RRSS", "CI123"],
       variantLabels: Object.fromEntries(packages.map((p) => [
         p.code,
@@ -60,10 +63,10 @@ const PLANS: Record<string, PlanBundle> = {
     rules: plbRules as unknown as PlanRules,
     riderOrder: ["AP", "ECARE", "MEB"],
     variantLabels: {
-      PLB05: "PLB05 (ชำระเบี้ย 5 ปี)",
-      PLB10: "PLB10 (ชำระเบี้ย 10 ปี)",
-      PLB12: "PLB12 (ชำระเบี้ย 12 ปี)",
-      PLB15: "PLB15 (ชำระเบี้ย 15 ปี)",
+      PLB05: "Protection Life (ชำระเบี้ย 5 ปี)",
+      PLB10: "Protection Life (ชำระเบี้ย 10 ปี)",
+      PLB12: "Protection Life (ชำระเบี้ย 12 ปี)",
+      PLB15: "Protection Life (ชำระเบี้ย 15 ปี)",
     },
   },
   ISHIELD: {
@@ -80,7 +83,8 @@ const PLANS: Record<string, PlanBundle> = {
   },
   ...wFamily("ISMART", ismartRates, ismartRules, "iSmart 80/6"),
   ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules, "Life Treasure"),
-  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect+ 50 / 100"),
+  // Life Protect+ 100 paid to age 99 is the one agents quote most, so it is the default here too.
+  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect+ 50 / 100", "WLF99H"),
 };
 
 /** Display order for the plan picker; anything not listed follows in definition order. */

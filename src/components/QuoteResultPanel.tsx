@@ -1,5 +1,5 @@
 import type { QuoteResult, PayMode } from "@/calc/types";
-import type { ModePremium } from "@/calc/bundles/quote";
+import type { ModePremium } from "@/calc/mode-premiums";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { WarningList } from "./WarningList";
