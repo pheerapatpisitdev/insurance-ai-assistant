@@ -87,10 +87,14 @@ describe("quote (ไลฟ์เทรเชอร์)", () => {
     expect(r.items[0].eligible).toBe(true);
     expect(r.availability.find((a) => a.code === "AP")!.saMax).toBe(3_000_000);
   });
-  it("warns below the 10,000,000 minimum", () => {
-    expect(quote({ ...lt, sumAssured: 1_000_000 }).warnings).toContainEqual(
+  it("a sum assured below the 10,000,000 minimum voids the quote (Excel F19/H19)", () => {
+    const r = quote({ ...lt, sumAssured: 1_000_000, riders: [{ code: "AP", sumAssured: 300_000 }] });
+    expect(r.warnings).toContainEqual(
       { level: "error", code: "BASE_SA_MIN", message: "จำนวนเงินเอาประกันภัยขั้นต่ำ 10,000,000 บาท" },
     );
+    expect(r.sumAssured).toBe(0);
+    expect(r.items[0]).toMatchObject({ eligible: false, message: "ไม่คุ้มครอง" });
+    expect(r.totalModal).toBe(0);
   });
 });
 

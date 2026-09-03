@@ -33,8 +33,12 @@ function resolveSumAssured(
     if (maxMsg && saMax !== undefined && sa > saMax) { warnings.push(maxMsg); return 0; }
     return sa;
   }
-  if (exact ? input.sumAssured !== saMin : input.sumAssured < saMin) warnings.push(minMsg);
+  const belowMin = exact ? input.sumAssured !== saMin : input.sumAssured < saMin;
+  if (belowMin) warnings.push(minMsg);
   if (maxMsg && saMax !== undefined && input.sumAssured > saMax) warnings.push(maxMsg);
+  // Plans that void the quote for an un-issuable base plan do the same for a sum assured below
+  // the package minimum (Excel F19 → "ไม่คุ้มครอง", total 0). PLB/iShield only warn.
+  if (belowMin && rates.base.packages) return 0;
   return input.sumAssured;
 }
 

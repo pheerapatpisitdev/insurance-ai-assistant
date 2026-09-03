@@ -315,6 +315,16 @@ def w_write(plan):
             ws[f"D{base+18}"] = "ประเทศไทย"
         ws[f"D{base+13}"] = r.get("RRSS")
         ws[f"D{base+14}"] = r.get("CI123")
+        # The app always quotes occupation class 1. Some shipped workbooks carry class 4 in a
+        # rider's class cell (ไลฟ์เทรเชอร์ has 4 for โรคร้ายโซชิลด์), which multiplies by 1.5.
+        for off in (1, 2, 3, 4, 5, 6, 11, 13):
+            ws[f"E{base+off}"] = 1
+        # ไลฟ์เทรเชอร์'s CI 123 formulas read '[3]Rate CI 123' — an external workbook LibreOffice cannot
+        # open. The same table exists as a sheet inside the file, so rewrite the link to that sheet.
+        for row in ws.iter_rows(min_row=26, max_row=36, min_col=37, max_col=41):  # AK..AO
+            for c in row:
+                if isinstance(c.value, str) and "[3]Rate CI 123" in c.value:
+                    c.value = c.value.replace("'[3]Rate CI 123'", "'Rate CI 123'")
     return write
 
 
