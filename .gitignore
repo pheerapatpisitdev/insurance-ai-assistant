@@ -1,6 +1,14 @@
-node_modules/
-.next/
+/node_modules
+/.next/
+/out/
+/build
+/coverage
 .env*
+.vercel
 .DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
 # ไฟล์ Excel ของบริษัท (ใหญ่และเป็นข้อมูลภายใน) ไม่เก็บใน git
 ไฟล์คำนวน/
