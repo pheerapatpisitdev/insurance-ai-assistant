@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { quote } from "@/calc/quote";
 import { getPlan, listPlans } from "@/calc/plans/registry";
@@ -88,7 +89,10 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
-      <h1 className="mb-1 text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
+      <div className="mb-1 flex items-baseline justify-between">
+        <h1 className="text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
+        <Link href="/chat" className="text-sm text-slate-500 underline">ถาม AI</Link>
+      </div>
       <p className="mb-4 text-sm text-slate-500">{plan.planLabel ?? plan.rates.planName} · ตารางเบี้ย {plan.rates.version}</p>
       <ExpiryBanner expired={result?.meta.expired ?? false} expiresOn={plan.rates.expiresOn} version={plan.rates.version} />
       <div className="grid gap-6 md:grid-cols-2">
