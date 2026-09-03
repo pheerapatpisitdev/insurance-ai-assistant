@@ -193,6 +193,8 @@ type QuoteResult = {
 4. ปุ่มคัดลอกสรุป, แถบหมดอายุ, ขัดเกลา UI
 5. Deploy Vercel
 
+Deployed: https://insurance-ai-assistant-pheerapatpisit.vercel.app (2026-09-03, auto-deploys from `main`)
+
 ## 10. สิ่งที่ผู้ใช้ต้องช่วย
 - ตรวจทานไฟล์ `data/rules/<plan>.json` ทุกแบบ ว่ากฎตรงกับที่สอนตัวแทน
 - ตรวจกรณีทดสอบที่ LibreOffice ให้ค่าน่าสงสัย ใน Excel จริง (ถ้ามี)
