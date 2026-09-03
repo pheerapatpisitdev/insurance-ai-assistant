@@ -50,7 +50,7 @@ export function quoteBundle(
     warnings: [...result.warnings, {
       level: "error",
       code: "BUNDLE_INCOMPLETE",
-      message: `ชุด${bundle.name} ${bundle.tierLabel} ${tierNo} ใช้กับกรณีนี้ไม่ได้`,
+      message: `ชุด${bundle.name} — ${describeTier(bundle, tierNo)} ใช้กับกรณีนี้ไม่ได้`,
     }],
   };
 }
@@ -74,16 +74,11 @@ export function bundleAgeRange(bundle: Bundle): { min: number; max: number } {
   return { min, max: Math.max(min, max) };
 }
 
-const fmt = (n: number) => n.toLocaleString("en-US");
-
 /**
- * The tier as it reads in the picker — "แผน 3 — หลัก 200,000 / DCI 2,800,000". Sums are
- * spelled out rather than hidden behind a tier number, so the agent picks by what is covered.
+ * The tier as it reads in the picker. Tiers are named for what the family ends up with
+ * rather than numbered, so the agent and the customer pick by the same words; the sums
+ * behind the name are itemised in the quote itself.
  */
 export function describeTier(bundle: Bundle, tierNo: number): string | undefined {
-  const tier = bundle.tiers.find((t) => t.no === tierNo);
-  if (!tier) return undefined;
-  const parts = [`หลัก ${fmt(tier.sumAssured)}`];
-  for (const r of tier.riders) parts.push(`${r.code} ${fmt(r.sumAssured ?? r.plan ?? 0)}`);
-  return `${bundle.tierLabel} ${tierNo} — ${parts.join(" / ")}`;
+  return bundle.tiers.find((t) => t.no === tierNo)?.name;
 }

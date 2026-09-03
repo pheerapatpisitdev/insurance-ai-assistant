@@ -5,7 +5,7 @@ import { getPlan, listPlans } from "@/calc/plans/registry";
 import { baseAgeRange, packageSeq, requiredRiders } from "@/calc/rules";
 import type { QuoteInput, RiderInput } from "@/calc/types";
 import { getBundle, listBundles } from "@/calc/bundles/registry";
-import { bundleAgeRange, bundleQuoteInput, quoteBundle } from "@/calc/bundles/quote";
+import { bundleAgeRange, bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
 import { QuoteForm, type FormState } from "@/components/QuoteForm";
 import { BundleForm } from "@/components/BundleForm";
 import { BUNDLE_PREFIX } from "@/components/PlanSelect";
@@ -116,7 +116,7 @@ export default function Home() {
   );
   const summary = useMemo(
     () => (input && result
-      ? summaryText(input, result, bundle ? { name: bundle.name, tier: `${bundle.tierLabel} ${state.tier}` } : undefined)
+      ? summaryText(input, result, bundle ? { name: bundle.name, tier: describeTier(bundle, state.tier) ?? "" } : undefined)
       : ""),
     [input, result, bundle, state.tier],
   );

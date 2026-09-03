@@ -308,6 +308,8 @@ export interface QuoteResult {
 /** One sellable step of a bundle: every sum assured in it is fixed. */
 export interface BundleTier {
   no: number;
+  /** what the tier is sold as, e.g. "มรดก 3 ล้าน" — the agency's wording, not a sum */
+  name: string;
   sumAssured: number;
   riders: RiderInput[];
 }
@@ -321,7 +323,5 @@ export interface Bundle {
   name: string;
   planCode: string;
   variant: string;
-  /** what a tier is called on screen, e.g. "แผน" → "แผน 3" */
-  tierLabel: string;
   tiers: BundleTier[];
 }

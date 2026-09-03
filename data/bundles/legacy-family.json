@@ -3,10 +3,10 @@
   "name": "มรดกเพื่อครอบครัว",
   "planCode": "LIFEPROTECT",
   "variant": "WLF99H",
-  "tierLabel": "แผน",
   "tiers": [
     {
       "no": 1,
+      "name": "มรดก 1 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {
@@ -17,6 +17,7 @@
     },
     {
       "no": 2,
+      "name": "มรดก 2 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {
@@ -27,6 +28,7 @@
     },
     {
       "no": 3,
+      "name": "มรดก 3 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {
@@ -37,6 +39,7 @@
     },
     {
       "no": 4,
+      "name": "มรดก 4 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {
@@ -47,6 +50,7 @@
     },
     {
       "no": 5,
+      "name": "มรดก 5 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {
@@ -57,6 +61,7 @@
     },
     {
       "no": 6,
+      "name": "มรดก 6 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {
@@ -67,6 +72,7 @@
     },
     {
       "no": 7,
+      "name": "มรดก 7 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {
@@ -77,6 +83,7 @@
     },
     {
       "no": 8,
+      "name": "มรดก 8 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {
@@ -87,6 +94,7 @@
     },
     {
       "no": 9,
+      "name": "มรดก 9 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {
@@ -97,6 +105,7 @@
     },
     {
       "no": 10,
+      "name": "มรดก 10 ล้าน",
       "sumAssured": 200000,
       "riders": [
         {

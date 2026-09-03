@@ -71,7 +71,7 @@ describe("quoteBundle", () => {
     expect(incomplete).toEqual({
       level: "error",
       code: "BUNDLE_INCOMPLETE",
-      message: "ชุดมรดกเพื่อครอบครัว แผน 1 ใช้กับกรณีนี้ไม่ได้",
+      message: "ชุดมรดกเพื่อครอบครัว — มรดก 1 ล้าน ใช้กับกรณีนี้ไม่ได้",
     });
     // the base plan still quotes at 66, so only DCI explains the refusal — keep that row visible
     const dci = result.items.find((i) => i.code === "DCI")!;
@@ -105,9 +105,17 @@ describe("bundleAgeRange", () => {
 describe("describeTier", () => {
   const bundle = getBundle("LEGACY_FAMILY")!;
 
-  it("spells out every sum assured the tier locks in", () => {
-    expect(describeTier(bundle, 3)).toBe("แผน 3 — หลัก 200,000 / DCI 2,800,000");
-    expect(describeTier(bundle, 10)).toBe("แผน 10 — หลัก 200,000 / DCI 9,800,000");
+  it("names the tier by the legacy it leaves", () => {
+    expect(describeTier(bundle, 1)).toBe("มรดก 1 ล้าน");
+    expect(describeTier(bundle, 3)).toBe("มรดก 3 ล้าน");
+    expect(describeTier(bundle, 10)).toBe("มรดก 10 ล้าน");
+  });
+
+  it("names every tier after what it actually covers", () => {
+    for (const tier of bundle.tiers) {
+      const covered = tier.sumAssured + tier.riders.reduce((sum, r) => sum + (r.sumAssured ?? 0), 0);
+      expect(tier.name).toBe(`มรดก ${covered / 1_000_000} ล้าน`);
+    }
   });
 
   it("has nothing to describe for a tier the bundle does not sell", () => {
