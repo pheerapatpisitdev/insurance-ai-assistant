@@ -38,7 +38,7 @@ export function BundleForm({ state, bundle, plans, bundles, onChange, onPlanChan
       />
 
       <p className="text-xs text-slate-500">
-        ชุดนี้กำหนดทุนและสัญญาเพิ่มเติมไว้แล้ว แก้ไม่ได้ — ดูรายการที่คุ้มครองได้จากตารางเบี้ยด้านขวา
+        ชุดนี้กำหนดทุนและสัญญาเพิ่มเติมไว้แล้ว แก้ไม่ได้ — ดูรายการที่คุ้มครองได้จากตารางด้านขวา
       </p>
     </form>
   );

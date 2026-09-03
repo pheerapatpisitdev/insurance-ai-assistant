@@ -140,7 +140,8 @@ export default function Home() {
         </div>
         <div className="rounded-lg border bg-white p-4">
           {result && input ? (
-            <QuoteResultPanel result={result} mode={input.mode} summary={summary} derivedSumAssured={input.basis === "premium"} />
+            <QuoteResultPanel result={result} mode={input.mode} summary={summary}
+                              derivedSumAssured={input.basis === "premium"} linePremiums={!bundle} />
           ) : (
             <p className="text-sm text-slate-500">กรอกอายุและจำนวนเงินเอาประกันภัย (หรือเบี้ยที่ต้องการ) เพื่อคำนวณ</p>
           )}
