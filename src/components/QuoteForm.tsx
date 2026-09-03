@@ -2,13 +2,15 @@
 import type { Availability, PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import type { PlanBundle } from "@/calc/plans/registry";
-import { baseAgeRange } from "@/calc/rules";
-import { RiderRow, type PayerState } from "./RiderRow";
+import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "@/calc/rules";
+import { RiderRow, type PayerState, type SubSelect } from "./RiderRow";
 
 export interface RiderState {
   enabled: boolean;
   value: number | "";
   option: string;
+  territory: string;
+  coverage: string;
 }
 export interface FormState {
   planCode: string;
@@ -23,7 +25,7 @@ export interface FormState {
   riders: Record<string, RiderState>;
 }
 
-export const EMPTY_RIDER: RiderState = { enabled: false, value: "", option: "" };
+export const EMPTY_RIDER: RiderState = { enabled: false, value: "", option: "", territory: "ประเทศไทย", coverage: "Full Coverage" };
 
 export interface QuoteFormProps {
   state: FormState;
@@ -39,8 +41,25 @@ export function QuoteForm({ state, plan, plans, availability, onChange }: QuoteF
   const set = (patch: Partial<FormState>) => onChange({ ...state, ...patch });
   const setRider = (code: string, patch: Partial<RiderState>) =>
     onChange({ ...state, riders: { ...state.riders, [code]: { ...(state.riders[code] ?? EMPTY_RIDER), ...patch } } });
-  const ageRange = baseAgeRange(plan.rules, state.variant);
-  const { saMin, saMax, premiumBasis } = plan.rules.base;
+  const ageRange = baseAgeRange(plan.rules, state.variant, plan.rates);
+  const { min: saMin, max: saMax, exact: saExact } = baseSumAssuredLimits(plan.rules, state.variant);
+  const { premiumBasis } = plan.rules.base;
+  const required = new Set(requiredRiders(plan.rules, packageSeq(state.variant, plan.rates)));
+
+  /** iHealthy Ultra needs territory and coverage on top of the plan; PLS needs a sum assured beside its variant. */
+  const riderExtras = (code: string): { subSelects: SubSelect[]; optionNeedsSumAssured: boolean } => {
+    const rider = plan.rates.riders[code];
+    if (rider?.kind === "fixedByKeyAge" && rider.keyBy === "ihealthyUltra") {
+      return {
+        optionNeedsSumAssured: false,
+        subSelects: [
+          { key: "territory", label: "อาณาเขต", choices: Object.keys(rider.territory ?? {}) },
+          { key: "coverage", label: "ลักษณะความคุ้มครอง", choices: Object.keys(rider.coverage ?? {}) },
+        ],
+      };
+    }
+    return { subSelects: [], optionNeedsSumAssured: rider?.kind === "ratePerThousandByVariantAgeSex" };
+  };
 
   return (
     <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
@@ -102,7 +121,9 @@ export function QuoteForm({ state, plan, plans, availability, onChange }: QuoteF
           <input type="number" inputMode="numeric" min={saMin} max={saMax} step={10000} className="mt-1 w-full rounded border px-3 py-2"
                  value={state.sumAssured} onChange={(e) => set({ sumAssured: num(e.target.value) })} />
           <p className="mt-1 text-xs text-slate-500">
-            ขั้นต่ำ {saMin.toLocaleString("en-US")} บาท{saMax ? ` สูงสุด ${saMax.toLocaleString("en-US")} บาท` : ""}
+            {saExact
+              ? `แพ็กเกจนี้กำหนดทุน ${saMin.toLocaleString("en-US")} บาทเท่านั้น`
+              : `ขั้นต่ำ ${saMin.toLocaleString("en-US")} บาท${saMax ? ` สูงสุด ${saMax.toLocaleString("en-US")} บาท` : ""}`}
           </p>
         </div>
       )}
@@ -111,6 +132,7 @@ export function QuoteForm({ state, plan, plans, availability, onChange }: QuoteF
         <p className="text-sm font-medium">สัญญาเพิ่มเติม</p>
         {availability.map((a) => {
           const r = state.riders[a.code] ?? EMPTY_RIDER;
+          const extras = riderExtras(a.code);
           return (
             <RiderRow
               key={a.code}
@@ -118,10 +140,16 @@ export function QuoteForm({ state, plan, plans, availability, onChange }: QuoteF
               enabled={r.enabled}
               value={r.value}
               option={r.option}
+              territory={r.territory}
+              coverage={r.coverage}
               payer={state.payer}
+              optionNeedsSumAssured={extras.optionNeedsSumAssured}
+              subSelects={extras.subSelects}
+              required={required.has(a.code)}
               onToggle={(enabled) => setRider(a.code, { enabled })}
               onChange={(value) => setRider(a.code, { value })}
               onOptionChange={(option) => setRider(a.code, { option })}
+              onSubSelectChange={(key, v) => setRider(a.code, { [key]: v })}
               onPayerChange={(payer) => set({ payer })}
             />
           );

@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { quote } from "@/calc/quote";
 import { getPlan, listPlans } from "@/calc/plans/registry";
+import { packageSeq, requiredRiders } from "@/calc/rules";
 import type { QuoteInput, RiderInput } from "@/calc/types";
 import { QuoteForm, type FormState } from "@/components/QuoteForm";
 import { QuoteResultPanel } from "@/components/QuoteResultPanel";
@@ -21,15 +22,21 @@ function toQuoteInput(s: FormState, eligibleCodes: Set<string>): QuoteInput | nu
   const premiumBasis = s.basis === "premium" && plan.rules.base.premiumBasis;
   if (premiumBasis ? s.targetPremium === "" : s.sumAssured === "") return null;
   const riders: RiderInput[] = [];
+  const required = new Set(requiredRiders(plan.rules, packageSeq(s.variant, plan.rates)));
   for (const code of plan.riderOrder) {
     const r = s.riders[code];
-    if (!r?.enabled || !eligibleCodes.has(code)) continue;
-    const kind = plan.rates.riders[code]?.kind;
-    if (kind === "payorBenefit") riders.push({ code, option: r.option || undefined });
-    else if (r.value === "") continue;
-    else if (kind === "fixedByAgePlan") riders.push({ code, plan: r.value });
-    else if (kind === "ratePerThousandByVariantAgeSex") riders.push({ code, option: r.option || undefined, sumAssured: r.value });
-    else riders.push({ code, sumAssured: r.value });
+    const on = (r?.enabled ?? false) || required.has(code);
+    if (!on || !eligibleCodes.has(code)) continue;
+    const rider = plan.rates.riders[code];
+    const kind = rider?.kind;
+    const value = r?.value ?? "";
+    const option = r?.option || undefined;
+    if (kind === "payorBenefit" || kind === "premiumBased") riders.push({ code, option });
+    else if (kind === "fixedByKeyAge") riders.push({ code, option, territory: r?.territory, coverage: r?.coverage });
+    else if (value === "") continue;
+    else if (kind === "fixedByAgePlan") riders.push({ code, plan: value });
+    else if (kind === "ratePerThousandByVariantAgeSex") riders.push({ code, option, sumAssured: value });
+    else riders.push({ code, sumAssured: value });
   }
   return {
     planCode: s.planCode, variant: s.variant, age: s.age, sex: s.sex, mode: s.mode,

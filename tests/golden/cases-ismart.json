@@ -1,0 +1,16 @@
+{
+  "planCode": "ISMART",
+  "explicit": [
+    { "variant": "W80F06", "age": 44, "sex": "F", "mode": "annual",  "sumAssured": 1000000, "riders": {} },
+    { "variant": "W80F06", "age": 44, "sex": "F", "mode": "annual",  "sumAssured": 1000000, "riders": { "WP": "FIT", "MEB": 500, "CI123": 5000000 } },
+    { "variant": "W80F06", "age": 44, "sex": "F", "mode": "monthly", "sumAssured": 1000000, "payer": { "age": 44, "sex": "F" }, "riders": { "PB": "BEYOND", "IHU": ["PLATINUM", "ประเทศไทย", "Full Coverage"] } },
+    { "variant": "W80F06", "age": 30, "sex": "M", "mode": "semi",    "sumAssured": 500000,  "riders": { "AP": 1000000, "ECARE": 500000, "DCI": 500000, "RRSS": "แผน XL" } },
+    { "variant": "W80F06", "age": 25, "sex": "M", "mode": "annual",  "sumAssured": 150000,  "riders": { "CPR": 300000, "HIC": 3000, "PLS": ["PLS10", 300000] } },
+    { "variant": "W80F06", "age": 65, "sex": "F", "mode": "annual",  "sumAssured": 2000000, "riders": { "MEX": "6200", "CI123": 1000000 } },
+    { "variant": "W80F06", "age": 50, "sex": "M", "mode": "monthly", "sumAssured": 300000,  "riders": { "IHU": ["DIAMOND", "ทั่วโลก", "Deductible"], "RRSS": "แผน S" } },
+    { "variant": "W80F06", "age": 40, "sex": "F", "mode": "annual",  "sumAssured": 1000000, "riders": { "CI123": 100000 } },
+    { "variant": "W80F06", "age": 44, "sex": "F", "mode": "annual",  "sumAssured": 1000000, "payer": { "age": 44, "sex": "F" }, "riders": { "PB": "FIT", "WP": "FIT" } },
+    { "variant": "W80F06", "age": 60, "sex": "M", "mode": "semi",    "sumAssured": 5000000, "riders": { "AP": 10000000, "CPR": 5000000 } }
+  ],
+  "random": { "seed": 20260905, "count": 50 }
+}

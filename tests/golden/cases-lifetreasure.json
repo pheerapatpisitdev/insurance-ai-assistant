@@ -1,0 +1,14 @@
+{
+  "planCode": "LIFETREASURE",
+  "explicit": [
+    { "variant": "H99F18A", "age": 30, "sex": "M", "mode": "annual",  "sumAssured": 20000000, "riders": {} },
+    { "variant": "H99F18A", "age": 30, "sex": "M", "mode": "annual",  "sumAssured": 20000000, "riders": { "WP": "FIT", "MEX": "1200", "IHU": ["PLATINUM", "ประเทศไทย", "Deductible"], "RRSS": "แผน S", "CI123": 1000000 } },
+    { "variant": "H99F06A", "age": 10, "sex": "F", "mode": "monthly", "sumAssured": 10000000, "payer": { "age": 40, "sex": "F" }, "riders": { "PB": "FIT", "AP": 3000000, "MEB": 500, "IHU": ["BRONZE", "ประเทศไทย", "Full Coverage"] } },
+    { "variant": "H99F12A", "age": 0,  "sex": "M", "mode": "semi",    "sumAssured": 10000000, "payer": { "age": 25, "sex": "M" }, "riders": { "PB": "BEYOND", "CPR": 300000, "RRSS": "แผน M" } },
+    { "variant": "H99F18A", "age": 70, "sex": "F", "mode": "annual",  "sumAssured": 10000000, "riders": { "WP": "BEYOND", "MEX": "6200", "CI123": 2000000 } },
+    { "variant": "H99F06A", "age": 45, "sex": "M", "mode": "annual",  "sumAssured": 10000000, "riders": { "DCI": 1000000, "PLS": ["PLS15", 1000000], "ECARE": 500000, "AP": 1000000 } },
+    { "variant": "H99F12A", "age": 55, "sex": "F", "mode": "monthly", "sumAssured": 10000000, "riders": { "CPR": 1000000, "HIC": 10000 } },
+    { "variant": "H99F18A", "age": 30, "sex": "M", "mode": "annual",  "sumAssured": 1000000,  "riders": {} }
+  ],
+  "random": { "seed": 20260906, "count": 52 }
+}

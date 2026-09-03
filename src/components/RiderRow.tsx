@@ -5,32 +5,50 @@ export interface PayerState {
   age: number | "";
   sex: Sex;
 }
+export interface SubSelect {
+  key: "territory" | "coverage";
+  label: string;
+  choices: string[];
+}
 export interface RiderRowProps {
   availability: Availability;
   enabled: boolean;
   value: number | "";
   option: string;
+  territory: string;
+  coverage: string;
   payer: PayerState;
+  /** the option select also needs a sum assured (PLS) */
+  optionNeedsSumAssured: boolean;
+  /** extra selects shown after the option (iHealthy Ultra) */
+  subSelects: SubSelect[];
+  /** the package requires this rider: ticked and locked */
+  required: boolean;
   onToggle: (enabled: boolean) => void;
   onChange: (value: number | "") => void;
   onOptionChange: (option: string) => void;
+  onSubSelectChange: (key: SubSelect["key"], value: string) => void;
   onPayerChange: (payer: PayerState) => void;
 }
 
 const num = (v: string): number | "" => (v === "" ? "" : Number(v));
 
-export function RiderRow({ availability: a, enabled, value, option, payer, onToggle, onChange, onOptionChange, onPayerChange }: RiderRowProps) {
+export function RiderRow({
+  availability: a, enabled, value, option, territory, coverage, payer, optionNeedsSumAssured, subSelects, required,
+  onToggle, onChange, onOptionChange, onSubSelectChange, onPayerChange,
+}: RiderRowProps) {
   const disabled = !a.eligible;
   const isPlan = a.plans !== undefined;
+  const showSumAssured = !a.needsPayer && !isPlan && (!a.options || optionNeedsSumAssured);
   return (
     <div className={`rounded-md border p-3 ${disabled ? "border-slate-200 bg-slate-100 text-slate-400" : "border-slate-300 bg-white"}`}>
       <label className="flex items-center gap-3">
-        <input type="checkbox" className="h-4 w-4" checked={enabled && !disabled} disabled={disabled} onChange={(e) => onToggle(e.target.checked)} />
-        <span className="flex-1 text-sm font-medium">{a.name}</span>
+        <input type="checkbox" className="h-4 w-4" checked={(enabled || required) && !disabled} disabled={disabled || required} onChange={(e) => onToggle(e.target.checked)} />
+        <span className="flex-1 text-sm font-medium">{a.name}{required && <span className="ml-2 text-xs text-sky-700">(บังคับตามแพ็กเกจ)</span>}</span>
         <span className="text-xs">{a.ageRange}</span>
       </label>
       {disabled && <p className="mt-1 text-xs">{a.reason}</p>}
-      {!disabled && enabled && (
+      {!disabled && (enabled || required) && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {a.options && (
             <select className="rounded border px-2 py-1 text-sm" value={option} onChange={(e) => onOptionChange(e.target.value)}>
@@ -40,6 +58,13 @@ export function RiderRow({ availability: a, enabled, value, option, payer, onTog
               ))}
             </select>
           )}
+          {subSelects.map((sub) => (
+            <select key={sub.key} className="rounded border px-2 py-1 text-sm" title={sub.label}
+                    value={sub.key === "territory" ? territory : coverage}
+                    onChange={(e) => onSubSelectChange(sub.key, e.target.value)}>
+              {sub.choices.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          ))}
           {a.needsPayer ? (
             <>
               <span className="text-xs text-slate-600">ผู้ชำระเบี้ย</span>
@@ -60,7 +85,7 @@ export function RiderRow({ availability: a, enabled, value, option, payer, onTog
                 <option key={p} value={p}>{p.toLocaleString("en-US")}</option>
               ))}
             </select>
-          ) : (
+          ) : showSumAssured ? (
             <>
               <input
                 type="number" inputMode="numeric" min={a.saMin} max={a.saMax} step={1000}
@@ -68,10 +93,10 @@ export function RiderRow({ availability: a, enabled, value, option, payer, onTog
                 value={value} onChange={(e) => onChange(num(e.target.value))}
               />
               <span className="text-xs text-slate-500">
-                {a.saMin?.toLocaleString("en-US")} – {a.saMax?.toLocaleString("en-US")}
+                {a.saMin?.toLocaleString("en-US")}{a.saMax !== undefined ? ` – ${a.saMax.toLocaleString("en-US")}` : ""}
               </span>
             </>
-          )}
+          ) : null}
         </div>
       )}
     </div>

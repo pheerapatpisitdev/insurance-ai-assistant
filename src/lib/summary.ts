@@ -14,7 +14,7 @@ export function summaryText(input: QuoteInput, result: QuoteResult): string {
   for (const it of result.items) {
     const amount = it.amountLabel
       ? it.amountLabel
-      : it.code === "MEB"
+      : it.code === "MEB" || it.code === "MEX"
         ? `แผน ${it.amount.toLocaleString("en-US")}`
         : `ทุน ${it.amount.toLocaleString("en-US")} บาท`;
     const value = it.eligible ? `${formatBaht(it.modal)} บาท` : (it.message ?? "-");

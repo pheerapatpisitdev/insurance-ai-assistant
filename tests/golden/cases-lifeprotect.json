@@ -1,0 +1,16 @@
+{
+  "planCode": "LIFEPROTECT",
+  "explicit": [
+    { "variant": "WLF19H",    "age": 45, "sex": "F", "mode": "annual",  "sumAssured": 500000,  "riders": {} },
+    { "variant": "WLF19H",    "age": 45, "sex": "F", "mode": "annual",  "sumAssured": 500000,  "riders": { "WP": "BEYOND", "IHU": ["BRONZE", "ประเทศไทย", "Full Coverage"], "CI123": 1000000 } },
+    { "variant": "WLF99HX",   "age": 30, "sex": "M", "mode": "annual",  "sumAssured": 50000,   "riders": { "IHU": ["PLATINUM", "ทั่วโลก", "Full Coverage"] } },
+    { "variant": "WLF99HX#7", "age": 30, "sex": "M", "mode": "monthly", "sumAssured": 50000,   "riders": { "MEX": "6200", "AP": 100000 } },
+    { "variant": "WLF09L",    "age": 5,  "sex": "F", "mode": "semi",    "sumAssured": 150000,  "payer": { "age": 35, "sex": "M" }, "riders": { "PB": "FIT", "AP": 300000, "RRSS": "แผน S" } },
+    { "variant": "WLF99L",    "age": 80, "sex": "M", "mode": "annual",  "sumAssured": 150000,  "riders": {} },
+    { "variant": "WLF09H",    "age": 60, "sex": "M", "mode": "annual",  "sumAssured": 2000000, "riders": { "CPR": 3000000, "HIC": 5000, "DCI": 500000 } },
+    { "variant": "WLF99H",    "age": 25, "sex": "F", "mode": "monthly", "sumAssured": 1000000, "riders": { "WP": "FIT", "PLS": ["PLS05", 300000], "MEB": 2000, "ECARE": 300000 } },
+    { "variant": "WLF99HX",   "age": 30, "sex": "M", "mode": "annual",  "sumAssured": 50000,   "riders": {} },
+    { "variant": "WLF19L",    "age": 45, "sex": "F", "mode": "annual",  "sumAssured": 100000,  "riders": {} }
+  ],
+  "random": { "seed": 20260907, "count": 50 }
+}
