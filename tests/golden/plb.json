@@ -1,0 +1,1713 @@
+{
+ "source": "libreoffice-recalc",
+ "sourceFile": "Protection Life (PLB)_A2026-1_01042026.xlsx",
+ "cases": [
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 35,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 1000000,
+    "riders": {}
+   },
+   "expected": {
+    "modal": {
+     "BASE": 5470,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 5470,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 5470,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 35,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 500000,
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 492.3,
+     "AP": 270,
+     "ECARE": 292.5,
+     "MEB": 117
+    },
+    "annual": {
+     "BASE": 5470,
+     "AP": 3000,
+     "ECARE": 3250,
+     "MEB": 1300
+    },
+    "totalModal": 1171.8,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 20,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "riders": {
+     "AP": 100000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 436.8,
+     "AP": 156,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 840,
+     "AP": 300,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 592.8,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 59,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 25000000,
+    "riders": {
+     "AP": 10000000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 769500,
+     "AP": 30000,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 769500,
+     "AP": 30000,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 799500,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 45,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 349999,
+    "riders": {
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 167.89,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 675
+    },
+    "annual": {
+     "BASE": 1865.49,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 7500
+    },
+    "totalModal": 842.89,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 45,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 350000,
+    "riders": {
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 167.89,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 675
+    },
+    "annual": {
+     "BASE": 1865.5,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 7500
+    },
+    "totalModal": 842.89,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 30,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 499999,
+    "riders": {
+     "ECARE": 100000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1346.79,
+     "AP": 0,
+     "ECARE": 338,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 2589.99,
+     "AP": 0,
+     "ECARE": 650,
+     "MEB": "#N/A"
+    },
+    "totalModal": 1684.79,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 30,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 500000,
+    "riders": {
+     "ECARE": 100000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1216.8,
+     "AP": 0,
+     "ECARE": 338,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 2340,
+     "AP": 0,
+     "ECARE": 650,
+     "MEB": "#N/A"
+    },
+    "totalModal": 1554.8,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 58,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 699999,
+    "riders": {
+     "AP": 123456,
+     "ECARE": 234567
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 13873.98,
+     "AP": 370.36,
+     "ECARE": 1524.68,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 13873.98,
+     "AP": 370.36,
+     "ECARE": 1524.68,
+     "MEB": "#N/A"
+    },
+    "totalModal": 15769.02,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 58,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 700000,
+    "riders": {
+     "AP": 123456,
+     "ECARE": 234567
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 13874,
+     "AP": 370.36,
+     "ECARE": 1524.68,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 13874,
+     "AP": 370.36,
+     "ECARE": 1524.68,
+     "MEB": "#N/A"
+    },
+    "totalModal": 15769.04,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 40,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 999999,
+    "riders": {
+     "MEB": 2000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 690.29,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 234
+    },
+    "annual": {
+     "BASE": 7669.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 2600
+    },
+    "totalModal": 924.29,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 40,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "riders": {
+     "MEB": 2000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 645.3,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 234
+    },
+    "annual": {
+     "BASE": 7170,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 2600
+    },
+    "totalModal": 879.3,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 35,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 300000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 600000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1941,
+     "AP": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "ECARE": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 1941,
+     "AP": 3000,
+     "ECARE": 3900,
+     "MEB": "#N/A"
+    },
+    "totalModal": 1941,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 35,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 300000,
+    "riders": {}
+   },
+   "expected": {
+    "modal": {
+     "BASE": 99.09,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 1101,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 99.09,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 21,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 1234567,
+    "riders": {
+     "AP": 3456789,
+     "ECARE": 1000000,
+     "MEB": 3000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 2535.8,
+     "AP": 5392.59,
+     "ECARE": 3380,
+     "MEB": 2028
+    },
+    "annual": {
+     "BASE": 4876.53,
+     "AP": 10370.36,
+     "ECARE": 6500,
+     "MEB": 3900
+    },
+    "totalModal": 13336.39,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 49,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 499999,
+    "riders": {
+     "AP": 2499995,
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 4204.99,
+     "AP": 7499.98,
+     "ECARE": 0,
+     "MEB": 1500
+    },
+    "annual": {
+     "BASE": 4204.99,
+     "AP": 7499.98,
+     "ECARE": 0,
+     "MEB": 1500
+    },
+    "totalModal": 13204.97,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 52,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 1500000,
+    "riders": {
+     "AP": 100000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 11310,
+     "AP": 300,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 11310,
+     "AP": 300,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 11610,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 37,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 650000,
+    "riders": {
+     "ECARE": 100000,
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 2132,
+     "AP": 0,
+     "ECARE": 650,
+     "MEB": 1300
+    },
+    "annual": {
+     "BASE": 2132,
+     "AP": 0,
+     "ECARE": 650,
+     "MEB": 1300
+    },
+    "totalModal": 4082,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 58,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 3000000,
+    "riders": {
+     "AP": 2000000,
+     "ECARE": 500000,
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 73920,
+     "AP": 6000,
+     "ECARE": 3250,
+     "MEB": 10000
+    },
+    "annual": {
+     "BASE": 73920,
+     "AP": 6000,
+     "ECARE": 3250,
+     "MEB": 10000
+    },
+    "totalModal": 93170,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 40,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 400000,
+    "riders": {
+     "AP": 250000,
+     "ECARE": 300000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 152.64,
+     "AP": 67.5,
+     "ECARE": 175.5,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 1696,
+     "AP": 750,
+     "ECARE": 1950,
+     "MEB": "#N/A"
+    },
+    "totalModal": 395.64,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 59,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 699999,
+    "riders": {
+     "AP": 250000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 994.13,
+     "AP": 67.5,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 11045.98,
+     "AP": 750,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 1061.63,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 58,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 1500000,
+    "riders": {
+     "AP": 2000000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 2143.8,
+     "AP": 540,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 23820,
+     "AP": 6000,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 2683.8,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 56,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 1500000,
+    "riders": {
+     "ECARE": 1000000,
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 22860,
+     "AP": 0,
+     "ECARE": 6500,
+     "MEB": 10000
+    },
+    "annual": {
+     "BASE": 22860,
+     "AP": 0,
+     "ECARE": 6500,
+     "MEB": 10000
+    },
+    "totalModal": 39360,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 30,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 400000,
+    "riders": {
+     "AP": 2000000,
+     "MEB": 3000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1133.6,
+     "AP": 3120,
+     "ECARE": 0,
+     "MEB": 2028
+    },
+    "annual": {
+     "BASE": 2180,
+     "AP": 6000,
+     "ECARE": 0,
+     "MEB": 3900
+    },
+    "totalModal": 6281.6,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 24,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "riders": {
+     "MEB": 500
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 789.36,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 338
+    },
+    "annual": {
+     "BASE": 1518,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 650
+    },
+    "totalModal": 1127.36,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 41,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 700000,
+    "riders": {}
+   },
+   "expected": {
+    "modal": {
+     "BASE": 2849,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 2849,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 2849,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 26,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 1500000,
+    "riders": {
+     "AP": 7500000,
+     "ECARE": 1000000,
+     "MEB": 3000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 558.9,
+     "AP": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "ECARE": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "MEB": 351
+    },
+    "annual": {
+     "BASE": 6210,
+     "AP": 22500,
+     "ECARE": 6500,
+     "MEB": 3900
+    },
+    "totalModal": 909.9,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 49,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 699999,
+    "riders": {
+     "AP": 2000000,
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 5536.99,
+     "AP": 6000,
+     "ECARE": 0,
+     "MEB": 1500
+    },
+    "annual": {
+     "BASE": 5536.99,
+     "AP": 6000,
+     "ECARE": 0,
+     "MEB": 1500
+    },
+    "totalModal": 13036.99,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 31,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 20000000,
+    "riders": {}
+   },
+   "expected": {
+    "modal": {
+     "BASE": 8586,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 95400,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 8586,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 38,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 700000,
+    "riders": {
+     "AP": 2000000,
+     "ECARE": 500000,
+     "MEB": 2000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 434.7,
+     "AP": 540,
+     "ECARE": 292.5,
+     "MEB": 234
+    },
+    "annual": {
+     "BASE": 4830,
+     "AP": 6000,
+     "ECARE": 3250,
+     "MEB": 2600
+    },
+    "totalModal": 1501.2,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 54,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 349999,
+    "riders": {
+     "AP": 2000000,
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 3958.48,
+     "AP": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "ECARE": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "MEB": 10000
+    },
+    "annual": {
+     "BASE": 3958.48,
+     "AP": 6000,
+     "ECARE": 0,
+     "MEB": 10000
+    },
+    "totalModal": 13958.48,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 29,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 500000,
+    "riders": {
+     "MEB": 2000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1268.8,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 1352
+    },
+    "annual": {
+     "BASE": 2440,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 2600
+    },
+    "totalModal": 2620.8,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 26,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 300000,
+    "riders": {}
+   },
+   "expected": {
+    "modal": {
+     "BASE": 79.65,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 885,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 79.65,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 21,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "riders": {
+     "AP": 100000,
+     "ECARE": 300000,
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 308.7,
+     "AP": 27,
+     "ECARE": 175.5,
+     "MEB": 585
+    },
+    "annual": {
+     "BASE": 3430,
+     "AP": 300,
+     "ECARE": 1950,
+     "MEB": 6500
+    },
+    "totalModal": 1096.2,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 48,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 650000,
+    "riders": {
+     "AP": 500000,
+     "ECARE": 100000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 4225,
+     "AP": 1500,
+     "ECARE": 650,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 4225,
+     "AP": 1500,
+     "ECARE": 650,
+     "MEB": "#N/A"
+    },
+    "totalModal": 6375,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 28,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 1500000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 100000,
+     "MEB": 500
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 6390,
+     "AP": 3000,
+     "ECARE": 650,
+     "MEB": 650
+    },
+    "annual": {
+     "BASE": 6390,
+     "AP": 3000,
+     "ECARE": 650,
+     "MEB": 650
+    },
+    "totalModal": 10690,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 49,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 350000,
+    "riders": {
+     "MEB": 500
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 2943.5,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 750
+    },
+    "annual": {
+     "BASE": 2943.5,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 750
+    },
+    "totalModal": 3693.5,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 53,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 20000000,
+    "riders": {
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 165360,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 5200
+    },
+    "annual": {
+     "BASE": 318000,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 10000
+    },
+    "totalModal": 170560,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 36,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 1500000,
+    "riders": {
+     "MEB": 500
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 378,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 58.5
+    },
+    "annual": {
+     "BASE": 4200,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 650
+    },
+    "totalModal": 436.5,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 54,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 650000,
+    "riders": {
+     "AP": 250000,
+     "ECARE": 500000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1160.64,
+     "AP": 67.5,
+     "ECARE": 292.5,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 12896,
+     "AP": 750,
+     "ECARE": 3250,
+     "MEB": "#N/A"
+    },
+    "totalModal": 1520.64,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 35,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 349999,
+    "riders": {}
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1137.49,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 2187.49,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 1137.49,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 29,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 499999,
+    "riders": {
+     "AP": 250000,
+     "MEB": 3000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1390.99,
+     "AP": 390,
+     "ECARE": 0,
+     "MEB": 2028
+    },
+    "annual": {
+     "BASE": 2674.99,
+     "AP": 750,
+     "ECARE": 0,
+     "MEB": 3900
+    },
+    "totalModal": 3808.99,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 21,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 500000,
+    "riders": {
+     "AP": 500000,
+     "ECARE": 300000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 2005,
+     "AP": 1500,
+     "ECARE": 1950,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 2005,
+     "AP": 1500,
+     "ECARE": 1950,
+     "MEB": "#N/A"
+    },
+    "totalModal": 5455,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 57,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 699999,
+    "riders": {
+     "ECARE": 100000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 8931.98,
+     "AP": 0,
+     "ECARE": 650,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 8931.98,
+     "AP": 0,
+     "ECARE": 650,
+     "MEB": "#N/A"
+    },
+    "totalModal": 9581.98,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 30,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 500000,
+    "riders": {
+     "AP": 2500000,
+     "ECARE": 500000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1287,
+     "AP": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "ECARE": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 2475,
+     "AP": 7500,
+     "ECARE": 3250,
+     "MEB": "#N/A"
+    },
+    "totalModal": 1287,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 53,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 349999,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 100000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 4178.98,
+     "AP": 3000,
+     "ECARE": 650,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 4178.98,
+     "AP": 3000,
+     "ECARE": 650,
+     "MEB": "#N/A"
+    },
+    "totalModal": 7828.98,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 40,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 650000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 300000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 407.74,
+     "AP": 270,
+     "ECARE": 175.5,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 4530.5,
+     "AP": 3000,
+     "ECARE": 1950,
+     "MEB": "#N/A"
+    },
+    "totalModal": 853.24,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 28,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 650000,
+    "riders": {
+     "ECARE": 100000,
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1608.88,
+     "AP": 0,
+     "ECARE": 338,
+     "MEB": 3380
+    },
+    "annual": {
+     "BASE": 3094,
+     "AP": 0,
+     "ECARE": 650,
+     "MEB": 6500
+    },
+    "totalModal": 5326.88,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 53,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 699999,
+    "riders": {}
+   },
+   "expected": {
+    "modal": {
+     "BASE": 6887.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 6887.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": "#N/A"
+    },
+    "totalModal": 6887.99,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 44,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 499999,
+    "riders": {
+     "MEB": 500
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 4484.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 750
+    },
+    "annual": {
+     "BASE": 4484.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 750
+    },
+    "totalModal": 5234.99,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 56,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 350000,
+    "riders": {
+     "AP": 2000000,
+     "ECARE": 500000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 869.71,
+     "AP": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "ECARE": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 9663.5,
+     "AP": 6000,
+     "ECARE": 3250,
+     "MEB": "#N/A"
+    },
+    "totalModal": 869.71,
+    "monthlyMessage": "เบี้ยประกันภัยรายเดือนต่ำกว่า 1,000 บาท"
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 43,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 350000,
+    "riders": {
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 2989,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 7500
+    },
+    "annual": {
+     "BASE": 2989,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 7500
+    },
+    "totalModal": 10489,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 52,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 400000,
+    "riders": {
+     "ECARE": 500000,
+     "MEB": 4000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 3080,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEB": 8000
+    },
+    "annual": {
+     "BASE": 3080,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEB": 8000
+    },
+    "totalModal": 14330,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 32,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 1500000,
+    "riders": {
+     "ECARE": 1000000,
+     "MEB": 3000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 3681.6,
+     "AP": 0,
+     "ECARE": 3380,
+     "MEB": 2028
+    },
+    "annual": {
+     "BASE": 7080,
+     "AP": 0,
+     "ECARE": 6500,
+     "MEB": 3900
+    },
+    "totalModal": 9089.6,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB05",
+    "age": 22,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 349999,
+    "riders": {
+     "AP": 1749995,
+     "ECARE": 300000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 604.23,
+     "AP": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "ECARE": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก",
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 1161.99,
+     "AP": 5249.98,
+     "ECARE": 1950,
+     "MEB": "#N/A"
+    },
+    "totalModal": 604.23,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 29,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 20000000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 500000,
+     "MEB": 4000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 42800,
+     "AP": 3000,
+     "ECARE": 3250,
+     "MEB": 5200
+    },
+    "annual": {
+     "BASE": 42800,
+     "AP": 3000,
+     "ECARE": 3250,
+     "MEB": 5200
+    },
+    "totalModal": 54250,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 45,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 500000,
+    "riders": {
+     "AP": 500000,
+     "MEB": 4000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 1372.8,
+     "AP": 780,
+     "ECARE": 0,
+     "MEB": 3120
+    },
+    "annual": {
+     "BASE": 2640,
+     "AP": 1500,
+     "ECARE": 0,
+     "MEB": 6000
+    },
+    "totalModal": 5272.8,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB12",
+    "age": 46,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 699999,
+    "riders": {
+     "ECARE": 500000,
+     "MEB": 1000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 691.73,
+     "AP": 0,
+     "ECARE": 292.5,
+     "MEB": 135
+    },
+    "annual": {
+     "BASE": 7685.98,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEB": 1500
+    },
+    "totalModal": 1119.23,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB15",
+    "age": 42,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 499999,
+    "riders": {
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 2537.59,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 3900
+    },
+    "annual": {
+     "BASE": 4879.99,
+     "AP": 0,
+     "ECARE": 0,
+     "MEB": 7500
+    },
+    "totalModal": 6437.59,
+    "monthlyMessage": null
+   }
+  },
+  {
+   "input": {
+    "variant": "PLB10",
+    "age": 56,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 500000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 1000000
+    }
+   },
+   "expected": {
+    "modal": {
+     "BASE": 5462.6,
+     "AP": 1560,
+     "ECARE": 3380,
+     "MEB": 0
+    },
+    "annual": {
+     "BASE": 10505,
+     "AP": 3000,
+     "ECARE": 6500,
+     "MEB": "#N/A"
+    },
+    "totalModal": 10402.6,
+    "monthlyMessage": null
+   }
+  }
+ ]
+}

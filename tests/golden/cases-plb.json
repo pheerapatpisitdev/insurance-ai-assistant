@@ -1,0 +1,21 @@
+{
+  "planCode": "PLB",
+  "explicit": [
+    { "variant": "PLB12", "age": 35, "sex": "M", "mode": "annual",  "sumAssured": 1000000, "riders": {} },
+    { "variant": "PLB12", "age": 35, "sex": "M", "mode": "monthly", "sumAssured": 1000000, "riders": { "AP": 1000000, "ECARE": 500000, "MEB": 1000 } },
+    { "variant": "PLB12", "age": 20, "sex": "F", "mode": "semi",    "sumAssured": 300000,  "riders": { "AP": 100000 } },
+    { "variant": "PLB12", "age": 59, "sex": "M", "mode": "annual",  "sumAssured": 25000000,"riders": { "AP": 10000000 } },
+    { "variant": "PLB05", "age": 45, "sex": "F", "mode": "monthly", "sumAssured": 349999,  "riders": { "MEB": 5000 } },
+    { "variant": "PLB05", "age": 45, "sex": "F", "mode": "monthly", "sumAssured": 350000,  "riders": { "MEB": 5000 } },
+    { "variant": "PLB10", "age": 30, "sex": "M", "mode": "semi",    "sumAssured": 499999,  "riders": { "ECARE": 100000 } },
+    { "variant": "PLB10", "age": 30, "sex": "M", "mode": "semi",    "sumAssured": 500000,  "riders": { "ECARE": 100000 } },
+    { "variant": "PLB15", "age": 58, "sex": "F", "mode": "annual",  "sumAssured": 699999,  "riders": { "AP": 123456, "ECARE": 234567 } },
+    { "variant": "PLB15", "age": 58, "sex": "F", "mode": "annual",  "sumAssured": 700000,  "riders": { "AP": 123456, "ECARE": 234567 } },
+    { "variant": "PLB12", "age": 40, "sex": "M", "mode": "monthly", "sumAssured": 999999,  "riders": { "MEB": 2000 } },
+    { "variant": "PLB12", "age": 40, "sex": "M", "mode": "monthly", "sumAssured": 1000000, "riders": { "MEB": 2000 } },
+    { "variant": "PLB12", "age": 35, "sex": "M", "mode": "annual",  "sumAssured": 300000,  "riders": { "AP": 1000000, "ECARE": 600000 } },
+    { "variant": "PLB12", "age": 35, "sex": "F", "mode": "monthly", "sumAssured": 300000,  "riders": {} },
+    { "variant": "PLB05", "age": 21, "sex": "M", "mode": "semi",    "sumAssured": 1234567, "riders": { "AP": 3456789, "ECARE": 1000000, "MEB": 3000 } }
+  ],
+  "random": { "seed": 20260903, "count": 45 }
+}
