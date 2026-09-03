@@ -1,0 +1,35 @@
+{
+  "planCode": "PLB",
+  "base": { "ageMin": 20, "ageMax": 59, "saMin": 300000 },
+  "minMonthlyTotal": 1000,
+  "riders": {
+    "AP": {
+      "name": "สัญญาเพิ่มเติมอุบัติเหตุ (AP)",
+      "ageMin": 0, "ageMax": 60,
+      "saMin": 100000, "saMaxMultipleOfBase": 5, "saMaxCap": 10000000
+    },
+    "ECARE": {
+      "name": "สัญญาเพิ่มเติมอุบัติเหตุ (ECARE)",
+      "ageMin": 16, "ageMax": 60,
+      "saMin": 100000, "saMaxMultipleOfBase": 5, "saMaxCap": 10000000
+    },
+    "MEB": {
+      "name": "สัญญาเพิ่มเติมค่ารักษาพยาบาล (MEB)",
+      "ageMin": 6, "ageMax": 65,
+      "planMaxByAge": [
+        { "ageMax": 10, "planMax": 500 },
+        { "ageMax": 15, "planMax": 1000 },
+        { "ageMax": 65, "planMax": 5000 }
+      ]
+    }
+  },
+  "combined": [
+    {
+      "code": "AP_ECARE_5X",
+      "riders": ["AP", "ECARE"],
+      "maxMultipleOfBase": 5,
+      "cap": 10000000,
+      "message": "AP+ECARE เกิน 5 เท่าของสัญญาหลัก"
+    }
+  ]
+}
