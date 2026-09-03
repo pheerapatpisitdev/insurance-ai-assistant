@@ -33,6 +33,5 @@ export function summaryText(input: QuoteInput, result: QuoteResult): string {
   lines.push(`รวมเบี้ยต่องวด (${PAY_MODE_LABEL[input.mode]}): ${formatBaht(result.totalModal)} บาท`);
   lines.push(`รวมเบี้ยรายปี: ${formatBaht(result.totalAnnual)} บาท`);
   for (const w of result.warnings) lines.push(`⚠ ${w.message}`);
-  lines.push(`(ตารางเบี้ย ${result.meta.version})`);
   return lines.join("\n");
 }

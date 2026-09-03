@@ -139,7 +139,7 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   const planName = plan.planLabel ?? rates.planName;
   const baseName = pkg
     ? `${productLabel(pkg) ?? planName} — ${pkg.name}`
-    : `${planName} ${input.variant}`;
+    : plan.variantLabels[input.variant] ?? `${planName} ${input.variant}`;
   const ageRange = baseAgeRange(rules, input.variant, rates);
   const inAgeRange = input.age >= ageRange.min && input.age <= ageRange.max;
   const saLimits = baseSumAssuredLimits(rules, input.variant);

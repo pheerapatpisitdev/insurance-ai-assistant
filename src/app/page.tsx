@@ -93,8 +93,8 @@ export default function Home() {
         <h1 className="text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
         <Link href="/chat" className="text-sm text-slate-500 underline">ถาม AI</Link>
       </div>
-      <p className="mb-4 text-sm text-slate-500">{plan.planLabel ?? plan.rates.planName} · ตารางเบี้ย {plan.rates.version}</p>
-      <ExpiryBanner expired={result?.meta.expired ?? false} expiresOn={plan.rates.expiresOn} version={plan.rates.version} />
+      <p className="mb-4 text-sm text-slate-500">{plan.planLabel ?? plan.rates.planName}</p>
+      <ExpiryBanner expired={result?.meta.expired ?? false} expiresOn={plan.rates.expiresOn} />
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border bg-white p-4">
           <QuoteForm state={state} plan={plan} plans={listPlans()} availability={availability} onChange={setState} />

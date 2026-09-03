@@ -1,6 +1,5 @@
 import type { QuoteInput, QuoteResult } from "@/calc/types";
 import { cashValueHighlights, cashValueSchedule, maturityValue } from "@/calc/cash-value";
-import { getPlan } from "@/calc/plans/registry";
 
 const SEX_TH = { M: "ชาย", F: "หญิง" } as const;
 const MODE_NOUN = { annual: "รายปี", semi: "ราย 6 เดือน", monthly: "รายเดือน" } as const;
@@ -20,8 +19,7 @@ export function baht(satang: number): string {
  */
 export function quoteReply(input: QuoteInput, result: QuoteResult): string {
   const blocks: string[] = [];
-  // the label from the plan picker, so iShield reads "iShield 05 (ชำระเบี้ย 5 ปี)" not "WLCI05"
-  const planName = getPlan(input.planCode)?.variantLabels[input.variant] ?? result.items[0]?.name ?? result.meta.planName;
+  const planName = result.items[0]?.name ?? result.meta.planName;
 
   const head = [planName, `${SEX_TH[input.sex]} ${input.age} ปี · ทุน ${result.sumAssured.toLocaleString("en-US")} บาท`];
   blocks.push(head.join("\n"));
