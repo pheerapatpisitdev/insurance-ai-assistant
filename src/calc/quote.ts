@@ -18,6 +18,16 @@ function fmt(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+/**
+ * Premium-paying term in years. A "to age 99" package pays until that age, so the term
+ * depends on the insured's age (Excel: the package table's Payment Year cell is =99-age).
+ */
+function payTermFor(rates: PlanRates, variant: string, age: number): number {
+  const toAge = rates.base.payTermToAge?.[variant];
+  if (toAge !== undefined) return Math.max(0, toAge - age);
+  return rates.base.payTerm?.[variant] ?? 0;
+}
+
 /** Resolve the sum assured to quote on, emitting min/max warnings. Returns 0 when premium-basis SA is out of range (Excel D26). */
 function resolveSumAssured(
   input: QuoteInput, rates: PlanRates, saMin: number, saMax: number | undefined, exact: boolean, warnings: Warning[],
@@ -63,7 +73,7 @@ function riderPremium(
       if (!bp || !input.payer) return NOT_COVERED;
       const r = payorBenefitPremium(rates, code, {
         option: ri.option ?? "", insuredAge: input.age, payer: input.payer,
-        payTerm: rates.base.payTerm?.[input.variant] ?? 0, baseAnnual: bp.annual, mode: input.mode,
+        payTerm: payTermFor(rates, input.variant, input.age), baseAnnual: bp.annual, mode: input.mode,
       });
       if (!r) return undefined;
       return { ...r, name: rider.options[ri.option ?? ""]?.name, amountLabel: payerLabel(input) };
@@ -73,7 +83,7 @@ function riderPremium(
       if (rider.by === "payer" && !input.payer) return NOT_COVERED;
       const r = premiumBasedRiderPremium(rates, code, {
         option: ri.option ?? "", insuredAge: input.age, insuredSex: input.sex, payer: input.payer,
-        payTerm: rates.base.payTerm?.[input.variant] ?? 0, baseAnnual: bp.annual, mode: input.mode,
+        payTerm: payTermFor(rates, input.variant, input.age), baseAnnual: bp.annual, mode: input.mode,
       });
       if (!r) return undefined;
       return {

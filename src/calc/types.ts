@@ -99,6 +99,8 @@ export interface PlanRates {
     variants: string[];
     /** variant → premium-paying term in years (needed by premium-based riders) */
     payTerm?: Record<string, number>;
+    /** variant → the age premiums are paid to, when the term is "to age N" rather than fixed */
+    payTermToAge?: Record<string, number>;
     /** the W family sells packages: each variant carries its own issue-age range and label */
     packages?: BasePackage[];
     /** variant → sex → age → rate per 1,000 */
@@ -121,6 +123,11 @@ export interface BasePackage {
   seq: number;
   payTerm: number;
   rateKey: string;
+  /** set when the term runs to a fixed age instead of a fixed number of years */
+  payTermToAge?: number;
+  /** ไลฟ์ โพรเทค+ sells the same terms under two products; the booster tells them apart */
+  booster?: number;
+  productName?: string;
 }
 
 // ---------- data/rules/<plan>.json ----------

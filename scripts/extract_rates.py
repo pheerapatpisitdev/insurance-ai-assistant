@@ -287,7 +287,18 @@ def extract_w_family(plan_code, filename):
     }
 
     # --- packages: the plan's "variants" (Premium Payment Term table) ---
+    # ไลฟ์ โพรเทค+ sells the same payment terms under two products ("+50" and "+100"), so the
+    # workbook keys its package table on payment-term name + booster. Read that map, and read
+    # the Payment Year column as a *formula* because "ครบอายุ 99 ปี" is 99 − age, not a constant.
+    inp_f = openpyxl.load_workbook(src)["กรอกข้อมูล"]
     pkg_row = find_row(inp, "Premium Payment Term", col=1, first=40, last=110)
+    # The product map (Thai name, English name, booster) sits above the package table; stop
+    # before that table, whose own columns G and I would otherwise overwrite these entries.
+    boosters = {}
+    for r in range(55, pkg_row):
+        name, factor = cell(inp, r, 7), cell(inp, r, 9)
+        if isinstance(name, str) and isinstance(factor, (int, float)):
+            boosters[factor] = name.strip()
     plancode_to_term = {}
     for r in range(27, 40):
         code, term = cell(cal, r, 14), cell(cal, r, 15)
@@ -298,7 +309,9 @@ def extract_w_family(plan_code, filename):
         name, plancode = cell(inp, r, 1), cell(inp, r, 6)
         if not isinstance(name, str) or not isinstance(plancode, str) or plancode not in plancode_to_term:
             continue
-        packages.append({
+        booster = cell(inp, r, 9)
+        term_formula = inp_f.cell(r, 8).value
+        pkg = {
             "code": f"{plancode}#{len(packages)}" if any(p["plancode"] == plancode for p in packages) else plancode,
             "plancode": plancode,
             "name": name.strip(),
@@ -307,7 +320,17 @@ def extract_w_family(plan_code, filename):
             "seq": cell(inp, r, 5),
             "payTerm": cell(inp, r, 8),
             "rateKey": plancode_to_term[plancode],
-        })
+        }
+        if isinstance(term_formula, str) and term_formula.startswith("="):
+            # e.g. "=99-$C$5": the premium-paying term runs to a fixed age
+            digits = "".join(ch for ch in term_formula.split("-")[0] if ch.isdigit())
+            if digits:
+                pkg["payTermToAge"] = int(digits)
+        if isinstance(booster, (int, float)):
+            pkg["booster"] = booster
+            if booster in boosters:
+                pkg["productName"] = boosters[booster]
+        packages.append(pkg)
     assert packages, f"{plan_code}: no packages found"
 
     # --- base rates: Premium&Maturity header row 2 = '<termCode><sex>', sheet row = age + 6 ---
@@ -432,7 +455,8 @@ def extract_w_family(plan_code, filename):
         "base": {
             "variants": [p["code"] for p in packages],
             "packages": packages,
-            "payTerm": {p["code"]: p["payTerm"] for p in packages},
+            "payTerm": {p["code"]: p["payTerm"] for p in packages if "payTermToAge" not in p},
+            "payTermToAge": {p["code"]: p["payTermToAge"] for p in packages if "payTermToAge" in p},
             "rates": rates_by_variant,
         },
         "discount": {"thresholds": disc_thresholds, "byVariant": discount_by_variant},

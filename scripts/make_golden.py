@@ -284,6 +284,10 @@ def w_write(plan):
         ws["C6"] = SEX_TH[case["sex"]]
         ws["C7"] = MODE_TH[case["mode"]]
         ws["C14"] = pkg["name"]
+        # ไลฟ์ โพรเทค+ keys its package table on payment-term name + product, so the product
+        # selector has to be set too or an "L" package silently resolves to its "H" twin.
+        if pkg.get("productName"):
+            ws["C15"] = pkg["productName"]
         payer = case.get("payer")
         ws["C11"] = payer["age"] if payer else None
         ws["C12"] = SEX_TH[payer["sex"]] if payer else None
