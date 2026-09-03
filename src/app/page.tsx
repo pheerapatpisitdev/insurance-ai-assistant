@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { quote } from "@/calc/quote";
 import { getPlan, listPlans } from "@/calc/plans/registry";
 import { packageSeq, requiredRiders } from "@/calc/rules";
@@ -48,6 +48,28 @@ function toQuoteInput(s: FormState, eligibleCodes: Set<string>): QuoteInput | nu
   };
 }
 
+/**
+ * Records one usage event per settled quote, debounced so typing in a field does not
+ * produce a row per keystroke. Failures are ignored: logging must never affect a quote.
+ */
+function useQuoteEventLog(input: QuoteInput | null, result: ReturnType<typeof quote> | null) {
+  useEffect(() => {
+    if (!input || !result || result.totalModal <= 0) return;
+    const timer = setTimeout(() => {
+      void fetch("/api/quote-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planCode: input.planCode, variant: input.variant, age: input.age, sex: input.sex, mode: input.mode,
+          riderCodes: input.riders.map((r) => r.code), totalModal: result.totalModal,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [input, result]);
+}
+
 export default function Home() {
   const [state, setStateRaw] = useState<FormState>(INITIAL);
   const plan = getPlan(state.planCode)!;
@@ -75,6 +97,7 @@ export default function Home() {
   const input = useMemo(() => toQuoteInput(state, eligibleCodes), [state, eligibleCodes]);
   const result = useMemo(() => (input ? quote(input) : null), [input]);
   const summary = useMemo(() => (input && result ? summaryText(input, result) : ""), [input, result]);
+  useQuoteEventLog(input, result);
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
