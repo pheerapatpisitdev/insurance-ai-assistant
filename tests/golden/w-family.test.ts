@@ -47,7 +47,10 @@ for (const [file, planCode] of [["ismart", "ISMART"], ["lifetreasure", "LIFETREA
         const by = Object.fromEntries(r.items.map((it) => [it.code === c.input.variant ? "BASE" : it.code, it]));
         expect(r.sumAssured, "sum assured used").toBe(exp.sumAssured);
         expect(by.BASE.modal, "BASE modal").toBe(satang(exp.modal.BASE));
-        expect(by.BASE.annual, "BASE annual").toBe(satang(exp.annual.BASE));
+        // When the workbook shows "ไม่คุ้มครอง" the customer-facing rows and the total are 0,
+        // even though the hidden Cal sheet still holds a number for the base premium.
+        if (exp.sumAssured > 0) expect(by.BASE.annual, "BASE annual").toBe(satang(exp.annual.BASE));
+        else expect(by.BASE.annual, "BASE annual when not covered").toBe(0);
         for (const code of CODES) expect(by[code]?.modal ?? 0, `${code} modal`).toBe(satang(exp.modal[code]));
         // CI 123: the workbook shows the main benefit and three endorsements on four rows
         const ciRows = r.items.filter((it) => it.code.startsWith("CI123"));

@@ -6,7 +6,6 @@ import { SignOutButton } from "./SignOutButton";
 const TABS = [
   { href: "/admin/ai", label: "AI" },
   { href: "/admin/knowledge", label: "คลังความรู้" },
-  { href: "/admin/usage", label: "สถิติ" },
   { href: "/admin/rules", label: "กฎประกัน" },
 ];
 
