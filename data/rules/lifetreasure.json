@@ -153,14 +153,6 @@
         "WP"
       ],
       "message": "กรุณาเลือก WP หรือ PB อย่างใดอย่างหนึ่ง"
-    },
-    {
-      "code": "CPR_DCI",
-      "riders": [
-        "CPR",
-        "DCI"
-      ],
-      "message": "ไม่สามารถซื้อคู่กับ DCI ได้"
     }
   ],
   "requires": [
@@ -181,6 +173,13 @@
         "IHU"
       ],
       "message": "ไม่สามารถซื้อคู่กับ MEX, MEB หรือ iHealthy Ultra"
+    },
+    {
+      "rider": "CPR",
+      "with": [
+        "DCI"
+      ],
+      "message": "ไม่สามารถซื้อคู่กับ DCI ได้"
     }
   ],
   "packages": []

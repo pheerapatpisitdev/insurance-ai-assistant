@@ -46,6 +46,18 @@ export function disabledRiders(rules: PlanRules, seq: number | undefined): Set<s
   return out;
 }
 
+/** A sum assured the chosen package pins a rider to, if any. */
+export function packageExactSumAssured(rules: PlanRules, seq: number | undefined, code: string): { amount: number; message: string } | undefined {
+  if (seq === undefined) return undefined;
+  for (const p of rules.packages ?? []) {
+    const amount = p.seq.includes(seq) ? p.exactSumAssured?.[code] : undefined;
+    if (amount !== undefined) {
+      return { amount, message: p.exactMessage ?? `ต้องระบุทุน ${code} ${amount.toLocaleString("en-US")} บาทเท่านั้น` };
+    }
+  }
+  return undefined;
+}
+
 /** Riders the chosen package makes mandatory. */
 export function requiredRiders(rules: PlanRules, seq: number | undefined): string[] {
   if (seq === undefined) return [];

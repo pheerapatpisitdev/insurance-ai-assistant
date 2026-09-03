@@ -13,20 +13,31 @@ import lifeprotectRules from "../../../data/rules/lifeprotect.json";
 export interface PlanBundle {
   rates: PlanRates;
   rules: PlanRules;
+  /** overrides the workbook's Thai name in the plan picker */
+  planLabel?: string;
   /** rider codes in display order */
   riderOrder: string[];
   variantLabels: Record<string, string>;
 }
 
 /** The three W-family plans share a rider order and take their variant labels from the package table. */
-function wFamily(code: string, rates: unknown, rules: unknown): Record<string, PlanBundle> {
+function wFamily(code: string, rates: unknown, rules: unknown, planLabel?: string): Record<string, PlanBundle> {
   const r = rates as PlanRates;
+  const packages = r.base.packages ?? [];
+  // ไลฟ์ โพรเทค+ sells the same payment terms under two products, so the term alone would
+  // show up twice with identical text. Put the product in front when there is more than one.
+  const products = new Set(packages.map((p) => p.productName).filter(Boolean));
+  const short = (name: string) => name.replace(/\s*\(ไม่มีเงินปันผล\)\s*/, "").trim();
   return {
     [code]: {
       rates: r,
       rules: rules as PlanRules,
+      planLabel,
       riderOrder: ["PB", "WP", "AP", "ECARE", "MEX", "MEB", "DCI", "PLS", "CPR", "HIC", "IHU", "RRSS", "CI123"],
-      variantLabels: Object.fromEntries((r.base.packages ?? []).map((p) => [p.code, p.name])),
+      variantLabels: Object.fromEntries(packages.map((p) => [
+        p.code,
+        products.size > 1 && p.productName ? `${short(p.productName)} · ${p.name}` : p.name,
+      ])),
     },
   };
 }
@@ -56,11 +67,11 @@ const PLANS: Record<string, PlanBundle> = {
   },
   ...wFamily("ISMART", ismartRates, ismartRules),
   ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules),
-  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules),
+  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "ไลฟ์ โพรเทค+ 50 / 100 (ไม่มีเงินปันผล)"),
 };
 
 export function listPlans(): { code: string; name: string }[] {
-  return Object.entries(PLANS).map(([code, p]) => ({ code, name: p.rates.planName }));
+  return Object.entries(PLANS).map(([code, p]) => ({ code, name: p.planLabel ?? p.rates.planName }));
 }
 
 export function getPlan(code: string): PlanBundle | undefined {

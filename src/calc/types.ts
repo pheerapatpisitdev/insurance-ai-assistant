@@ -182,6 +182,9 @@ export interface PackageRule {
   require?: string[];
   disabledMessage?: string;
   requiredMessage?: string;
+  /** rider code → the only sum assured this package accepts for it */
+  exactSumAssured?: Record<string, number>;
+  exactMessage?: string;
 }
 export interface PlanRules {
   planCode: string;

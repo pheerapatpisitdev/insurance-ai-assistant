@@ -191,8 +191,8 @@
    "expected": {
     "sumAssured": 150000,
     "modal": {
-     "BASE": 1965.6,
-     "PB": 27.9,
+     "BASE": 1762.8,
+     "PB": 25.02,
      "WP": 0,
      "AP": 468,
      "ECARE": 0,
@@ -210,9 +210,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 3780
+     "BASE": 3390
     },
-    "totalModal": 2811.98,
+    "totalModal": 2606.3,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -412,7 +412,7 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 3200
+     "BASE": 3000
     },
     "totalModal": 0,
     "totalIsText": true,
@@ -519,8 +519,8 @@
    "expected": {
     "sumAssured": 150000,
     "modal": {
-     "BASE": 2250,
-     "PB": 164.92,
+     "BASE": 2025,
+     "PB": 148.43,
      "WP": 0,
      "AP": 0,
      "ECARE": 0,
@@ -538,9 +538,9 @@
      "CI123_3": 404
     },
     "annual": {
-     "BASE": 2250
+     "BASE": 2025
     },
-    "totalModal": 8565.87,
+    "totalModal": 8324.38,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -833,7 +833,7 @@
    "expected": {
     "sumAssured": 150000,
     "modal": {
-     "BASE": 2055,
+     "BASE": 1845,
      "PB": 0,
      "WP": 0,
      "AP": 900,
@@ -852,9 +852,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 2055
+     "BASE": 1845
     },
-    "totalModal": 27020,
+    "totalModal": 26810,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -879,8 +879,8 @@
    "expected": {
     "sumAssured": 2000000,
     "modal": {
-     "BASE": 9880,
-     "PB": 9614.22,
+     "BASE": 9568,
+     "PB": 9310.62,
      "WP": 0,
      "AP": 0,
      "ECARE": 0,
@@ -898,9 +898,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 19000
+     "BASE": 18400
     },
-    "totalModal": 23654.22,
+    "totalModal": 23038.62,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1327,7 +1327,7 @@
    "expected": {
     "sumAssured": 2000000,
     "modal": {
-     "BASE": 13320,
+     "BASE": 12744,
      "PB": 0,
      "WP": 0,
      "AP": 0,
@@ -1346,9 +1346,9 @@
      "CI123_3": 22
     },
     "annual": {
-     "BASE": 148000
+     "BASE": 141600
     },
-    "totalModal": 17913.66,
+    "totalModal": 17337.66,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1500,8 +1500,8 @@
    "expected": {
     "sumAssured": 300000,
     "modal": {
-     "BASE": 3000,
-     "PB": 1615.5,
+     "BASE": 2790,
+     "PB": 1502.41,
      "WP": 0,
      "AP": 300,
      "ECARE": 0,
@@ -1519,9 +1519,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 3000
+     "BASE": 2790
     },
-    "totalModal": 6269.5,
+    "totalModal": 5946.41,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1546,8 +1546,8 @@
    "expected": {
     "sumAssured": 150000,
     "modal": {
-     "BASE": 2098.2,
-     "PB": 1600.71,
+     "BASE": 1950,
+     "PB": 1487.65,
      "WP": 0,
      "AP": 156,
      "ECARE": 0,
@@ -1565,9 +1565,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 4035
+     "BASE": 3750
     },
-    "totalModal": 11105.27,
+    "totalModal": 10844.01,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1685,8 +1685,8 @@
    "expected": {
     "sumAssured": 1000000,
     "modal": {
-     "BASE": 18356,
-     "PB": 181.72,
+     "BASE": 16432,
+     "PB": 162.67,
      "WP": 0,
      "AP": 0,
      "ECARE": 0,
@@ -1704,9 +1704,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 35300
+     "BASE": 31600
     },
-    "totalModal": 21917.72,
+    "totalModal": 19974.67,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1819,7 +1819,7 @@
    "expected": {
     "sumAssured": 2000000,
     "modal": {
-     "BASE": 1440,
+     "BASE": 1332,
      "PB": 0,
      "WP": 0,
      "AP": 0,
@@ -1838,9 +1838,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 16000
+     "BASE": 14800
     },
-    "totalModal": 2261.43,
+    "totalModal": 2153.43,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1909,7 +1909,7 @@
    "expected": {
     "sumAssured": 2000000,
     "modal": {
-     "BASE": 2430,
+     "BASE": 2178,
      "PB": 0,
      "WP": 0,
      "AP": 0,
@@ -1928,9 +1928,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 27000
+     "BASE": 24200
     },
-    "totalModal": 6746.4,
+    "totalModal": 6494.4,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -2005,7 +2005,7 @@
    "expected": {
     "sumAssured": 300000,
     "modal": {
-     "BASE": 22200,
+     "BASE": 21240,
      "PB": 0,
      "WP": 0,
      "AP": 0,
@@ -2024,9 +2024,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 22200
+     "BASE": 21240
     },
-    "totalModal": 449361,
+    "totalModal": 448401,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -2046,7 +2046,7 @@
    "expected": {
     "sumAssured": 300000,
     "modal": {
-     "BASE": 3806.4,
+     "BASE": 3494.4,
      "PB": 0,
      "WP": 0,
      "AP": 0,
@@ -2065,9 +2065,9 @@
      "CI123_3": 127.92
     },
     "annual": {
-     "BASE": 7320
+     "BASE": 6720
     },
-    "totalModal": 11109.54,
+    "totalModal": 10797.54,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -2273,8 +2273,8 @@
    "expected": {
     "sumAssured": 500000,
     "modal": {
-     "BASE": 9900,
-     "PB": 368.28,
+     "BASE": 8850,
+     "PB": 329.22,
      "WP": 0,
      "AP": 0,
      "ECARE": 3250,
@@ -2292,9 +2292,9 @@
      "CI123_3": 0
     },
     "annual": {
-     "BASE": 9900
+     "BASE": 8850
     },
-    "totalModal": 37798.28,
+    "totalModal": 36709.22,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -2470,8 +2470,8 @@
    "expected": {
     "sumAssured": 150000,
     "modal": {
-     "BASE": 4710,
-     "PB": 6749.9,
+     "BASE": 4485,
+     "PB": 6427.45,
      "WP": 0,
      "AP": 300,
      "ECARE": 0,
@@ -2489,9 +2489,9 @@
      "CI123_3": 2600
     },
     "annual": {
-     "BASE": 4710
+     "BASE": 4485
     },
-    "totalModal": 128175.9,
+    "totalModal": 127628.45,
     "totalIsText": false,
     "excelFlagNo": false
    }

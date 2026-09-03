@@ -161,14 +161,6 @@
         "WP"
       ],
       "message": "กรุณาเลือก WP หรือ PB อย่างใดอย่างหนึ่ง"
-    },
-    {
-      "code": "CPR_DCI",
-      "riders": [
-        "CPR",
-        "DCI"
-      ],
-      "message": "ไม่สามารถซื้อคู่กับ DCI ได้"
     }
   ],
   "requires": [
@@ -189,6 +181,13 @@
         "IHU"
       ],
       "message": "ไม่สามารถซื้อคู่กับ MEX, MEB หรือ iHealthy Ultra"
+    },
+    {
+      "rider": "CPR",
+      "with": [
+        "DCI"
+      ],
+      "message": "ไม่สามารถซื้อคู่กับ DCI ได้"
     }
   ],
   "packages": [
@@ -197,37 +196,47 @@
         7
       ],
       "disable": [
-        "PB",
-        "WP",
-        "ECARE",
-        "PLS",
+        "CI123",
         "CPR",
-        "HIC"
+        "ECARE",
+        "HIC",
+        "PB",
+        "PLS",
+        "WP"
       ],
       "require": [
         "IHU"
       ],
       "disabledMessage": "ไม่ขายกับ package นี้",
-      "requiredMessage": "กรุณาเลือกแผน iHealthy Ultra"
+      "requiredMessage": "กรุณาเลือกแผน iHealthy Ultra",
+      "exactSumAssured": {
+        "DCI": 200000
+      },
+      "exactMessage": "ต้องระบุทุน DCI 2 แสนบาทเท่านั้น"
     },
     {
       "seq": [
         8
       ],
       "disable": [
-        "PB",
-        "WP",
-        "ECARE",
-        "PLS",
+        "CI123",
         "CPR",
+        "ECARE",
         "HIC",
-        "IHU"
+        "IHU",
+        "PB",
+        "PLS",
+        "WP"
       ],
       "require": [
         "MEX"
       ],
       "disabledMessage": "ไม่ขายกับ package นี้",
-      "requiredMessage": "กรุณาเลือกแผน MEA Extra"
+      "requiredMessage": "กรุณาเลือกแผน MEA Extra",
+      "exactSumAssured": {
+        "DCI": 200000
+      },
+      "exactMessage": "ต้องระบุทุน DCI 2 แสนบาทเท่านั้น"
     }
   ]
 }

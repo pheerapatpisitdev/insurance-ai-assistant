@@ -369,7 +369,7 @@ def extract_w_family(plan_code, filename):
             code, sex, age = cell(pb, r, 1), cell(pb, r, 2), cell(pb, r, 4)
             if not isinstance(age, (int, float)) or sex not in ("M", "F"):
                 continue
-            row = {str(int(p)): cell(pb, r, c) for c, p in periods.items() if p <= 25 and cell(pb, r, c) is not None}
+            row = {str(int(p)): cell(pb, r, c) for c, p in periods.items() if cell(pb, r, c) is not None}
             if row:
                 out.setdefault(code, {}).setdefault(sex, {})[str(int(age))] = row
         return out
@@ -389,10 +389,14 @@ def extract_w_family(plan_code, filename):
             if sex not in ("M", "F") or not age.isdigit():
                 continue
             row = {}
-            for c in range(first_period_col, first_period_col + 60):
+            # Walk the contiguous run of numeric period headers; the next block starts where
+            # that run ends. A "to age 99" package can need a period well past 60 years.
+            for c in range(first_period_col, wp.max_column + 1):
                 period = cell(wp, 4, c)
+                if not isinstance(period, (int, float)):
+                    break
                 v = cell(wp, r, c)
-                if isinstance(period, (int, float)) and isinstance(v, (int, float)):
+                if isinstance(v, (int, float)):
                     row[str(int(period))] = v
             if row:
                 wp_rates.setdefault(code, {}).setdefault(sex, {})[age] = row

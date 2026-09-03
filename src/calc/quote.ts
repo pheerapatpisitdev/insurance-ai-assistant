@@ -11,7 +11,8 @@ import { fixedByKeyAgePremium } from "./riders/fixed-by-key-age";
 import { compositeCIPremium } from "./riders/composite-ci";
 import {
   CANNOT_BUY, NOT_COVERED, baseAgeRange, baseSumAssuredLimits, checkCombined, checkMonthlyMinimum,
-  checkRiderInput, checkRiderRelations, disabledRiders, packageSeq, requiredRiders, riderAvailability,
+  checkRiderInput, checkRiderRelations, disabledRiders, packageExactSumAssured, packageSeq,
+  requiredRiders, riderAvailability,
 } from "./rules";
 
 function fmt(n: number): string {
@@ -158,7 +159,11 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   const chosen = new Set(input.riders.filter((r) => !disabled.has(r.code)).map((r) => r.code));
   const combined = checkCombined(rules, sa, input.riders);
   for (const c of combined) warnings.push({ level: "error", code: c.code, message: c.message });
-  const relations = checkRiderRelations(rules, chosen);
+  // Two passes: the first settles conflicts and exclusions, the second checks requirements
+  // against what is still standing — a rider blocked by a conflict cannot satisfy one.
+  const firstPass = checkRiderRelations({ ...rules, requires: [] }, chosen);
+  const standing = new Set([...chosen].filter((c) => !firstPass.some((r) => r.riders.includes(c))));
+  const relations = [...firstPass, ...checkRiderRelations({ ...rules, exclusive: [], conflicts: [] }, standing)];
   for (const r of relations) warnings.push({ level: "error", code: r.code, message: r.message });
 
   const missing = requiredRiders(rules, seq).filter((c) => !chosen.has(c));
@@ -180,7 +185,9 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
       : undefined;
     const excludedBy = combined.find((c) => c.codes.includes(code));
     const relation = relations.find((r) => r.riders.includes(code));
-    const message = packageMessage ?? excludedBy?.message ?? relation?.message
+    const exact = packageExactSumAssured(rules, seq, code);
+    const exactMessage = exact && (ri.sumAssured ?? 0) !== exact.amount ? exact.message : undefined;
+    const message = packageMessage ?? excludedBy?.message ?? relation?.message ?? exactMessage
       ?? checkRiderInput(rules, rates, code, ctx, ri, input.payer);
     if (message) {
       items.push({ code, name, amount, annual: 0, modal: 0, eligible: false, message });

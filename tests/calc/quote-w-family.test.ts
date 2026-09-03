@@ -49,9 +49,16 @@ describe("quote (ไอสมาร์ท 80/6)", () => {
     expect(by(clash).HIC.message).toBe("ไม่สามารถซื้อคู่กับ MEX, MEB หรือ iHealthy Ultra");
   });
 
-  it("CPR and DCI are exclusive and share a 10,000,000 cap", () => {
+  it("DCI blocks CPR but keeps its own premium (Excel B28/F27)", () => {
     const r = quote({ ...ismart, riders: [{ code: "DCI", sumAssured: 200_000 }, { code: "CPR", sumAssured: 300_000 }] });
-    expect(r.warnings.map((w) => w.code)).toContain("CPR_DCI");
+    expect(by(r).CPR).toMatchObject({ eligible: false, modal: 0, message: "ไม่สามารถซื้อคู่กับ DCI ได้" });
+    expect(by(r).DCI.eligible).toBe(true);
+    expect(by(r).DCI.modal).toBeGreaterThan(0);
+  });
+
+  it("DCI and CPR together may not exceed 10,000,000", () => {
+    const r = quote({ ...ismart, sumAssured: 5_000_000, riders: [{ code: "DCI", sumAssured: 8_000_000 }, { code: "CPR", sumAssured: 3_000_000 }] });
+    expect(r.warnings.map((w) => w.code)).toContain("DCI_CPR");
   });
 
   it("CI 123 shows the main benefit plus three endorsement rows", () => {

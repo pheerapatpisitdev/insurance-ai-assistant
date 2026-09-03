@@ -79,7 +79,7 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
       <h1 className="mb-1 text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
-      <p className="mb-4 text-sm text-slate-500">{plan.rates.planName} · ตารางเบี้ย {plan.rates.version}</p>
+      <p className="mb-4 text-sm text-slate-500">{plan.planLabel ?? plan.rates.planName} · ตารางเบี้ย {plan.rates.version}</p>
       <ExpiryBanner expired={result?.meta.expired ?? false} expiresOn={plan.rates.expiresOn} version={plan.rates.version} />
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border bg-white p-4">
