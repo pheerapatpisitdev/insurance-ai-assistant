@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { requireAdmin, supabaseServer } from "@/lib/supabase/server";
-import { SignInCard } from "./SignInCard";
+import { redirect } from "next/navigation";
+import { isSignedIn, pinIsConfigured } from "@/lib/admin/session";
 import { SignOutButton } from "./SignOutButton";
 
 const TABS = [
@@ -9,13 +9,10 @@ const TABS = [
   { href: "/admin/rules", label: "กฎประกัน" },
 ];
 
+/** Every page under /admin requires a valid PIN session; the login page sits at /login. */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const admin = await requireAdmin();
-  if (!admin) {
-    const supabase = await supabaseServer();
-    const { data: { user } } = await supabase.auth.getUser();
-    return <SignInCard signedInAs={user?.email ?? undefined} />;
-  }
+  if (!pinIsConfigured() || !(await isSignedIn())) redirect("/login");
+
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <header className="mb-5 flex flex-wrap items-center gap-3 border-b pb-3">
@@ -29,7 +26,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </nav>
         <div className="ml-auto flex items-center gap-3 text-sm text-slate-500">
           <Link href="/" className="underline">หน้าคำนวณ</Link>
-          <span className="hidden sm:inline">{admin.email}</span>
           <SignOutButton />
         </div>
       </header>

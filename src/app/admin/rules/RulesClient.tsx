@@ -136,7 +136,7 @@ export function RulesClient({ data }: { data: RulesPageData }) {
           <ul className="space-y-1 text-sm">
             {data.history.map((h, i) => (
               <li key={i} className="text-slate-600">
-                {new Date(h.created_at).toLocaleString("th-TH")} — {h.changed_by ?? "ไม่ทราบผู้แก้"}
+                {new Date(h.created_at).toLocaleString("th-TH")}
               </li>
             ))}
           </ul>

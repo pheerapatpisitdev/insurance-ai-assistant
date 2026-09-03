@@ -1,9 +1,7 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
 import { Card, Empty } from "../ui";
-import { supabaseBrowser } from "@/lib/supabase/client";
-import { BUCKET } from "@/lib/knowledge";
-import { registerDoc, setDocActive, deleteDoc, type DocRow } from "./actions";
+import { uploadDoc, setDocActive, deleteDoc, type DocRow } from "./actions";
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
@@ -17,23 +15,15 @@ export function KnowledgeClient({ docs, plans }: { docs: DocRow[]; plans: { code
   async function upload(files: FileList) {
     setBusy(true);
     setMessage(undefined);
-    const supabase = supabaseBrowser();
     for (const file of Array.from(files)) {
-      if (file.type !== "application/pdf") {
-        setMessage(`${file.name} ไม่ใช่ไฟล์ PDF`);
-        continue;
-      }
-      const path = `${Date.now()}-${crypto.randomUUID()}.pdf`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: "application/pdf" });
-      if (error) {
-        setMessage(`อัปโหลด ${file.name} ไม่สำเร็จ: ${error.message}`);
-        continue;
-      }
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("planCode", planCode);
       try {
-        await registerDoc({ title: file.name.replace(/\.pdf$/i, ""), planCode: planCode || null, storagePath: path, bytes: file.size });
+        await uploadDoc(fd);
         setMessage(`อัปโหลด ${file.name} แล้ว`);
       } catch (e) {
-        setMessage(e instanceof Error ? e.message : "บันทึกรายการไม่สำเร็จ");
+        setMessage(e instanceof Error ? e.message : `อัปโหลด ${file.name} ไม่สำเร็จ`);
       }
     }
     if (fileInput.current) fileInput.current.value = "";
@@ -53,7 +43,7 @@ export function KnowledgeClient({ docs, plans }: { docs: DocRow[]; plans: { code
     <>
       {message && <p className="mb-4 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-900">{message}</p>}
 
-      <Card title="อัปโหลดเอกสาร" hint="รับเฉพาะไฟล์ PDF เลือกได้หลายไฟล์พร้อมกัน">
+      <Card title="อัปโหลดเอกสาร" hint="รับเฉพาะไฟล์ PDF ไม่เกิน 50 MB เลือกได้หลายไฟล์พร้อมกัน">
         <div className="flex flex-wrap items-center gap-3">
           <select value={planCode} onChange={(e) => setPlanCode(e.target.value)} className="rounded border px-2 py-1 text-sm">
             <option value="">ไม่ระบุแบบประกัน</option>

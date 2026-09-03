@@ -40,27 +40,32 @@
 - **โปรเจกต์ Supabase:** DATA2.0 ref `tmbbxahyxwkshxuxphcb` (มีระบบอื่นใช้อยู่แล้ว)
 - **ตารางเดิมที่ใช้ร่วม (ห้ามแก้โครงสร้างหรือ RLS):** `public.api_keys`, `public.model_configs`,
   `public.app_settings`, `public.profiles`
-- **ตารางใหม่ ทั้งหมดอยู่ใน schema `ins`:** `ins.admins`, `ins.knowledge_docs`,
-  `ins.plan_rule_overrides`, `ins.rule_audit`
+- **ตารางใหม่ อยู่ใน `public` โดยใช้คำนำหน้า `ins_`** เพื่อไม่ต้องตั้งค่า exposed schema:
+  `ins_knowledge_docs`, `ins_plan_rule_overrides`, `ins_rule_audit`, `ins_login_attempts`
+  ทุกตารางเปิด RLS แบบไม่มี policy เลย จึงเข้าถึงได้เฉพาะ service-role key ฝั่งเซิร์ฟเวอร์
 - กุญแจ AI ใช้ชุดของแอดมินเป็นของกลาง (`api_keys.owner_id` = uuid ของแอดมิน) เพราะผู้ใช้ทั่วไป
   ไม่มีบัญชี ค่าใช้จ่ายทั้งหมดจึงรวมอยู่ที่เดียว
 - ทุกการอ่านเขียนฐานข้อมูลทำในฝั่งเซิร์ฟเวอร์ กุญแจบริการไม่ถูกส่งไปเบราว์เซอร์
 
-## 4. การล็อกอินและสิทธิ์
+## 4. การล็อกอินและสิทธิ์ (แก้ 2026-09-03: เปลี่ยนจาก Google เป็นรหัส 6 หลัก)
 
-1. `/admin` แสดงปุ่มเดียว "เข้าสู่ระบบด้วย Google" ใช้ Supabase Auth
-2. หลังกลับจาก Google ระบบตรวจอีเมลกับ `ins.admins` ถ้าไม่มีจะขึ้นข้อความว่าไม่มีสิทธิ์
-3. ตาราง `ins.*` เปิด RLS โดยอนุญาตเฉพาะผู้ใช้ที่อีเมลอยู่ใน `ins.admins`
-4. **ไม่แก้ `public.profiles.role` ของใคร** แอดมินของแอปนี้แยกจากแอดมินของระบบเดิม
+1. `/login` มีช่องเดียว กรอกรหัส 6 หลัก (`ADMIN_PIN`) ทุกหน้า `/admin/*` ต้องมี session ก่อน
+2. session เก็บใน cookie แบบ HttpOnly ลงลายมือชื่อด้วย HMAC (`ADMIN_SESSION_SECRET`) อายุ 12 ชั่วโมง
+3. **ป้องกันการเดารหัส** รหัส 6 หลักมีเพียงล้านความเป็นไปได้ จึงต้องมีการล็อก: กรอกผิด 5 ครั้ง
+   จาก IP เดียวกัน ระงับ 15 นาที นับจากตาราง `public.ins_login_attempts` เพื่อให้ทนการรีสตาร์ต
+4. เทียบรหัสแบบ timing-safe และไม่ส่งรหัสกลับไปเบราว์เซอร์
+5. ฐานข้อมูลเข้าถึงด้วย service-role key ฝั่งเซิร์ฟเวอร์เท่านั้น (`SUPABASE_SERVICE_ROLE_KEY`)
+   เพราะ Postgres ไม่รู้จักผู้ใช้จากรหัส PIN การ์ดคือเซิร์ฟเวอร์ของเราเอง
+6. **ไม่แตะ `public.profiles` หรือระบบผู้ใช้ของผลิตภัณฑ์เดิม** เลย
 
-## 5. ตารางใหม่ (schema `ins`)
+## 5. ตารางใหม่ (`public.ins_*`)
 
 | ตาราง | หน้าที่ | คอลัมน์หลัก |
 |---|---|---|
-| `admins` | รายชื่ออีเมลที่เข้าหลังบ้านได้ | `email` (pk), `note`, `created_at` |
-| `knowledge_docs` | เอกสาร PDF ในคลังความรู้ | `id`, `title`, `plan_code`, `storage_path`, `bytes`, `page_count`, `raw_text`, `status`, `is_active`, `created_at` |
-| `plan_rule_overrides` | กฎที่แอดมินแก้ ทับไฟล์ในโค้ด | `plan_code` (pk), `rules` jsonb, `updated_at`, `updated_by` |
-| `rule_audit` | ประวัติการแก้กฎ | `id`, `plan_code`, `before` jsonb, `after` jsonb, `changed_by`, `created_at` |
+| `ins_knowledge_docs` | เอกสาร PDF ในคลังความรู้ | `id`, `title`, `plan_code`, `storage_path`, `bytes`, `page_count`, `raw_text`, `status`, `is_active`, `created_at` |
+| `ins_plan_rule_overrides` | กฎที่แอดมินแก้ ทับไฟล์ในโค้ด | `plan_code` (pk), `rules` jsonb, `updated_at`, `updated_by` |
+| `ins_rule_audit` | ประวัติการแก้กฎ | `id`, `plan_code`, `before` jsonb, `after` jsonb, `changed_by`, `created_at` |
+| `ins_login_attempts` | นับการกรอกรหัสผิด เพื่อระงับชั่วคราว | `id`, `ip`, `ok`, `created_at` |
 
 ## 6. หน้าจอ
 
@@ -70,7 +75,8 @@
 - เลือกโมเดลเริ่มต้นและตั้งงบต่อเดือน เขียนลง `app_settings`
 
 ### `/admin/knowledge`
-- อัปโหลด PDF หลายไฟล์พร้อมกัน เก็บใน Supabase Storage bucket `insurance-docs`
+- อัปโหลด PDF หลายไฟล์พร้อมกัน ส่งผ่าน Server Action ไปเก็บใน Supabase Storage bucket
+  `insurance-docs` (bucket ปิด ไม่มี policy ให้ผู้ใช้ทั่วไป เข้าถึงได้เฉพาะเซิร์ฟเวอร์)
 - ดึงข้อความจาก PDF เก็บใน `raw_text` เพื่อให้เฟส AI ใช้ค้นได้
 - ตารางรายการ: ชื่อ, แบบประกันที่เกี่ยว, ขนาด, จำนวนหน้า, สถานะ, สวิตช์เปิดปิด, ปุ่มลบ
 
@@ -93,5 +99,7 @@
 
 ## 9. สิ่งที่ผู้ใช้ต้องทำ
 
-- เปิด Google provider ใน Supabase (ทำแล้ว 2026-09-03)
-- ให้อีเมลที่จะเป็นแอดมิน เพื่อใส่ใน `ins.admins`
+- ใส่ค่า 3 บรรทัดในไฟล์ `.env.local` (และตั้งค่าเดียวกันใน Vercel เมื่อ deploy):
+  `SUPABASE_SERVICE_ROLE_KEY` จากหน้า Project Settings → API keys, `ADMIN_PIN` รหัส 6 หลักที่เลือกเอง
+  และ `ADMIN_SESSION_SECRET` (ผมสร้างไว้ให้แล้ว)
+- ไม่ต้องตั้งค่า exposed schema หรือ Google redirect URL อีกแล้ว
