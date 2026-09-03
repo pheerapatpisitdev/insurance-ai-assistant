@@ -4,7 +4,7 @@ import { getPlan, listPlans } from "@/calc/plans/registry";
 import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "@/calc/rules";
 import { quote } from "@/calc/quote";
 import type { QuoteInput, RiderInput } from "@/calc/types";
-import { summaryText } from "@/lib/summary";
+import { citationLine, quoteFooter, quoteReply } from "./format";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { embedTexts } from "@/lib/ai/client";
 import { allPlanFacts, planFacts } from "./catalogue";
@@ -20,8 +20,6 @@ export interface Answer {
   /** carried into the next turn so follow-up questions keep the age, sex and plan */
   slots: Routed;
 }
-
-const NOT_ADVICE = "ตัวเลขนี้เป็นเบี้ยประมาณการจากตารางเบี้ยของบริษัท ใช้ประกอบการนำเสนอ ไม่ใช่ใบเสนอราคาอย่างเป็นทางการ";
 
 export async function answerQuestion(history: ChatMessage[], previous: Routed | null = null): Promise<Answer> {
   const slots = mergeSlots(previous, await routeMessage(history));
@@ -84,13 +82,8 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
     sumAssured, basis: "sumAssured", riders,
   };
   const result = quote(input);
-  const lines = [summaryText(input, result)];
-  // when the term was assumed rather than asked for, say which one, so nobody quotes the wrong thing
-  if (!slots.variant && Object.keys(plan.variantLabels).length > 1) {
-    lines.push(`คิดจากแผน ${plan.variantLabels[variant]} ถ้าต้องการระยะเวลาชำระเบี้ยแบบอื่น บอกได้ครับ`);
-  }
-  lines.push(NOT_ADVICE);
-  return { reply: lines.join("\n\n"), sources: [] };
+  const assumedTerm = !slots.variant && Object.keys(plan.variantLabels).length > 1;
+  return { reply: `${quoteReply(input, result)}\n\n${quoteFooter(assumedTerm, input.mode)}`, sources: [] };
 }
 
 // ---------- plan information ----------
@@ -98,7 +91,11 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
 const PLAN_INFO_SYSTEM = `คุณเป็นผู้ช่วยของตัวแทนประกันชีวิต ตอบคำถามด้วยข้อเท็จจริงที่ให้ไว้ข้างล่างเท่านั้น
 - ถ้าข้อเท็จจริงไม่มีคำตอบ ให้บอกตรง ๆ ว่าไม่มีข้อมูลนี้ ห้ามเดา
 - ห้ามบอกตัวเลขเบี้ยประกัน ถ้าเขาอยากรู้เบี้ยให้บอกว่าขออายุ เพศ และทุนประกัน แล้วจะคำนวณให้
-- ตอบภาษาไทย สั้น กระชับ ใช้หัวข้อย่อยได้`;
+- ตอบภาษาไทย สั้น กระชับ
+รูปแบบการตอบ
+- ข้อความธรรมดา ห้ามใช้ ** หรือ # หรือสัญลักษณ์มาร์กดาวน์ เพราะ LINE แสดงเป็นตัวอักษรจริง
+- ขึ้นต้นบรรทัดรายการด้วย - เท่านั้น
+- ตอบให้จบใน 5 บรรทัด ถ้าจำเป็นต้องยาวกว่านั้นให้ตัดเนื้อหาที่ไม่ได้ถาม`;
 
 async function answerPlanInfo(slots: Routed): Promise<Omit<Answer, "slots">> {
   const facts = slots.planCode ? planFacts(slots.planCode)! : allPlanFacts();
@@ -117,10 +114,15 @@ async function answerPlanInfo(slots: Routed): Promise<Omit<Answer, "slots">> {
 // ---------- questions answered from the uploaded documents ----------
 
 const DOC_SYSTEM = `คุณเป็นผู้ช่วยของตัวแทนประกันชีวิต ตอบจากเอกสารอ้างอิงข้างล่างเท่านั้น
-- อ้างที่มาท้ายประโยคด้วยหมายเลขในวงเล็บเหลี่ยม เช่น [1]
 - ถ้าเอกสารไม่ได้ตอบคำถามนี้ ให้บอกว่ายังไม่มีเอกสารเรื่องนี้ ห้ามเดา
+- ห้ามใส่หมายเลขอ้างอิงเช่น [1] ระบบเติมที่มาให้ท้ายคำตอบอยู่แล้ว
 - เอกสารบางฉบับอ่านจากไฟล์ PDF จึงอาจมีตัวอักษรเพี้ยนบ้าง ให้ตีความตามบริบท
-- ตอบภาษาไทย สั้น กระชับ`;
+- ตอบภาษาไทย สั้น กระชับ
+รูปแบบการตอบ
+- ข้อความธรรมดา ห้ามใช้ ** หรือ # หรือสัญลักษณ์มาร์กดาวน์ เพราะ LINE แสดงเป็นตัวอักษรจริง
+- ขึ้นต้นบรรทัดรายการด้วย - เท่านั้น หัวข้อไม่ต้องขึ้นต้นด้วย -
+- ไม่เกิน 8 บรรทัด ถ้ามีหลายหัวข้อ ให้สรุปหัวข้อละ 1 บรรทัด
+- ตอบเฉพาะที่ถาม ไม่ต้องเล่าเนื้อหาอื่นในเอกสาร`;
 
 async function answerFromDocuments(slots: Routed): Promise<Omit<Answer, "slots">> {
   const question = slots.question ?? "";
@@ -149,7 +151,8 @@ async function answerFromDocuments(slots: Routed): Promise<Omit<Answer, "slots">
     ],
     maxTokens: 1600,
   });
-  return { reply: r.text.trim(), sources: hits.map((h) => ({ title: h.doc_title, page: h.page })) };
+  const sources = hits.map((h) => ({ title: h.doc_title, page: h.page }));
+  return { reply: `${r.text.trim()}\n\n${citationLine(sources)}`, sources };
 }
 
 // ---------- anything else ----------
@@ -165,7 +168,8 @@ async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "sl
         content: `คุณเป็นผู้ช่วยของตัวแทนประกันชีวิต ตอบสั้น ๆ เป็นภาษาไทยอย่างสุภาพ
 คุณช่วยได้ 3 เรื่อง คำนวณเบี้ยประกัน, เงื่อนไขของแบบประกัน และคำถามจากเอกสารที่บริษัทให้มา
 แบบประกันที่มี: ${plans}
-ถ้าถูกถามเรื่องนอกเหนือจากประกัน ให้บอกว่าช่วยเรื่องนี้ไม่ได้ แล้วชวนกลับมาเรื่องประกัน`,
+ถ้าถูกถามเรื่องนอกเหนือจากประกัน ให้บอกว่าช่วยเรื่องนี้ไม่ได้ แล้วชวนกลับมาเรื่องประกัน
+ตอบไม่เกิน 3 บรรทัด ข้อความธรรมดา ห้ามใช้มาร์กดาวน์`,
       },
       ...history.slice(-4),
     ],

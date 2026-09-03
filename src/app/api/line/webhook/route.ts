@@ -68,10 +68,7 @@ async function handle(event: LineEvent): Promise<void> {
 
   try {
     const answer = await answerQuestion(history, session.slots);
-    const cited = answer.sources.length
-      ? `${answer.reply}\n\nอ้างอิง: ${answer.sources.map((s) => `${s.title}${s.page ? ` หน้า ${s.page}` : ""}`).join(", ")}`
-      : answer.reply;
-    await say(replyToken, userId, cited);
+    await say(replyToken, userId, answer.reply);
     await saveSession(userHash, [...history, { role: "assistant", content: answer.reply }], answer.slots);
   } catch (e) {
     await say(replyToken, userId, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);
