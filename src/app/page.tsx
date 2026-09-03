@@ -9,27 +9,50 @@ import { ExpiryBanner } from "@/components/ExpiryBanner";
 import { summaryText } from "@/lib/summary";
 
 const INITIAL: FormState = {
-  planCode: "PLB", variant: "PLB12", age: 35, sex: "M", mode: "annual", sumAssured: 1_000_000, riders: {},
+  planCode: "PLB", variant: "PLB12", age: 35, sex: "M", mode: "annual",
+  basis: "sumAssured", sumAssured: 1_000_000, targetPremium: "",
+  payer: { age: "", sex: "M" }, riders: {},
 };
 
 /** Build engine input; riders the current age cannot buy are dropped even if still ticked. */
 function toQuoteInput(s: FormState, eligibleCodes: Set<string>): QuoteInput | null {
-  if (s.age === "" || s.sumAssured === "") return null;
-  const riders: RiderInput[] = [];
   const plan = getPlan(s.planCode);
-  if (!plan) return null;
+  if (!plan || s.age === "") return null;
+  const premiumBasis = s.basis === "premium" && plan.rules.base.premiumBasis;
+  if (premiumBasis ? s.targetPremium === "" : s.sumAssured === "") return null;
+  const riders: RiderInput[] = [];
   for (const code of plan.riderOrder) {
     const r = s.riders[code];
-    if (!r?.enabled || r.value === "" || !eligibleCodes.has(code)) continue;
-    const isPlan = plan.rates.riders[code]?.kind === "fixedByAgePlan";
-    riders.push(isPlan ? { code, plan: r.value } : { code, sumAssured: r.value });
+    if (!r?.enabled || !eligibleCodes.has(code)) continue;
+    const kind = plan.rates.riders[code]?.kind;
+    if (kind === "payorBenefit") riders.push({ code, option: r.option || undefined });
+    else if (r.value === "") continue;
+    else if (kind === "fixedByAgePlan") riders.push({ code, plan: r.value });
+    else if (kind === "ratePerThousandByVariantAgeSex") riders.push({ code, option: r.option || undefined, sumAssured: r.value });
+    else riders.push({ code, sumAssured: r.value });
   }
-  return { planCode: s.planCode, variant: s.variant, age: s.age, sex: s.sex, mode: s.mode, sumAssured: s.sumAssured, riders };
+  return {
+    planCode: s.planCode, variant: s.variant, age: s.age, sex: s.sex, mode: s.mode,
+    sumAssured: premiumBasis ? 0 : (s.sumAssured as number),
+    basis: premiumBasis ? "premium" : "sumAssured",
+    targetPremium: premiumBasis ? (s.targetPremium as number) : undefined,
+    payer: s.payer.age === "" ? undefined : { age: s.payer.age, sex: s.payer.sex },
+    riders,
+  };
 }
 
 export default function Home() {
-  const [state, setState] = useState<FormState>(INITIAL);
+  const [state, setStateRaw] = useState<FormState>(INITIAL);
   const plan = getPlan(state.planCode)!;
+
+  /** Switching plan resets variant and riders so stale codes never leak across plans. */
+  const setState = (next: FormState) => {
+    if (next.planCode !== state.planCode) {
+      const p = getPlan(next.planCode)!;
+      next = { ...next, variant: p.rates.base.variants[0], riders: {}, basis: "sumAssured" };
+    }
+    setStateRaw(next);
+  };
 
   // availability for the form must exist even when the input is incomplete
   const availability = useMemo(() => {
@@ -53,21 +76,13 @@ export default function Home() {
       <ExpiryBanner expired={result?.meta.expired ?? false} expiresOn={plan.rates.expiresOn} version={plan.rates.version} />
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border bg-white p-4">
-          <QuoteForm
-            state={state}
-            plans={listPlans()}
-            variants={plan.rates.base.variants.map((v) => ({ code: v, label: plan.variantLabels[v] ?? v }))}
-            baseAgeRange={{ min: plan.rules.base.ageMin, max: plan.rules.base.ageMax }}
-            baseSaMin={plan.rules.base.saMin}
-            availability={availability}
-            onChange={setState}
-          />
+          <QuoteForm state={state} plan={plan} plans={listPlans()} availability={availability} onChange={setState} />
         </div>
         <div className="rounded-lg border bg-white p-4">
           {result && input ? (
-            <QuoteResultPanel result={result} mode={input.mode} summary={summary} />
+            <QuoteResultPanel result={result} mode={input.mode} summary={summary} derivedSumAssured={input.basis === "premium"} />
           ) : (
-            <p className="text-sm text-slate-500">กรอกอายุและจำนวนเงินเอาประกันภัยเพื่อคำนวณ</p>
+            <p className="text-sm text-slate-500">กรอกอายุและจำนวนเงินเอาประกันภัย (หรือเบี้ยที่ต้องการ) เพื่อคำนวณ</p>
           )}
         </div>
       </div>

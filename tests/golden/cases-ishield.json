@@ -1,0 +1,21 @@
+{
+  "planCode": "ISHIELD",
+  "explicit": [
+    { "variant": "WLCI10", "age": 35, "sex": "M", "mode": "annual",  "sumAssured": 500000,  "riders": {} },
+    { "variant": "WLCI10", "age": 11, "sex": "M", "mode": "annual",  "sumAssured": 500000,  "payer": { "age": 35, "sex": "M" }, "riders": { "PB": "FIT", "MEB": 1000 } },
+    { "variant": "WLCI10", "age": 11, "sex": "M", "mode": "monthly", "sumAssured": 500000,  "payer": { "age": 35, "sex": "M" }, "riders": { "PB": "FIT", "AP": 600000 } },
+    { "variant": "WLCI20", "age": 35, "sex": "F", "mode": "semi",    "sumAssured": 1000000, "payer": { "age": 40, "sex": "F" }, "riders": { "PB": "BEYOND", "PLS": ["PLS10", 1000000] } },
+    { "variant": "WLCI10", "age": 35, "sex": "M", "mode": "semi",    "basis": "premium", "targetPremium": 52000, "riders": {} },
+    { "variant": "WLCI10", "age": 35, "sex": "M", "mode": "monthly", "basis": "premium", "targetPremium": 500, "riders": { "AP": 100000 } },
+    { "variant": "WLCI05", "age": 0,  "sex": "F", "mode": "annual",  "sumAssured": 100000,  "payer": { "age": 20, "sex": "F" }, "riders": { "PB": "FIT", "AP": 200000 } },
+    { "variant": "WLCI05", "age": 52, "sex": "M", "mode": "annual",  "sumAssured": 5000000, "riders": { "AP": 10000000, "ECARE": 100000 } },
+    { "variant": "WLCI15", "age": 56, "sex": "F", "mode": "monthly", "sumAssured": 250000,  "riders": { "MEB": 5000, "PLS": ["PLS15", 300000] } },
+    { "variant": "WLCI20", "age": 52, "sex": "M", "mode": "semi",    "sumAssured": 300000,  "riders": { "AP": 1000000, "ECARE": 600000 } },
+    { "variant": "WLCI10", "age": 8,  "sex": "F", "mode": "annual",  "sumAssured": 150000,  "payer": { "age": 70, "sex": "M" }, "riders": { "PB": "BEYOND", "MEB": 500, "AP": 300000 } },
+    { "variant": "WLCI15", "age": 15, "sex": "M", "mode": "annual",  "sumAssured": 2000000, "payer": { "age": 45, "sex": "F" }, "riders": { "PB": "FIT" } },
+    { "variant": "WLCI10", "age": 59, "sex": "M", "mode": "annual",  "sumAssured": 123456,  "riders": { "PLS": ["PLS05", 500000], "ECARE": 500000 } },
+    { "variant": "WLCI20", "age": 20, "sex": "F", "mode": "monthly", "sumAssured": 100000,  "riders": { "PLS": ["PLS12", 300000] } },
+    { "variant": "WLCI10", "age": 16, "sex": "M", "mode": "annual",  "sumAssured": 750000,  "payer": { "age": 60, "sex": "F" }, "riders": { "PB": "FIT", "ECARE": 300000, "MEB": 2000 } }
+  ],
+  "random": { "seed": 20260904, "count": 45 }
+}

@@ -4,9 +4,14 @@ import { formatBaht } from "@/calc/money";
 import { WarningList } from "./WarningList";
 import { CopySummaryButton } from "./CopySummaryButton";
 
-export function QuoteResultPanel({ result, mode, summary }: { result: QuoteResult; mode: PayMode; summary: string }) {
+export function QuoteResultPanel({ result, mode, summary, derivedSumAssured }: { result: QuoteResult; mode: PayMode; summary: string; derivedSumAssured: boolean }) {
   return (
     <section className="space-y-4">
+      {derivedSumAssured && (
+        <div className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          ทุนประกันที่ได้: <span className="font-semibold tabular-nums">{result.sumAssured.toLocaleString("en-US")}</span> บาท
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -24,7 +29,7 @@ export function QuoteResultPanel({ result, mode, summary }: { result: QuoteResul
                   {it.name}
                   {it.message && <div className="text-xs text-red-600">{it.message}</div>}
                 </td>
-                <td className="py-2 text-right">{it.amount.toLocaleString("en-US")}</td>
+                <td className="py-2 text-right">{it.amountLabel ?? it.amount.toLocaleString("en-US")}</td>
                 <td className="py-2 text-right tabular-nums">{it.eligible ? formatBaht(it.annual) : "-"}</td>
                 <td className="py-2 text-right tabular-nums">{it.eligible ? formatBaht(it.modal) : "-"}</td>
               </tr>
