@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { CALLERS, embed, EMBEDDING_MODEL, EMBEDDING_USD_PER_MTOK } from "./providers";
+import { CALLERS, EMBEDDERS } from "./providers";
 import type { ChatMessage, ChatResult, ModelRow, Tier } from "./types";
 
 const USD_TO_THB = 36;
@@ -126,20 +126,27 @@ export async function chat({ tier, task, messages, maxTokens = 700, json }: Chat
   throw new Error(`ไม่มีผู้ให้บริการ AI ที่ตอบได้\n${tried.join("\n")}`);
 }
 
-/** Turns text into vectors for the knowledge base. Needs the OpenAI key. */
+/** Turns text into vectors for the knowledge base, trying each embedding provider in turn. */
 export async function embedTexts(texts: string[], task = "embed"): Promise<number[][]> {
   const config = await loadConfig();
   await assertWithinBudget(config);
-  const key = config.keys.openai;
-  if (!key) throw new Error("ต้องมีกุญแจ OpenAI สำหรับแปลงข้อความเป็นเวกเตอร์");
-  const out: number[][] = [];
-  for (let i = 0; i < texts.length; i += 64) {
-    const batch = texts.slice(i, i + 64);
-    const { vectors, tokens } = await embed(key, batch);
-    out.push(...vectors);
-    await record(EMBEDDING_MODEL, task, tokens, 0, tokens / 1e6 * EMBEDDING_USD_PER_MTOK * USD_TO_THB);
+  const tried: string[] = [];
+  for (const e of EMBEDDERS) {
+    const key = config.keys[e.provider];
+    if (!key) continue;
+    try {
+      const out: number[][] = [];
+      for (let i = 0; i < texts.length; i += 32) {
+        const { vectors, tokens } = await e.embed(key, texts.slice(i, i + 32));
+        out.push(...vectors);
+        await record(e.model, task, tokens, 0, tokens / 1e6 * e.usdPerMTok * USD_TO_THB);
+      }
+      return out;
+    } catch (err) {
+      tried.push(`${e.model}: ${err instanceof Error ? err.message : err}`);
+    }
   }
-  return out;
+  throw new Error(`แปลงข้อความเป็นเวกเตอร์ไม่สำเร็จ\n${tried.join("\n")}`);
 }
 
 /** Reads the first JSON object out of a model's reply, tolerating code fences. */

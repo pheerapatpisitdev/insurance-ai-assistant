@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin/guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { BUCKET } from "@/lib/knowledge";
+import { ingestDocument } from "@/lib/knowledge/ingest";
 
 export interface DocRow {
   id: string;
@@ -39,14 +40,29 @@ export async function uploadDoc(formData: FormData) {
   const up = await supabase.storage.from(BUCKET).upload(path, bytes, { contentType: "application/pdf" });
   if (up.error) throw new Error(up.error.message);
 
-  const { error } = await supabase.from("ins_knowledge_docs").insert({
+  const { data, error } = await supabase.from("ins_knowledge_docs").insert({
     title: file.name.replace(/\.pdf$/i, "").slice(0, 200),
     plan_code: planCode,
     storage_path: path,
     bytes: file.size,
     status: "uploaded",
-  });
+  }).select("id").single();
   if (error) throw new Error(error.message);
+
+  // Read, split and embed straight away so the document is searchable on return. A failure
+  // here is recorded on the row, not thrown away, so the page can show what went wrong.
+  try {
+    await ingestDocument(data.id);
+  } catch {
+    // status and error are already stored by ingestDocument
+  }
+  revalidatePath("/admin/knowledge");
+}
+
+/** Re-reads a document, e.g. after a failure was fixed. */
+export async function reingestDoc(id: string) {
+  await requireAdmin();
+  await ingestDocument(id);
   revalidatePath("/admin/knowledge");
 }
 

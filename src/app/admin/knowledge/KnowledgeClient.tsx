@@ -1,9 +1,21 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
 import { Card, Empty } from "../ui";
-import { uploadDoc, setDocActive, deleteDoc, type DocRow } from "./actions";
+import { uploadDoc, setDocActive, deleteDoc, reingestDoc, type DocRow } from "./actions";
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+const STATUS: Record<string, { label: string; className: string }> = {
+  uploaded: { label: "รออ่าน", className: "bg-slate-100 text-slate-700" },
+  processing: { label: "กำลังอ่าน", className: "bg-sky-100 text-sky-800" },
+  ready: { label: "ค้นหาได้", className: "bg-emerald-100 text-emerald-800" },
+  failed: { label: "อ่านไม่ได้", className: "bg-red-100 text-red-800" },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS[status] ?? { label: status, className: "bg-slate-100 text-slate-700" };
+  return <span className={`rounded px-2 py-0.5 text-xs ${s.className}`}>{s.label}</span>;
+}
 
 export function KnowledgeClient({ docs, plans }: { docs: DocRow[]; plans: { code: string; name: string }[] }) {
   const [pending, start] = useTransition();
@@ -62,6 +74,7 @@ export function KnowledgeClient({ docs, plans }: { docs: DocRow[]; plans: { code
               <thead>
                 <tr className="border-b text-left text-slate-500">
                   <th className="py-2">ชื่อ</th><th className="py-2 pl-3">แบบประกัน</th><th className="py-2 pl-3">ขนาด</th>
+                  <th className="py-2 pl-3">หน้า</th><th className="py-2 pl-3">สถานะ</th>
                   <th className="py-2 pl-3">วันที่</th><th className="py-2 pl-3">ใช้งาน</th><th className="py-2 pl-3"></th>
                 </tr>
               </thead>
@@ -71,12 +84,23 @@ export function KnowledgeClient({ docs, plans }: { docs: DocRow[]; plans: { code
                     <td className="py-1.5">{d.title}</td>
                     <td className="py-1.5 pl-3">{plans.find((p) => p.code === d.plan_code)?.name ?? "—"}</td>
                     <td className="py-1.5 pl-3 tabular-nums">{mb(d.bytes)}</td>
+                    <td className="py-1.5 pl-3 tabular-nums">{d.page_count ?? "—"}</td>
+                    <td className="py-1.5 pl-3">
+                      <StatusBadge status={d.status} />
+                      {d.error && <div className="mt-0.5 max-w-64 text-xs text-red-600">{d.error}</div>}
+                    </td>
                     <td className="py-1.5 pl-3">{String(d.created_at).slice(0, 10)}</td>
                     <td className="py-1.5 pl-3">
                       <input type="checkbox" checked={d.is_active} disabled={pending}
                              onChange={(e) => run(() => setDocActive(d.id, e.target.checked))} />
                     </td>
-                    <td className="py-1.5 pl-3">
+                    <td className="py-1.5 pl-3 whitespace-nowrap">
+                      {d.status !== "ready" && (
+                        <button type="button" disabled={pending} className="mr-3 text-xs text-sky-700 underline"
+                                onClick={() => run(() => reingestDoc(d.id))}>
+                          อ่านใหม่
+                        </button>
+                      )}
                       <button type="button" disabled={pending} className="text-xs text-red-600 underline"
                               onClick={() => { if (confirm(`ลบ ${d.title} ?`)) run(() => deleteDoc(d.id)); }}>
                         ลบ

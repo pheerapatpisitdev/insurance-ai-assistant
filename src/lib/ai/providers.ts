@@ -108,17 +108,59 @@ async function openAiCompatible(url: string, { apiKey, model, messages, maxToken
   };
 }
 
-/** Embeddings. OpenAI's small model is the only one wired up; 1536 dims matches the table. */
-export async function embed(apiKey: string, inputs: string[], signal?: AbortSignal): Promise<{ vectors: number[][]; tokens: number }> {
-  const data = await postJson("https://api.openai.com/v1/embeddings", {
-    Authorization: `Bearer ${apiKey}`,
-  }, { model: "text-embedding-3-small", input: inputs }, signal);
-  return {
-    vectors: (data.data ?? []).map((d: { embedding: number[] }) => d.embedding),
-    tokens: data.usage?.total_tokens ?? 0,
-  };
+/**
+ * Embeddings. Both options are asked for 1536 dimensions so they share one column and one
+ * index; documents embedded by one provider stay searchable if the other takes over later.
+ */
+export const EMBEDDING_DIMS = 1536;
+
+export interface EmbeddingProvider {
+  provider: string;
+  model: string;
+  usdPerMTok: number;
+  embed: (apiKey: string, inputs: string[], signal?: AbortSignal) => Promise<{ vectors: number[][]; tokens: number }>;
 }
 
-export const EMBEDDING_MODEL = "text-embedding-3-small";
-export const EMBEDDING_DIMS = 1536;
-export const EMBEDDING_USD_PER_MTOK = 0.02;
+export const EMBEDDERS: EmbeddingProvider[] = [
+  {
+    provider: "google",
+    model: "gemini-embedding-001",
+    usdPerMTok: 0.15,
+    async embed(apiKey, inputs, signal) {
+      const data = await postJson(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=${apiKey}`,
+        {},
+        {
+          requests: inputs.map((text) => ({
+            model: "models/gemini-embedding-001",
+            content: { parts: [{ text }] },
+            outputDimensionality: EMBEDDING_DIMS,
+          })),
+        }, signal);
+      const vectors = (data.embeddings ?? []).map((e: { values: number[] }) => normalise(e.values));
+      // Google does not report embedding tokens; approximate for the cost ledger.
+      const tokens = Math.ceil(inputs.join(" ").length / 4);
+      return { vectors, tokens };
+    },
+  },
+  {
+    provider: "openai",
+    model: "text-embedding-3-small",
+    usdPerMTok: 0.02,
+    async embed(apiKey, inputs, signal) {
+      const data = await postJson("https://api.openai.com/v1/embeddings", {
+        Authorization: `Bearer ${apiKey}`,
+      }, { model: "text-embedding-3-small", input: inputs, dimensions: EMBEDDING_DIMS }, signal);
+      return {
+        vectors: (data.data ?? []).map((d: { embedding: number[] }) => d.embedding),
+        tokens: data.usage?.total_tokens ?? 0,
+      };
+    },
+  },
+];
+
+/** Gemini returns unnormalised vectors below its native size; cosine search expects unit length. */
+function normalise(v: number[]): number[] {
+  const len = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+  return len > 0 ? v.map((x) => x / len) : v;
+}
