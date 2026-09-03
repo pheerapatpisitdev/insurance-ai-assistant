@@ -42,10 +42,10 @@ export function satangToBaht(satang: number): number {
 }
 
 /**
- * A premium for display, in whole baht rounded to the nearest. The arithmetic above stays
- * exact to the satang — this only decides what is read out loud, and satang are noise in
- * a figure someone repeats over the phone.
+ * A premium for display, in whole baht. The satang are dropped, not rounded by — the same
+ * ROUNDDOWN the premiums themselves are built on, so the figure on screen never claims a
+ * baht the arithmetic did not reach. That arithmetic stays exact to the satang above.
  */
 export function formatBaht(satang: number): string {
-  return Math.round(satang / 100).toLocaleString("en-US");
+  return Math.floor(satang / 100).toLocaleString("en-US");
 }
