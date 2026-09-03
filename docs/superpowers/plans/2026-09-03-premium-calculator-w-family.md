@@ -67,40 +67,40 @@ Files, all version `A2026-1`, expiry 2027-03-31 (Life Protect Plus differs — r
 
 **Files:** modify `scripts/extract_rates.py`; create `data/rates/{ismart,lifetreasure,lifeprotect}.json`; test `tests/calc/rates-w-family.test.ts`
 
-- [ ] Add `extract_w_family(plan_code, filename, row_offset)` covering every table in the Facts section, plus the package table and the iHealthy Ultra plan/territory maps.
-- [ ] Assert row/column counts for each table so a layout change fails loudly.
-- [ ] Test pins: base rate for a known age, one rate from every rider table, package list, iHealthy key map.
-- [ ] `npm run extract` → determinism diff → commit.
+- [x] Add `extract_w_family(plan_code, filename, row_offset)` covering every table in the Facts section, plus the package table and the iHealthy Ultra plan/territory maps.
+- [x] Assert row/column counts for each table so a layout change fails loudly.
+- [x] Test pins: base rate for a known age, one rate from every rider table, package list, iHealthy key map.
+- [x] `npm run extract` → determinism diff → commit.
 
 ### Task 2: Engine — four new rider kinds
 
 **Files:** `src/calc/types.ts`, `src/calc/lookup.ts`, `src/calc/riders/premium-based.ts` (generalises `payor-benefit.ts`), `src/calc/riders/fixed-by-key-age.ts`, `src/calc/riders/composite-ci.ts`; tests `tests/calc/riders-w-family.test.ts`
 
-- [ ] `premiumBased` — PB and WP: rate keyed by (plancode, sex, age) and waive period; premium from the base annual premium via `TRUNC`.
-- [ ] `fixedByKeyAge` — MEX, iHealthy Ultra, Roke Rai So Shield: `{key: {sex: {age: premium}}}` plus a key-builder descriptor in the JSON.
-- [ ] `compositeCI` — six components with derived sums assured and a minimum-premium gate.
-- [ ] Reuse `ratePerThousandByVariantAgeSex` for DCI/PLS/CPR/HIC (add a `rounding: "round" | "roundDown"` field for HIC).
+- [x] `premiumBased` — PB and WP: rate keyed by (plancode, sex, age) and waive period; premium from the base annual premium via `TRUNC`.
+- [x] `fixedByKeyAge` — MEX, iHealthy Ultra, Roke Rai So Shield: `{key: {sex: {age: premium}}}` plus a key-builder descriptor in the JSON.
+- [x] `compositeCI` — six components with derived sums assured and a minimum-premium gate.
+- [x] Reuse `ratePerThousandByVariantAgeSex` for DCI/PLS/CPR/HIC (add a `rounding: "round" | "roundDown"` field for HIC).
 
 ### Task 3: Rules and quote wiring
 
 **Files:** `data/rules/{ismart,lifetreasure,lifeprotect}.json`, `src/calc/rules.ts`, `src/calc/quote.ts`, `src/calc/plans/registry.ts`; tests `tests/calc/quote-w-family.test.ts`
 
-- [ ] Express every cross-rider rule from the Facts section as data, not code.
-- [ ] Package selection becomes the plan "variant"; variants carry issue-age range, pay term and mandatory riders.
-- [ ] Register the three plans with rider order matching the Excel row order.
+- [x] Express every cross-rider rule from the Facts section as data, not code.
+- [x] Package selection becomes the plan "variant"; variants carry issue-age range, pay term and mandatory riders.
+- [x] Register the three plans with rider order matching the Excel row order.
 
 ### Task 4: UI
 
 **Files:** `src/components/QuoteForm.tsx`, `RiderRow.tsx`, `src/app/page.tsx`
 
-- [ ] iHealthy Ultra needs plan + territory + coverage selects; CI 123 needs one sum assured and shows four rows.
-- [ ] Mandatory riders for a package are pre-ticked and cannot be turned off.
+- [x] iHealthy Ultra needs plan + territory + coverage selects; CI 123 needs one sum assured and shows four rows.
+- [x] Mandatory riders for a package are pre-ticked and cannot be turned off.
 
 ### Task 5: Golden tests, one plan at a time
 
 **Files:** `scripts/make_golden.py`, `tests/golden/cases-{plan}.json`, `tests/golden/{plan}.json`, `tests/golden/{plan}.test.ts`
 
-- [ ] 60 cases per plan. Life Protect Plus is 7.5 MB with very large `TABCV` sheets — expect a long run; reduce to 30 cases if a run exceeds an hour.
+- [~] 60 cases per plan (iSmart generating; ไลฟ์เทรเชอร์ and LPP cases written, runs queued). Life Protect Plus is 7.5 MB with very large `TABCV` sheets — expect a long run; reduce to 30 cases if a run exceeds an hour.
 - [ ] Run each generation with `run_in_background`, never in the foreground.
 
 ### Task 6: Merge and deploy
