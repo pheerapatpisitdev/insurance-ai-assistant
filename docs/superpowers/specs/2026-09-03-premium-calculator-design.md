@@ -195,7 +195,7 @@ type QuoteResult = {
 
 Deployed: https://insurance-ai-assistant-pheerapatpisit.vercel.app (2026-09-03, auto-deploys from `main`)
 
-Plans live: all five, once the deploy below succeeds.
+Plans live: all five. Production deploy verified 2026-09-03 (commit c6eef17).
 
 **Deploy gotcha (2026-09-03):** Vercel blocked every deployment with "the commit email
 could not be matched to a GitHub account". The repo's `user.email` was
