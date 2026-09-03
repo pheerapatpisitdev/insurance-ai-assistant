@@ -79,12 +79,12 @@ describe("quoteBundle", () => {
     expect(dci.message).toBeTruthy();
   });
 
-  it("voids the whole bundle when the monthly premium falls under the minimum", () => {
+  it("still prices a bundle whose monthly premium falls under the minimum", () => {
     const result = quoteBundle(bundle, 1, { age: 20, sex: "M", mode: "monthly" }, TODAY)!;
-    expect(result.totalModal).toBe(0);
+    // every line is sellable — only the payment mode is out of reach, so show what it costs
+    expect(result.totalModal).toBe(35_820);
     expect(result.warnings.map((w) => w.code)).toContain("MIN_MONTHLY");
-    expect(result.warnings.map((w) => w.code)).toContain("BUNDLE_INCOMPLETE");
-    // every line is sellable on its own; it is the total that fails
+    expect(result.warnings.map((w) => w.code)).not.toContain("BUNDLE_INCOMPLETE");
     expect(result.items.every((i) => i.eligible)).toBe(true);
   });
 

@@ -35,6 +35,7 @@ describe("มรดกเพื่อครอบครัว — annual premium
 
 describe("มรดกเพื่อครอบครัว — mode factor and edges", () => {
   it("applies the monthly factor to both lines", () => {
+    expect(baht("M", 40, 1, "monthly")).toBe(764.64);
     expect(baht("M", 40, 5, "monthly")).toBe(2_751.84);
     expect(baht("F", 40, 10, "monthly")).toBe(4_216.5);
   });
@@ -47,10 +48,10 @@ describe("มรดกเพื่อครอบครัว — mode factor an
     }
   });
 
-  it("splits tier 5 at age 20 on the 1,000 baht monthly minimum", () => {
-    expect(baht("M", 20, 5, "monthly")).toBe(1_204.2); // sellable
+  it("flags the 1,000 baht monthly minimum without hiding the premium", () => {
+    expect(baht("M", 20, 5, "monthly")).toBe(1_204.2); // over the minimum, no warning
     const tooSmall = quoteBundle(bundle, 5, { age: 20, sex: "F", mode: "monthly" }, TODAY)!;
-    expect(tooSmall.totalModal).toBe(0); // 989.64 before the bundle voids it
+    expect(tooSmall.totalModal / 100).toBe(989.64);
     expect(tooSmall.warnings.map((w) => w.code)).toContain("MIN_MONTHLY");
   });
 });

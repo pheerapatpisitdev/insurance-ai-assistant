@@ -25,10 +25,14 @@ export function bundleQuoteInput(bundle: Bundle, tierNo: number, who: BundleInsu
 }
 
 /**
- * A bundle is sold whole: if any part of it cannot be issued — a rider the insured is too
- * old for, or a total under the monthly minimum — the arrangement is no longer the one the
- * agency designed, so the premium is withheld rather than quoted short. Every line stays in
- * the result, so the agent can see which part refused and why.
+ * A bundle is sold whole: if any part of it cannot be issued, the arrangement is no longer
+ * the one the agency designed, so the premium is withheld rather than quoted short. Every
+ * line stays in the result, so the agent can see which part refused and why.
+ *
+ * A total under the monthly minimum is not that. Every line is issuable and the arrangement
+ * stands — only this payment mode is out of reach — so the premium is priced as usual and
+ * the warning left to say the rest. Hiding it would leave the agent guessing how far off a
+ * monthly plan is, when the answer decides whether to quote it annually or move up a tier.
  */
 export function quoteBundle(
   bundle: Bundle, tierNo: number, who: BundleInsured, today: Date = new Date(),
@@ -36,7 +40,8 @@ export function quoteBundle(
   const input = bundleQuoteInput(bundle, tierNo, who);
   if (!input) return undefined;
   const result = quote(input, today);
-  const complete = result.items.every((i) => i.eligible) && !result.warnings.some((w) => w.level === "error");
+  const complete = result.items.every((i) => i.eligible)
+    && !result.warnings.some((w) => w.level === "error" && w.code !== "MIN_MONTHLY");
   if (complete) return result;
   return {
     ...result,
