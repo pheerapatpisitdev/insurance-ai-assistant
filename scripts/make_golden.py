@@ -33,7 +33,8 @@ PROFILE_XCU = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 def num_or_zero(v):
-    return v if v is not None else 0
+    """Excel puts a message where a number would go when a rider is excluded; treat that as 0."""
+    return v if isinstance(v, (int, float)) else 0
 
 
 def meb_plan_for(rng, age):
@@ -328,7 +329,7 @@ def w_read(plan):
         flag_row = next((r for r in range(55, 85) if isinstance(ws[f"D{r}"].value, str) and ws[f"D{r}"].value.startswith("ถ้าเบี้ย")), None)
         total_cell = ws[f"F{base+18}"].value
         if isinstance(total_cell, str):
-            # ไลฟ์ โพรเทค+ replaces the total with a message when the flag is "no"; the SUM underneath is still the number
+            # ไลฟ์ โพรเทค+ replaces the total with a message when the flag is "no"; sum the rows instead
             total = sum(num_or_zero(ws[f"F{r}"].value) for r in range(base, base + 18))
         else:
             total = num_or_zero(total_cell)

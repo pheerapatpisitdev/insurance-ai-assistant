@@ -1,0 +1,2726 @@
+{
+ "source": "libreoffice-recalc",
+ "sourceFile": "ไอสมาร์ท 80-6_A2026-1.xlsx",
+ "cases": [
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 44,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 1000000,
+    "riders": {}
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 287000,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 287000
+    },
+    "totalModal": 287000,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 44,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 1000000,
+    "riders": {
+     "WP": "FIT",
+     "MEB": 500,
+     "CI123": 5000000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 287000,
+     "PB": 0,
+     "WP": 229.6,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 750,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 37650,
+     "CI123_1": 132,
+     "CI123_2": 5087.5,
+     "CI123_3": 1920
+    },
+    "annual": {
+     "BASE": 287000
+    },
+    "totalModal": 332769.1,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 44,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 44,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "IHU": [
+      "PLATINUM",
+      "ประเทศไทย",
+      "Full Coverage"
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 25830,
+     "PB": 405.53,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 17388,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 287000
+    },
+    "totalModal": 43623.53,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 30,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 500000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 500000,
+     "DCI": 500000,
+     "RRSS": "แผน XL"
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 68900,
+     "PB": 0,
+     "WP": 0,
+     "AP": 1560,
+     "ECARE": 1690,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 837.2,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 1836.12,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 132500
+    },
+    "totalModal": 74823.32,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 25,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 150000,
+    "riders": {
+     "CPR": 300000,
+     "HIC": 3000,
+     "PLS": [
+      "PLS10",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 38400,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 1092,
+     "CPR": 57,
+     "HIC": 33.6,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 38400
+    },
+    "totalModal": 39582.6,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 65,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 2000000,
+    "riders": {
+     "MEX": "6200",
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 1090000,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 80075,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 35115,
+     "CI123_1": 2890,
+     "CI123_2": 3017.5,
+     "CI123_3": 1455
+    },
+    "annual": {
+     "BASE": 1090000
+    },
+    "totalModal": 1212552.5,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 50,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 300000,
+    "riders": {
+     "IHU": [
+      "DIAMOND",
+      "ทั่วโลก",
+      "Deductible"
+     ],
+     "RRSS": "แผน S"
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 8721,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 851.76,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 96900
+    },
+    "totalModal": 9572.76,
+    "totalIsText": true,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 40,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 1000000,
+    "riders": {
+     "CI123": 100000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 276000,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 276000
+    },
+    "totalModal": 276000,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 44,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 44,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "WP": "FIT"
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 287000,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 287000
+    },
+    "totalModal": 287000,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 60,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 5000000,
+    "riders": {
+     "AP": 10000000,
+     "CPR": 5000000
+    }
+   },
+   "expected": {
+    "sumAssured": 5000000,
+    "modal": {
+     "BASE": 1219400,
+     "PB": 0,
+     "WP": 0,
+     "AP": 15600,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 14976,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 2345000
+    },
+    "totalModal": 1249976,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 30,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 2000000,
+    "payer": {
+     "age": 66,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 300000,
+     "ECARE": 500000,
+     "MEX": "1200"
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 263120,
+     "PB": 25206.89,
+     "WP": 0,
+     "AP": 468,
+     "ECARE": 1690,
+     "MEX": 3713.84,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 506000
+    },
+    "totalModal": 294198.73,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 46,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 2000000,
+    "riders": {
+     "ECARE": 500000,
+     "IHU": [
+      "SMART",
+      "ประเทศไทย",
+      "Full Coverage"
+     ],
+     "DCI": 500000,
+     "PLS": [
+      "PLS05",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 618000,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 4335,
+     "PLS": 2688,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 21100,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 618000
+    },
+    "totalModal": 649373,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 42,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "riders": {
+     "AP": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 26640,
+     "PB": 0,
+     "WP": 0,
+     "AP": 270,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 296000
+    },
+    "totalModal": 26910,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 36,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 150000,
+    "riders": {
+     "MEB": 2000,
+     "CPR": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 3577.5,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 234,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 94.95,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 39750
+    },
+    "totalModal": 3906.45,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 49,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 150000,
+    "riders": {
+     "CPR": 300000
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 47850,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 525,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 47850
+    },
+    "totalModal": 48375,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 37,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 500000,
+    "riders": {
+     "WP": "FIT",
+     "AP": 100000,
+     "ECARE": 500000,
+     "MEX": "1200",
+     "CPR": 300000,
+     "PLS": [
+      "PLS12",
+      500000
+     ],
+     "CI123": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 133500,
+     "PB": 0,
+     "WP": 53.4,
+     "AP": 300,
+     "ECARE": 3250,
+     "MEX": 8284,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 1225,
+     "CPR": 699,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 2168.75,
+     "CI123_1": 78,
+     "CI123_2": 348.75,
+     "CI123_3": 138.5
+    },
+    "annual": {
+     "BASE": 133500
+    },
+    "totalModal": 150045.4,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 50,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 2000000,
+    "riders": {
+     "AP": 500000,
+     "MEX": "2200",
+     "DCI": 1000000,
+     "RRSS": "แผน XL"
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 614000,
+     "PB": 0,
+     "WP": 0,
+     "AP": 1500,
+     "ECARE": 0,
+     "MEX": 17253,
+     "MEB": 0,
+     "DCI": 9760,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 29486,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 614000
+    },
+    "totalModal": 671999,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 35,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "payer": {
+     "age": 53,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "ECARE": 100000,
+     "MEB": 500,
+     "PLS": [
+      "PLS15",
+      500000
+     ],
+     "CI123": 2000000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 12465,
+     "PB": 355.25,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 58.5,
+     "MEX": 0,
+     "MEB": 58.5,
+     "DCI": 0,
+     "PLS": 238.5,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 688.95,
+     "CI123_1": 5.4,
+     "CI123_2": 57.6,
+     "CI123_3": 22.32
+    },
+    "annual": {
+     "BASE": 138500
+    },
+    "totalModal": 13950.02,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 64,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 150000,
+    "payer": {
+     "age": 37,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "CI123": 5000000
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 47502,
+     "PB": 631.77,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 132294.5,
+     "CI123_1": 1511.12,
+     "CI123_2": 19565,
+     "CI123_3": 6029.4
+    },
+    "annual": {
+     "BASE": 91350
+    },
+    "totalModal": 207533.79,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 26,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "riders": {
+     "ECARE": 500000,
+     "MEB": 4000,
+     "CPR": 300000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 40092,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 1690,
+     "MEX": 0,
+     "MEB": 2704,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 31.2,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 77100
+    },
+    "totalModal": 44517.2,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 57,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 25,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 5000000,
+     "IHU": [
+      "PLATINUM",
+      "ทั่วโลก",
+      "Full Coverage"
+     ],
+     "RRSS": "แผน L"
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 175760,
+     "PB": 1300.62,
+     "WP": 0,
+     "AP": 7800,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 488436,
+     "RRSS": 18269.68,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 338000
+    },
+    "totalModal": 691566.3,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 45,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "riders": {
+     "WP": "FIT",
+     "MEB": 2000,
+     "CPR": 300000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 26010,
+     "PB": 0,
+     "WP": 20.8,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 270,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 113.13,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 289000
+    },
+    "totalModal": 26413.93,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 43,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 46,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 26910,
+     "PB": 446.7,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 666.67,
+     "CI123_1": 11.07,
+     "CI123_2": 69.52,
+     "CI123_3": 19.98
+    },
+    "annual": {
+     "BASE": 299000
+    },
+    "totalModal": 28123.94,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 54,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "riders": {
+     "IHU": [
+      "GOLD",
+      "ประเทศไทย",
+      "Deductible"
+     ],
+     "CPR": 1000000,
+     "PLS": [
+      "PLS12",
+      300000
+     ],
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 30420,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 522.18,
+     "CPR": 288,
+     "HIC": 0,
+     "IHU": 4671,
+     "RRSS": 0,
+     "CI123": 1956.15,
+     "CI123_1": 83.61,
+     "CI123_2": 186.75,
+     "CI123_3": 58.86
+    },
+    "annual": {
+     "BASE": 338000
+    },
+    "totalModal": 38186.55,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 32,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 300000,
+    "riders": {
+     "AP": 1500000,
+     "MEB": 1000,
+     "DCI": 500000,
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 80700,
+     "PB": 0,
+     "WP": 0,
+     "AP": 4500,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 1300,
+     "DCI": 1730,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 2605,
+     "CI123_1": 61,
+     "CI123_2": 235,
+     "CI123_3": 98
+    },
+    "annual": {
+     "BASE": 80700
+    },
+    "totalModal": 91229,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 58,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "riders": {
+     "WP": "BEYOND",
+     "MEB": 4000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 15525,
+     "PB": 0,
+     "WP": 380.36,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 720,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 172500
+    },
+    "totalModal": 16625.36,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 31,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 55,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "MEX": "6200",
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 24030,
+     "PB": 783.37,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 1703.25,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 211.05,
+     "CI123_1": 5.58,
+     "CI123_2": 18.9,
+     "CI123_3": 8.1
+    },
+    "annual": {
+     "BASE": 267000
+    },
+    "totalModal": 26760.25,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 26,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "payer": {
+     "age": 49,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "MEX": "2200",
+     "DCI": 200000,
+     "PLS": [
+      "PLS10",
+      500000
+     ],
+     "RRSS": "แผน M",
+     "CI123": 2000000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 40092,
+     "PB": 1327.04,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 4456.92,
+     "MEB": 0,
+     "DCI": 288.08,
+     "PLS": 837.2,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 675.48,
+     "CI123": 1965.6,
+     "CI123_1": 33.8,
+     "CI123_2": 132.6,
+     "CI123_3": 83.2
+    },
+    "annual": {
+     "BASE": 77100
+    },
+    "totalModal": 49891.92,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 48,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 150000,
+    "riders": {
+     "WP": "FIT",
+     "CPR": 500000,
+     "HIC": 1000
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 24648,
+     "PB": 0,
+     "WP": 61.62,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 426.4,
+     "HIC": 17.82,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 47400
+    },
+    "totalModal": 25153.84,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 62,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 2000000,
+    "payer": {
+     "age": 30,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "MEB": 4000,
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 1078000,
+     "PB": 5605.6,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 14000,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 43857.5,
+     "CI123_1": 1750,
+     "CI123_2": 5857.5,
+     "CI123_3": 1831
+    },
+    "annual": {
+     "BASE": 1078000
+    },
+    "totalModal": 1150901.6,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 32,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 70,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 300000,
+     "MEX": "6200",
+     "CPR": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 256000,
+     "PB": 25088,
+     "WP": 0,
+     "AP": 900,
+     "ECARE": 0,
+     "MEX": 24578,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 1230,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 256000
+    },
+    "totalModal": 307796,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 64,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "payer": {
+     "age": 23,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "IHU": [
+      "GOLD",
+      "ประเทศไทย",
+      "Deductible"
+     ],
+     "DCI": 200000,
+     "CI123": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 95004,
+     "PB": 180.5,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 3953.04,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 50856,
+     "RRSS": 0,
+     "CI123": 13229.45,
+     "CI123_1": 1511.12,
+     "CI123_2": 1956.5,
+     "CI123_3": 602.94
+    },
+    "annual": {
+     "BASE": 182700
+    },
+    "totalModal": 167293.55,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 25,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 300000,
+    "payer": {
+     "age": 35,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 1000000,
+     "MEB": 2000,
+     "CPR": 1000000,
+     "RRSS": "แผน S",
+     "CI123": 5000000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 73200,
+     "PB": 614.88,
+     "WP": 0,
+     "AP": 3000,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 2600,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 890,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 1173,
+     "CI123": 10812.5,
+     "CI123_1": 63,
+     "CI123_2": 1150,
+     "CI123_3": 495
+    },
+    "annual": {
+     "BASE": 73200
+    },
+    "totalModal": 93998.38,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 49,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 500000,
+    "riders": {
+     "ECARE": 300000,
+     "IHU": [
+      "DIAMOND",
+      "ทั่วโลก",
+      "Full Coverage"
+     ],
+     "CPR": 1000000,
+     "RRSS": "แผน XL",
+     "CI123": 2000000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 159500,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 1950,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 1750,
+     "HIC": 0,
+     "IHU": 304800,
+     "RRSS": 26986,
+     "CI123": 29315,
+     "CI123_1": 631,
+     "CI123_2": 2920,
+     "CI123_3": 810
+    },
+    "annual": {
+     "BASE": 159500
+    },
+    "totalModal": 528662,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 33,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 150000,
+    "riders": {
+     "AP": 300000,
+     "IHU": [
+      "GOLD",
+      "ประเทศไทย",
+      "Deductible"
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 3672,
+     "PB": 0,
+     "WP": 0,
+     "AP": 81,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 2421,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 40800
+    },
+    "totalModal": 6174,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 60,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 2000000,
+    "payer": {
+     "age": 48,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 500000,
+     "MEB": 5000
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 750000,
+     "PB": 23025,
+     "WP": 0,
+     "AP": 1500,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 10000,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 750000
+    },
+    "totalModal": 784525,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 58,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 300000,
+    "payer": {
+     "age": 57,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 100000,
+     "DCI": 500000,
+     "RRSS": "แผน S",
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 64584,
+     "PB": 1220.63,
+     "WP": 0,
+     "AP": 156,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 6245.2,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 9681.88,
+     "CI123": 15182.7,
+     "CI123_1": 611.52,
+     "CI123_2": 1757.6,
+     "CI123_3": 563.16
+    },
+    "annual": {
+     "BASE": 124200
+    },
+    "totalModal": 100002.69,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 52,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 300000,
+    "riders": {
+     "PLS": [
+      "PLS12",
+      1000000
+     ],
+     "RRSS": "แผน S"
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 8505,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 674.1,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 990.45,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 94500
+    },
+    "totalModal": 10169.55,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 52,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 42,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "FIT",
+     "ECARE": 500000,
+     "PLS": [
+      "PLS12",
+      300000
+     ],
+     "CI123": 2000000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 315000,
+     "PB": 3969,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 2547,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 27725,
+     "CI123_1": 785,
+     "CI123_2": 2570,
+     "CI123_3": 1010
+    },
+    "annual": {
+     "BASE": 315000
+    },
+    "totalModal": 356856,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 39,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 63,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "AP": 100000,
+     "MEB": 3000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 141960,
+     "PB": 5309.3,
+     "WP": 0,
+     "AP": 156,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 2028,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 273000
+    },
+    "totalModal": 149453.3,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 27,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "riders": {
+     "AP": 100000,
+     "MEB": 2000,
+     "DCI": 500000,
+     "PLS": [
+      "PLS10",
+      1000000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 22230,
+     "PB": 0,
+     "WP": 0,
+     "AP": 27,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 234,
+     "DCI": 108,
+     "PLS": 87.3,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 247000
+    },
+    "totalModal": 22686.3,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 40,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 2000000,
+    "riders": {
+     "WP": "FIT",
+     "ECARE": 500000,
+     "MEX": "6200",
+     "PLS": [
+      "PLS05",
+      1000000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 287040,
+     "PB": 0,
+     "WP": 143.52,
+     "AP": 0,
+     "ECARE": 1690,
+     "MEX": 15848.04,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 946.4,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 552000
+    },
+    "totalModal": 305667.96,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 25,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 150000,
+    "payer": {
+     "age": 37,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "FIT",
+     "MEX": "4200"
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 3456,
+     "PB": 11.75,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 1242.45,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 38400
+    },
+    "totalModal": 4710.2,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 38,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 150000,
+    "riders": {
+     "WP": "FIT",
+     "CI123": 2000000
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 40500,
+     "PB": 0,
+     "WP": 20.25,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 9645,
+     "CI123_1": 84,
+     "CI123_2": 1485,
+     "CI123_3": 586
+    },
+    "annual": {
+     "BASE": 40500
+    },
+    "totalModal": 52320.25,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 27,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 1000000,
+    "payer": {
+     "age": 32,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 5000000,
+     "MEX": "6200"
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 22230,
+     "PB": 211.18,
+     "WP": 0,
+     "AP": 1350,
+     "ECARE": 0,
+     "MEX": 2212.02,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 247000
+    },
+    "totalModal": 26003.2,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 28,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 1000000,
+    "riders": {
+     "WP": "FIT",
+     "AP": 300000,
+     "ECARE": 100000,
+     "MEX": "1200",
+     "CPR": 1000000,
+     "CI123": 2000000
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 135720,
+     "PB": 0,
+     "WP": 108.57,
+     "AP": 468,
+     "ECARE": 338,
+     "MEX": 2859.48,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 119.6,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 2121.6,
+     "CI123_1": 32.76,
+     "CI123_2": 153.4,
+     "CI123_3": 72.8
+    },
+    "annual": {
+     "BASE": 261000
+    },
+    "totalModal": 141994.21,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 51,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 2000000,
+    "riders": {
+     "AP": 1000000,
+     "ECARE": 500000,
+     "MEX": "1200",
+     "DCI": 200000,
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 340080,
+     "PB": 0,
+     "WP": 0,
+     "AP": 1560,
+     "ECARE": 1690,
+     "MEX": 4582.76,
+     "MEB": 0,
+     "DCI": 1362.4,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 8372,
+     "CI123_1": 384.28,
+     "CI123_2": 839.8,
+     "CI123_3": 254.8
+    },
+    "annual": {
+     "BASE": 654000
+    },
+    "totalModal": 359126.04,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 29,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "riders": {
+     "ECARE": 100000,
+     "MEB": 1000,
+     "PLS": [
+      "PLS12",
+      500000
+     ],
+     "CI123": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 11835,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 58.5,
+     "MEX": 0,
+     "MEB": 117,
+     "DCI": 0,
+     "PLS": 168.3,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 94.27,
+     "CI123_1": 5.58,
+     "CI123_2": 7.53,
+     "CI123_3": 3.42
+    },
+    "annual": {
+     "BASE": 131500
+    },
+    "totalModal": 12289.6,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 46,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "riders": {
+     "WP": "BEYOND",
+     "ECARE": 100000,
+     "MEB": 3000,
+     "PLS": [
+      "PLS05",
+      500000
+     ],
+     "RRSS": "แผน XL",
+     "CI123": 5000000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 13905,
+     "PB": 0,
+     "WP": 177.98,
+     "AP": 0,
+     "ECARE": 58.5,
+     "MEX": 0,
+     "MEB": 405,
+     "DCI": 0,
+     "PLS": 380.7,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 1780.56,
+     "CI123": 4914,
+     "CI123_1": 15.21,
+     "CI123_2": 514.12,
+     "CI123_3": 135.9
+    },
+    "annual": {
+     "BASE": 154500
+    },
+    "totalModal": 22286.97,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 61,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "riders": {
+     "IHU": [
+      "DIAMOND",
+      "ทั่วโลก",
+      "Deductible"
+     ],
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 22680,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 3632.62,
+     "CI123_1": 136.71,
+     "CI123_2": 463.72,
+     "CI123_3": 145.89
+    },
+    "annual": {
+     "BASE": 252000
+    },
+    "totalModal": 27058.94,
+    "totalIsText": true,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 34,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 300000,
+    "payer": {
+     "age": 45,
+     "sex": "M"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "IHU": [
+      "GOLD",
+      "ประเทศไทย",
+      "Full Coverage"
+     ],
+     "DCI": 500000,
+     "CI123": 1000000
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 7047,
+     "PB": 172.65,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 137.25,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 3888,
+     "RRSS": 0,
+     "CI123": 338.85,
+     "CI123_1": 6.39,
+     "CI123_2": 56.92,
+     "CI123_3": 22.14
+    },
+    "annual": {
+     "BASE": 78300
+    },
+    "totalModal": 11669.2,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 55,
+    "sex": "M",
+    "mode": "semi",
+    "sumAssured": 150000,
+    "riders": {
+     "WP": "BEYOND",
+     "AP": 300000,
+     "MEB": 3000,
+     "DCI": 1000000,
+     "PLS": [
+      "PLS10",
+      300000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 27066,
+     "PB": 0,
+     "WP": 725.36,
+     "AP": 468,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 3120,
+     "DCI": 9885.2,
+     "PLS": 2931.24,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 52050
+    },
+    "totalModal": 44195.8,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 55,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 1000000,
+    "riders": {
+     "ECARE": 500000,
+     "IHU": [
+      "BRONZE",
+      "ประเทศไทย",
+      "Full Coverage"
+     ],
+     "DCI": 500000,
+     "PLS": [
+      "PLS15",
+      500000
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 1000000,
+    "modal": {
+     "BASE": 347000,
+     "PB": 0,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 3250,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 9505,
+     "PLS": 11860,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 38200,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 347000
+    },
+    "totalModal": 409815,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 30,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 150000,
+    "riders": {
+     "AP": 300000,
+     "ECARE": 100000,
+     "MEX": "6200",
+     "RRSS": "แผน S"
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 3415.5,
+     "PB": 0,
+     "WP": 0,
+     "AP": 81,
+     "ECARE": 58.5,
+     "MEX": 2212.02,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 179.37,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 37950
+    },
+    "totalModal": 5946.39,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 45,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 300000,
+    "payer": {
+     "age": 59,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "CPR": 300000,
+     "HIC": 10000,
+     "RRSS": "แผน XL"
+    }
+   },
+   "expected": {
+    "sumAssured": 300000,
+    "modal": {
+     "BASE": 8235,
+     "PB": 378.81,
+     "WP": 0,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 34.83,
+     "HIC": 22.97,
+     "IHU": 0,
+     "RRSS": 1596.96,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 91500
+    },
+    "totalModal": 10268.57,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 41,
+    "sex": "M",
+    "mode": "annual",
+    "sumAssured": 2000000,
+    "riders": {
+     "WP": "FIT",
+     "CI123": 5000000
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 586000,
+     "PB": 0,
+     "WP": 879,
+     "AP": 0,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 29425,
+     "CI123_1": 102,
+     "CI123_2": 3025,
+     "CI123_3": 920
+    },
+    "annual": {
+     "BASE": 586000
+    },
+    "totalModal": 620351,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 53,
+    "sex": "M",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "riders": {
+     "WP": "BEYOND",
+     "AP": 1000000,
+     "MEX": "6200",
+     "DCI": 200000,
+     "RRSS": "แผน M"
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 15030,
+     "PB": 0,
+     "WP": 336.67,
+     "AP": 270,
+     "ECARE": 0,
+     "MEX": 2897.73,
+     "MEB": 0,
+     "DCI": 279.9,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 1494.27,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 167000
+    },
+    "totalModal": 20308.57,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 55,
+    "sex": "F",
+    "mode": "semi",
+    "sumAssured": 2000000,
+    "riders": {
+     "WP": "BEYOND",
+     "AP": 500000,
+     "ECARE": 100000,
+     "DCI": 200000,
+     "CI123": 500000
+    }
+   },
+   "expected": {
+    "sumAssured": 2000000,
+    "modal": {
+     "BASE": 340080,
+     "PB": 0,
+     "WP": 6903.62,
+     "AP": 780,
+     "ECARE": 338,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 1494.48,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 0,
+     "CI123": 4791.8,
+     "CI123_1": 502.32,
+     "CI123_2": 351.65,
+     "CI123_3": 145.86
+    },
+    "annual": {
+     "BASE": 654000
+    },
+    "totalModal": 355387.73,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 32,
+    "sex": "F",
+    "mode": "annual",
+    "sumAssured": 150000,
+    "riders": {
+     "WP": "BEYOND",
+     "AP": 300000,
+     "IHU": [
+      "GOLD",
+      "ประเทศไทย",
+      "Deductible"
+     ]
+    }
+   },
+   "expected": {
+    "sumAssured": 150000,
+    "modal": {
+     "BASE": 38400,
+     "PB": 0,
+     "WP": 149.76,
+     "AP": 900,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 31800,
+     "RRSS": 0,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 38400
+    },
+    "totalModal": 71249.76,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  },
+  {
+   "input": {
+    "variant": "W80F06",
+    "age": 29,
+    "sex": "F",
+    "mode": "monthly",
+    "sumAssured": 500000,
+    "payer": {
+     "age": 68,
+     "sex": "F"
+    },
+    "riders": {
+     "PB": "BEYOND",
+     "AP": 2500000,
+     "RRSS": "แผน S"
+    }
+   },
+   "expected": {
+    "sumAssured": 500000,
+    "modal": {
+     "BASE": 11295,
+     "PB": 1368.95,
+     "WP": 0,
+     "AP": 675,
+     "ECARE": 0,
+     "MEX": 0,
+     "MEB": 0,
+     "DCI": 0,
+     "PLS": 0,
+     "CPR": 0,
+     "HIC": 0,
+     "IHU": 0,
+     "RRSS": 160.74,
+     "CI123": 0,
+     "CI123_1": 0,
+     "CI123_2": 0,
+     "CI123_3": 0
+    },
+    "annual": {
+     "BASE": 125500
+    },
+    "totalModal": 13499.69,
+    "totalIsText": false,
+    "excelFlagNo": false
+   }
+  }
+ ]
+}
