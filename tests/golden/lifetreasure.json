@@ -74,17 +74,17 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 98000,
-     "RRSS": 2382,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "RRSS": 1588,
+     "CI123": 2300,
+     "CI123_1": 62,
+     "CI123_2": 185,
+     "CI123_3": 83
     },
     "annual": {
      "BASE": 506000
     },
-    "totalModal": 613652,
-    "totalIsText": true,
+    "totalModal": 615488,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -171,7 +171,7 @@
      "CPR": 56.16,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 997.62,
+     "RRSS": 665.08,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -180,7 +180,7 @@
     "annual": {
      "BASE": 185000
     },
-    "totalModal": 98975.76,
+    "totalModal": 98643.22,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -214,16 +214,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 94380,
+     "CI123_1": 3375,
+     "CI123_2": 7695,
+     "CI123_3": 4170
     },
     "annual": {
      "BASE": 1145000
     },
-    "totalModal": 1619274,
-    "totalIsText": true,
+    "totalModal": 1728894,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -386,16 +386,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 5987.5,
+     "CI123_1": 86,
+     "CI123_2": 557.5,
+     "CI123_3": 169
     },
     "annual": {
      "BASE": 400000
     },
-    "totalModal": 407034,
-    "totalIsText": true,
+    "totalModal": 413834,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -429,16 +429,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 6914.7,
+     "CI123_1": 97.24,
+     "CI123_2": 703.3,
+     "CI123_3": 190.84
     },
     "annual": {
      "BASE": 526000
     },
-    "totalModal": 277675.84,
-    "totalIsText": true,
+    "totalModal": 285581.92,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -652,7 +652,7 @@
      "CPR": 83.2,
      "HIC": 13.89,
      "IHU": 0,
-     "RRSS": 481.26,
+     "RRSS": 320.84,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -661,7 +661,7 @@
     "annual": {
      "BASE": 182000
     },
-    "totalModal": 111652.63,
+    "totalModal": 111492.21,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -783,16 +783,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 897.74,
+     "CI123_1": 3.51,
+     "CI123_2": 108,
+     "CI123_3": 143.1
     },
     "annual": {
      "BASE": 174000
     },
-    "totalModal": 15668.64,
-    "totalIsText": true,
+    "totalModal": 16820.99,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -825,16 +825,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 11100.7,
+     "CI123_1": 534.04,
+     "CI123_2": 752.7,
+     "CI123_3": 318.76
     },
     "annual": {
      "BASE": 1180000
     },
-    "totalModal": 614458,
-    "totalIsText": true,
+    "totalModal": 627164.2,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -960,7 +960,7 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 119184,
+     "RRSS": 79456,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -969,7 +969,7 @@
     "annual": {
      "BASE": 780000
     },
-    "totalModal": 909948,
+    "totalModal": 870220,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1050,16 +1050,16 @@
      "HIC": 0,
      "IHU": 1197,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 1055.25,
+     "CI123_1": 5.58,
+     "CI123_2": 94.5,
+     "CI123_3": 40.5
     },
     "annual": {
      "BASE": 261000
     },
-    "totalModal": 24715.8,
-    "totalIsText": true,
+    "totalModal": 25911.63,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -1149,17 +1149,17 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 33332,
-     "RRSS": 1738.62,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "RRSS": 1159.08,
+     "CI123": 1219.4,
+     "CI123_1": 32.24,
+     "CI123_2": 109.2,
+     "CI123_3": 46.8
     },
     "annual": {
      "BASE": 612000
     },
-    "totalModal": 366569.16000000003,
-    "totalIsText": true,
+    "totalModal": 367397.26,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -1232,7 +1232,7 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 5391.36,
+     "RRSS": 3594.24,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -1241,7 +1241,7 @@
     "annual": {
      "BASE": 410000
     },
-    "totalModal": 223601.56,
+    "totalModal": 221804.44,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1280,16 +1280,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 8372,
+     "CI123_1": 384.28,
+     "CI123_2": 839.8,
+     "CI123_3": 254.8
     },
     "annual": {
      "BASE": 940000
     },
-    "totalModal": 600616.64,
-    "totalIsText": true,
+    "totalModal": 610467.52,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -1322,7 +1322,7 @@
      "CPR": 108,
      "HIC": 5.71,
      "IHU": 0,
-     "RRSS": 1842,
+     "RRSS": 1228,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -1331,7 +1331,7 @@
     "annual": {
      "BASE": 447000
     },
-    "totalModal": 449045.11,
+    "totalModal": 448431.11,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1443,16 +1443,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 1530.1,
+     "CI123_1": 53.04,
+     "CI123_2": 157.3,
+     "CI123_3": 47.84
     },
     "annual": {
      "BASE": 1740000
     },
-    "totalModal": 905041.8,
-    "totalIsText": true,
+    "totalModal": 906830.08,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -1493,15 +1493,15 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 52917.8,
+     "CI123_1": 1511.12,
+     "CI123_2": 7826,
+     "CI123_3": 2411.76
     },
     "annual": {
      "BASE": 972000
     },
-    "totalModal": 515447.71,
+    "totalModal": 580114.39,
     "totalIsText": true,
     "excelFlagNo": false
    }
@@ -1587,7 +1587,7 @@
      "CPR": 5.67,
      "HIC": 0,
      "IHU": 2304,
-     "RRSS": 152.82,
+     "RRSS": 101.88,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -1596,7 +1596,7 @@
     "annual": {
      "BASE": 239000
     },
-    "totalModal": 26058.96,
+    "totalModal": 26008.02,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1630,17 +1630,17 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 2241.4,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "RRSS": 1494.27,
+     "CI123": 8856,
+     "CI123_1": 77.76,
+     "CI123_2": 856.12,
+     "CI123_3": 267.75
     },
     "annual": {
      "BASE": 504000
     },
-    "totalModal": 55590.68,
-    "totalIsText": true,
+    "totalModal": 64901.18,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -1679,7 +1679,7 @@
      "CPR": 238.68,
      "HIC": 0,
      "IHU": 147524,
-     "RRSS": 6131.58,
+     "RRSS": 4087.72,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -1688,7 +1688,7 @@
     "annual": {
      "BASE": 403000
     },
-    "totalModal": 383506.34,
+    "totalModal": 381462.48,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -1770,17 +1770,17 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 31500,
-     "RRSS": 23905.5,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "RRSS": 15937,
+     "CI123": 24580,
+     "CI123_1": 1065,
+     "CI123_2": 2550,
+     "CI123_3": 824
     },
     "annual": {
      "BASE": 573000
     },
-    "totalModal": 660378.9,
-    "totalIsText": true,
+    "totalModal": 681429.4,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -1813,17 +1813,17 @@
      "CPR": 13.5,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 79.92,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "RRSS": 53.28,
+     "CI123": 109.23,
+     "CI123_1": 5.04,
+     "CI123_2": 3.6,
+     "CI123_3": 2.38
     },
     "annual": {
      "BASE": 431000
     },
-    "totalModal": 38926.17,
-    "totalIsText": true,
+    "totalModal": 39019.78,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -1949,16 +1949,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 4579.42,
+     "CI123_1": 261.54,
+     "CI123_2": 677.25,
+     "CI123_3": 208.71
     },
     "annual": {
      "BASE": 1065000
     },
-    "totalModal": 123042.81999999999,
-    "totalIsText": true,
+    "totalModal": 128769.74,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -1996,17 +1996,17 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 822.96,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "RRSS": 548.64,
+     "CI123": 2694.37,
+     "CI123_1": 7.74,
+     "CI123_2": 250.87,
+     "CI123_3": 76.05
     },
     "annual": {
      "BASE": 308000
     },
-    "totalModal": 39737.66,
-    "totalIsText": true,
+    "totalModal": 42492.37,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -2088,7 +2088,7 @@
      "CPR": 175.95,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 2622.24,
+     "RRSS": 1748.16,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -2097,7 +2097,7 @@
     "annual": {
      "BASE": 1680000
     },
-    "totalModal": 156520.71,
+    "totalModal": 155646.63,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -2174,7 +2174,7 @@
      "CPR": 100,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 1408.5,
+     "RRSS": 939,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -2183,7 +2183,7 @@
     "annual": {
      "BASE": 209000
     },
-    "totalModal": 226439.5,
+    "totalModal": 225970,
     "totalIsText": false,
     "excelFlagNo": false
    }
@@ -2221,16 +2221,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 13925.6,
+     "CI123_1": 582.4,
+     "CI123_2": 1523.6,
+     "CI123_3": 491.92
     },
     "annual": {
      "BASE": 700000
     },
-    "totalModal": 397551.44,
-    "totalIsText": true,
+    "totalModal": 414074.96,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -2304,17 +2304,17 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 4352.8,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "RRSS": 2901.87,
+     "CI123": 1531.91,
+     "CI123_1": 255.24,
+     "CI123_2": 124.87,
+     "CI123_3": 59.35
     },
     "annual": {
      "BASE": 1700000
     },
-    "totalModal": 162361.38999999998,
-    "totalIsText": true,
+    "totalModal": 162881.83,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -2438,16 +2438,16 @@
      "HIC": 0,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 257.4,
+     "CI123_1": 6.39,
+     "CI123_2": 51.07,
+     "CI123_3": 20.52
     },
     "annual": {
      "BASE": 1128000
     },
-    "totalModal": 101520,
-    "totalIsText": true,
+    "totalModal": 101855.38,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -2482,16 +2482,16 @@
      "HIC": 5.71,
      "IHU": 0,
      "RRSS": 0,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "CI123": 1251.25,
+     "CI123_1": 51,
+     "CI123_2": 67.5,
+     "CI123_3": 35
     },
     "annual": {
      "BASE": 171000
     },
-    "totalModal": 172915.71,
-    "totalIsText": true,
+    "totalModal": 174320.46,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -2529,17 +2529,17 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 588.19,
-     "CI123": 0,
-     "CI123_1": 0,
-     "CI123_2": 0,
-     "CI123_3": 0
+     "RRSS": 392.13,
+     "CI123": 117.22,
+     "CI123_1": 5.49,
+     "CI123_2": 10.57,
+     "CI123_3": 4.41
     },
     "annual": {
      "BASE": 641000
     },
-    "totalModal": 58866.34,
-    "totalIsText": true,
+    "totalModal": 58807.97,
+    "totalIsText": false,
     "excelFlagNo": false
    }
   },
@@ -2653,7 +2653,7 @@
      "CPR": 0,
      "HIC": 0,
      "IHU": 0,
-     "RRSS": 145.66,
+     "RRSS": 97.11,
      "CI123": 0,
      "CI123_1": 0,
      "CI123_2": 0,
@@ -2662,7 +2662,7 @@
     "annual": {
      "BASE": 415000
     },
-    "totalModal": 37495.66,
+    "totalModal": 37447.11,
     "totalIsText": false,
     "excelFlagNo": false
    }
