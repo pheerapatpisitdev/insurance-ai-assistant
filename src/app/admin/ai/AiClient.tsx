@@ -7,7 +7,9 @@ const PROVIDER_LABEL: Record<string, string> = {
   anthropic: "Anthropic (Claude)", openai: "OpenAI (GPT)", google: "Google (Gemini)", xai: "xAI (Grok)", zai: "Z.ai (GLM)",
 };
 
-export function AiClient({ keys, models, settings, providers }: { keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[] }) {
+export function AiClient({ keys, models, settings, providers, spentThisMonth }: {
+  keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[]; spentThisMonth: number;
+}) {
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string>();
@@ -28,7 +30,7 @@ export function AiClient({ keys, models, settings, providers }: { keys: KeyRow[]
     <>
       {message && <p className="mb-4 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-900">{message}</p>}
 
-      <Card title="กุญแจ API" hint="แสดงเฉพาะ 4 ตัวท้าย ใส่ค่าใหม่เพื่อแทนที่ทั้งหมด">
+      <Card title="กุญแจ API" hint="เก็บแยกจากระบบอื่น เข้ารหัสไว้ในฐานข้อมูล แสดงเฉพาะ 4 ตัวท้าย">
         <div className="space-y-2">
           {providers.map((p) => (
             <div key={p} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
@@ -74,19 +76,28 @@ export function AiClient({ keys, models, settings, providers }: { keys: KeyRow[]
         )}
       </Card>
 
-      <Card title="ค่าเริ่มต้น" hint="โมเดลที่ใช้ตอบคำถาม และเพดานค่าใช้จ่ายต่อเดือน">
+      <Card title="ค่าเริ่มต้นและงบ" hint="โมเดลเล็กใช้แยกข้อความและตอบสั้น โมเดลใหญ่ใช้ตอบจากเอกสาร">
         <form
           className="flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
             const f = new FormData(e.currentTarget);
             const budget = String(f.get("budget") ?? "").trim();
-            run(() => saveSettings(String(f.get("model")), budget === "" ? null : Number(budget)), "บันทึกค่าเริ่มต้นแล้ว");
+            run(() => saveSettings(String(f.get("small")), String(f.get("large")), budget === "" ? null : Number(budget)),
+                "บันทึกค่าเริ่มต้นแล้ว");
           }}
         >
           <label className="text-sm">
-            <span className="block text-xs text-slate-500">โมเดลเริ่มต้น</span>
-            <select name="model" defaultValue={settings?.default_text_model ?? ""} className="mt-1 rounded border px-2 py-1">
+            <span className="block text-xs text-slate-500">โมเดลเล็ก</span>
+            <select name="small" defaultValue={settings?.small_model ?? ""} className="mt-1 rounded border px-2 py-1">
+              <option value="">เลือกอัตโนมัติ</option>
+              {textModels.map((m) => <option key={m.id} value={m.model_name}>{m.model_name}</option>)}
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="block text-xs text-slate-500">โมเดลใหญ่</span>
+            <select name="large" defaultValue={settings?.large_model ?? ""} className="mt-1 rounded border px-2 py-1">
+              <option value="">เลือกอัตโนมัติ</option>
               {textModels.map((m) => <option key={m.id} value={m.model_name}>{m.model_name}</option>)}
             </select>
           </label>
@@ -96,6 +107,9 @@ export function AiClient({ keys, models, settings, providers }: { keys: KeyRow[]
                    className="mt-1 w-32 rounded border px-2 py-1" placeholder="ไม่จำกัด" />
           </label>
           <button disabled={pending} className="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-40">บันทึก</button>
+          <span className="text-xs text-slate-500">
+            ใช้ไปเดือนนี้ {spentThisMonth.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท
+          </span>
         </form>
       </Card>
     </>
