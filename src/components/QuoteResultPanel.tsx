@@ -17,8 +17,7 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured }: {
           <thead>
             <tr className="border-b text-left text-slate-500">
               <th className="py-2">รายการ</th>
-              <th className="py-2 pl-3 text-right whitespace-nowrap">ทุน / แผน</th>
-              <th className="py-2 pl-3 text-right whitespace-nowrap">เบี้ยรายปี</th>
+              <th className="py-2 pl-3 text-right whitespace-nowrap">ทุนประกัน</th>
               <th className="py-2 pl-3 text-right whitespace-nowrap">เบี้ย{PAY_MODE_LABEL[mode]}</th>
             </tr>
           </thead>
@@ -30,7 +29,6 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured }: {
                   {it.message && <div className="text-xs text-red-600">{it.message}</div>}
                 </td>
                 <td className="py-2 pl-3 text-right whitespace-nowrap">{it.amountLabel ?? it.amount.toLocaleString("en-US")}</td>
-                <td className="py-2 pl-3 text-right tabular-nums whitespace-nowrap">{it.eligible ? formatBaht(it.annual) : "-"}</td>
                 <td className="py-2 pl-3 text-right tabular-nums whitespace-nowrap">{it.eligible ? formatBaht(it.modal) : "-"}</td>
               </tr>
             ))}
@@ -46,7 +44,6 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured }: {
 
       <WarningList warnings={result.warnings} />
       <CopySummaryButton text={summary} />
-      <p className="text-xs text-slate-400">ตารางเบี้ยเวอร์ชัน {result.meta.version} ใช้ได้ถึง {result.meta.expiresOn}</p>
     </section>
   );
 }
