@@ -5,6 +5,7 @@ import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "
 import { quote } from "@/calc/quote";
 import type { QuoteInput, RiderInput } from "@/calc/types";
 import { citationLine, quoteFooter, quoteReply } from "./format";
+import { replaceCodes } from "./codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { embedTexts } from "@/lib/ai/client";
 import { allPlanFacts, planFacts } from "./catalogue";
@@ -97,6 +98,7 @@ const PLAN_INFO_SYSTEM = `คุณเป็นผู้ช่วยของต
 - ตอบภาษาไทย สั้น กระชับ
 รูปแบบการตอบ
 - ข้อความธรรมดา ห้ามใช้ ** หรือ # หรือสัญลักษณ์มาร์กดาวน์ เพราะ LINE แสดงเป็นตัวอักษรจริง
+- เรียกชื่อแบบประกันเป็นภาษาคน ห้ามใช้รหัสภายในเช่น WLCI05 WLF99H W80F06
 - ขึ้นต้นบรรทัดรายการด้วย - เท่านั้น
 - ตอบให้จบใน 5 บรรทัด ถ้าจำเป็นต้องยาวกว่านั้นให้ตัดเนื้อหาที่ไม่ได้ถาม`;
 
@@ -111,7 +113,7 @@ async function answerPlanInfo(slots: Routed): Promise<Omit<Answer, "slots">> {
     ],
     maxTokens: 800,
   });
-  return { reply: r.text.trim(), sources: [] };
+  return { reply: replaceCodes(r.text.trim()), sources: [] };
 }
 
 // ---------- questions answered from the uploaded documents ----------
@@ -123,6 +125,7 @@ const DOC_SYSTEM = `คุณเป็นผู้ช่วยของตัว
 - ตอบภาษาไทย สั้น กระชับ
 รูปแบบการตอบ
 - ข้อความธรรมดา ห้ามใช้ ** หรือ # หรือสัญลักษณ์มาร์กดาวน์ เพราะ LINE แสดงเป็นตัวอักษรจริง
+- เรียกชื่อแบบประกันเป็นภาษาคน ห้ามใช้รหัสภายในเช่น WLCI05 WLF99H W80F06
 - ขึ้นต้นบรรทัดรายการด้วย - เท่านั้น หัวข้อไม่ต้องขึ้นต้นด้วย -
 - ไม่เกิน 8 บรรทัด ถ้ามีหลายหัวข้อ ให้สรุปหัวข้อละ 1 บรรทัด
 - ตอบเฉพาะที่ถาม ไม่ต้องเล่าเนื้อหาอื่นในเอกสาร`;
@@ -155,7 +158,7 @@ async function answerFromDocuments(slots: Routed): Promise<Omit<Answer, "slots">
     maxTokens: 1600,
   });
   const sources = hits.map((h) => ({ title: h.doc_title, page: h.page }));
-  return { reply: `${r.text.trim()}\n\n${citationLine(sources)}`, sources };
+  return { reply: `${replaceCodes(r.text.trim())}\n\n${citationLine(sources)}`, sources };
 }
 
 // ---------- anything else ----------
@@ -178,5 +181,5 @@ async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "sl
     ],
     maxTokens: 300,
   });
-  return { reply: r.text.trim(), sources: [] };
+  return { reply: replaceCodes(r.text.trim()), sources: [] };
 }

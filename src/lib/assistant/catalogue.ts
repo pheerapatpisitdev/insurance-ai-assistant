@@ -22,7 +22,7 @@ export function planCatalogue(): string {
   return lines.join("\n");
 }
 
-/** The riders a plan sells, as "CODE = ชื่อไทย" lines. */
+/** The riders a plan sells, by name. Codes are left out so the model cannot echo one. */
 export function riderCatalogue(planCode: string): string {
   const plan = getPlan(planCode);
   if (!plan) return "";
@@ -30,7 +30,7 @@ export function riderCatalogue(planCode: string): string {
     .map((code) => {
       const r = plan.rules.riders[code];
       if (!r) return null;
-      return `  · ${code} = ${r.name} (อายุ ${r.ageMin}-${r.ageMax} ปี)`;
+      return `  · ${r.name} รับอายุ ${r.ageMin}-${r.ageMax} ปี`;
     })
     .filter(Boolean)
     .join("\n");
@@ -41,11 +41,11 @@ export function planFacts(planCode: string): string | null {
   const plan = getPlan(planCode);
   if (!plan) return null;
   const name = plan.planLabel ?? plan.rates.planName ?? planCode;
-  const lines = [`แบบประกัน: ${name} (รหัส ${planCode})`, "แผน/ระยะเวลาชำระเบี้ย:"];
+  const lines = [`แบบประกัน: ${name}`, "แผน/ระยะเวลาชำระเบี้ย:"];
   for (const [variant, label] of Object.entries(plan.variantLabels)) {
     const age = baseAgeRange(plan.rules, variant, plan.rates);
     const sa = baseSumAssuredLimits(plan.rules, variant);
-    lines.push(`  · ${label} (รหัส ${variant}) รับอายุ ${age.min}-${age.max} ปี ${sa.exact ? "ทุน" : "ทุนขั้นต่ำ"} ${sa.min.toLocaleString("en-US")} บาท`);
+    lines.push(`  · ${label} รับอายุ ${age.min}-${age.max} ปี ${sa.exact ? "ทุน" : "ทุนขั้นต่ำ"} ${sa.min.toLocaleString("en-US")} บาท`);
   }
   const extra = plan.rules.base.extraDeathBenefitBeforeAge;
   if (extra) lines.push(`ผลประโยชน์กรณีเสียชีวิตจะเปลี่ยนเมื่ออายุครบ ${extra} ปี`);

@@ -63,10 +63,10 @@ const PLANS: Record<string, PlanBundle> = {
     rules: plbRules as unknown as PlanRules,
     riderOrder: ["AP", "ECARE", "MEB"],
     variantLabels: {
-      PLB05: "PLB05 (ชำระเบี้ย 5 ปี)",
-      PLB10: "PLB10 (ชำระเบี้ย 10 ปี)",
-      PLB12: "PLB12 (ชำระเบี้ย 12 ปี)",
-      PLB15: "PLB15 (ชำระเบี้ย 15 ปี)",
+      PLB05: "Protection Life (ชำระเบี้ย 5 ปี)",
+      PLB10: "Protection Life (ชำระเบี้ย 10 ปี)",
+      PLB12: "Protection Life (ชำระเบี้ย 12 ปี)",
+      PLB15: "Protection Life (ชำระเบี้ย 15 ปี)",
     },
   },
   ISHIELD: {
