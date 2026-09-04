@@ -14,9 +14,19 @@ export interface QuoteResultPanelProps {
   modePremiums?: ModePremium[];
 }
 
+/**
+ * Problems with the base plan itself — an age or an amount the company will not issue. The
+ * arrangement cannot be sold at all, so a premium for it is a number nobody can act on.
+ */
+const UNISSUABLE = new Set(["BASE_SA_MAX", "BASE_SA_MIN", "BASE_SA_EXACT", "BASE_AGE"]);
+
 export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, modePremiums }: QuoteResultPanelProps) {
   // A bundle is sold whole, so a total of 0 is not a price — say so instead of showing it.
-  const incomplete = result.warnings.find((w) => w.code === "BUNDLE_INCOMPLETE");
+  const incomplete = result.warnings.find((w) => w.code === "BUNDLE_INCOMPLETE")
+    // and neither is a premium for an amount or an age the company refuses: the engine still
+    // prices those so the figure can be seen while the form is being filled, but a price
+    // shown next to its own refusal reads as an offer
+    ?? result.warnings.find((w) => w.level === "error" && UNISSUABLE.has(w.code));
   return (
     <section className="space-y-4">
       {derivedSumAssured && (
@@ -48,7 +58,7 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, mod
 
       {incomplete ? (
         <div className="rounded-lg bg-red-50 p-4">
-          <div className="text-lg font-semibold text-red-900">เสนอชุดนี้ไม่ได้</div>
+          <div className="text-lg font-semibold text-red-900">เสนอแบบนี้ไม่ได้</div>
           <div className="mt-1 text-sm text-red-800">{incomplete.message}</div>
         </div>
       ) : modePremiums ? (
