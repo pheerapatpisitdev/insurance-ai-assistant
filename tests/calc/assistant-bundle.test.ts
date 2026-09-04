@@ -61,7 +61,6 @@ describe("what the assistant knows about the bundle", () => {
   });
 
   it("lists every step on offer", () => {
-    expect(facts).toContain("10 ระดับ");
     expect(facts).toContain("มรดก 1 ล้าน");
     expect(facts).toContain("มรดก 10 ล้าน");
   });
@@ -101,18 +100,20 @@ describe("quoting the bundle in a chat", () => {
 });
 
 describe("offering the steps to choose from", () => {
-  it("puts a short list on separate lines, which a phone can scan", () => {
+  it("puts every step on its own line", () => {
     expect(tierChoices(["เล็ก", "กลาง", "ใหญ่"])).toBe("- เล็ก\n- กลาง\n- ใหญ่");
   });
 
-  it("names a long list by its ends instead of running ten commas together", () => {
+  it("keeps one line per step however many there are", () => {
     const names = Array.from({ length: 10 }, (_, i) => `มรดก ${i + 1} ล้าน`);
-    expect(tierChoices(names)).toBe("มี 10 ระดับ ตั้งแต่ มรดก 1 ล้าน ถึง มรดก 10 ล้าน");
+    const lines = tierChoices(names).split("\n");
+    expect(lines).toHaveLength(10);
+    expect(lines[0]).toBe("- มรดก 1 ล้าน");
+    expect(lines[9]).toBe("- มรดก 10 ล้าน");
   });
 
-  it("never runs past two lines, however many steps there are", () => {
-    const names = Array.from({ length: 40 }, (_, i) => `ระดับ ${i + 1}`);
-    expect(tierChoices(names).split("\n").length).toBeLessThanOrEqual(2);
+  it("prints the agency's own wording untouched", () => {
+    expect(tierChoices(["แผนพิเศษ A+"])).toBe("- แผนพิเศษ A+");
   });
 
   it("says nothing when there is nothing to choose from", () => {

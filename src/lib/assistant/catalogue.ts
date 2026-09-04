@@ -74,7 +74,7 @@ export function bundleFacts(): string {
       `ชุดจัดเอง: ${bundle.name}`,
       `  ประกอบจาก ${plan?.variantLabels[bundle.variant] ?? bundle.planCode} คู่กับ ${[...riders].join(", ")}`,
       `  รับอายุ ${range.min}-${range.max} ปี`,
-      `  ระดับที่ขาย ${bundle.tiers.length} ระดับ ตั้งแต่ ${bundle.tiers[0]?.name} ถึง ${bundle.tiers[bundle.tiers.length - 1]?.name}`,
+      `  ระดับที่ขาย: ${bundle.tiers.map((t) => t.name).join(", ")}`,
     ].join("\n"));
   }
   return out.join("\n\n");

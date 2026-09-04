@@ -140,13 +140,10 @@ export function bundleReply(
 }
 
 /**
- * How the steps of a bundle read on a phone. A handful fit on their own lines; ten of them
- * run into a wall of commas that nobody reads, so a long list is named by its ends and its
- * count instead. The names are the agency's own wording, so nothing is inferred from them
- * beyond first, last and how many there are.
+ * The steps of a bundle, one to a line. Run together on one line they wrap into a block
+ * nobody reads and give the customer nothing to point at; down the page each one is a
+ * choice. The names are the agency's own wording and are printed as they are.
  */
 export function tierChoices(tierNames: string[]): string {
-  if (!tierNames.length) return "";
-  if (tierNames.length <= 4) return tierNames.map((n) => `- ${n}`).join("\n");
-  return `มี ${tierNames.length} ระดับ ตั้งแต่ ${tierNames[0]} ถึง ${tierNames[tierNames.length - 1]}`;
+  return tierNames.map((n) => `- ${n}`).join("\n");
 }
