@@ -4,7 +4,7 @@ import { getPlan, listPlans } from "@/calc/plans/registry";
 import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "@/calc/rules";
 import { quote } from "@/calc/quote";
 import type { QuoteInput, RiderInput } from "@/calc/types";
-import { bundleReply, citationLine, quoteFooter, quoteReply } from "./format";
+import { bundleReply, citationLine, quoteFooter, quoteReply, tierChoices } from "./format";
 import { replaceCodes } from "./codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { embedTexts } from "@/lib/ai/client";
@@ -47,14 +47,19 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
 
 function answerBundle(slots: Routed): Omit<Answer, "slots"> {
   const bundle = getBundle(slots.bundleCode!)!;
-  const tiers = bundle.tiers.map((t) => t.name).join(", ");
+  const names = bundle.tiers.map((t) => t.name);
+  const choices = tierChoices(names);
+  const example = names[Math.min(2, names.length - 1)];
 
   if (slots.age === undefined || slots.sex === undefined) {
     const missing = [slots.age === undefined ? "อายุ" : null, slots.sex === undefined ? "เพศ" : null].filter(Boolean);
-    return { reply: `ชุด${bundle.name} มีให้เลือก ${tiers}\n\nขอ${missing.join("และ")}ของผู้เอาประกันด้วยครับ แล้วบอกด้วยว่าต้องการระดับไหน จะได้คำนวณให้`, sources: [] };
+    return {
+      reply: `ชุด${bundle.name}\n${choices}\n\nขอ${missing.join("และ")}ของผู้เอาประกัน และระดับที่ต้องการด้วยครับ\nเช่น "ชาย 35 ${example}"`,
+      sources: [],
+    };
   }
   if (slots.tier === undefined) {
-    return { reply: `ชุด${bundle.name} มีให้เลือก ${tiers}\n\nต้องการระดับไหนครับ`, sources: [] };
+    return { reply: `ชุด${bundle.name}\n${choices}\n\nต้องการระดับไหนครับ เช่น "${example}"`, sources: [] };
   }
 
   const range = bundleAgeRange(bundle);
@@ -66,7 +71,7 @@ function answerBundle(slots: Routed): Omit<Answer, "slots"> {
   const result = quoteBundle(bundle, slots.tier, { ...who, mode: "annual" });
   const tierName = describeTier(bundle, slots.tier);
   if (!result || !tierName) {
-    return { reply: `ชุด${bundle.name} ไม่มีระดับที่ขอครับ มีให้เลือก ${tiers}`, sources: [] };
+    return { reply: `ชุด${bundle.name} ไม่มีระดับที่ขอครับ\n${choices}`, sources: [] };
   }
   return { reply: bundleReply(bundle.name, tierName, who, result, bundleModePremiums(bundle, slots.tier, who)), sources: [] };
 }

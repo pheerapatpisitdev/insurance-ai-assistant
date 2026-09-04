@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { bundleNamedIn, tierForSum, mergeSlots, type Routed } from "@/lib/assistant/route";
 import { bundleFacts } from "@/lib/assistant/catalogue";
-import { bundleReply } from "@/lib/assistant/format";
+import { bundleReply, tierChoices } from "@/lib/assistant/format";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleModePremiums, describeTier, quoteBundle } from "@/calc/bundles/quote";
 
@@ -61,6 +61,7 @@ describe("what the assistant knows about the bundle", () => {
   });
 
   it("lists every step on offer", () => {
+    expect(facts).toContain("10 ระดับ");
     expect(facts).toContain("มรดก 1 ล้าน");
     expect(facts).toContain("มรดก 10 ล้าน");
   });
@@ -96,5 +97,25 @@ describe("quoting the bundle in a chat", () => {
 
   it("still says the number is not a formal quotation", () => {
     expect(reply).toContain("ไม่ใช่ใบเสนอราคา");
+  });
+});
+
+describe("offering the steps to choose from", () => {
+  it("puts a short list on separate lines, which a phone can scan", () => {
+    expect(tierChoices(["เล็ก", "กลาง", "ใหญ่"])).toBe("- เล็ก\n- กลาง\n- ใหญ่");
+  });
+
+  it("names a long list by its ends instead of running ten commas together", () => {
+    const names = Array.from({ length: 10 }, (_, i) => `มรดก ${i + 1} ล้าน`);
+    expect(tierChoices(names)).toBe("มี 10 ระดับ ตั้งแต่ มรดก 1 ล้าน ถึง มรดก 10 ล้าน");
+  });
+
+  it("never runs past two lines, however many steps there are", () => {
+    const names = Array.from({ length: 40 }, (_, i) => `ระดับ ${i + 1}`);
+    expect(tierChoices(names).split("\n").length).toBeLessThanOrEqual(2);
+  });
+
+  it("says nothing when there is nothing to choose from", () => {
+    expect(tierChoices([])).toBe("");
   });
 });

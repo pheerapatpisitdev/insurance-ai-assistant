@@ -138,3 +138,15 @@ export function bundleReply(
   blocks.push("· เบี้ยประมาณการจากตารางเบี้ยบริษัท ไม่ใช่ใบเสนอราคา");
   return blocks.join("\n\n");
 }
+
+/**
+ * How the steps of a bundle read on a phone. A handful fit on their own lines; ten of them
+ * run into a wall of commas that nobody reads, so a long list is named by its ends and its
+ * count instead. The names are the agency's own wording, so nothing is inferred from them
+ * beyond first, last and how many there are.
+ */
+export function tierChoices(tierNames: string[]): string {
+  if (!tierNames.length) return "";
+  if (tierNames.length <= 4) return tierNames.map((n) => `- ${n}`).join("\n");
+  return `มี ${tierNames.length} ระดับ ตั้งแต่ ${tierNames[0]} ถึง ${tierNames[tierNames.length - 1]}`;
+}
