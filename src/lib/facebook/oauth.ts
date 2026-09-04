@@ -74,14 +74,25 @@ export function stateIsValid(state: string | null): boolean {
   return Number(expires) > Date.now();
 }
 
+/**
+ * A Business-type app ignores `scope` and asks only for a name and photo; what it wants is a
+ * login configuration made in the dashboard, which bundles the same permissions. With one
+ * configured the dialog uses it; without, the plain scope list still serves a Consumer app.
+ */
 export function authorizeUrl(origin: string, state: string): string {
   const params = new URLSearchParams({
     client_id: appId(),
     redirect_uri: redirectUri(origin),
     state,
-    scope: SCOPES.join(","),
     response_type: "code",
   });
+  const config = process.env.FB_LOGIN_CONFIG_ID;
+  if (config) {
+    params.set("config_id", config);
+    params.set("override_default_response_type", "true");
+  } else {
+    params.set("scope", SCOPES.join(","));
+  }
   return `${DIALOG}?${params}`;
 }
 

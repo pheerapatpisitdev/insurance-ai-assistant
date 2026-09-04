@@ -189,10 +189,12 @@ describe("connect flow", () => {
   beforeEach(() => {
     process.env.ADMIN_SESSION_SECRET = "state-secret";
     process.env.FB_APP_ID = "1234567890";
+    delete process.env.FB_LOGIN_CONFIG_ID;
   });
   afterEach(() => {
     delete process.env.ADMIN_SESSION_SECRET;
     delete process.env.FB_APP_ID;
+    delete process.env.FB_LOGIN_CONFIG_ID;
   });
 
   it("accepts the state it just signed", () => {
@@ -220,6 +222,15 @@ describe("connect flow", () => {
     expect(url.searchParams.get("scope")).toBe("pages_show_list,pages_messaging,pages_manage_metadata");
     expect(url.searchParams.get("redirect_uri")).toBe("https://www.advisortool.app/api/facebook/connect/callback");
     expect(url.searchParams.get("client_id")).toBe("1234567890");
+  });
+
+  it("uses the login configuration instead of a scope list when one is set", () => {
+    process.env.FB_LOGIN_CONFIG_ID = "1600660545122340";
+    const url = new URL(authorizeUrl("https://www.advisortool.app", makeState()));
+    expect(url.searchParams.get("config_id")).toBe("1600660545122340");
+    expect(url.searchParams.get("override_default_response_type")).toBe("true");
+    expect(url.searchParams.get("response_type")).toBe("code");
+    expect(url.searchParams.has("scope")).toBe(false);
   });
 
   it("builds the redirect URI from the address the browser used, not the internal host", () => {
