@@ -3,3 +3,88 @@
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", "Helvetica Neue", Arial, sans-serif;
 }
+
+/* ── มรดกเพื่อครอบครัว ─────────────────────────────────────────────────────────
+   The sales page's own skin: a private-bank palette, kept to this route so the
+   agent's calculator and the back office stay the plain working tools they are.
+   Applied by src/app/legacy/layout.tsx.                                        */
+
+/* The palette lives on the root so that the rule painting the page's ground — which has to
+   sit on <body>, outside the themed wrapper — can reach it too. Declaring these inside
+   .theme-legacy left --lg-navy undefined on body, which made that background declaration
+   invalid and dropped the ground to transparent: white showed through on overscroll. */
+:root {
+  --lg-navy: #0d1b2a;
+  /* one step up from the ground, for anything that should read as raised */
+  --lg-navy-lift: #132536;
+  --lg-gold: #c9a26f;
+  --lg-gold-glow: rgba(201, 162, 111, 0.13);
+  --lg-hair: rgba(201, 162, 111, 0.24);
+  --lg-white: #f5f5f5;
+  /* secondary text: still 8:1 on the navy, so it is quiet rather than faint */
+  --lg-mute: rgba(245, 245, 245, 0.66);
+  --lg-panel: rgba(74, 85, 104, 0.26);
+  --lg-panel-line: rgba(74, 85, 104, 0.6);
+}
+
+.theme-legacy {
+  color-scheme: dark;
+  background: var(--lg-navy);
+  color: var(--lg-white);
+  font-family: var(--lg-font-body), system-ui, "Noto Sans Thai", sans-serif;
+  font-weight: 300;
+}
+
+/* the ground the page stands on, so overscroll and short pages never flash white */
+body:has(.theme-legacy) {
+  background: var(--lg-navy);
+}
+
+/* Atmosphere: a low gold light behind the opening, and a grain that keeps a large
+   field of one dark colour from reading as flat. Both sit behind everything and
+   take no clicks. */
+.theme-legacy::before,
+.theme-legacy::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.theme-legacy::before {
+  background: radial-gradient(125% 55% at 50% -8%, var(--lg-gold-glow), transparent 68%);
+}
+.theme-legacy::after {
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.theme-legacy > * {
+  position: relative;
+  z-index: 1;
+}
+
+.theme-legacy h1,
+.theme-legacy h2,
+.theme-legacy .lg-figure {
+  font-family: var(--lg-font-display), var(--lg-font-body), serif;
+}
+
+/* A hairline that fades at both ends — an engraved rule rather than a border. */
+.lg-rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(90deg, transparent, var(--lg-hair) 18%, var(--lg-hair) 82%, transparent);
+}
+
+/* The opening reveals in order, so the eye is walked down to the button rather
+   than shown everything at once. */
+@keyframes lg-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.lg-rise {
+  animation: lg-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lg-rise { animation: none; }
+}

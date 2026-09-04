@@ -67,21 +67,21 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
 
   return (
     <div className="space-y-6">
-      <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="space-y-6 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] p-5">
         <div>
-          <label htmlFor="legacy-sum" className="block text-sm font-medium text-slate-600">
+          <label htmlFor="legacy-sum" className="block text-sm text-[var(--lg-mute)]">
             อยากให้ครอบครัวได้รับเท่าไหร่
           </label>
-          <div className="mt-1 text-3xl font-semibold tabular-nums text-slate-900">
+          <div className="lg-figure mt-1.5 text-3xl tabular-nums text-[var(--lg-gold)]">
             {(millions * 1_000_000).toLocaleString("en-US")}{" "}
-            <span className="text-lg font-normal text-slate-500">บาท</span>
+            <span className="text-lg text-[var(--lg-mute)]">บาท</span>
           </div>
           <input
             id="legacy-sum" type="range" min={1} max={BUNDLE.tiers.length} step={1} value={millions}
             onChange={(e) => setMillions(Number(e.target.value))}
-            className="mt-3 w-full accent-emerald-600"
+            className="mt-4 w-full accent-[var(--lg-gold)]"
           />
-          <div className="flex justify-between text-xs text-slate-400">
+          <div className="mt-1 flex justify-between text-xs text-[var(--lg-mute)] opacity-70">
             <span>1 ล้าน</span>
             <span>{BUNDLE.tiers.length} ล้าน</span>
           </div>
@@ -89,7 +89,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="legacy-age" className="block text-sm font-medium text-slate-600">อายุ</label>
+            <label htmlFor="legacy-age" className="block text-sm text-[var(--lg-mute)]">อายุ</label>
             {/* a picker rather than a number field: on a phone it opens the wheel instead of
                 the keypad, and there is no way to arrive at an age nobody is */}
             <select
@@ -97,7 +97,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
               onChange={(e) => setAge(e.target.value === "" || e.target.value === "other"
                 ? (e.target.value as LegacyAge)
                 : Number(e.target.value))}
-              className="mt-1 w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-lg tabular-nums text-slate-900"
+              className="mt-1.5 w-full appearance-none rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-navy-lift)] px-3 py-2.5 text-lg tabular-nums text-[var(--lg-white)]"
             >
               <option value="">เลือกอายุ</option>
               {AGES.map((a) => <option key={a} value={a}>{a} ปี</option>)}
@@ -105,15 +105,15 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
             </select>
           </div>
           <div>
-            <span className="block text-sm font-medium text-slate-600">เพศ</span>
-            <div className="mt-1 grid grid-cols-2 gap-2">
+            <span className="block text-sm text-[var(--lg-mute)]">เพศ</span>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
               {(["M", "F"] as Sex[]).map((s) => (
                 <button
                   key={s} type="button" onClick={() => setSex(s)} aria-pressed={sex === s}
-                  className={`rounded-lg border px-3 py-2 text-sm ${
+                  className={`rounded-sm border py-2.5 text-sm transition-colors ${
                     sex === s
-                      ? "border-emerald-600 bg-emerald-50 font-medium text-emerald-900"
-                      : "border-slate-300 text-slate-600"
+                      ? "border-[var(--lg-gold)] bg-[var(--lg-gold)] font-medium text-[var(--lg-navy)]"
+                      : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
                   }`}
                 >
                   {s === "M" ? "ชาย" : "หญิง"}
@@ -125,45 +125,46 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
       </div>
 
       {age === "" ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 px-5 py-6 text-center text-sm text-slate-500">
-          กรอกอายุเพื่อดูเบี้ยของคุณ
+        <p className="rounded-sm border border-dashed border-[var(--lg-panel-line)] px-5 py-7 text-center text-sm text-[var(--lg-mute)]">
+          เลือกอายุเพื่อดูเบี้ยของคุณ
         </p>
       ) : !inRange || !result ? (
-        <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-6 text-center text-sm text-amber-900">
+        <div className="rounded-sm border border-[var(--lg-gold)] bg-[var(--lg-panel)] px-5 py-7 text-center text-sm leading-relaxed text-[var(--lg-white)]">
           ชุดนี้รับอายุ {RANGE.min}–{RANGE.max} ปี ทักมาให้เราช่วยหาแบบที่เหมาะกับคุณ
         </div>
       ) : (
-        <div className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+        <div className="space-y-5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-navy-lift)] p-5">
           {headline && annual ? (
             <div>
-              <div className="text-sm text-emerald-800">เบี้ยประกัน</div>
-              <div className="text-4xl font-bold tabular-nums text-emerald-900">
+              <div className="text-sm text-[var(--lg-mute)]">เบี้ยประกัน</div>
+              <div className="lg-figure mt-1 text-[2.6rem] leading-none tabular-nums text-[var(--lg-gold)]">
                 {formatBaht(headline.total)}
-                <span className="ml-2 text-base font-normal text-emerald-800">
+                <span className="ml-2 text-base text-[var(--lg-mute)]">
                   บาท {PER_LABEL[headline.mode]}
                 </span>
               </div>
-              <div className="mt-0.5 text-sm text-emerald-800">ตกวันละ {perDay(annual.total)} บาท</div>
+              <div className="mt-2.5 text-sm text-[var(--lg-mute)]">ตกวันละ {perDay(annual.total)} บาท</div>
               {others.length > 0 && (
-                <div className="mt-2 text-sm text-emerald-800">
+                <div className="mt-1 text-sm text-[var(--lg-mute)] opacity-80">
                   {others.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`).join(" · ")}
                 </div>
               )}
             </div>
           ) : (
-            <div className="text-sm font-medium text-emerald-900">ขอราคาปัจจุบันได้ทางแชทด้านล่าง</div>
+            <div className="text-sm font-medium text-[var(--lg-gold)]">ขอราคาปัจจุบันได้ทางแชทด้านล่าง</div>
           )}
 
           {death && (
-            <div className="border-t border-emerald-200 pt-4">
-              <div className="text-sm text-emerald-800">ครอบครัวได้รับ</div>
+            <div className="pt-1">
+              <hr className="lg-rule" />
+              <div className="pt-4 text-sm text-[var(--lg-mute)]">ครอบครัวได้รับ</div>
               {/* every band at the same size: the one that shrinks is the one a customer
                   most needs to see, so it does not get to be the small print */}
-              <dl className="mt-1 space-y-1">
+              <dl className="mt-2 space-y-2">
                 {deathBenefitRows(death).map((row) => (
                   <div key={row.label} className="flex items-baseline justify-between gap-3">
-                    <dt className="text-sm text-emerald-800">{row.label}</dt>
-                    <dd className="text-lg font-semibold tabular-nums text-emerald-900">
+                    <dt className="text-sm text-[var(--lg-mute)]">{row.label}</dt>
+                    <dd className="lg-figure text-lg tabular-nums text-[var(--lg-white)]">
                       {row.amount.toLocaleString("en-US")} บาท
                     </dd>
                   </div>
@@ -172,7 +173,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
             </div>
           )}
 
-          <p className="border-t border-emerald-200 pt-3 text-xs leading-relaxed text-emerald-800">
+          <p className="border-t border-[var(--lg-panel-line)] pt-4 text-xs leading-[1.8] text-[var(--lg-mute)] opacity-80">
             เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป · จ่ายเมื่อเสียชีวิต
             หรือเมื่อตรวจพบ 1 ใน 31 โรคร้ายแรงตามคำนิยามในกรมธรรม์
           </p>
@@ -182,7 +183,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
       <ContactButtons channels={channels} message={message} />
 
       {sticky && (
-        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white/95 p-3 backdrop-blur sm:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-navy)]/95 p-3 backdrop-blur sm:hidden">
           <ContactButtons channels={channels} message={message} compact />
         </div>
       )}
@@ -201,14 +202,14 @@ function ContactButtons(
   { channels, message, compact = false }: { channels: LegacyChannels; message: string; compact?: boolean },
 ) {
   const shape = compact
-    ? "rounded-lg px-3 py-2.5 text-center text-sm font-medium"
-    : "rounded-xl px-5 py-3 text-center font-medium";
+    ? "rounded-sm px-3 py-2.5 text-center text-sm font-medium"
+    : "rounded-sm px-5 py-3.5 text-center font-medium tracking-wide";
   return (
     <div className={compact ? "flex gap-2 [&>*]:flex-1" : "grid gap-2"}>
       {channels.lineOaId && (
         <a
           href={lineUrl(channels.lineOaId, message)} target="_blank" rel="noopener noreferrer"
-          className={`${shape} bg-emerald-600 text-white`}
+          className={`${shape} bg-[var(--lg-gold)] text-[var(--lg-navy)]`}
         >
           {compact ? "ทักไลน์" : "ทักไลน์ปรึกษาฟรี"}
         </a>
@@ -216,12 +217,12 @@ function ContactButtons(
       {channels.messengerPage && (
         <a
           href={messengerUrl(channels.messengerPage, message)} target="_blank" rel="noopener noreferrer"
-          className={`${shape} bg-blue-600 text-white`}
+          className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`}
         >
           {compact ? "Messenger" : "ทัก Messenger"}
         </a>
       )}
-      <a href={chatUrl(message)} className={`${shape} border border-slate-300 text-slate-700`}>
+      <a href={chatUrl(message)} className={`${shape} border border-[var(--lg-panel-line)] text-[var(--lg-mute)]`}>
         {compact ? "ถาม AI" : "ถาม AI ก่อนก็ได้"}
       </a>
     </div>
