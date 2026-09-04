@@ -42,13 +42,13 @@ const TONES = {
  * What the Page currently greets a new person with. Null when Meta would not say: an empty
  * form over an unread profile invites saving blanks, and saving blanks deletes what is there.
  */
-async function currentProfile(): Promise<MessengerProfile | null> {
+async function currentProfile(): Promise<{ profile: MessengerProfile | null; error?: string }> {
   const token = await pageToken();
-  if (!token) return null;
+  if (!token) return { profile: null, error: "ยังไม่ได้เชื่อมต่อเพจ" };
   try {
-    return await readProfile(token);
-  } catch {
-    return null;
+    return { profile: await readProfile(token) };
+  } catch (e) {
+    return { profile: null, error: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -72,7 +72,7 @@ export default async function MessengerAdminPage({
   const outcome = OUTCOMES[String(params.fb ?? "")];
   const detail = typeof params.detail === "string" ? params.detail : undefined;
 
-  const [status, connection, choices, profile, conversations, activity] = await Promise.all([
+  const [status, connection, choices, current, conversations, activity] = await Promise.all([
     facebookStatus(),
     pageConnection(),
     pendingChoices(),
@@ -133,10 +133,11 @@ export default async function MessengerAdminPage({
 
       {connection && (
         <Card title="หน้าเปิดแชท" hint="ข้อความทักทายและปุ่มคำถามที่คนเห็นก่อนพิมพ์ข้อความแรก อ่านค่าปัจจุบันจากเพจ">
-          {profile ? (
-            <ProfileForm initial={profile} />
+          {current.profile ? (
+            <ProfileForm initial={current.profile} />
           ) : (
-            <Empty>อ่านค่าปัจจุบันจากเพจไม่ได้ในตอนนี้ (Meta จำกัดจำนวนครั้ง) ลองเปิดหน้านี้ใหม่ในอีกสักครู่</Empty>
+            <Empty>อ่านค่าปัจจุบันจากเพจไม่ได้ในตอนนี้ ลองเปิดหน้านี้ใหม่ในอีกสักครู่<br />
+              <span className="text-xs">{current.error}</span></Empty>
           )}
         </Card>
       )}
