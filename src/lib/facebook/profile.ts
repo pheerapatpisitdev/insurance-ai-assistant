@@ -16,9 +16,23 @@ export interface MessengerProfile {
   questions: string[];
 }
 
+interface CallToAction { question: string; payload: string }
+/**
+ * Meta writes ice breakers in the new shape (one entry per locale, each holding its
+ * questions) but still reads them back in the old one (a flat list of questions), so both
+ * are accepted.
+ */
+type IceBreakerRow = { locale?: string; call_to_actions?: CallToAction[] } & Partial<CallToAction>;
 interface ProfileRow {
   greeting?: { locale: string; text: string }[];
-  ice_breakers?: { locale: string; call_to_actions: { question: string; payload: string }[] }[];
+  ice_breakers?: IceBreakerRow[];
+}
+
+function questionsOf(rows: IceBreakerRow[] | undefined): string[] {
+  if (!rows?.length) return [];
+  const localised = rows.find((r) => r.locale === "default" && r.call_to_actions) ?? rows.find((r) => r.call_to_actions);
+  if (localised?.call_to_actions) return localised.call_to_actions.map((c) => c.question);
+  return rows.map((r) => r.question).filter((q): q is string => typeof q === "string");
 }
 
 export class ProfileError extends Error {
@@ -64,10 +78,10 @@ export async function readProfile(token: string): Promise<MessengerProfile> {
   }
   const body = JSON.parse(text) as { data?: ProfileRow[] };
   const row = body.data?.[0] ?? {};
-  const pick = <T extends { locale: string }>(rows?: T[]) => rows?.find((r) => r.locale === "default") ?? rows?.[0];
+  const greeting = row.greeting?.find((r) => r.locale === "default") ?? row.greeting?.[0];
   const profile = {
-    greeting: pick(row.greeting)?.text ?? "",
-    questions: pick(row.ice_breakers)?.call_to_actions.map((c) => c.question) ?? [],
+    greeting: greeting?.text ?? "",
+    questions: questionsOf(row.ice_breakers),
   };
   cached = { token, at: Date.now(), profile };
   return profile;

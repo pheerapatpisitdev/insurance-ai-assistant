@@ -345,6 +345,21 @@ describe("reading the messenger profile", () => {
     expect(calls).toBe(1);
   });
 
+  it("reads the flat shape Meta answers with, as well as the one it is written in", async () => {
+    forgetProfile();
+    globalThis.fetch = (async () => new Response(JSON.stringify({ data: [{
+      greeting: [{ locale: "default", text: "สวัสดี" }],
+      ice_breakers: [{ question: "ก", payload: "ก" }, { question: "ข", payload: "ข" }],
+    }] }), { status: 200 })) as typeof fetch;
+    expect(await readProfile("t2")).toEqual({ greeting: "สวัสดี", questions: ["ก", "ข"] });
+  });
+
+  it("copes with a profile that has nothing set", async () => {
+    forgetProfile();
+    globalThis.fetch = (async () => new Response(JSON.stringify({ data: [{}] }), { status: 200 })) as typeof fetch;
+    expect(await readProfile("t3")).toEqual({ greeting: "", questions: [] });
+  });
+
   it("names a rate limit as such", async () => {
     forgetProfile();
     globalThis.fetch = (async () => new Response(
