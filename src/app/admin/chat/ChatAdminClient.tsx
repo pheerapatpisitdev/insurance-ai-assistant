@@ -1,9 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Card, Empty } from "../ui";
+import { Card } from "../ui";
 import { resetPrompt, savePrompt, tryQuestion, type TryResult } from "./actions";
 import type { PromptKey } from "@/lib/assistant/prompts";
-import type { Conversation } from "./page";
 
 interface PromptRow {
   key: PromptKey;
@@ -21,8 +20,6 @@ const EXAMPLES = [
   "ขั้นตอนการเคลมมีอะไรบ้าง",
   "สวัสดีครับ",
 ];
-
-const CHANNEL_LABEL: Record<string, string> = { line: "LINE", facebook: "Messenger" };
 
 function money(thb: number | undefined) {
   if (thb === undefined) return null;
@@ -271,54 +268,10 @@ function PromptEditor({ row }: { row: PromptRow }) {
   );
 }
 
-function Conversations({ items }: { items: Conversation[] }) {
-  const [open, setOpen] = useState<number | null>(null);
-  if (!items.length) return <Empty>ยังไม่มีบทสนทนา บทสนทนาจะหายไปเองหลัง 24 ชั่วโมง</Empty>;
-
-  return (
-    <ul className="space-y-2">
-      {items.map((c, i) => (
-        <li key={i} className="rounded-md border">
-          <button
-            type="button"
-            onClick={() => setOpen(open === i ? null : i)}
-            className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 p-3 text-left text-sm hover:bg-slate-50"
-          >
-            <span className="font-medium">{CHANNEL_LABEL[c.channel] ?? c.channel}</span>
-            <span className="text-slate-600">{c.turns.length} ข้อความ</span>
-            {c.intent && <span className="text-xs text-slate-500">ล่าสุด: {c.intent}</span>}
-            <span className="ml-auto text-xs text-slate-500">
-              {new Date(c.updatedAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
-            </span>
-          </button>
-          {open === i && (
-            <div className="space-y-2 border-t p-3">
-              {c.turns.map((t, n) => (
-                <div key={n} className={t.role === "user" ? "flex justify-end" : "flex justify-start"}>
-                  <div
-                    className={
-                      t.role === "user"
-                        ? "max-w-[85%] whitespace-pre-wrap rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
-                        : "max-w-[85%] whitespace-pre-wrap rounded-lg bg-slate-100 px-3 py-2 text-sm"
-                    }
-                  >
-                    {t.content}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export function ChatAdminClient({
-  prompts, conversations, counts,
+  prompts, counts,
 }: {
   prompts: PromptRow[];
-  conversations: Conversation[];
   counts: { plans: number; bundles: number; docs: number };
 }) {
   return (
@@ -332,9 +285,6 @@ export function ChatAdminClient({
         {prompts.map((p) => (
           <PromptEditor key={p.key} row={p} />
         ))}
-      </Card>
-      <Card title="บทสนทนาล่าสุด" hint="จาก LINE และ Messenger เก็บไว้ 24 ชั่วโมงตามนโยบายความเป็นส่วนตัว">
-        <Conversations items={conversations} />
       </Card>
     </>
   );

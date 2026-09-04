@@ -13,20 +13,6 @@ export interface Conversation {
   intent: string | null;
 }
 
-async function recentConversations(): Promise<Conversation[]> {
-  const { data } = await supabaseAdmin()
-    .from("ins_chat_sessions")
-    .select("channel, messages, slots, updated_at")
-    .order("updated_at", { ascending: false })
-    .limit(20);
-  return (data ?? []).map((r) => ({
-    channel: r.channel as string,
-    updatedAt: r.updated_at as string,
-    turns: Array.isArray(r.messages) ? (r.messages as { role: string; content: string }[]) : [],
-    intent: (r.slots as { intent?: string } | null)?.intent ?? null,
-  }));
-}
-
 async function documentCount(): Promise<number> {
   const { count } = await supabaseAdmin()
     .from("ins_knowledge_docs")
@@ -36,15 +22,10 @@ async function documentCount(): Promise<number> {
 }
 
 export default async function ChatAdminPage() {
-  const [prompts, conversations, docs] = await Promise.all([
-    promptsWithOverrides(),
-    recentConversations(),
-    documentCount(),
-  ]);
+  const [prompts, docs] = await Promise.all([promptsWithOverrides(), documentCount()]);
   return (
     <ChatAdminClient
       prompts={prompts}
-      conversations={conversations}
       counts={{ plans: listPlans().length, bundles: listBundles().length, docs }}
     />
   );
