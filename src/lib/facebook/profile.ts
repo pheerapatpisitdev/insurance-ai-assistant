@@ -21,19 +21,56 @@ interface ProfileRow {
   ice_breakers?: { locale: string; call_to_actions: { question: string; payload: string }[] }[];
 }
 
+export class ProfileError extends Error {
+  constructor(readonly code: number, message: string) {
+    super(message);
+  }
+  /** Meta allows ten Messenger Profile calls per ten minutes; this is the eleventh. */
+  get rateLimited(): boolean {
+    return [4, 17, 32, 613].includes(this.code);
+  }
+}
+
+/**
+ * Meta allows ten Messenger Profile calls per ten minutes per Page, and one back-office
+ * visit used to spend two of them. A read is kept for a minute so reloading the page costs
+ * nothing, and a write clears it so the form shows what was just saved.
+ */
+let cached: { token: string; at: number; profile: MessengerProfile } | null = null;
+const CACHE_MS = 60_000;
+
+export function forgetProfile(): void {
+  cached = null;
+}
+
 export async function readProfile(token: string): Promise<MessengerProfile> {
+  if (cached && cached.token === token && Date.now() - cached.at < CACHE_MS) return cached.profile;
   const res = await fetch(`${GRAPH}?fields=greeting,ice_breakers`, {
     headers: { authorization: `Bearer ${token}` },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`messenger_profile ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const body = (await res.json()) as { data?: ProfileRow[] };
+  const text = await res.text();
+  if (!res.ok) {
+    let code = res.status;
+    let message = `messenger_profile ${res.status}: ${text.slice(0, 200)}`;
+    try {
+      const err = (JSON.parse(text) as { error?: { code?: number; message?: string } }).error;
+      if (err?.code) code = err.code;
+      if (err?.message) message = err.message;
+    } catch {
+      // not JSON; the status line above is all there is
+    }
+    throw new ProfileError(code, message);
+  }
+  const body = JSON.parse(text) as { data?: ProfileRow[] };
   const row = body.data?.[0] ?? {};
   const pick = <T extends { locale: string }>(rows?: T[]) => rows?.find((r) => r.locale === "default") ?? rows?.[0];
-  return {
+  const profile = {
     greeting: pick(row.greeting)?.text ?? "",
     questions: pick(row.ice_breakers)?.call_to_actions.map((c) => c.question) ?? [],
   };
+  cached = { token, at: Date.now(), profile };
+  return profile;
 }
 
 /** Trims, drops blanks, and refuses what Meta would refuse, so the error is in Thai and early. */
@@ -60,6 +97,7 @@ export function profileBody(profile: MessengerProfile): Record<string, unknown> 
 
 export async function writeProfile(token: string, input: MessengerProfile): Promise<void> {
   const profile = normaliseProfile(input);
+  forgetProfile();
   // a field left empty is deleted, not left as it was; otherwise an old greeting would linger
   const gone = [!profile.greeting && "greeting", !profile.questions.length && "ice_breakers"].filter(Boolean);
   if (gone.length) {

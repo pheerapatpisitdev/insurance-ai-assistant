@@ -1,11 +1,11 @@
 import { Card, Empty, Stat } from "../ui";
 import { ConversationList } from "@/components/ConversationList";
 import { channelActivity, recentConversations } from "@/lib/chat/history";
-import { facebookStatus } from "@/lib/facebook/status";
+import { facebookStatus, type MessagingProbe } from "@/lib/facebook/status";
 import { pageConnection, readPending } from "@/lib/facebook/connection";
 import { listPages, oauthIsConfigured, SCOPES, SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
 import { pageToken } from "@/lib/facebook/connection";
-import { readProfile, type MessengerProfile } from "@/lib/facebook/profile";
+import { ProfileError, readProfile, type MessengerProfile } from "@/lib/facebook/profile";
 import { DisconnectButton } from "./DisconnectButton";
 import { PagePicker, type Choice } from "./PagePicker";
 import { ProfileForm } from "./ProfileForm";
@@ -42,13 +42,18 @@ const TONES = {
  * What the Page currently greets a new person with. Null when Meta would not say: an empty
  * form over an unread profile invites saving blanks, and saving blanks deletes what is there.
  */
-async function currentProfile(): Promise<{ profile: MessengerProfile | null; error?: string }> {
+async function currentProfile(): Promise<{ profile: MessengerProfile | null; error?: string; messaging?: MessagingProbe }> {
   const token = await pageToken();
   if (!token) return { profile: null, error: "ยังไม่ได้เชื่อมต่อเพจ" };
   try {
-    return { profile: await readProfile(token) };
+    return { profile: await readProfile(token), messaging: true };
   } catch (e) {
-    return { profile: null, error: e instanceof Error ? e.message : String(e) };
+    const limited = e instanceof ProfileError && e.rateLimited;
+    return {
+      profile: null,
+      error: limited ? "Meta จำกัดไว้ 10 ครั้งต่อ 10 นาที" : e instanceof Error ? e.message : String(e),
+      messaging: limited ? "limited" : false,
+    };
   }
 }
 
@@ -72,11 +77,13 @@ export default async function MessengerAdminPage({
   const outcome = OUTCOMES[String(params.fb ?? "")];
   const detail = typeof params.detail === "string" ? params.detail : undefined;
 
-  const [status, connection, choices, current, conversations, activity] = await Promise.all([
-    facebookStatus(),
+  // the profile read doubles as the messaging probe, so the page spends one Messenger
+  // Profile call per visit instead of two
+  const current = await currentProfile();
+  const [status, connection, choices, conversations, activity] = await Promise.all([
+    facebookStatus(current.messaging),
     pageConnection(),
     pendingChoices(),
-    currentProfile(),
     recentConversations("facebook"),
     channelActivity("facebook"),
   ]);

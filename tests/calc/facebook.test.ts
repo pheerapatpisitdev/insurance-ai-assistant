@@ -7,7 +7,7 @@ import { forgetCachedToken } from "@/lib/facebook/connection";
 import { authorizeUrl, makeState, redirectUri, stateIsValid } from "@/lib/facebook/oauth";
 import { requestOrigin } from "@/lib/facebook/origin";
 import { eventKey, textOf } from "@/lib/facebook/events";
-import { normaliseProfile, profileBody } from "@/lib/facebook/profile";
+import { forgetProfile, normaliseProfile, profileBody, readProfile, ProfileError } from "@/lib/facebook/profile";
 
 const SECRET = "test-app-secret";
 
@@ -184,6 +184,19 @@ describe("page status", () => {
     expect(status.notes[0]).toContain("จำกัดจำนวนครั้ง");
   });
 
+  it("takes the messaging answer from whoever already asked, without calling Meta for it", async () => {
+    const calls: string[] = [];
+    globalThis.fetch = (async (url: string | URL) => {
+      calls.push(new URL(String(url)).pathname);
+      return new Response(JSON.stringify({ error: { code: 100, message: "no" } }), { status: 400 });
+    }) as typeof fetch;
+    const status = await facebookStatus(true);
+    expect(status.messagingOk).toBe(true);
+    expect(calls.some((p) => p.includes("messenger_profile"))).toBe(false);
+    expect((await facebookStatus("limited")).messagingOk).toBeUndefined();
+    expect((await facebookStatus(false)).messagingOk).toBe(false);
+  });
+
   it("reads the page and its subscription when the token carries the permissions", async () => {
     graph({
       "/me/messenger_profile": { data: [] },
@@ -308,5 +321,35 @@ describe("messenger profile", () => {
 
   it("leaves out what is empty rather than sending an empty list", () => {
     expect(profileBody({ greeting: "", questions: [] })).toEqual({});
+  });
+});
+
+describe("reading the messenger profile", () => {
+  const real = globalThis.fetch;
+  afterEach(() => { globalThis.fetch = real; forgetProfile(); });
+
+  it("asks Meta once a minute, however often the page is opened", async () => {
+    forgetProfile();
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls++;
+      return new Response(JSON.stringify({ data: [{
+        greeting: [{ locale: "default", text: "สวัสดี" }],
+        ice_breakers: [{ locale: "default", call_to_actions: [{ question: "ก", payload: "ก" }] }],
+      }] }), { status: 200 });
+    }) as typeof fetch;
+    const a = await readProfile("t");
+    const b = await readProfile("t");
+    expect(a).toEqual({ greeting: "สวัสดี", questions: ["ก"] });
+    expect(b).toEqual(a);
+    expect(calls).toBe(1);
+  });
+
+  it("names a rate limit as such", async () => {
+    forgetProfile();
+    globalThis.fetch = (async () => new Response(
+      JSON.stringify({ error: { code: 613, message: "Calls to this api have exceeded the rate limit." } }), { status: 400 },
+    )) as typeof fetch;
+    await expect(readProfile("t")).rejects.toSatisfy((e: unknown) => e instanceof ProfileError && e.rateLimited);
   });
 });

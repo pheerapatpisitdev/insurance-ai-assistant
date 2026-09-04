@@ -57,14 +57,27 @@ async function get<T>(path: string, token: string): Promise<T> {
   return body;
 }
 
-export async function facebookStatus(): Promise<FacebookStatus> {
+/**
+ * What is already known about messaging, so the status need not ask Meta again: the
+ * Messenger Profile API allows ten calls per ten minutes, and the profile form on the same
+ * page has just made one. `true`/`false` are the answer; `"limited"` means Meta declined to say.
+ */
+export type MessagingProbe = boolean | "limited";
+
+export async function facebookStatus(known?: MessagingProbe): Promise<FacebookStatus> {
   const token = await pageToken();
   if (!token) return { configured: false, notes: [], errors: ["ยังไม่ได้เชื่อมต่อเพจ Facebook"] };
 
   const status: FacebookStatus = { configured: true, notes: [], errors: [] };
   // each call stands on its own: one refused read should not blank the whole page
   const [messaging, page, subs] = await Promise.allSettled([
-    get<unknown>("/me/messenger_profile?fields=greeting", token),
+    known === undefined
+      ? get<unknown>("/me/messenger_profile?fields=greeting", token)
+      : known === "limited"
+        ? Promise.reject(new GraphError(613, "rate limited"))
+        : known
+          ? Promise.resolve(true)
+          : Promise.reject(new GraphError(0, "ส่งข้อความไม่ได้")),
     get<{ id: string; name: string }>("/me?fields=id,name", token),
     get<{ data: { name: string; subscribed_fields?: string[] }[] }>("/me/subscribed_apps", token),
   ]);
