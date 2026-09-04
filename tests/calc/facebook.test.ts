@@ -6,6 +6,8 @@ import { facebookStatus } from "@/lib/facebook/status";
 import { forgetCachedToken } from "@/lib/facebook/connection";
 import { authorizeUrl, makeState, redirectUri, stateIsValid } from "@/lib/facebook/oauth";
 import { requestOrigin } from "@/lib/facebook/origin";
+import { eventKey, textOf } from "@/lib/facebook/events";
+import { normaliseProfile, profileBody } from "@/lib/facebook/profile";
 
 const SECRET = "test-app-secret";
 
@@ -243,5 +245,55 @@ describe("connect flow", () => {
   it("falls back to the request host when nothing is forwarded", () => {
     const req = new Request("http://localhost:3000/api/facebook/connect");
     expect(requestOrigin(req)).toBe("http://localhost:3000");
+  });
+});
+
+describe("what a webhook event says", () => {
+  it("reads a typed message", () => {
+    expect(textOf({ message: { mid: "m1", text: "  มรดก 3 ล้าน  " } })).toBe("มรดก 3 ล้าน");
+  });
+
+  it("reads a tapped ice breaker as the question that was tapped", () => {
+    expect(textOf({ postback: { title: "มรดก 3 ล้าน เบี้ยเท่าไหร่", payload: "มรดก 3 ล้าน เบี้ยเท่าไหร่" } }))
+      .toBe("มรดก 3 ล้าน เบี้ยเท่าไหร่");
+  });
+
+  it("says nothing for the page's own echo, an image, or a read receipt", () => {
+    expect(textOf({ message: { mid: "m1", text: "hi", is_echo: true } })).toBe("");
+    expect(textOf({ message: { mid: "m2" } })).toBe("");
+    expect(textOf({})).toBe("");
+  });
+
+  it("keys a message by its id and a postback by sender and moment", () => {
+    expect(eventKey({ message: { mid: "m1", text: "x" } })).toBe("m1");
+    expect(eventKey({ sender: { id: "42" }, timestamp: 1700000000000, postback: { title: "x" } })).toBe("pb:42:1700000000000");
+    expect(eventKey({ postback: { title: "x" } })).toBeUndefined();
+  });
+});
+
+describe("messenger profile", () => {
+  it("drops blank questions and trims the rest", () => {
+    const p = normaliseProfile({ greeting: " สวัสดี ", questions: ["", " ก ", "ข", ""] });
+    expect(p).toEqual({ greeting: "สวัสดี", questions: ["ก", "ข"] });
+  });
+
+  it("refuses more than four questions or one that is too long", () => {
+    expect(() => normaliseProfile({ greeting: "", questions: ["1", "2", "3", "4", "5"] })).toThrow("4");
+    expect(() => normaliseProfile({ greeting: "", questions: ["ก".repeat(81)] })).toThrow("80");
+  });
+
+  it("sends each question as its own payload, so a tap reads like a typed message", () => {
+    const body = profileBody({ greeting: "สวัสดี", questions: ["มรดก 3 ล้าน เบี้ยเท่าไหร่"] }) as {
+      greeting: { locale: string; text: string }[];
+      ice_breakers: { locale: string; call_to_actions: { question: string; payload: string }[] }[];
+    };
+    expect(body.greeting).toEqual([{ locale: "default", text: "สวัสดี" }]);
+    expect(body.ice_breakers[0].call_to_actions).toEqual([
+      { question: "มรดก 3 ล้าน เบี้ยเท่าไหร่", payload: "มรดก 3 ล้าน เบี้ยเท่าไหร่" },
+    ]);
+  });
+
+  it("leaves out what is empty rather than sending an empty list", () => {
+    expect(profileBody({ greeting: "", questions: [] })).toEqual({});
   });
 });

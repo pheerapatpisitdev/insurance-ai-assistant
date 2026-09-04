@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin/guard";
 import { clearConnection, clearPending, pageConnection, pageToken, readPending, saveConnection } from "@/lib/facebook/connection";
 import { listPages, subscribePage, unsubscribePage } from "@/lib/facebook/oauth";
+import { writeProfile, type MessengerProfile } from "@/lib/facebook/profile";
 
 /** Finishes a login where the person admins more than one Page. */
 export async function connectPage(pageId: string) {
@@ -42,5 +43,29 @@ export async function disconnectPage() {
 export async function cancelPending() {
   await requireAdmin();
   await clearPending();
+  revalidatePath("/admin/messenger");
+}
+
+/** The greeting and ice breakers a person sees before their first message. */
+export async function saveMessengerProfile(profile: MessengerProfile) {
+  await requireAdmin();
+  const token = await pageToken();
+  if (!token) throw new Error("ยังไม่ได้เชื่อมต่อเพจ Facebook");
+  await writeProfile(token, profile);
+  revalidatePath("/admin/messenger");
+}
+
+/**
+ * Re-asks Meta for the webhook events this build handles. Needed once after the list grows
+ * (ice-breaker taps are postbacks, and a Page connected earlier subscribed to messages only).
+ */
+export async function refreshSubscription() {
+  await requireAdmin();
+  const [connection, token] = await Promise.all([pageConnection(), pageToken()]);
+  if (!connection || !token) throw new Error("ยังไม่ได้เชื่อมต่อเพจ Facebook");
+  const fields = await subscribePage({ id: connection.pageId, name: connection.pageName, accessToken: token });
+  await saveConnection({
+    pageId: connection.pageId, pageName: connection.pageName, token, scopes: connection.scopes, fields,
+  });
   revalidatePath("/admin/messenger");
 }

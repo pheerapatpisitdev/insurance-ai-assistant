@@ -3,9 +3,13 @@ import { ConversationList } from "@/components/ConversationList";
 import { channelActivity, recentConversations } from "@/lib/chat/history";
 import { facebookStatus } from "@/lib/facebook/status";
 import { pageConnection, readPending } from "@/lib/facebook/connection";
-import { listPages, oauthIsConfigured, SCOPES } from "@/lib/facebook/oauth";
+import { listPages, oauthIsConfigured, SCOPES, SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
+import { pageToken } from "@/lib/facebook/connection";
+import { readProfile, type MessengerProfile } from "@/lib/facebook/profile";
 import { DisconnectButton } from "./DisconnectButton";
 import { PagePicker, type Choice } from "./PagePicker";
+import { ProfileForm } from "./ProfileForm";
+import { RefreshSubscriptionButton } from "./RefreshSubscriptionButton";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +38,17 @@ const TONES = {
   bad: "bg-red-50 text-red-700",
 };
 
+/** What the Page currently greets a new person with; empty when unreadable, so the form still opens. */
+async function currentProfile(): Promise<MessengerProfile> {
+  const token = await pageToken();
+  if (!token) return { greeting: "", questions: [] };
+  try {
+    return await readProfile(token);
+  } catch {
+    return { greeting: "", questions: [] };
+  }
+}
+
 /** The Pages a half-finished login is waiting to choose between. */
 async function pendingChoices(): Promise<Choice[]> {
   const pending = await readPending();
@@ -54,13 +69,15 @@ export default async function MessengerAdminPage({
   const outcome = OUTCOMES[String(params.fb ?? "")];
   const detail = typeof params.detail === "string" ? params.detail : undefined;
 
-  const [status, connection, choices, conversations, activity] = await Promise.all([
+  const [status, connection, choices, profile, conversations, activity] = await Promise.all([
     facebookStatus(),
     pageConnection(),
     pendingChoices(),
+    currentProfile(),
     recentConversations("facebook"),
     channelActivity("facebook"),
   ]);
+  const missingFields = SUBSCRIBED_FIELDS.filter((f) => !(connection?.fields ?? []).includes(f));
 
   return (
     <>
@@ -82,6 +99,12 @@ export default async function MessengerAdminPage({
             </Row>
             <Row label="สิทธิ์ที่ได้รับ">{connection.scopes.join(", ") || "—"}</Row>
             <Row label="เหตุการณ์ที่รับ">{connection.fields.join(", ") || "—"}</Row>
+            {missingFields.length > 0 && (
+              <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                ระบบรุ่นนี้ต้องรับเหตุการณ์ {missingFields.join(", ")} ด้วย ไม่งั้นปุ่มคำถามที่ลูกค้ากดจะไม่ถึงบอท
+                <span className="ml-3 inline-block"><RefreshSubscriptionButton /></span>
+              </p>
+            )}
             <div className="pt-3"><DisconnectButton /></div>
           </div>
         ) : (
@@ -104,6 +127,12 @@ export default async function MessengerAdminPage({
           </div>
         )}
       </Card>
+
+      {connection && (
+        <Card title="หน้าเปิดแชท" hint="ข้อความทักทายและปุ่มคำถามที่คนเห็นก่อนพิมพ์ข้อความแรก อ่านค่าปัจจุบันจากเพจ">
+          <ProfileForm initial={profile} />
+        </Card>
+      )}
 
       <Card title="สถานะจาก Meta" hint="อ่านสดทุกครั้งที่เปิดหน้านี้">
         {!status.configured ? (
