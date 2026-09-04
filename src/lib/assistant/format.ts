@@ -1,4 +1,5 @@
-import type { QuoteInput, QuoteResult } from "@/calc/types";
+import type { PayMode, QuoteInput, QuoteResult } from "@/calc/types";
+import type { ModePremium } from "@/calc/mode-premiums";
 import { cashValueHighlights, cashValueSchedule, maturityValue } from "@/calc/cash-value";
 
 const SEX_TH = { M: "ชาย", F: "หญิง" } as const;
@@ -89,4 +90,51 @@ export function citationLine(sources: { title: string; page: number | null }[]):
   const parts = [...byDoc].map(([title, pages]) =>
     pages.size ? `${title} หน้า ${[...pages].sort((a, b) => a - b).join(", ")}` : title);
   return `ที่มา: ${parts.join(" · ")}`;
+}
+
+const MODE_LINE: Record<PayMode, string> = { annual: "รายปี", semi: "ราย 6 เดือน", monthly: "รายเดือน" };
+
+/**
+ * A bundle is quoted whole and in all three payment modes at once, because someone choosing
+ * a legacy plan asks what it costs a year and what it costs a month in the same breath. The
+ * cover is itemised by sum assured rather than by premium: the parts are not sold separately,
+ * so a price per line would invite picking the arrangement apart.
+ */
+export function bundleReply(
+  bundleName: string, tierName: string, insured: { age: number; sex: QuoteInput["sex"] },
+  result: QuoteResult, modes: ModePremium[] | undefined,
+): string {
+  const blocks: string[] = [
+    `ชุด${bundleName} — ${tierName}\n${SEX_TH[insured.sex]} ${insured.age} ปี`,
+  ];
+
+  if (modes) {
+    blocks.push(modes.map((m) => {
+      const note = m.belowMinimum ? " (ต่ำกว่าขั้นต่ำที่ชำระรายเดือนได้)" : "";
+      return `${MODE_LINE[m.mode]} ${baht(m.total)} บาท${note}`;
+    }).join("\n"));
+  } else {
+    blocks.push(`เบี้ยรายปี ${baht(result.totalAnnual)} บาท`);
+  }
+
+  const covered = result.items.filter((it) => it.eligible);
+  if (covered.length) {
+    blocks.push(["ความคุ้มครอง",
+      ...covered.map((it) => `- ${it.name} ทุน ${it.amount.toLocaleString("en-US")} บาท`)].join("\n"));
+  }
+
+  const db = result.deathBenefit;
+  if (db) {
+    blocks.push(db.alreadyPastAge
+      ? `กรณีเสียชีวิต (ขั้นต่ำ) ${db.sumFrom.toLocaleString("en-US")} บาท`
+      : `กรณีเสียชีวิต (ขั้นต่ำ)\n- ก่อนอายุ ${db.beforeAge} ปี ${db.sumBefore.toLocaleString("en-US")} บาท\n- อายุ ${db.beforeAge} ปีขึ้นไป ${db.sumFrom.toLocaleString("en-US")} บาท`);
+  }
+
+  // a bundle that cannot be issued whole carries its refusal here rather than a premium
+  for (const w of result.warnings.filter((x) => x.level === "error" && x.code !== "MIN_MONTHLY")) {
+    blocks.push(`⚠ ${w.message}`);
+  }
+
+  blocks.push("· เบี้ยประมาณการจากตารางเบี้ยบริษัท ไม่ใช่ใบเสนอราคา");
+  return blocks.join("\n\n");
 }

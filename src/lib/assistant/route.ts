@@ -1,6 +1,7 @@
 import { chat, parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { getPlan } from "@/calc/plans/registry";
+import { getBundle, listBundles } from "@/calc/bundles/registry";
 import { planCatalogue } from "./catalogue";
 
 export type Intent = "quote" | "plan_info" | "doc_qa" | "other";
@@ -13,6 +14,10 @@ export interface Routed {
   sex?: "M" | "F";
   sumAssured?: number;
   mode?: "annual" | "semi" | "monthly";
+  /** an agency bundle the customer asked for by name, quoted whole instead of plan by plan */
+  bundleCode?: string;
+  /** which step of that bundle, e.g. 3 for "มรดก 3 ล้าน" */
+  tier?: number;
   /** a stand-alone rewrite of the question, with pronouns from earlier turns filled in */
   question?: string;
 }
@@ -75,6 +80,34 @@ const PLAN_ALIASES: [string, RegExp][] = [
   ["PLB", /\bplb\b|protection\s*life|โพรเทคชั่น\s*ไลฟ์|โปรเทคชั่น\s*ไลฟ์/i],
 ];
 
+/**
+ * How people ask for an agency bundle. Customers say "ประกันมรดก" long before they say the
+ * bundle's full name, and the arrangement behind it is not something they could assemble
+ * from the plan list, so the name has to be recognised on its own.
+ */
+const BUNDLE_ALIASES: [string, RegExp][] = [
+  ["LEGACY_FAMILY", /มรดก/i],
+];
+
+/** The bundle named in a message, or undefined when none is. */
+export function bundleNamedIn(text: string): string | undefined {
+  const hit = BUNDLE_ALIASES.find(([, re]) => re.test(text))?.[0];
+  return hit && getBundle(hit) ? hit : undefined;
+}
+
+/** The tier a sum of whole millions stands for, when the bundle sells one that size. */
+export function tierForSum(bundleCode: string, sumAssured: number | undefined): number | undefined {
+  const bundle = getBundle(bundleCode);
+  if (!bundle || sumAssured === undefined || sumAssured % 1_000_000 !== 0) return undefined;
+  const no = sumAssured / 1_000_000;
+  return bundle.tiers.some((t) => t.no === no) ? no : undefined;
+}
+
+/** The bundles on offer, for the router prompt. */
+export function bundleCatalogue(): string {
+  return listBundles().map((b) => `${b.code} — ${b.name}`).join("\n");
+}
+
 /** The plan named in a message, or undefined when none is. */
 export function planNamedIn(text: string): string | undefined {
   return PLAN_ALIASES.find(([, re]) => re.test(text))?.[0];
@@ -94,6 +127,12 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
   if (typeof raw.age === "number" && raw.age >= 0 && raw.age <= 99) out.age = Math.trunc(raw.age);
   if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
   if (typeof raw.sumAssured === "number" && raw.sumAssured > 0) out.sumAssured = Math.trunc(raw.sumAssured);
+  // a bundle is asked for by name and sized in whole millions, so "มรดก 3 ล้าน" is tier 3
+  const bundleCode = bundleNamedIn(last);
+  if (bundleCode) {
+    out.bundleCode = bundleCode;
+    out.tier = tierForSum(bundleCode, out.sumAssured) ?? (typeof raw.tier === "number" ? raw.tier : undefined);
+  }
   if (raw.mode === "annual" || raw.mode === "semi" || raw.mode === "monthly") out.mode = raw.mode;
   out.question = typeof raw.question === "string" && raw.question.trim() ? raw.question.trim() : last;
   return out;
@@ -115,5 +154,12 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
   if (merged.age === undefined) merged.age = previous.age;
   if (merged.sex === undefined) merged.sex = previous.sex;
   if (merged.mode === undefined) merged.mode = previous.mode;
+  // the bundle and its step travel together, for the same reason a term belongs to its plan
+  if (merged.bundleCode === undefined) {
+    merged.bundleCode = previous.bundleCode;
+    if (merged.tier === undefined) merged.tier = previous.tier;
+  } else if (merged.tier === undefined && merged.bundleCode === previous.bundleCode) {
+    merged.tier = previous.tier;
+  }
   return merged;
 }

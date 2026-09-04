@@ -4,12 +4,14 @@ import { getPlan, listPlans } from "@/calc/plans/registry";
 import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "@/calc/rules";
 import { quote } from "@/calc/quote";
 import type { QuoteInput, RiderInput } from "@/calc/types";
-import { citationLine, quoteFooter, quoteReply } from "./format";
+import { bundleReply, citationLine, quoteFooter, quoteReply } from "./format";
 import { replaceCodes } from "./codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { embedTexts } from "@/lib/ai/client";
 import { allPlanFacts } from "./catalogue";
 import { mergeSlots, recentTurns, routeMessage, type Routed } from "./route";
+import { getBundle } from "@/calc/bundles/registry";
+import { bundleAgeRange, bundleModePremiums, describeTier, quoteBundle } from "@/calc/bundles/quote";
 
 export interface Source {
   title: string;
@@ -24,6 +26,11 @@ export interface Answer {
 
 export async function answerQuestion(history: ChatMessage[], previous: Routed | null = null): Promise<Answer> {
   const slots = mergeSlots(previous, await routeMessage(history));
+  // a bundle is a whole arrangement the agency sells under its own name, so asking for one by
+  // name is answered as that arrangement rather than as its base plan
+  if (slots.bundleCode && slots.intent !== "doc_qa") {
+    return { ...answerBundle(slots), slots };
+  }
   switch (slots.intent) {
     case "quote":
       return { ...(await answerQuote(slots)), slots };
@@ -34,6 +41,34 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
     default:
       return { ...(await answerSmallTalk(history)), slots };
   }
+}
+
+// ---------- an agency bundle ----------
+
+function answerBundle(slots: Routed): Omit<Answer, "slots"> {
+  const bundle = getBundle(slots.bundleCode!)!;
+  const tiers = bundle.tiers.map((t) => t.name).join(", ");
+
+  if (slots.age === undefined || slots.sex === undefined) {
+    const missing = [slots.age === undefined ? "อายุ" : null, slots.sex === undefined ? "เพศ" : null].filter(Boolean);
+    return { reply: `ชุด${bundle.name} มีให้เลือก ${tiers}\n\nขอ${missing.join("และ")}ของผู้เอาประกันด้วยครับ แล้วบอกด้วยว่าต้องการระดับไหน จะได้คำนวณให้`, sources: [] };
+  }
+  if (slots.tier === undefined) {
+    return { reply: `ชุด${bundle.name} มีให้เลือก ${tiers}\n\nต้องการระดับไหนครับ`, sources: [] };
+  }
+
+  const range = bundleAgeRange(bundle);
+  if (slots.age < range.min || slots.age > range.max) {
+    return { reply: `ชุด${bundle.name} รับอายุ ${range.min}-${range.max} ปี อายุ ${slots.age} ปีจึงจัดชุดนี้ไม่ได้ครับ`, sources: [] };
+  }
+
+  const who = { age: slots.age, sex: slots.sex };
+  const result = quoteBundle(bundle, slots.tier, { ...who, mode: "annual" });
+  const tierName = describeTier(bundle, slots.tier);
+  if (!result || !tierName) {
+    return { reply: `ชุด${bundle.name} ไม่มีระดับที่ขอครับ มีให้เลือก ${tiers}`, sources: [] };
+  }
+  return { reply: bundleReply(bundle.name, tierName, who, result, bundleModePremiums(bundle, slots.tier, who)), sources: [] };
 }
 
 // ---------- quote ----------

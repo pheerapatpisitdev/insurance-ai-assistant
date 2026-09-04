@@ -1,4 +1,6 @@
 import { getPlan, listPlans, trimSuffix } from "@/calc/plans/registry";
+import { listBundles, getBundle } from "@/calc/bundles/registry";
+import { bundleAgeRange } from "@/calc/bundles/quote";
 import { baseAgeRange, baseSumAssuredLimits } from "@/calc/rules";
 
 /**
@@ -57,7 +59,30 @@ export function planFacts(planCode: string): string | null {
   return lines.join("\n");
 }
 
-/** Facts for every plan, used when the question does not name one. */
+/**
+ * What the agency sells under its own names. A bundle is not on the company's plan list, so
+ * without this the assistant would answer "ประกันมรดก" with whatever plan looked closest.
+ */
+export function bundleFacts(): string {
+  const out: string[] = [];
+  for (const { code } of listBundles()) {
+    const bundle = getBundle(code)!;
+    const plan = getPlan(bundle.planCode);
+    const range = bundleAgeRange(bundle);
+    const riders = new Set(bundle.tiers.flatMap((t) => t.riders.map((r) => plan?.rules.riders[r.code]?.name ?? r.code)));
+    out.push([
+      `ชุดจัดเอง: ${bundle.name}`,
+      `  ประกอบจาก ${plan?.variantLabels[bundle.variant] ?? bundle.planCode} คู่กับ ${[...riders].join(", ")}`,
+      `  รับอายุ ${range.min}-${range.max} ปี`,
+      `  ระดับที่ขาย: ${bundle.tiers.map((t) => t.name).join(", ")}`,
+    ].join("\n"));
+  }
+  return out.join("\n\n");
+}
+
+/** Facts for every plan and every bundle, used when the question does not name one. */
 export function allPlanFacts(): string {
-  return listPlans().map((p) => planFacts(p.code)).filter(Boolean).join("\n\n");
+  const plans = listPlans().map((p) => planFacts(p.code)).filter(Boolean).join("\n\n");
+  const bundles = bundleFacts();
+  return bundles ? `${bundles}\n\n${plans}` : plans;
 }
