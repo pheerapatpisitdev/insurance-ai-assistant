@@ -1,0 +1,177 @@
+"use client";
+import { useMemo, useState } from "react";
+import type { PayMode, Sex } from "@/calc/types";
+import { PAY_MODE_LABEL } from "@/calc/types";
+import { getBundle } from "@/calc/bundles/registry";
+import { bundleAgeRange, bundleModePremiums, quoteBundle } from "@/calc/bundles/quote";
+import { formatBaht } from "@/calc/money";
+import { chatUrl, displayPremium, legacyMessage, lineUrl, messengerUrl, perDay } from "@/lib/legacy-cta";
+
+const BUNDLE = getBundle("LEGACY_FAMILY")!;
+const RANGE = bundleAgeRange(BUNDLE);
+const LINE_OA = process.env.NEXT_PUBLIC_LINE_OA_ID ?? "";
+const FB_PAGE = process.env.NEXT_PUBLIC_FB_PAGE ?? "";
+
+/** How each instalment reads on the card, where it labels a figure rather than follows it. */
+const PER_LABEL: Record<PayMode, string> = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" };
+
+/**
+ * The customer's calculator. It sells one arrangement, so there is nothing to choose but the
+ * sum, the age and the sex — every other decision was made when the bundle was designed, and
+ * the agent's own calculator is where the rest of them can still be changed.
+ */
+export function LegacyCalculator() {
+  const [millions, setMillions] = useState(1);
+  const [age, setAge] = useState<number | "">("");
+  const [sex, setSex] = useState<Sex>("M");
+
+  // The field takes any age, so a 68-year-old is answered rather than stopped mid-keystroke.
+  const inRange = age !== "" && age >= RANGE.min && age <= RANGE.max;
+
+  const result = useMemo(
+    () => (inRange ? quoteBundle(BUNDLE, millions, { age: age as number, sex, mode: "annual" }) : undefined),
+    [inRange, age, sex, millions],
+  );
+  const modes = useMemo(
+    () => (inRange ? bundleModePremiums(BUNDLE, millions, { age: age as number, sex }) : undefined),
+    [inRange, age, sex, millions],
+  );
+
+  const expired = result?.meta.expired ?? false;
+  const headline = displayPremium(modes, expired);
+  const annual = modes?.find((m) => m.mode === "annual");
+  // the instalments the headline did not take, minus any the company will not accept
+  const others = (modes ?? []).filter((m) => m !== headline && !m.belowMinimum);
+  const death = result?.deathBenefit;
+
+  const message = legacyMessage({ millions, age, sex, inRange, premium: headline });
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5">
+        <div>
+          <label htmlFor="legacy-sum" className="block text-sm font-medium text-slate-600">
+            อยากให้ครอบครัวได้รับเท่าไหร่
+          </label>
+          <div className="mt-1 text-3xl font-semibold tabular-nums text-slate-900">
+            {(millions * 1_000_000).toLocaleString("en-US")}{" "}
+            <span className="text-lg font-normal text-slate-500">บาท</span>
+          </div>
+          <input
+            id="legacy-sum" type="range" min={1} max={BUNDLE.tiers.length} step={1} value={millions}
+            onChange={(e) => setMillions(Number(e.target.value))}
+            className="mt-3 w-full accent-emerald-600"
+          />
+          <div className="flex justify-between text-xs text-slate-400">
+            <span>1 ล้าน</span>
+            <span>{BUNDLE.tiers.length} ล้าน</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="legacy-age" className="block text-sm font-medium text-slate-600">อายุ</label>
+            <input
+              id="legacy-age" type="number" inputMode="numeric" value={age} placeholder="เช่น 38"
+              onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-lg tabular-nums"
+            />
+          </div>
+          <div>
+            <span className="block text-sm font-medium text-slate-600">เพศ</span>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              {(["M", "F"] as Sex[]).map((s) => (
+                <button
+                  key={s} type="button" onClick={() => setSex(s)} aria-pressed={sex === s}
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    sex === s
+                      ? "border-emerald-600 bg-emerald-50 font-medium text-emerald-900"
+                      : "border-slate-300 text-slate-600"
+                  }`}
+                >
+                  {s === "M" ? "ชาย" : "หญิง"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {age === "" ? (
+        <p className="rounded-2xl border border-dashed border-slate-300 px-5 py-6 text-center text-sm text-slate-500">
+          กรอกอายุเพื่อดูเบี้ยของคุณ
+        </p>
+      ) : !inRange || !result ? (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-6 text-center text-sm text-amber-900">
+          ชุดนี้รับอายุ {RANGE.min}–{RANGE.max} ปี ทักมาให้เราช่วยหาแบบที่เหมาะกับคุณ
+        </div>
+      ) : (
+        <div className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          {headline && annual ? (
+            <div>
+              <div className="text-sm text-emerald-800">เบี้ยประกัน</div>
+              <div className="text-4xl font-bold tabular-nums text-emerald-900">
+                {formatBaht(headline.total)}
+                <span className="ml-2 text-base font-normal text-emerald-800">
+                  บาท {PER_LABEL[headline.mode]}
+                </span>
+              </div>
+              <div className="mt-0.5 text-sm text-emerald-800">ตกวันละ {perDay(annual.total)} บาท</div>
+              {others.length > 0 && (
+                <div className="mt-2 text-sm text-emerald-800">
+                  {others.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`).join(" · ")}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-sm font-medium text-emerald-900">ขอราคาปัจจุบันได้ทางแชทด้านล่าง</div>
+          )}
+
+          {death && (
+            <div className="border-t border-emerald-200 pt-4">
+              <div className="text-sm text-emerald-800">ครอบครัวได้รับ</div>
+              <div className="text-2xl font-semibold tabular-nums text-emerald-900">
+                {death.sumFrom.toLocaleString("en-US")} <span className="text-base font-normal">บาท</span>
+              </div>
+              {!death.alreadyPastAge && (
+                <div className="mt-1 text-sm text-emerald-800">
+                  ✦ เสียชีวิตก่อนอายุ {death.beforeAge} ปี ได้ {death.sumBefore.toLocaleString("en-US")} บาท
+                </div>
+              )}
+            </div>
+          )}
+
+          <p className="border-t border-emerald-200 pt-3 text-xs leading-relaxed text-emerald-800">
+            เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป · จ่ายเมื่อเสียชีวิต
+            หรือเมื่อตรวจพบ 1 ใน 31 โรคร้ายแรงตามคำนิยามในกรมธรรม์
+          </p>
+        </div>
+      )}
+
+      <div className="grid gap-2">
+        {LINE_OA && (
+          <a
+            href={lineUrl(LINE_OA, message)} target="_blank" rel="noopener noreferrer"
+            className="rounded-xl bg-emerald-600 px-5 py-3 text-center font-medium text-white hover:bg-emerald-700"
+          >
+            ทักไลน์ปรึกษาฟรี
+          </a>
+        )}
+        {FB_PAGE && (
+          <a
+            href={messengerUrl(FB_PAGE, message)} target="_blank" rel="noopener noreferrer"
+            className="rounded-xl bg-blue-600 px-5 py-3 text-center font-medium text-white hover:bg-blue-700"
+          >
+            ทัก Messenger
+          </a>
+        )}
+        <a
+          href={chatUrl(message)}
+          className="rounded-xl border border-slate-300 px-5 py-3 text-center font-medium text-slate-700 hover:bg-slate-50"
+        >
+          ถาม AI ก่อนก็ได้
+        </a>
+      </div>
+    </div>
+  );
+}
