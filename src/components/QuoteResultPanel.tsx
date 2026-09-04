@@ -38,9 +38,11 @@ function Diseases({ code }: { code: string }) {
       {open && (
         <div className="mt-1 rounded border bg-slate-50 p-2">
           <p className="mb-1 text-xs text-slate-600">{info.note}</p>
-          <ol className="grid gap-x-4 gap-y-0.5 text-xs text-slate-700 sm:grid-cols-2">
+          {/* newspaper columns rather than a grid: the numbers should read down the first
+              column and continue at the top of the second, not left to right in pairs */}
+          <ol className="text-xs text-slate-700 sm:columns-2 sm:gap-x-6">
             {info.diseases.map((d, i) => (
-              <li key={d} className="flex gap-1.5">
+              <li key={d} className="flex gap-1.5 break-inside-avoid pb-0.5">
                 <span className="shrink-0 tabular-nums text-slate-400">{i + 1}.</span>
                 <span>{d}</span>
               </li>
