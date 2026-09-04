@@ -11,6 +11,7 @@ import { embedTexts } from "@/lib/ai/client";
 import { allPlanFacts } from "./catalogue";
 import { mergeSlots, recentTurns, routeMessage, type Routed } from "./route";
 import { promptText } from "./prompts";
+import { MATCH_THRESHOLD, searchFaq } from "./faq";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleAgeRange, bundleModePremiums, describeTier, quoteBundle } from "@/calc/bundles/quote";
 
@@ -53,6 +54,15 @@ export async function answerQuestion(
     trace?.push({ step: "เส้นทาง: ชุดจัดเอง", detail: "คำนวณด้วยเครื่องคำนวณ ไม่ใช้ AI" });
     return { ...answerBundle(slots), slots };
   }
+
+  // A premium is arithmetic and a bundle is an arrangement; neither is something a written
+  // answer should stand in for. Everything else is checked against the agency's own answers
+  // first, because a sentence the trainer wrote beats a model's paraphrase of a document.
+  if (slots.intent !== "quote") {
+    const curated = await answerFromFaq(slots.question ?? "", trace);
+    if (curated) return { ...curated, slots };
+  }
+
   switch (slots.intent) {
     case "quote":
       trace?.push({ step: "เส้นทาง: คำนวณเบี้ย", detail: "คำนวณด้วยเครื่องคำนวณ ไม่ใช้ AI" });
@@ -64,6 +74,34 @@ export async function answerQuestion(
     default:
       return { ...(await answerSmallTalk(history, trace)), slots };
   }
+}
+
+// ---------- answers the agency wrote ----------
+
+async function answerFromFaq(
+  question: string, trace?: TraceStep[],
+): Promise<Omit<Answer, "slots"> | null> {
+  if (!question.trim()) return null;
+  let hits;
+  try {
+    hits = await searchFaq(question);
+  } catch (e) {
+    // a curated answer is a nicety; losing it must not cost the customer their reply
+    trace?.push({ step: "ค้นคลังคำตอบ", detail: `ค้นไม่สำเร็จ ข้ามไปใช้เส้นทางปกติ: ${e instanceof Error ? e.message : e}` });
+    return null;
+  }
+
+  const best = hits[0];
+  trace?.push({
+    step: "ค้นคลังคำตอบที่เขียนเอง",
+    detail: best
+      ? `ใกล้ที่สุด "${best.question}" ตรงกัน ${(best.score * 100).toFixed(0)}% (ต้องถึง ${(MATCH_THRESHOLD * 100).toFixed(0)}% ถึงจะใช้)`
+      : "ยังไม่มีคำตอบที่เขียนไว้",
+  });
+  if (!best || best.score < MATCH_THRESHOLD) return null;
+
+  trace?.push({ step: "เส้นทาง: คำตอบที่เขียนเอง", detail: "ส่งข้อความตามที่เขียนไว้ ไม่ผ่าน AI" });
+  return { reply: best.answer, sources: [] };
 }
 
 // ---------- an agency bundle ----------
