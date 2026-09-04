@@ -351,6 +351,8 @@ export interface BundleTier {
 export interface Bundle {
   code: string;
   name: string;
+  /** what the arrangement is, in the agency's own words, for a customer who asks */
+  description?: string;
   planCode: string;
   variant: string;
   tiers: BundleTier[];

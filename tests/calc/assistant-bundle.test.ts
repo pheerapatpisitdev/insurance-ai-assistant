@@ -4,6 +4,7 @@ import { bundleFacts } from "@/lib/assistant/catalogue";
 import { bundleReply, tierChoices } from "@/lib/assistant/format";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleModePremiums, describeTier, quoteBundle } from "@/calc/bundles/quote";
+import { answerBundle } from "@/lib/assistant/answer";
 
 describe("recognising the bundle by name", () => {
   it.each([
@@ -118,5 +119,38 @@ describe("offering the steps to choose from", () => {
 
   it("says nothing when there is nothing to choose from", () => {
     expect(tierChoices([])).toBe("");
+  });
+});
+
+describe("what a first message about the bundle gets back", () => {
+  const ask = (slots: Partial<Routed>) => answerBundle({ intent: "quote", bundleCode: "LEGACY_FAMILY", ...slots }).reply;
+
+  it("explains the arrangement before asking anything, for someone arriving cold", () => {
+    const reply = ask({});
+    expect(reply.startsWith("ชุดมรดกเพื่อครอบครัว\n")).toBe(true);
+    expect(reply).toContain("Life Protect+ 100");
+    expect(reply).toContain("โรคร้ายแรง (DCI)");
+    expect(reply).toContain("รับอายุ 20-65 ปี");
+    expect(reply).toContain("มรดก 1 ล้าน");
+    expect(reply).toContain("มรดก 10 ล้าน");
+    expect(reply).toContain("ขออายุและเพศ");
+  });
+
+  it("does not repeat the ten steps once the customer has named one", () => {
+    const reply = ask({ tier: 5 });
+    expect(reply.split("\n")[0]).toBe("ชุดมรดกเพื่อครอบครัว — มรดก 5 ล้าน");
+    expect(reply).not.toContain("มรดก 1 ล้าน");
+    expect(reply).toContain("ขออายุและเพศ");
+  });
+
+  it("asks only for what is still missing", () => {
+    expect(ask({ tier: 5, sex: "M" })).toContain("ขออายุของผู้เอาประกัน");
+    expect(ask({ tier: 5, age: 40 })).toContain("ขอเพศของผู้เอาประกัน");
+  });
+
+  it("asks for the step when it knows the person", () => {
+    const reply = ask({ age: 40, sex: "M" });
+    expect(reply).toContain("ต้องการระดับไหนครับ");
+    expect(reply).toContain("มรดก 3 ล้าน");
   });
 });

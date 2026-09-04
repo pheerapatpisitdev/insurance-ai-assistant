@@ -106,16 +106,30 @@ async function answerFromFaq(
 
 // ---------- an agency bundle ----------
 
-function answerBundle(slots: Routed): Omit<Answer, "slots"> {
+/** Exported for its tests: the replies below are what an advert's first click lands on. */
+export function answerBundle(slots: Routed): Omit<Answer, "slots"> {
   const bundle = getBundle(slots.bundleCode!)!;
   const names = bundle.tiers.map((t) => t.name);
   const choices = tierChoices(names);
   const example = names[Math.min(2, names.length - 1)];
 
+  const range = bundleAgeRange(bundle);
+  const chosen = slots.tier === undefined ? undefined : describeTier(bundle, slots.tier);
+
   if (slots.age === undefined || slots.sex === undefined) {
     const missing = [slots.age === undefined ? "อายุ" : null, slots.sex === undefined ? "เพศ" : null].filter(Boolean);
+    // a step already named needs nothing repeated: only the person is still unknown
+    if (chosen) {
+      return {
+        reply: `ชุด${bundle.name} — ${chosen}\nขอ${missing.join("และ")}ของผู้เอาประกันด้วยครับ เช่น "ชาย 35"`,
+        sources: [],
+      };
+    }
+    // a first contact — typically someone arriving from an advert — is told what the
+    // arrangement is before being asked anything
+    const intro = [bundle.description, `รับอายุ ${range.min}-${range.max} ปี`].filter(Boolean).join("\n");
     return {
-      reply: `ชุด${bundle.name}\n${choices}\n\nขอ${missing.join("และ")}ของผู้เอาประกัน และระดับที่ต้องการด้วยครับ\nเช่น "ชาย 35 ${example}"`,
+      reply: `ชุด${bundle.name}\n${intro}\n\nเลือกวงเงินได้\n${choices}\n\nขอ${missing.join("และ")}ของผู้เอาประกัน และระดับที่ต้องการด้วยครับ\nเช่น "ชาย 35 ${example}"`,
       sources: [],
     };
   }
@@ -123,7 +137,6 @@ function answerBundle(slots: Routed): Omit<Answer, "slots"> {
     return { reply: `ชุด${bundle.name}\n${choices}\n\nต้องการระดับไหนครับ เช่น "${example}"`, sources: [] };
   }
 
-  const range = bundleAgeRange(bundle);
   if (slots.age < range.min || slots.age > range.max) {
     return { reply: `ชุด${bundle.name} รับอายุ ${range.min}-${range.max} ปี อายุ ${slots.age} ปีจึงจัดชุดนี้ไม่ได้ครับ`, sources: [] };
   }
