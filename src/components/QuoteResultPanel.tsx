@@ -22,12 +22,12 @@ export interface QuoteResultPanelProps {
  * with the form because it is the result an agent turns around and shows a customer — and a
  * bundle has no rider form at all.
  */
-function Diseases({ code }: { code: string }) {
+function Diseases({ code, riderName }: { code: string; riderName: string }) {
   const [open, setOpen] = useState(false);
   const info = riderDiseases(code);
   if (!info) return null;
   return (
-    <div className="mt-0.5">
+    <div>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -37,6 +37,7 @@ function Diseases({ code }: { code: string }) {
       </button>
       {open && (
         <div className="mt-1 rounded border bg-slate-50 p-2">
+          <p className="text-xs font-medium text-slate-700">{riderName}</p>
           <p className="mb-1 text-xs text-slate-600">{info.note}</p>
           {/* newspaper columns rather than a grid: the numbers should read down the first
               column and continue at the top of the second, not left to right in pairs */}
@@ -88,7 +89,6 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, mod
                 <td className="py-2">
                   {it.name}
                   {it.message && <div className="text-xs text-red-600">{it.message}</div>}
-                  {it.eligible && <Diseases code={it.code} />}
                 </td>
                 <td className="py-2 pl-3 text-right whitespace-nowrap">{it.amountLabel ?? it.amount.toLocaleString("en-US")}</td>
               </tr>
@@ -149,6 +149,12 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, mod
           )}
         </div>
       )}
+
+      {/* last, because it is reference rather than a figure: whoever is reading the quote has
+          finished with the numbers by the time they wonder what counts as a critical illness */}
+      {result.items
+        .filter((it) => it.eligible && riderDiseases(it.code))
+        .map((it) => <Diseases key={it.code} code={it.code} riderName={it.name} />)}
 
       {/* the bundle's own refusal already headlines the panel; the list keeps the reasons behind it */}
       {/* the bundle's own refusal headlines the panel and the monthly minimum is marked beside its figure */}
