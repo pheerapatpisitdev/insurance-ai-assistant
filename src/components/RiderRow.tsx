@@ -2,8 +2,13 @@
 import type { Availability, Sex } from "@/calc/types";
 import { MoneyInput } from "./MoneyInput";
 
+/**
+ * Who pays the premiums. The age is not asked for: this agency writes PB with the insured
+ * paying their own premiums, so it follows the age already entered for the quote and cannot
+ * drift out of step with it. The sex is still a choice, because a couple of the same age is
+ * an ordinary arrangement.
+ */
 export interface PayerState {
-  age: number | "";
   sex: Sex;
 }
 export interface SubSelect {
@@ -19,6 +24,8 @@ export interface RiderRowProps {
   territory: string;
   coverage: string;
   payer: PayerState;
+  /** the age the quote is being run at; the payer is charged on the same one */
+  insuredAge: number | "";
   /** the option select also needs a sum assured (PLS) */
   optionNeedsSumAssured: boolean;
   /** extra selects shown after the option (iHealthy Ultra) */
@@ -35,7 +42,7 @@ export interface RiderRowProps {
 const num = (v: string): number | "" => (v === "" ? "" : Number(v));
 
 export function RiderRow({
-  availability: a, enabled, value, option, territory, coverage, payer, optionNeedsSumAssured, subSelects, required,
+  availability: a, enabled, value, option, territory, coverage, payer, insuredAge, optionNeedsSumAssured, subSelects, required,
   onToggle, onChange, onOptionChange, onSubSelectChange, onPayerChange,
 }: RiderRowProps) {
   const disabled = !a.eligible;
@@ -69,15 +76,13 @@ export function RiderRow({
           {a.needsPayer ? (
             <>
               <span className="text-xs text-slate-600">ผู้ชำระเบี้ย</span>
-              <input
-                type="number" inputMode="numeric" min={20} max={70} className="w-20 rounded border px-2 py-1 text-sm" placeholder="อายุ"
-                value={payer.age} onChange={(e) => onPayerChange({ ...payer, age: num(e.target.value) })}
-              />
-              <select className="rounded border px-2 py-1 text-sm" value={payer.sex} onChange={(e) => onPayerChange({ ...payer, sex: e.target.value as Sex })}>
+              <select className="rounded border px-2 py-1 text-sm" value={payer.sex} onChange={(e) => onPayerChange({ sex: e.target.value as Sex })}>
                 <option value="M">ชาย</option>
                 <option value="F">หญิง</option>
               </select>
-              <span className="text-xs text-slate-500">อายุผู้ชำระเบี้ย 20 - 70 ปี</span>
+              <span className="text-xs text-slate-500">
+                {insuredAge === "" ? "อายุตามผู้เอาประกัน" : `อายุ ${insuredAge} ปี ตามผู้เอาประกัน`}
+              </span>
             </>
           ) : isPlan ? (
             <select className="rounded border px-2 py-1 text-sm" value={value} onChange={(e) => onChange(num(e.target.value))}>

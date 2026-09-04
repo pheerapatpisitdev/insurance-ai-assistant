@@ -19,7 +19,7 @@ import { quoteModePremiums } from "@/calc/mode-premiums";
 const INITIAL: FormState = {
   planCode: "LIFEPROTECT", bundleCode: null, tier: 1, variant: "WLF99H", age: 35, sex: "M", mode: "annual",
   basis: "sumAssured", sumAssured: 1_000_000, targetPremium: "",
-  payer: { age: "", sex: "M" }, riders: {},
+  payer: { sex: "M" }, riders: {},
 };
 
 /** Build engine input; riders the current age cannot buy are dropped even if still ticked. */
@@ -50,7 +50,8 @@ function toQuoteInput(s: FormState, eligibleCodes: Set<string>): QuoteInput | nu
     sumAssured: premiumBasis ? 0 : (s.sumAssured as number),
     basis: premiumBasis ? "premium" : "sumAssured",
     targetPremium: premiumBasis ? (s.targetPremium as number) : undefined,
-    payer: s.payer.age === "" ? undefined : { age: s.payer.age, sex: s.payer.sex },
+    // PB is written with the insured paying, so the rider is rated on the same age
+    payer: { age: s.age, sex: s.payer.sex },
     riders,
   };
 }

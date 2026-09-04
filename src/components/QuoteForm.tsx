@@ -134,6 +134,7 @@ export function QuoteForm({ state, plan, plans, availability, bundles, onChange,
               territory={r.territory}
               coverage={r.coverage}
               payer={state.payer}
+              insuredAge={state.age}
               optionNeedsSumAssured={extras.optionNeedsSumAssured}
               subSelects={extras.subSelects}
               required={required.has(a.code)}
