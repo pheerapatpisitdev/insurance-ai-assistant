@@ -8,9 +8,10 @@ export default function ChatPage() {
     <main className="mx-auto max-w-3xl p-4 sm:p-6">
       <div className="mb-4 flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">ถาม AI เรื่องประกัน</h1>
-        <Link href="/" className="text-sm text-slate-500 underline">
-          ไปหน้าคำนวณเบี้ย
-        </Link>
+        <span className="flex gap-4 text-sm text-slate-500">
+          <Link href="/" className="underline">ไปหน้าคำนวณเบี้ย</Link>
+          <Link href="/privacy" className="underline">ความเป็นส่วนตัว</Link>
+        </span>
       </div>
       <ChatClient />
     </main>
