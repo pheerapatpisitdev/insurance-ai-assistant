@@ -12,14 +12,18 @@
 
    ```
    https://www.advisortool.app/api/facebook/connect/callback
+   https://advisortool.app/api/facebook/connect/callback
+   https://www.advisorx.biz/api/facebook/connect/callback
+   https://advisorx.biz/api/facebook/connect/callback
    https://insurance-ai-assistant-pheerapatpisit.vercel.app/api/facebook/connect/callback
+   http://localhost:3000/api/facebook/connect/callback
    ```
 
-   ใส่ทั้งคู่เพราะเปิดแอดมินจากโดเมนไหน Meta ก็ต้องรู้จักโดเมนนั้น
-   ถ้าจะทดสอบในเครื่องด้วย เพิ่ม `http://localhost:3000/api/facebook/connect/callback`
+   ใส่ให้ครบทุกบรรทัด เพราะเปิดแอดมินจากโดเมนไหน Meta ก็ต้องรู้จักโดเมนนั้น
+   เว็บนี้ผูกไว้หลายโดเมน ถ้าใส่ไม่ครบแล้วบังเอิญเปิดจากโดเมนที่ตกหล่น จะขึ้น URL blocked
 
-4. ที่ **App settings → Basic** คัดลอก **App ID** ไปตั้งเป็นตัวแปร `FB_APP_ID`
-   (App secret คือ `FB_APP_SECRET` ซึ่งตั้งไว้แล้ว)
+4. ที่ **App settings → Basic** คือที่มาของ `FB_APP_ID` กับ `FB_APP_SECRET`
+   ทั้งสองตัวตั้งใน Vercel ไว้แล้ว ไม่ต้องทำอะไรเพิ่ม
 
 ## เชื่อมต่อ
 
