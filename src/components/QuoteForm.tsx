@@ -79,15 +79,12 @@ export function QuoteForm({ state, plan, plans, availability, bundles, onChange,
         </select>
       </div>
 
-      <InsuredFields
-        age={state.age} sex={state.sex} mode={state.mode} ageRange={ageRange}
-        onChange={(patch) => set(patch)}
-      />
+      <InsuredFields age={state.age} sex={state.sex} ageRange={ageRange} onChange={(patch) => set(patch)} />
 
       {premiumBasis && (
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2">
-            <input type="radio" name="basis" checked={state.basis === "sumAssured"} onChange={() => set({ basis: "sumAssured" })} />
+            <input type="radio" name="basis" checked={state.basis === "sumAssured"} onChange={() => set({ basis: "sumAssured", mode: "annual" })} />
             คำนวณจากทุนประกัน
           </label>
           <label className="flex items-center gap-2">
@@ -98,11 +95,22 @@ export function QuoteForm({ state, plan, plans, availability, bundles, onChange,
       )}
 
       {state.basis === "premium" && premiumBasis ? (
-        <div>
-          <label className="block text-sm font-medium">เบี้ยประกันภัยที่ต้องการชำระ ({PAY_MODE_LABEL[state.mode]})</label>
-          <MoneyInput className="mt-1 w-full rounded border px-3 py-2" value={state.targetPremium}
-                      onChange={(targetPremium) => set({ targetPremium })}
-                      hint="ระบบจะหาทุนประกันสูงสุดที่เบี้ยนี้ซื้อได้" />
+        // the instalment belongs to this input: ฿2,000 a month and ฿2,000 a year buy very
+        // different cover, so it is asked for here rather than as a separate question
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="block text-sm font-medium">เบี้ยประกันภัยที่ต้องการชำระ</label>
+            <MoneyInput className="mt-1 w-full rounded border px-3 py-2" value={state.targetPremium}
+                        onChange={(targetPremium) => set({ targetPremium })}
+                        hint="ระบบจะหาทุนประกันสูงสุดที่เบี้ยนี้ซื้อได้" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">ต่องวด</label>
+            <select className="mt-1 w-full rounded border px-3 py-2" value={state.mode}
+                    onChange={(e) => set({ mode: e.target.value as PayMode })}>
+              {(Object.keys(PAY_MODE_LABEL) as PayMode[]).map((m) => <option key={m} value={m}>{PAY_MODE_LABEL[m]}</option>)}
+            </select>
+          </div>
         </div>
       ) : (
         <div>

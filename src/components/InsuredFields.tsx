@@ -1,20 +1,23 @@
-import type { PayMode, Sex } from "@/calc/types";
-import { PAY_MODE_LABEL } from "@/calc/types";
+import type { Sex } from "@/calc/types";
 
 export interface InsuredFieldsProps {
   age: number | "";
   sex: Sex;
-  /** omitted where the quote answers every payment mode at once, leaving nothing to pick */
-  mode?: PayMode;
   ageRange: { min: number; max: number };
-  onChange: (patch: { age?: number | ""; sex?: Sex; mode?: PayMode }) => void;
+  onChange: (patch: { age?: number | ""; sex?: Sex }) => void;
 }
 
-/** อายุ / เพศ (/ งวดชำระ) — what every quote needs to know, however the plan was chosen. */
-export function InsuredFields({ age, sex, mode, ageRange, onChange }: InsuredFieldsProps) {
+/**
+ * อายุ / เพศ — what every quote needs to know, however the plan was chosen.
+ *
+ * There is no งวดชำระ picker: every quote prices all three instalments at once, so choosing
+ * one up front decided nothing. The one place the instalment still changes an answer is a
+ * quote worked backwards from a premium, and that picker sits beside that input.
+ */
+export function InsuredFields({ age, sex, ageRange, onChange }: InsuredFieldsProps) {
   const ages = Array.from({ length: ageRange.max - ageRange.min + 1 }, (_, i) => ageRange.min + i);
   return (
-    <div className={`grid gap-3 ${mode ? "grid-cols-3" : "grid-cols-2"}`}>
+    <div className="grid grid-cols-2 gap-3">
       <div>
         <label className="block text-sm font-medium">อายุ</label>
         <select className="mt-1 w-full rounded border px-3 py-2" value={age}
@@ -31,14 +34,6 @@ export function InsuredFields({ age, sex, mode, ageRange, onChange }: InsuredFie
           <option value="F">หญิง</option>
         </select>
       </div>
-      {mode && (
-        <div>
-          <label className="block text-sm font-medium">งวดชำระ</label>
-          <select className="mt-1 w-full rounded border px-3 py-2" value={mode} onChange={(e) => onChange({ mode: e.target.value as PayMode })}>
-            {(Object.keys(PAY_MODE_LABEL) as PayMode[]).map((m) => <option key={m} value={m}>{PAY_MODE_LABEL[m]}</option>)}
-          </select>
-        </div>
-      )}
     </div>
   );
 }
