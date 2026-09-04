@@ -5,6 +5,7 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleAgeRange, bundleModePremiums, quoteBundle } from "@/calc/bundles/quote";
 import { formatBaht } from "@/calc/money";
+import type { LegacyAge } from "@/lib/legacy-cta";
 import { chatUrl, displayPremium, legacyMessage, lineUrl, messengerUrl, perDay } from "@/lib/legacy-cta";
 import type { LegacyChannels } from "@/lib/legacy-channels";
 import { deathBenefitRows } from "@/lib/death-benefit";
@@ -14,6 +15,9 @@ const RANGE = bundleAgeRange(BUNDLE);
 
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
 const PER_LABEL: Record<PayMode, string> = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" };
+
+/** Every age the bundle issues at, so the picker offers them rather than trusting typing. */
+const AGES = Array.from({ length: RANGE.max - RANGE.min + 1 }, (_, i) => RANGE.min + i);
 
 export interface LegacyCalculatorProps {
   /**
@@ -36,19 +40,20 @@ export interface LegacyCalculatorProps {
  */
 export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorProps) {
   const [millions, setMillions] = useState(1);
-  const [age, setAge] = useState<number | "">("");
+  const [age, setAge] = useState<LegacyAge>("");
   const [sex, setSex] = useState<Sex>("M");
 
-  // The field takes any age, so a 68-year-old is answered rather than stopped mid-keystroke.
-  const inRange = age !== "" && age >= RANGE.min && age <= RANGE.max;
+  // The picker only offers ages the bundle takes, so a number here is always one of them;
+  // everyone else picks the way out and is answered rather than quoted.
+  const inRange = typeof age === "number";
 
   const result = useMemo(
-    () => (inRange ? quoteBundle(BUNDLE, millions, { age: age as number, sex, mode: "annual" }) : undefined),
-    [inRange, age, sex, millions],
+    () => (typeof age === "number" ? quoteBundle(BUNDLE, millions, { age, sex, mode: "annual" }) : undefined),
+    [age, sex, millions],
   );
   const modes = useMemo(
-    () => (inRange ? bundleModePremiums(BUNDLE, millions, { age: age as number, sex }) : undefined),
-    [inRange, age, sex, millions],
+    () => (typeof age === "number" ? bundleModePremiums(BUNDLE, millions, { age, sex }) : undefined),
+    [age, sex, millions],
   );
 
   const expired = result?.meta.expired ?? false;
@@ -58,7 +63,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
   const others = (modes ?? []).filter((m) => m !== headline && !m.belowMinimum);
   const death = result?.deathBenefit;
 
-  const message = legacyMessage({ millions, age, sex, inRange, premium: headline });
+  const message = legacyMessage({ millions, age, sex, range: RANGE, premium: headline });
 
   return (
     <div className="space-y-6">
@@ -85,11 +90,19 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="legacy-age" className="block text-sm font-medium text-slate-600">อายุ</label>
-            <input
-              id="legacy-age" type="number" inputMode="numeric" value={age} placeholder="เช่น 38"
-              onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-lg tabular-nums"
-            />
+            {/* a picker rather than a number field: on a phone it opens the wheel instead of
+                the keypad, and there is no way to arrive at an age nobody is */}
+            <select
+              id="legacy-age" value={age}
+              onChange={(e) => setAge(e.target.value === "" || e.target.value === "other"
+                ? (e.target.value as LegacyAge)
+                : Number(e.target.value))}
+              className="mt-1 w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-lg tabular-nums text-slate-900"
+            >
+              <option value="">เลือกอายุ</option>
+              {AGES.map((a) => <option key={a} value={a}>{a} ปี</option>)}
+              <option value="other">อายุอื่น</option>
+            </select>
           </div>
           <div>
             <span className="block text-sm font-medium text-slate-600">เพศ</span>

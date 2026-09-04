@@ -37,13 +37,20 @@ const SEX_WORD: Record<Sex, string> = { M: "ชาย", F: "หญิง" };
 export interface LegacyFacts {
   /** the tier, as the round number of millions the family receives */
   millions: number;
-  age: number | "";
+  /** an age the bundle takes, "other" for everyone outside it, "" before one is picked */
+  age: LegacyAge;
   sex: Sex;
-  /** whether the bundle will take this age at all */
-  inRange: boolean;
+  /** the ages the bundle issues at, named in the message an outsider sends */
+  range: { min: number; max: number };
   /** the instalment on the card, or undefined when no price is being shown */
   premium: ModePremium | undefined;
 }
+
+/**
+ * The age picker's value. Whether the bundle can take the age is the shape of this value
+ * rather than a flag beside it, so the two cannot disagree.
+ */
+export type LegacyAge = number | "other" | "";
 
 /**
  * What the customer's chat opens with. The same sentence goes to LINE, to Messenger and to
@@ -57,8 +64,10 @@ export interface LegacyFacts {
 export function legacyMessage(facts: LegacyFacts): string {
   const head = `สนใจมรดกเพื่อครอบครัว ${facts.millions} ล้าน`;
   if (facts.age === "") return head;
+  if (facts.age === "other") {
+    return `${head} อายุนอกช่วง ${facts.range.min}–${facts.range.max} ปี ขอแบบที่เหมาะกับอายุนี้`;
+  }
   const who = `${head} อายุ ${facts.age} ${SEX_WORD[facts.sex]}`;
-  if (!facts.inRange) return `${who} ขอแบบที่เหมาะกับอายุนี้`;
   if (!facts.premium) return `${who} ขอราคาปัจจุบัน`;
   return `${who} เบี้ยประมาณ ${formatBaht(facts.premium.total)} บาท${PER[facts.premium.mode]}`;
 }

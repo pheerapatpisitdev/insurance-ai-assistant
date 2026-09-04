@@ -46,29 +46,36 @@ describe("perDay", () => {
   });
 });
 
+const RANGE = { min: 20, max: 65 };
+
 describe("legacyMessage", () => {
   it("carries the sum, the insured and the headline premium", () => {
-    expect(legacyMessage({ millions: 3, age: 38, sex: "M", inRange: true, premium: AFFORDABLE[2] }))
+    expect(legacyMessage({ millions: 3, age: 38, sex: "M", range: RANGE, premium: AFFORDABLE[2] }))
       .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน อายุ 38 ชาย เบี้ยประมาณ 1,501 บาท/เดือน");
   });
 
   it("names the yearly premium when that is what is on the card", () => {
-    expect(legacyMessage({ millions: 1, age: 30, sex: "F", inRange: true, premium: UNDER_FLOOR[0] }))
+    expect(legacyMessage({ millions: 1, age: 30, sex: "F", range: RANGE, premium: UNDER_FLOOR[0] }))
       .toBe("สนใจมรดกเพื่อครอบครัว 1 ล้าน อายุ 30 หญิง เบี้ยประมาณ 4,123 บาท/ปี");
   });
 
-  it("asks about the sum alone before an age has been entered", () => {
-    expect(legacyMessage({ millions: 3, age: "", sex: "M", inRange: false, premium: undefined }))
+  it("asks about the sum alone before an age has been picked", () => {
+    expect(legacyMessage({ millions: 3, age: "", sex: "M", range: RANGE, premium: undefined }))
       .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน");
   });
 
+  /**
+   * The picker offers the ages the bundle takes and one way out for everyone else, so an
+   * age outside the range arrives as "other" — a real person the agent should still call
+   * back, not a number to quote.
+   */
   it("asks for something else when the age is outside what the bundle takes", () => {
-    expect(legacyMessage({ millions: 3, age: 68, sex: "F", inRange: false, premium: undefined }))
-      .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน อายุ 68 หญิง ขอแบบที่เหมาะกับอายุนี้");
+    expect(legacyMessage({ millions: 3, age: "other", sex: "F", range: RANGE, premium: undefined }))
+      .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน อายุนอกช่วง 20–65 ปี ขอแบบที่เหมาะกับอายุนี้");
   });
 
   it("asks for the current price when no premium may be shown", () => {
-    expect(legacyMessage({ millions: 3, age: 38, sex: "M", inRange: true, premium: undefined }))
+    expect(legacyMessage({ millions: 3, age: 38, sex: "M", range: RANGE, premium: undefined }))
       .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน อายุ 38 ชาย ขอราคาปัจจุบัน");
   });
 });
