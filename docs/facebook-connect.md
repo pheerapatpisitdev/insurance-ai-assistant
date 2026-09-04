@@ -16,11 +16,15 @@
    https://www.advisorx.biz/api/facebook/connect/callback
    https://advisorx.biz/api/facebook/connect/callback
    https://insurance-ai-assistant-pheerapatpisit.vercel.app/api/facebook/connect/callback
-   http://localhost:3000/api/facebook/connect/callback
    ```
 
    ใส่ให้ครบทุกบรรทัด เพราะเปิดแอดมินจากโดเมนไหน Meta ก็ต้องรู้จักโดเมนนั้น
    เว็บนี้ผูกไว้หลายโดเมน ถ้าใส่ไม่ครบแล้วบังเอิญเปิดจากโดเมนที่ตกหล่น จะขึ้น URL blocked
+
+   `localhost` ใส่ไม่ได้ Meta อนุญาตให้เองเฉพาะตอนแอปอยู่ในโหมดพัฒนา
+   แอปนี้เผยแพร่แล้ว จึงทดสอบปุ่มนี้ในเครื่องไม่ได้ ต้องทดสอบบนเว็บจริง
+
+   **ทำเสร็จแล้วเมื่อ 4 ก.ย. 2026** ทั้ง 5 บรรทัดบันทึกใน Meta เรียบร้อย
 
 4. ที่ **App settings → Basic** คือที่มาของ `FB_APP_ID` กับ `FB_APP_SECRET`
    ทั้งสองตัวตั้งใน Vercel ไว้แล้ว ไม่ต้องทำอะไรเพิ่ม
