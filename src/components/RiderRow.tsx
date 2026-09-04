@@ -2,15 +2,6 @@
 import type { Availability, Sex } from "@/calc/types";
 import { MoneyInput } from "./MoneyInput";
 
-/**
- * Who pays the premiums. The age is not asked for: this agency writes PB with the insured
- * paying their own premiums, so it follows the age already entered for the quote and cannot
- * drift out of step with it. The sex is still a choice, because a couple of the same age is
- * an ordinary arrangement.
- */
-export interface PayerState {
-  sex: Sex;
-}
 export interface SubSelect {
   key: "territory" | "coverage";
   label: string;
@@ -23,9 +14,8 @@ export interface RiderRowProps {
   option: string;
   territory: string;
   coverage: string;
-  payer: PayerState;
-  /** the age the quote is being run at; the payer is charged on the same one */
-  insuredAge: number | "";
+  /** who the quote is for; PB is rated on the same person, so it is shown rather than asked */
+  insured: { age: number | ""; sex: Sex };
   /** the option select also needs a sum assured (PLS) */
   optionNeedsSumAssured: boolean;
   /** extra selects shown after the option (iHealthy Ultra) */
@@ -36,14 +26,13 @@ export interface RiderRowProps {
   onChange: (value: number | "") => void;
   onOptionChange: (option: string) => void;
   onSubSelectChange: (key: SubSelect["key"], value: string) => void;
-  onPayerChange: (payer: PayerState) => void;
 }
 
 const num = (v: string): number | "" => (v === "" ? "" : Number(v));
 
 export function RiderRow({
-  availability: a, enabled, value, option, territory, coverage, payer, insuredAge, optionNeedsSumAssured, subSelects, required,
-  onToggle, onChange, onOptionChange, onSubSelectChange, onPayerChange,
+  availability: a, enabled, value, option, territory, coverage, insured, optionNeedsSumAssured, subSelects, required,
+  onToggle, onChange, onOptionChange, onSubSelectChange,
 }: RiderRowProps) {
   const disabled = !a.eligible;
   const isPlan = a.plans !== undefined;
@@ -74,16 +63,10 @@ export function RiderRow({
             </select>
           ))}
           {a.needsPayer ? (
-            <>
-              <span className="text-xs text-slate-600">ผู้ชำระเบี้ย</span>
-              <select className="rounded border px-2 py-1 text-sm" value={payer.sex} onChange={(e) => onPayerChange({ sex: e.target.value as Sex })}>
-                <option value="M">ชาย</option>
-                <option value="F">หญิง</option>
-              </select>
-              <span className="text-xs text-slate-500">
-                {insuredAge === "" ? "อายุตามผู้เอาประกัน" : `อายุ ${insuredAge} ปี ตามผู้เอาประกัน`}
-              </span>
-            </>
+            <span className="text-xs text-slate-500">
+              ผู้ชำระเบี้ยคือผู้เอาประกัน
+              {insured.age !== "" && ` · ${insured.sex === "M" ? "ชาย" : "หญิง"} ${insured.age} ปี`}
+            </span>
           ) : isPlan ? (
             <select className="rounded border px-2 py-1 text-sm" value={value} onChange={(e) => onChange(num(e.target.value))}>
               <option value="">เลือกแผน</option>

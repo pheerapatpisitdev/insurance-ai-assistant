@@ -3,7 +3,7 @@ import type { Availability, PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import type { PlanBundle } from "@/calc/plans/registry";
 import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "@/calc/rules";
-import { RiderRow, type PayerState, type SubSelect } from "./RiderRow";
+import { RiderRow, type SubSelect } from "./RiderRow";
 import { MoneyInput } from "./MoneyInput";
 import { InsuredFields } from "./InsuredFields";
 import { PlanSelect } from "./PlanSelect";
@@ -28,7 +28,6 @@ export interface FormState {
   basis: "sumAssured" | "premium";
   sumAssured: number | "";
   targetPremium: number | "";
-  payer: PayerState;
   riders: Record<string, RiderState>;
 }
 
@@ -133,8 +132,7 @@ export function QuoteForm({ state, plan, plans, availability, bundles, onChange,
               option={r.option}
               territory={r.territory}
               coverage={r.coverage}
-              payer={state.payer}
-              insuredAge={state.age}
+              insured={{ age: state.age, sex: state.sex }}
               optionNeedsSumAssured={extras.optionNeedsSumAssured}
               subSelects={extras.subSelects}
               required={required.has(a.code)}
@@ -142,7 +140,6 @@ export function QuoteForm({ state, plan, plans, availability, bundles, onChange,
               onChange={(value) => setRider(a.code, { value })}
               onOptionChange={(option) => setRider(a.code, { option })}
               onSubSelectChange={(key, v) => setRider(a.code, { [key]: v })}
-              onPayerChange={(payer) => set({ payer })}
             />
           );
         })}
