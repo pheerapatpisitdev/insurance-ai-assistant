@@ -15,12 +15,21 @@ const FB_PAGE = process.env.NEXT_PUBLIC_FB_PAGE ?? "";
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
 const PER_LABEL: Record<PayMode, string> = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" };
 
+export interface LegacyCalculatorProps {
+  /**
+   * Pin a copy of the contact buttons to the bottom of a phone screen. The bar has to be
+   * rendered from here rather than by the page, because this is the only place that knows
+   * which sum and age the customer has landed on.
+   */
+  sticky?: boolean;
+}
+
 /**
  * The customer's calculator. It sells one arrangement, so there is nothing to choose but the
  * sum, the age and the sex — every other decision was made when the bundle was designed, and
  * the agent's own calculator is where the rest of them can still be changed.
  */
-export function LegacyCalculator() {
+export function LegacyCalculator({ sticky = false }: LegacyCalculatorProps = {}) {
   const [millions, setMillions] = useState(1);
   const [age, setAge] = useState<number | "">("");
   const [sex, setSex] = useState<Sex>("M");
@@ -148,30 +157,49 @@ export function LegacyCalculator() {
         </div>
       )}
 
-      <div className="grid gap-2">
-        {LINE_OA && (
-          <a
-            href={lineUrl(LINE_OA, message)} target="_blank" rel="noopener noreferrer"
-            className="rounded-xl bg-emerald-600 px-5 py-3 text-center font-medium text-white hover:bg-emerald-700"
-          >
-            ทักไลน์ปรึกษาฟรี
-          </a>
-        )}
-        {FB_PAGE && (
-          <a
-            href={messengerUrl(FB_PAGE, message)} target="_blank" rel="noopener noreferrer"
-            className="rounded-xl bg-blue-600 px-5 py-3 text-center font-medium text-white hover:bg-blue-700"
-          >
-            ทัก Messenger
-          </a>
-        )}
+      <ContactButtons message={message} />
+
+      {sticky && (
+        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white/95 p-3 backdrop-blur sm:hidden">
+          <ContactButtons message={message} compact />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The way out of the page, in every channel that has been configured. A channel with no
+ * setting is left out rather than shown broken, so a page with only the assistant wired up
+ * still reads as finished.
+ *
+ * The message is prepared, never sent: pressing send stays the customer's own act.
+ */
+function ContactButtons({ message, compact = false }: { message: string; compact?: boolean }) {
+  const shape = compact
+    ? "rounded-lg px-3 py-2.5 text-center text-sm font-medium"
+    : "rounded-xl px-5 py-3 text-center font-medium";
+  return (
+    <div className={compact ? "flex gap-2 [&>*]:flex-1" : "grid gap-2"}>
+      {LINE_OA && (
         <a
-          href={chatUrl(message)}
-          className="rounded-xl border border-slate-300 px-5 py-3 text-center font-medium text-slate-700 hover:bg-slate-50"
+          href={lineUrl(LINE_OA, message)} target="_blank" rel="noopener noreferrer"
+          className={`${shape} bg-emerald-600 text-white`}
         >
-          ถาม AI ก่อนก็ได้
+          {compact ? "ทักไลน์" : "ทักไลน์ปรึกษาฟรี"}
         </a>
-      </div>
+      )}
+      {FB_PAGE && (
+        <a
+          href={messengerUrl(FB_PAGE, message)} target="_blank" rel="noopener noreferrer"
+          className={`${shape} bg-blue-600 text-white`}
+        >
+          {compact ? "Messenger" : "ทัก Messenger"}
+        </a>
+      )}
+      <a href={chatUrl(message)} className={`${shape} border border-slate-300 text-slate-700`}>
+        {compact ? "ถาม AI" : "ถาม AI ก่อนก็ได้"}
+      </a>
     </div>
   );
 }

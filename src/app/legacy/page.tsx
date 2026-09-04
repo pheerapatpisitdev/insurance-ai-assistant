@@ -1,18 +1,37 @@
 import { LegacyCalculator } from "@/components/LegacyCalculator";
+import { Hero } from "@/components/legacy/Hero";
+import {
+  DifferenceSection, DiseaseSection, Disclaimer, FaqSection, StructureSection, WhySection,
+} from "@/components/legacy/Sections";
 
 export const metadata = {
-  title: "มรดกเพื่อครอบครัว — คำนวณเบี้ย",
-  description: "เตรียมเงินก้อน 1–10 ล้านบาทให้ครอบครัว จ่ายทั้งกรณีเสียชีวิตและโรคร้ายแรง",
+  title: "มรดกเพื่อครอบครัว — เตรียมเงินก้อนให้คนข้างหลัง",
+  description:
+    "เตรียมเงินก้อน 1–10 ล้านบาทให้ครอบครัว จ่ายทั้งกรณีเสียชีวิตและเมื่อตรวจพบ 1 ใน 31 โรคร้ายแรง คำนวณเบี้ยของคุณเองได้ทันที",
 };
 
+/**
+ * The order answers the questions in the order a stranger asks them: what is this, what does
+ * it cost me, why would I need it, what makes it different, what am I buying, what exactly is
+ * covered, what am I still worried about.
+ *
+ * The calculator comes second rather than last because the price is the second question, and
+ * a page that makes a cold reader scroll past four blocks to reach it loses them at the
+ * first.
+ */
 export default function LegacyPage() {
   return (
-    <main className="mx-auto max-w-lg px-4 py-8">
-      <h1 className="text-2xl font-semibold text-slate-900">มรดกเพื่อครอบครัว</h1>
-      <p className="mt-1 mb-6 text-sm text-slate-600">
-        เตรียมเงินก้อนให้คนข้างหลัง จ่ายทั้งวันที่คุณจากไป และวันที่คุณป่วยหนักแต่ยังอยู่
-      </p>
-      <LegacyCalculator />
+    <main className="mx-auto max-w-lg px-4 pb-28 sm:pb-10">
+      <Hero />
+      <section id="calc" className="scroll-mt-4">
+        <LegacyCalculator sticky />
+      </section>
+      <WhySection />
+      <DifferenceSection />
+      <StructureSection />
+      <DiseaseSection />
+      <FaqSection />
+      <Disclaimer />
     </main>
   );
 }
