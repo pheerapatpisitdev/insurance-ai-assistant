@@ -17,3 +17,12 @@ export function displayPremium(
   if (monthly && !monthly.belowMinimum) return monthly;
   return modes.find((m) => m.mode === "annual");
 }
+
+/**
+ * The yearly premium as whole baht a day — the figure that makes a five-digit number feel
+ * like something. Rounded up rather than down: a day rate the premium does not actually
+ * reach would be an understatement of the price.
+ */
+export function perDay(annualSatang: number): number {
+  return Math.ceil(annualSatang / 100 / 365);
+}

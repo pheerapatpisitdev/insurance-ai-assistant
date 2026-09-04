@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModePremium } from "@/calc/mode-premiums";
-import { displayPremium } from "@/lib/legacy-cta";
+import { displayPremium, perDay } from "@/lib/legacy-cta";
 
 /** ชาย 38 ปี มรดก 3 ล้าน — every mode is issuable */
 const AFFORDABLE: ModePremium[] = [
@@ -31,5 +31,17 @@ describe("displayPremium", () => {
 
   it("shows no price when the bundle could not be quoted", () => {
     expect(displayPremium(undefined, false)).toBeUndefined();
+  });
+});
+
+describe("perDay", () => {
+  it("turns a yearly premium into whole baht a day", () => {
+    // ชาย 38 · 3 ล้าน: 16,687.50 บาท/ปี ÷ 365 = 45.7 → 46
+    expect(perDay(1_668_750)).toBe(46);
+  });
+
+  it("rounds up, so the figure is never one the premium undershoots", () => {
+    // หญิง 30 · 1 ล้าน: 4,123 บาท/ปี ÷ 365 = 11.3 → 12
+    expect(perDay(412_300)).toBe(12);
   });
 });
