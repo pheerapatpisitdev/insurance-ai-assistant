@@ -6,6 +6,8 @@ import { facebookStatus } from "@/lib/facebook/status";
 import { forgetCachedToken } from "@/lib/facebook/connection";
 import { authorizeUrl, makeState, redirectUri, stateIsValid } from "@/lib/facebook/oauth";
 import { requestOrigin } from "@/lib/facebook/origin";
+import { eventKey, textOf } from "@/lib/facebook/events";
+import { forgetProfile, normaliseProfile, profileBody, readProfile, ProfileError } from "@/lib/facebook/profile";
 
 const SECRET = "test-app-secret";
 
@@ -169,6 +171,32 @@ describe("page status", () => {
     expect(status.notes).toEqual([]);
   });
 
+  it("treats Meta's rate limit as a pause, not a broken token", async () => {
+    graph({
+      "/me/messenger_profile": [613, "Calls to this api have exceeded the rate limit."],
+      "/me": [613, "Calls to this api have exceeded the rate limit."],
+      "/me/subscribed_apps": [613, "Calls to this api have exceeded the rate limit."],
+    });
+    const status = await facebookStatus();
+    expect(status.messagingOk).toBeUndefined();
+    expect(status.errors).toEqual([]);
+    expect(status.notes).toHaveLength(1);
+    expect(status.notes[0]).toContain("จำกัดจำนวนครั้ง");
+  });
+
+  it("takes the messaging answer from whoever already asked, without calling Meta for it", async () => {
+    const calls: string[] = [];
+    globalThis.fetch = (async (url: string | URL) => {
+      calls.push(new URL(String(url)).pathname);
+      return new Response(JSON.stringify({ error: { code: 100, message: "no" } }), { status: 400 });
+    }) as typeof fetch;
+    const status = await facebookStatus(true);
+    expect(status.messagingOk).toBe(true);
+    expect(calls.some((p) => p.includes("messenger_profile"))).toBe(false);
+    expect((await facebookStatus("limited")).messagingOk).toBeUndefined();
+    expect((await facebookStatus(false)).messagingOk).toBe(false);
+  });
+
   it("reads the page and its subscription when the token carries the permissions", async () => {
     graph({
       "/me/messenger_profile": { data: [] },
@@ -243,5 +271,95 @@ describe("connect flow", () => {
   it("falls back to the request host when nothing is forwarded", () => {
     const req = new Request("http://localhost:3000/api/facebook/connect");
     expect(requestOrigin(req)).toBe("http://localhost:3000");
+  });
+});
+
+describe("what a webhook event says", () => {
+  it("reads a typed message", () => {
+    expect(textOf({ message: { mid: "m1", text: "  มรดก 3 ล้าน  " } })).toBe("มรดก 3 ล้าน");
+  });
+
+  it("reads a tapped ice breaker as the question that was tapped", () => {
+    expect(textOf({ postback: { title: "มรดก 3 ล้าน เบี้ยเท่าไหร่", payload: "มรดก 3 ล้าน เบี้ยเท่าไหร่" } }))
+      .toBe("มรดก 3 ล้าน เบี้ยเท่าไหร่");
+  });
+
+  it("says nothing for the page's own echo, an image, or a read receipt", () => {
+    expect(textOf({ message: { mid: "m1", text: "hi", is_echo: true } })).toBe("");
+    expect(textOf({ message: { mid: "m2" } })).toBe("");
+    expect(textOf({})).toBe("");
+  });
+
+  it("keys a message by its id and a postback by sender and moment", () => {
+    expect(eventKey({ message: { mid: "m1", text: "x" } })).toBe("m1");
+    expect(eventKey({ sender: { id: "42" }, timestamp: 1700000000000, postback: { title: "x" } })).toBe("pb:42:1700000000000");
+    expect(eventKey({ postback: { title: "x" } })).toBeUndefined();
+  });
+});
+
+describe("messenger profile", () => {
+  it("drops blank questions and trims the rest", () => {
+    expect(normaliseProfile({ questions: ["", " ก ", "ข", ""] })).toEqual({ questions: ["ก", "ข"] });
+  });
+
+  it("refuses more than four questions or one that is too long", () => {
+    expect(() => normaliseProfile({ questions: ["1", "2", "3", "4", "5"] })).toThrow("4");
+    expect(() => normaliseProfile({ questions: ["ก".repeat(81)] })).toThrow("80");
+  });
+
+  it("sends each question as its own payload, so a tap reads like a typed message", () => {
+    const body = profileBody({ questions: ["มรดก 3 ล้าน เบี้ยเท่าไหร่"] }) as {
+      ice_breakers: { locale: string; call_to_actions: { question: string; payload: string }[] }[];
+    };
+    expect(body.ice_breakers[0].call_to_actions).toEqual([
+      { question: "มรดก 3 ล้าน เบี้ยเท่าไหร่", payload: "มรดก 3 ล้าน เบี้ยเท่าไหร่" },
+    ]);
+  });
+
+  it("never asks Meta to store an empty list, because Meta refuses one", () => {
+    expect(profileBody({ questions: [] })).toEqual({});
+  });
+});
+
+describe("reading the messenger profile", () => {
+  const real = globalThis.fetch;
+  afterEach(() => { globalThis.fetch = real; forgetProfile(); });
+
+  it("asks Meta once a minute, however often the page is opened", async () => {
+    forgetProfile();
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls++;
+      return new Response(JSON.stringify({ data: [{
+        ice_breakers: [{ locale: "default", call_to_actions: [{ question: "ก", payload: "ก" }] }],
+      }] }), { status: 200 });
+    }) as typeof fetch;
+    const a = await readProfile("t");
+    const b = await readProfile("t");
+    expect(a).toEqual({ questions: ["ก"] });
+    expect(b).toEqual(a);
+    expect(calls).toBe(1);
+  });
+
+  it("reads the flat shape Meta answers with, as well as the one it is written in", async () => {
+    forgetProfile();
+    globalThis.fetch = (async () => new Response(JSON.stringify({ data: [{
+      ice_breakers: [{ question: "ก", payload: "ก" }, { question: "ข", payload: "ข" }],
+    }] }), { status: 200 })) as typeof fetch;
+    expect(await readProfile("t2")).toEqual({ questions: ["ก", "ข"] });
+  });
+
+  it("copes with a profile that has nothing set", async () => {
+    forgetProfile();
+    globalThis.fetch = (async () => new Response(JSON.stringify({ data: [{}] }), { status: 200 })) as typeof fetch;
+    expect(await readProfile("t3")).toEqual({ questions: [] });
+  });
+
+  it("names a rate limit as such", async () => {
+    forgetProfile();
+    globalThis.fetch = (async () => new Response(
+      JSON.stringify({ error: { code: 613, message: "Calls to this api have exceeded the rate limit." } }), { status: 400 },
+    )) as typeof fetch;
+    await expect(readProfile("t")).rejects.toSatisfy((e: unknown) => e instanceof ProfileError && e.rateLimited);
   });
 });

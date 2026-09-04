@@ -7,19 +7,15 @@ import { answerQuestion } from "@/lib/assistant/answer";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
+import { eventKey, textOf, type Messaging } from "@/lib/facebook/events";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_CHARS = 1000;
 const BUSY = "ตอนนี้มีคำถามเข้ามาเยอะครับ รบกวนรอสักครู่แล้วถามใหม่นะครับ";
 const BROKEN = "ขออภัยครับ ระบบตอบไม่ได้ในตอนนี้ รบกวนถามใหม่อีกครั้งครับ";
 const OUT_OF_BUDGET = "ตอนนี้ระบบผู้ช่วยปิดชั่วคราวครับ รบกวนติดต่อตัวแทนโดยตรงนะครับ";
 
-interface Messaging {
-  sender?: { id?: string };
-  message?: { mid?: string; text?: string; is_echo?: boolean };
-}
 interface Entry {
   messaging?: Messaging[];
 }
@@ -63,15 +59,15 @@ export async function POST(req: NextRequest) {
 }
 
 async function handle(event: Messaging): Promise<void> {
-  // an echo is the page's own message coming back; answering it would talk to ourselves
-  if (event.message?.is_echo) return;
-  const text = (event.message?.text ?? "").trim().slice(0, MAX_CHARS);
+  // a typed message and a tapped ice breaker are both the customer's words; an echo of the
+  // page's own message is not, and textOf drops it
+  const text = textOf(event);
   const psid = event.sender?.id;
-  const mid = event.message?.mid;
   if (!text || !psid) return;
 
-  // a redelivery of a message already answered must not answer it a second time
-  if (mid && !(await claimEvent("facebook", mid))) return;
+  // a redelivery of an event already answered must not answer it a second time
+  const key = eventKey(event);
+  if (key && !(await claimEvent("facebook", key))) return;
 
   const userHash = hashUserId(psid);
   if (!allow(`fb:${userHash}`)) {

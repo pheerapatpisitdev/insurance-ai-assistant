@@ -1,11 +1,15 @@
 import { Card, Empty, Stat } from "../ui";
 import { ConversationList } from "@/components/ConversationList";
 import { channelActivity, recentConversations } from "@/lib/chat/history";
-import { facebookStatus } from "@/lib/facebook/status";
+import { facebookStatus, type MessagingProbe } from "@/lib/facebook/status";
 import { pageConnection, readPending } from "@/lib/facebook/connection";
-import { listPages, oauthIsConfigured, SCOPES } from "@/lib/facebook/oauth";
+import { listPages, oauthIsConfigured, SCOPES, SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
+import { pageToken } from "@/lib/facebook/connection";
+import { ProfileError, readProfile, type MessengerProfile } from "@/lib/facebook/profile";
 import { DisconnectButton } from "./DisconnectButton";
 import { PagePicker, type Choice } from "./PagePicker";
+import { ProfileForm } from "./ProfileForm";
+import { RefreshSubscriptionButton } from "./RefreshSubscriptionButton";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +38,25 @@ const TONES = {
   bad: "bg-red-50 text-red-700",
 };
 
+/**
+ * What the Page currently greets a new person with. Null when Meta would not say: an empty
+ * form over an unread profile invites saving blanks, and saving blanks deletes what is there.
+ */
+async function currentProfile(): Promise<{ profile: MessengerProfile | null; error?: string; messaging?: MessagingProbe }> {
+  const token = await pageToken();
+  if (!token) return { profile: null, error: "ยังไม่ได้เชื่อมต่อเพจ" };
+  try {
+    return { profile: await readProfile(token), messaging: true };
+  } catch (e) {
+    const limited = e instanceof ProfileError && e.rateLimited;
+    return {
+      profile: null,
+      error: limited ? "Meta จำกัดไว้ 10 ครั้งต่อ 10 นาที" : e instanceof Error ? e.message : String(e),
+      messaging: limited ? "limited" : false,
+    };
+  }
+}
+
 /** The Pages a half-finished login is waiting to choose between. */
 async function pendingChoices(): Promise<Choice[]> {
   const pending = await readPending();
@@ -54,13 +77,17 @@ export default async function MessengerAdminPage({
   const outcome = OUTCOMES[String(params.fb ?? "")];
   const detail = typeof params.detail === "string" ? params.detail : undefined;
 
+  // the profile read doubles as the messaging probe, so the page spends one Messenger
+  // Profile call per visit instead of two
+  const current = await currentProfile();
   const [status, connection, choices, conversations, activity] = await Promise.all([
-    facebookStatus(),
+    facebookStatus(current.messaging),
     pageConnection(),
     pendingChoices(),
     recentConversations("facebook"),
     channelActivity("facebook"),
   ]);
+  const missingFields = SUBSCRIBED_FIELDS.filter((f) => !(connection?.fields ?? []).includes(f));
 
   return (
     <>
@@ -82,6 +109,12 @@ export default async function MessengerAdminPage({
             </Row>
             <Row label="สิทธิ์ที่ได้รับ">{connection.scopes.join(", ") || "—"}</Row>
             <Row label="เหตุการณ์ที่รับ">{connection.fields.join(", ") || "—"}</Row>
+            {missingFields.length > 0 && (
+              <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                ระบบรุ่นนี้ต้องรับเหตุการณ์ {missingFields.join(", ")} ด้วย ไม่งั้นปุ่มคำถามที่ลูกค้ากดจะไม่ถึงบอท
+                <span className="ml-3 inline-block"><RefreshSubscriptionButton /></span>
+              </p>
+            )}
             <div className="pt-3"><DisconnectButton /></div>
           </div>
         ) : (
@@ -105,13 +138,26 @@ export default async function MessengerAdminPage({
         )}
       </Card>
 
+      {connection && (
+        <Card title="ปุ่มคำถามหน้าเปิดแชท" hint="ปุ่มที่คนเห็นก่อนพิมพ์ข้อความแรก กดแล้วบอทตอบทันที อ่านค่าปัจจุบันจากเพจ">
+          {current.profile ? (
+            <ProfileForm initial={current.profile} />
+          ) : (
+            <Empty>อ่านค่าปัจจุบันจากเพจไม่ได้ในตอนนี้ ลองเปิดหน้านี้ใหม่ในอีกสักครู่<br />
+              <span className="text-xs">{current.error}</span></Empty>
+          )}
+        </Card>
+      )}
+
       <Card title="สถานะจาก Meta" hint="อ่านสดทุกครั้งที่เปิดหน้านี้">
         {!status.configured ? (
           <Empty>ยังไม่ได้เชื่อมต่อ Facebook</Empty>
         ) : (
           <div>
             <Row label="การตอบข้อความ">
-              {status.messagingOk ? (
+              {status.messagingOk === undefined ? (
+                <span className="text-amber-800">ตรวจไม่ได้ชั่วคราว</span>
+              ) : status.messagingOk ? (
                 <span className="text-emerald-700">✓ โทเค็นเพจใช้งานได้ บอทส่งและรับข้อความได้</span>
               ) : (
                 <span className="text-red-700">✗ โทเค็นเพจใช้งานไม่ได้ บอทตอบใครไม่ได้เลย</span>

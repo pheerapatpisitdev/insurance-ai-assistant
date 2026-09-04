@@ -14,7 +14,7 @@ const GRAPH = "https://graph.facebook.com/v23.0";
 
 export interface FacebookStatus {
   configured: boolean;
-  /** the token is live and may send and receive messages — the one thing the bot needs */
+  /** the token is live and may send and receive messages — the one thing the bot needs; undefined when Meta would not say */
   messagingOk?: boolean;
   pageName?: string;
   pageId?: string;
@@ -34,6 +34,9 @@ class GraphError extends Error {
 
 /** Meta answers a missing scope with one of these; anything else (190 above all) is a bad token. */
 const PERMISSION_CODES = new Set([3, 10, 100, 200, 294, 299]);
+/** Too many calls in a short while — says nothing about the token, only about the clock. */
+const RATE_LIMIT_CODES = new Set([4, 17, 32, 613]);
+const RATE_LIMIT_NOTE = "Meta จำกัดจำนวนครั้งที่ถามได้ ตรวจไม่ได้ชั่วคราว ลองเปิดหน้านี้ใหม่ในอีกสักครู่";
 
 async function get<T>(path: string, token: string): Promise<T> {
   const res = await fetch(`${GRAPH}${path}`, {
@@ -54,26 +57,45 @@ async function get<T>(path: string, token: string): Promise<T> {
   return body;
 }
 
-export async function facebookStatus(): Promise<FacebookStatus> {
+/**
+ * What is already known about messaging, so the status need not ask Meta again: the
+ * Messenger Profile API allows ten calls per ten minutes, and the profile form on the same
+ * page has just made one. `true`/`false` are the answer; `"limited"` means Meta declined to say.
+ */
+export type MessagingProbe = boolean | "limited";
+
+export async function facebookStatus(known?: MessagingProbe): Promise<FacebookStatus> {
   const token = await pageToken();
   if (!token) return { configured: false, notes: [], errors: ["ยังไม่ได้เชื่อมต่อเพจ Facebook"] };
 
   const status: FacebookStatus = { configured: true, notes: [], errors: [] };
   // each call stands on its own: one refused read should not blank the whole page
   const [messaging, page, subs] = await Promise.allSettled([
-    get<unknown>("/me/messenger_profile?fields=greeting", token),
+    known === undefined
+      ? get<unknown>("/me/messenger_profile?fields=greeting", token)
+      : known === "limited"
+        ? Promise.reject(new GraphError(613, "rate limited"))
+        : known
+          ? Promise.resolve(true)
+          : Promise.reject(new GraphError(0, "ส่งข้อความไม่ได้")),
     get<{ id: string; name: string }>("/me?fields=id,name", token),
     get<{ data: { name: string; subscribed_fields?: string[] }[] }>("/me/subscribed_apps", token),
   ]);
 
-  status.messagingOk = messaging.status === "fulfilled";
-  if (messaging.status === "rejected") {
+  if (messaging.status === "fulfilled") {
+    status.messagingOk = true;
+  } else {
     const e = messaging.reason as GraphError;
-    status.errors.push(
-      e.code === 190
-        ? `โทเค็นเพจใช้ไม่ได้แล้ว ต้องออกใหม่: ${e.detail}`
-        : `โทเค็นเพจส่งข้อความไม่ได้: ${e.detail}`,
-    );
+    if (RATE_LIMIT_CODES.has(e.code)) {
+      if (!status.notes.includes(RATE_LIMIT_NOTE)) status.notes.push(RATE_LIMIT_NOTE);
+    } else {
+      status.messagingOk = false;
+      status.errors.push(
+        e.code === 190
+          ? `โทเค็นเพจใช้ไม่ได้แล้ว ต้องออกใหม่: ${e.detail}`
+          : `โทเค็นเพจส่งข้อความไม่ได้: ${e.detail}`,
+      );
+    }
   }
 
   if (page.status === "fulfilled") {
@@ -91,7 +113,9 @@ export async function facebookStatus(): Promise<FacebookStatus> {
 }
 
 function note(status: FacebookStatus, e: GraphError, what: string, scope: string) {
-  if (PERMISSION_CODES.has(e.code)) {
+  if (RATE_LIMIT_CODES.has(e.code)) {
+    if (!status.notes.includes(RATE_LIMIT_NOTE)) status.notes.push(RATE_LIMIT_NOTE);
+  } else if (PERMISSION_CODES.has(e.code)) {
     status.notes.push(`ดู${what}ไม่ได้ เพราะโทเค็นไม่มีสิทธิ์ ${scope} — ไม่กระทบการตอบข้อความ`);
   } else {
     status.errors.push(`อ่าน${what}ไม่ได้: ${e.detail}`);

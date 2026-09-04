@@ -17,8 +17,8 @@ const DIALOG = "https://www.facebook.com/v23.0/dialog/oauth";
  */
 export const SCOPES = ["pages_show_list", "pages_messaging", "pages_manage_metadata"];
 
-/** The event the webhook actually handles. Subscribing to more would only add noise. */
-export const SUBSCRIBED_FIELDS = ["messages"];
+/** The events the webhook actually handles: typed messages, and taps on ice breakers or buttons. */
+export const SUBSCRIBED_FIELDS = ["messages", "messaging_postbacks"];
 
 export interface FacebookPage {
   id: string;
