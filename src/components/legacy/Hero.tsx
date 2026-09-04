@@ -25,7 +25,7 @@ export function Hero() {
       >
         วันที่คุณล้ม
         <br />
-        <span className="text-[var(--lg-gold)]">ครอบครัวต้องไม่ล้มตาม</span>
+        <span className="lg-metal-text">ครอบครัวต้องไม่ล้มตาม</span>
       </h1>
 
       <p
@@ -39,7 +39,7 @@ export function Hero() {
       <div className="lg-rise" style={{ animationDelay: "270ms" }}>
         <a
           href="#calc"
-          className="mt-9 block rounded-sm bg-[var(--lg-gold)] px-5 py-4 text-center text-lg font-medium tracking-wide text-[var(--lg-navy)]"
+          className="lg-metal-face lg-sheen mt-9 block rounded-sm px-5 py-4 text-center text-lg font-medium tracking-wide"
         >
           ดูเบี้ยของฉัน ↓
         </a>

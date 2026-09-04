@@ -72,8 +72,8 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
           <label htmlFor="legacy-sum" className="block text-sm text-[var(--lg-mute)]">
             อยากให้ครอบครัวได้รับเท่าไหร่
           </label>
-          <div className="lg-figure mt-1.5 text-3xl tabular-nums text-[var(--lg-gold)]">
-            {(millions * 1_000_000).toLocaleString("en-US")}{" "}
+          <div className="lg-figure mt-1.5 text-3xl tabular-nums">
+            <span className="lg-metal-text">{(millions * 1_000_000).toLocaleString("en-US")}</span>{" "}
             <span className="text-lg text-[var(--lg-mute)]">บาท</span>
           </div>
           <input
@@ -112,7 +112,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
                   key={s} type="button" onClick={() => setSex(s)} aria-pressed={sex === s}
                   className={`rounded-sm border py-2.5 text-sm transition-colors ${
                     sex === s
-                      ? "border-[var(--lg-gold)] bg-[var(--lg-gold)] font-medium text-[var(--lg-navy)]"
+                      ? "lg-metal-face border-[var(--lg-gold)] font-medium"
                       : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
                   }`}
                 >
@@ -137,8 +137,8 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
           {headline && annual ? (
             <div>
               <div className="text-sm text-[var(--lg-mute)]">เบี้ยประกัน</div>
-              <div className="lg-figure mt-1 text-[2.6rem] leading-none tabular-nums text-[var(--lg-gold)]">
-                {formatBaht(headline.total)}
+              <div className="lg-figure mt-1 text-[2.6rem] leading-none tabular-nums">
+                <span className="lg-metal-text">{formatBaht(headline.total)}</span>
                 <span className="ml-2 text-base text-[var(--lg-mute)]">
                   บาท {PER_LABEL[headline.mode]}
                 </span>
@@ -209,7 +209,7 @@ function ContactButtons(
       {channels.lineOaId && (
         <a
           href={lineUrl(channels.lineOaId, message)} target="_blank" rel="noopener noreferrer"
-          className={`${shape} bg-[var(--lg-gold)] text-[var(--lg-navy)]`}
+          className={`${shape} lg-metal-face${compact ? "" : " lg-sheen"}`}
         >
           {compact ? "ทักไลน์" : "ทักไลน์ปรึกษาฟรี"}
         </a>

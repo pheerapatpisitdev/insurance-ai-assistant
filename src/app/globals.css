@@ -18,6 +18,9 @@ body {
   /* one step up from the ground, for anything that should read as raised */
   --lg-navy-lift: #132536;
   --lg-gold: #c9a26f;
+  /* the two ends of the metal: the shadow side and the lit side of the same gold */
+  --lg-gold-deep: #9c7845;
+  --lg-gold-lit: #f2e0bb;
   --lg-gold-glow: rgba(201, 162, 111, 0.13);
   --lg-hair: rgba(201, 162, 111, 0.24);
   --lg-white: #f5f5f5;
@@ -69,11 +72,76 @@ body:has(.theme-legacy) {
   font-family: var(--lg-font-display), var(--lg-font-body), serif;
 }
 
-/* A hairline that fades at both ends — an engraved rule rather than a border. */
+/* A hairline that fades at both ends and catches the light in the middle — an engraved rule
+   rather than a border. */
 .lg-rule {
   height: 1px;
   border: 0;
-  background: linear-gradient(90deg, transparent, var(--lg-hair) 18%, var(--lg-hair) 82%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 162, 111, 0.18) 12%,
+    rgba(242, 224, 187, 0.5) 50%,
+    rgba(201, 162, 111, 0.18) 88%,
+    transparent
+  );
+}
+
+/* ── Metal ─────────────────────────────────────────────────────────────────────
+   Gold is a colour; metal is a colour that changes across a surface. One flat fill
+   reads as brown-yellow, so both the lettering and the buttons carry a ramp from
+   the shadow side of the gold through a lit band and back.
+
+   Kept to the large elements: at small sizes a ramp muddies the letterforms, and
+   its darkest stop would take the contrast on the navy below where body text has
+   to stay. Small gold text keeps the flat --lg-gold, which is 7.4:1 there. */
+.lg-metal-text {
+  background: linear-gradient(
+    100deg,
+    var(--lg-gold-deep) 0%,
+    var(--lg-gold) 26%,
+    var(--lg-gold-lit) 47%,
+    var(--lg-gold) 66%,
+    var(--lg-gold-deep) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* A struck face: lit along the top edge, shadowed at the bottom, throwing a little
+   of its own colour onto the navy underneath. */
+.lg-metal-face {
+  background: linear-gradient(180deg, #ddbe8c 0%, var(--lg-gold) 45%, #b38b57 100%);
+  color: var(--lg-navy);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 10px 30px -14px rgba(201, 162, 111, 0.6);
+}
+
+/* One slow pass of light across the primary button, then a long rest. Metal that
+   never moves is just a colour; metal that glitters constantly is a cheap advert. */
+.lg-sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.lg-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 36%, rgba(255, 255, 255, 0.5) 50%, transparent 64%);
+  transform: translateX(-130%);
+  animation: lg-sweep 6s ease-in-out 1.4s infinite;
+}
+@keyframes lg-sweep {
+  0% { transform: translateX(-130%); }
+  20%, 100% { transform: translateX(130%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lg-sheen::after { animation: none; opacity: 0; }
 }
 
 /* The opening reveals in order, so the eye is walked down to the button rather

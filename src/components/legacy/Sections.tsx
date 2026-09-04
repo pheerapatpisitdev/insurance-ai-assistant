@@ -85,7 +85,7 @@ export function DifferenceSection() {
       <h2 className="relative text-[1.4rem] font-medium leading-snug sm:text-2xl">
         <span className="text-[var(--lg-mute)]">ประกันมรดกทั่วไป จ่ายวันที่คุณไม่อยู่</span>
         <br />
-        <span className="text-[var(--lg-gold)]">แบบนี้จ่ายตั้งแต่วันที่คุณยังอยู่</span>
+        <span className="lg-metal-text">แบบนี้จ่ายตั้งแต่วันที่คุณยังอยู่</span>
       </h2>
       <p className="relative mt-5 text-sm leading-[1.9] text-[var(--lg-mute)]">
         ตรวจพบมะเร็งระยะลุกลาม เส้นเลือดสมองแตก ไตวายเรื้อรัง หรือ 1 ใน 31 โรคตามคำนิยามในกรมธรรม์{" "}
@@ -128,8 +128,9 @@ export function StructureSection() {
         <Rule />
         <div className="pt-5">
           <div className="text-sm text-[var(--lg-mute)]">ครอบครัวได้รับ</div>
-          <div className="lg-figure mt-1 text-3xl tabular-nums text-[var(--lg-gold)]">
-            1,000,000 <span className="text-lg">บาท</span>
+          <div className="lg-figure mt-1 text-3xl tabular-nums">
+            <span className="lg-metal-text">1,000,000</span>{" "}
+            <span className="text-lg text-[var(--lg-gold)]">บาท</span>
           </div>
         </div>
       </div>
