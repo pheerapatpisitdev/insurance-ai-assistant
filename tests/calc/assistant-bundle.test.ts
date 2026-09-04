@@ -52,7 +52,7 @@ describe("what the assistant knows about the bundle", () => {
   });
 
   it("says what it is built from, so the answer is not a guess", () => {
-    expect(facts).toContain("Life Protect+ 100");
+    expect(facts).toContain("Life Protect x 2");
     expect(facts).toContain("DCI");
   });
 
@@ -128,7 +128,7 @@ describe("what a first message about the bundle gets back", () => {
   it("explains the arrangement before asking anything, for someone arriving cold", () => {
     const reply = ask({});
     expect(reply.startsWith("ชุดมรดกเพื่อครอบครัว\n")).toBe(true);
-    expect(reply).toContain("Life Protect+ 100");
+    expect(reply).toContain("Life Protect x 2");
     expect(reply).toContain("โรคร้ายแรง (DCI)");
     expect(reply).toContain("รับอายุ 20-65 ปี");
     expect(reply).toContain("มรดก 1 ล้าน");

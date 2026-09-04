@@ -33,7 +33,7 @@
     "rateKey": "09L",
     "booster": 0.5,
     "productName": "ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล)",
-    "productNameEn": "Life Protect+ 50 (Non-Participating)"
+    "productNameEn": "Life Protect x 1.5 (Non-Participating)"
    },
    {
     "code": "WLF19L",
@@ -46,7 +46,7 @@
     "rateKey": "19L",
     "booster": 0.5,
     "productName": "ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล)",
-    "productNameEn": "Life Protect+ 50 (Non-Participating)"
+    "productNameEn": "Life Protect x 1.5 (Non-Participating)"
    },
    {
     "code": "WLF99L",
@@ -60,7 +60,7 @@
     "payTermToAge": 99,
     "booster": 0.5,
     "productName": "ไลฟ์ โพรเทค+ 50 (ไม่มีเงินปันผล)",
-    "productNameEn": "Life Protect+ 50 (Non-Participating)"
+    "productNameEn": "Life Protect x 1.5 (Non-Participating)"
    },
    {
     "code": "WLF09H",
@@ -73,7 +73,7 @@
     "rateKey": "09H",
     "booster": 1,
     "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
-    "productNameEn": "Life Protect+ 100 (Non-Participating)"
+    "productNameEn": "Life Protect x 2 (Non-Participating)"
    },
    {
     "code": "WLF19H",
@@ -86,7 +86,7 @@
     "rateKey": "19H",
     "booster": 1,
     "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
-    "productNameEn": "Life Protect+ 100 (Non-Participating)"
+    "productNameEn": "Life Protect x 2 (Non-Participating)"
    },
    {
     "code": "WLF99H",
@@ -100,7 +100,7 @@
     "payTermToAge": 99,
     "booster": 1,
     "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
-    "productNameEn": "Life Protect+ 100 (Non-Participating)"
+    "productNameEn": "Life Protect x 2 (Non-Participating)"
    },
    {
     "code": "WLF99HX",
@@ -114,7 +114,7 @@
     "payTermToAge": 99,
     "booster": 1,
     "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
-    "productNameEn": "Life Protect+ 100 (Non-Participating)"
+    "productNameEn": "Life Protect x 2 (Non-Participating)"
    },
    {
     "code": "WLF99HX#7",
@@ -128,7 +128,7 @@
     "payTermToAge": 99,
     "booster": 1,
     "productName": "ไลฟ์ โพรเทค+ 100 (ไม่มีเงินปันผล)",
-    "productNameEn": "Life Protect+ 100 (Non-Participating)"
+    "productNameEn": "Life Protect x 2 (Non-Participating)"
    }
   ],
   "payTerm": {

@@ -49,7 +49,7 @@ describe("quote reply", () => {
   it("leaves out a per-contract breakdown when the plan is the only thing priced", () => {
     const reply = quoteReply(BASE, quote(BASE));
     // the plan name appears as the heading; a breakdown would repeat it on its own line
-    expect(reply.split("\n").filter((l) => l.startsWith("- Life Protect+"))).toHaveLength(0);
+    expect(reply.split("\n").filter((l) => l.startsWith("- Life Protect x"))).toHaveLength(0);
   });
 
   it("breaks the total down once a rider is added", () => {

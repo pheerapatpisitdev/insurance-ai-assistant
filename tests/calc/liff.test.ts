@@ -14,7 +14,7 @@ describe("the share link used outside LINE", () => {
   });
 
   it("survives a whole quote, newlines and all", () => {
-    const quote = "Life Protect+ 100\nชาย 35 ปี · ทุน 1,000,000 บาท\n\nเบี้ยรายปี 17,200 บาท";
+    const quote = "Life Protect x 2\nชาย 35 ปี · ทุน 1,000,000 บาท\n\nเบี้ยรายปี 17,200 บาท";
     expect(decodeURIComponent(shareLinkUrl(quote).split("text=")[1])).toBe(quote);
   });
 });

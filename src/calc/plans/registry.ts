@@ -83,8 +83,8 @@ const PLANS: Record<string, PlanBundle> = {
   },
   ...wFamily("ISMART", ismartRates, ismartRules, "iSmart 80/6"),
   ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules, "Life Treasure"),
-  // Life Protect+ 100 paid to age 99 is the one agents quote most, so it is the default here too.
-  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect+ 50 / 100", "WLF99H"),
+  // Life Protect x 2 paid to age 99 is the one agents quote most, so it is the default here too.
+  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect x 1.5 / x 2", "WLF99H"),
 };
 
 /** Display order for the plan picker; anything not listed follows in definition order. */

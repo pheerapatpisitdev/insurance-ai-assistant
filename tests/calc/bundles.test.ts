@@ -8,7 +8,7 @@ describe("bundle registry", () => {
     expect(listBundles()).toEqual([{ code: "LEGACY_FAMILY", name: "มรดกเพื่อครอบครัว" }]);
   });
 
-  it("sells the legacy bundle as ten tiers of Life Protect+ 100 paid to age 99", () => {
+  it("sells the legacy bundle as ten tiers of Life Protect x 2 paid to age 99", () => {
     const bundle = getBundle("LEGACY_FAMILY")!;
     expect(bundle.planCode).toBe("LIFEPROTECT");
     expect(bundle.variant).toBe("WLF99H");
@@ -97,7 +97,7 @@ describe("quoteBundle", () => {
 
 describe("bundleAgeRange", () => {
   it("narrows the base plan's range to what every rider in the bundle also accepts", () => {
-    // Life Protect+ 100 issues from 0 to 80; DCI only from 20 to 65
+    // Life Protect x 2 issues from 0 to 80; DCI only from 20 to 65
     expect(bundleAgeRange(getBundle("LEGACY_FAMILY")!)).toEqual({ min: 20, max: 65 });
   });
 });

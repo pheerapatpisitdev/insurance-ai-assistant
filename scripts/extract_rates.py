@@ -200,6 +200,14 @@ def extract_ishield():
 
 
 # --------------------------------------------------------------------- W family
+# The two ไลฟ์ โพรเทค+ products were renamed after the workbook was made ("+50" → "x 1.5",
+# "+100" → "x 2"). The Thai name stays as the workbook spells it because make_golden types it
+# back into the input sheet; only the English name the app shows is rewritten.
+PRODUCT_NAME_EN = {
+    "Life Protect+ 50": "Life Protect x 1.5",
+    "Life Protect+ 100": "Life Protect x 2",
+}
+
 # ไอสมาร์ท 80/6, ไลฟ์เทรเชอร์ and ไลฟ์ โพรเทค+ share one workbook layout: the same
 # sheets, the same rider list and the same Cal formulas. Only row positions on the
 # input sheet, the Premium&Maturity sheet name and the package list differ, so every
@@ -298,7 +306,13 @@ def extract_w_family(plan_code, filename):
     for r in range(55, pkg_row):
         name, name_en, factor = cell(inp, r, 7), cell(inp, r, 8), cell(inp, r, 9)
         if isinstance(name, str) and isinstance(factor, (int, float)):
-            boosters[factor] = (name.strip(), name_en.strip() if isinstance(name_en, str) else None)
+            if isinstance(name_en, str):
+                name_en = name_en.strip()
+                for was, now in PRODUCT_NAME_EN.items():
+                    name_en = name_en.replace(was, now)
+            else:
+                name_en = None
+            boosters[factor] = (name.strip(), name_en)
     plancode_to_term = {}
     for r in range(27, 40):
         code, term = cell(cal, r, 14), cell(cal, r, 15)

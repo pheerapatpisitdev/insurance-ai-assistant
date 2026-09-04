@@ -4,7 +4,7 @@ import { quoteBundle } from "@/calc/bundles/quote";
 import type { PayMode, Sex } from "@/calc/types";
 
 /**
- * Anchors read straight off the Life Protect+ 100 (WLF99H) and DCI rate tables, so a wrong
+ * Anchors read straight off the Life Protect x 2 (WLF99H) and DCI rate tables, so a wrong
  * sum assured or a dropped mode factor in the bundle layer shows up as a baht figure.
  * Base premium = rate × 150,000 / 1,000; DCI = rate × tier sum assured / 1,000.
  */

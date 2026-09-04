@@ -15,7 +15,7 @@ import { ExpiryBanner } from "@/components/ExpiryBanner";
 import { summaryText } from "@/lib/summary";
 import { quoteModePremiums } from "@/calc/mode-premiums";
 
-/** Life Protect+ 100 paid to age 99 is the plan agents quote most, so start there. */
+/** Life Protect x 2 paid to age 99 is the plan agents quote most, so start there. */
 const INITIAL: FormState = {
   planCode: "LIFEPROTECT", bundleCode: null, tier: 1, variant: "WLF99H", age: 35, sex: "M", mode: "annual",
   basis: "sumAssured", sumAssured: 1_000_000, targetPremium: "",
