@@ -1,6 +1,7 @@
 import type { PayMode, QuoteInput, QuoteResult } from "@/calc/types";
 import type { ModePremium } from "@/calc/mode-premiums";
 import { cashValueHighlights, cashValueSchedule, maturityValue } from "@/calc/cash-value";
+import { deathBenefitRows } from "../death-benefit";
 
 const SEX_TH = { M: "ชาย", F: "หญิง" } as const;
 const MODE_NOUN = { annual: "รายปี", semi: "ราย 6 เดือน", monthly: "รายเดือน" } as const;
@@ -39,9 +40,11 @@ export function quoteReply(input: QuoteInput, result: QuoteResult): string {
 
   const db = result.deathBenefit;
   if (db) {
-    blocks.push(db.alreadyPastAge
-      ? `กรณีเสียชีวิต (ขั้นต่ำ) ${db.sumFrom.toLocaleString("en-US")} บาท`
-      : `กรณีเสียชีวิต (ขั้นต่ำ)\n- ก่อนอายุ ${db.beforeAge} ปี ${db.sumBefore.toLocaleString("en-US")} บาท\n- อายุ ${db.beforeAge} ปีขึ้นไป ${db.sumFrom.toLocaleString("en-US")} บาท`);
+    const rows = deathBenefitRows(db);
+    blocks.push(rows.length === 1
+      ? `กรณีเสียชีวิต (ขั้นต่ำ) ${rows[0].amount.toLocaleString("en-US")} บาท`
+      : ["กรณีเสียชีวิต (ขั้นต่ำ)",
+        ...rows.map((r) => `- ${r.label} ${r.amount.toLocaleString("en-US")} บาท`)].join("\n"));
   }
 
   const schedule = cashValueSchedule(input.planCode, input.variant, input.sex, input.age, result.sumAssured);
@@ -125,9 +128,11 @@ export function bundleReply(
 
   const db = result.deathBenefit;
   if (db) {
-    blocks.push(db.alreadyPastAge
-      ? `กรณีเสียชีวิต (ขั้นต่ำ) ${db.sumFrom.toLocaleString("en-US")} บาท`
-      : `กรณีเสียชีวิต (ขั้นต่ำ)\n- ก่อนอายุ ${db.beforeAge} ปี ${db.sumBefore.toLocaleString("en-US")} บาท\n- อายุ ${db.beforeAge} ปีขึ้นไป ${db.sumFrom.toLocaleString("en-US")} บาท`);
+    const rows = deathBenefitRows(db);
+    blocks.push(rows.length === 1
+      ? `กรณีเสียชีวิต (ขั้นต่ำ) ${rows[0].amount.toLocaleString("en-US")} บาท`
+      : ["กรณีเสียชีวิต (ขั้นต่ำ)",
+        ...rows.map((r) => `- ${r.label} ${r.amount.toLocaleString("en-US")} บาท`)].join("\n"));
   }
 
   // a bundle that cannot be issued whole carries its refusal here rather than a premium

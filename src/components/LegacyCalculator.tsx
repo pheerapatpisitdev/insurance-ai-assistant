@@ -7,6 +7,7 @@ import { bundleAgeRange, bundleModePremiums, quoteBundle } from "@/calc/bundles/
 import { formatBaht } from "@/calc/money";
 import { chatUrl, displayPremium, legacyMessage, lineUrl, messengerUrl, perDay } from "@/lib/legacy-cta";
 import type { LegacyChannels } from "@/lib/legacy-channels";
+import { deathBenefitRows } from "@/lib/death-benefit";
 
 const BUNDLE = getBundle("LEGACY_FAMILY")!;
 const RANGE = bundleAgeRange(BUNDLE);
@@ -143,14 +144,18 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
           {death && (
             <div className="border-t border-emerald-200 pt-4">
               <div className="text-sm text-emerald-800">ครอบครัวได้รับ</div>
-              <div className="text-2xl font-semibold tabular-nums text-emerald-900">
-                {death.sumFrom.toLocaleString("en-US")} <span className="text-base font-normal">บาท</span>
-              </div>
-              {!death.alreadyPastAge && (
-                <div className="mt-1 text-sm text-emerald-800">
-                  ✦ เสียชีวิตก่อนอายุ {death.beforeAge} ปี ได้ {death.sumBefore.toLocaleString("en-US")} บาท
-                </div>
-              )}
+              {/* every band at the same size: the one that shrinks is the one a customer
+                  most needs to see, so it does not get to be the small print */}
+              <dl className="mt-1 space-y-1">
+                {deathBenefitRows(death).map((row) => (
+                  <div key={row.label} className="flex items-baseline justify-between gap-3">
+                    <dt className="text-sm text-emerald-800">{row.label}</dt>
+                    <dd className="text-lg font-semibold tabular-nums text-emerald-900">
+                      {row.amount.toLocaleString("en-US")} บาท
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           )}
 

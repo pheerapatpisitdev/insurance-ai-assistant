@@ -1,6 +1,7 @@
 import type { QuoteInput, QuoteResult } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import type { ModePremium } from "@/calc/mode-premiums";
+import { deathBenefitRows } from "./death-benefit";
 import { formatBaht } from "@/calc/money";
 
 const sexTh = (s: "M" | "F") => (s === "M" ? "ชาย" : "หญิง");
@@ -48,11 +49,8 @@ export function summaryText(input: QuoteInput, result: QuoteResult, options: Sum
   const db = result.deathBenefit;
   if (db) {
     lines.push("ผลประโยชน์กรณีเสียชีวิต");
-    if (db.alreadyPastAge) {
-      lines.push(`- ทุกช่วงอายุ: ${db.sumFrom.toLocaleString("en-US")} บาท`);
-    } else {
-      lines.push(`- ก่อนอายุ ${db.beforeAge} ปี: ${db.sumBefore.toLocaleString("en-US")} บาท`);
-      lines.push(`- อายุ ${db.beforeAge} ปีขึ้นไป: ${db.sumFrom.toLocaleString("en-US")} บาท`);
+    for (const row of deathBenefitRows(db)) {
+      lines.push(`- ${row.label}: ${row.amount.toLocaleString("en-US")} บาท`);
     }
   }
   const maturity = result.maturityBenefit;

@@ -91,8 +91,16 @@ describe("quoting the bundle in a chat", () => {
   });
 
   it("counts the rider into the death benefit, because DCI pays on death too", () => {
-    expect(reply).toContain("ก่อนอายุ 60 ปี 3,150,000 บาท");
-    expect(reply).toContain("อายุ 60 ปีขึ้นไป 3,000,000 บาท");
+    expect(reply).toContain("เสียชีวิตก่อนอายุ 60 ปี 3,150,000 บาท");
+    expect(reply).toContain("อายุ 60–74 ปี 3,000,000 บาท");
+  });
+
+  /**
+   * DCI stops at 75 and the plan runs to 99. An answer that quotes three million for every
+   * age after 60 is out by twenty times for the years the customer is most likely to die in.
+   */
+  it("says what is left after the rider's cover ends", () => {
+    expect(reply).toContain("อายุ 75 ปีขึ้นไป 150,000 บาท");
   });
 
   it("still says the number is not a formal quotation", () => {

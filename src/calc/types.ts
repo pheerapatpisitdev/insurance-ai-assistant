@@ -146,6 +146,12 @@ export interface RiderRule {
   juvenile?: { ageMax: number; saMaxMultipleOfBase: number; saMaxCap: number };
   /** payor-benefit riders: allowed payer age */
   payer?: { ageMin: number; ageMax: number };
+  /**
+   * The age the rider's own cover stops at, when it stops before the base plan does. A rider
+   * written to 75 on a plan written to 99 leaves 24 years in which only the base plan pays,
+   * and a benefit quoted without that is an overstatement, not a rounding.
+   */
+  coverToAge?: number;
   /** the rider's sum assured is also payable on death, so it belongs in the death benefit */
   paysOnDeath?: boolean;
 }
@@ -305,6 +311,15 @@ export interface DeathBenefit {
   sumFrom: number;
   /** true when the insured is already at or past that age, so only sumFrom applies */
   alreadyPastAge: boolean;
+  /**
+   * Where rider cover stops and what the base plan pays on its own from then on. Undefined
+   * when every rider in the arrangement lasts as long as the plan does.
+   *
+   * Only the earliest ending is reported. Two riders ending at different ages would make
+   * more bands than a customer can hold, and the first drop is the one that changes the
+   * decision.
+   */
+  riderCoverEnds?: { age: number; sum: number };
 }
 
 export interface MaturityBenefit {

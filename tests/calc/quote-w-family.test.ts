@@ -167,8 +167,12 @@ describe("death benefit (ไลฟ์ โพรเทค+)", () => {
 
   it("counts a DCI sum assured, which pays on death as well", () => {
     const r = quote({ ...lpp, variant: "WLF99H", sumAssured: 200_000, riders: [{ code: "DCI", sumAssured: 2_800_000 }] });
-    // the +100 booster doubles the base only; DCI is added on top of both figures
-    expect(r.deathBenefit).toEqual({ beforeAge: 60, sumBefore: 3_200_000, sumFrom: 3_000_000, alreadyPastAge: false });
+    // the +100 booster doubles the base only; DCI is added on top of both figures, and it
+    // stops at 75 while the plan runs to 99, so the base is on its own from then on
+    expect(r.deathBenefit).toEqual({
+      beforeAge: 60, sumBefore: 3_200_000, sumFrom: 3_000_000, alreadyPastAge: false,
+      riderCoverEnds: { age: 75, sum: 200_000 },
+    });
   });
 
   it("leaves out a rider the insured is too old to buy", () => {

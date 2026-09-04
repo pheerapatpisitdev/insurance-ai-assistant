@@ -233,7 +233,9 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
 
   return {
     items, totalAnnual, totalModal, warnings, availability, sumAssured: sa,
-    deathBenefit: deathBenefitFor(rules, pkg, input.age, sa, live ? riderDeathCover : 0),
+    deathBenefit: deathBenefitFor(
+      rules, pkg, input.age, sa, live ? riderDeathCover : 0, live ? riderCoverEndingAt(rules, items) : undefined,
+    ),
     maturityBenefit: maturityBenefitFor(rules, input.age, sa),
     meta: { planName: rates.planName, version: rates.version, expiresOn: rates.expiresOn, expired, minMonthlyTotal: rules.minMonthlyTotal },
   };
@@ -246,18 +248,42 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
  */
 function deathBenefitFor(
   rules: PlanRules, pkg: BasePackage | undefined, age: number, sa: number, riderCover: number,
+  ending: { age: number; amount: number } | undefined,
 ): DeathBenefit | undefined {
   const beforeAge = rules.base.extraDeathBenefitBeforeAge;
   if (beforeAge === undefined || sa <= 0) return undefined;
   const booster = pkg?.booster ?? 0;
   const alreadyPastAge = age >= beforeAge;
+  const sumFrom = sa + riderCover;
   // The booster multiplies the base plan only; a rider adds its own sum assured to both figures.
   return {
     beforeAge,
     sumBefore: (alreadyPastAge ? sa : sa + Math.round(sa * booster)) + riderCover,
-    sumFrom: sa + riderCover,
+    sumFrom,
     alreadyPastAge,
+    // an insured already past the ending has no band left to warn about
+    ...(ending && age < ending.age
+      ? { riderCoverEnds: { age: ending.age, sum: sumFrom - ending.amount } }
+      : {}),
   };
+}
+
+/**
+ * The first age at which rider death cover drops away, and how much drops with it. Riders
+ * that run as long as the plan are not an ending and are left out; where several end, the
+ * earliest wins and only the cover ending exactly then is counted, so the figure quoted for
+ * that band is the one actually payable in it.
+ */
+function riderCoverEndingAt(
+  rules: PlanRules, items: QuoteItem[],
+): { age: number; amount: number } | undefined {
+  const ending = items
+    .filter((i) => i.eligible && rules.riders[i.code]?.paysOnDeath)
+    .map((i) => ({ amount: i.amount, at: rules.riders[i.code]?.coverToAge }))
+    .filter((r): r is { amount: number; at: number } => r.at !== undefined);
+  if (ending.length === 0) return undefined;
+  const age = Math.min(...ending.map((r) => r.at));
+  return { age, amount: ending.filter((r) => r.at === age).reduce((sum, r) => sum + r.amount, 0) };
 }
 
 /**

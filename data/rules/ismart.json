@@ -91,6 +91,7 @@
       "ageMax": 65,
       "saMin": 200000,
       "saMaxCap": 10000000,
+      "coverToAge": 75,
       "paysOnDeath": true
     },
     "PLS": {
