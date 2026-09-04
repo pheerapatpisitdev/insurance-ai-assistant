@@ -28,6 +28,16 @@ export function ChatClient() {
 
   useEffect(() => bottom.current?.scrollIntoView({ behavior: "smooth" }), [turns, busy]);
 
+  /**
+   * A question handed over by another page (the legacy calculator's "ถาม AI" button) lands
+   * in the box rather than in the conversation: the customer sees what is about to be asked
+   * on their behalf, and sends it themselves.
+   */
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setDraft(q);
+  }, []);
+
   async function send(text: string) {
     const question = text.trim();
     if (!question || busy) return;
