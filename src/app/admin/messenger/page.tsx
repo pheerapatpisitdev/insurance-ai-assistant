@@ -28,6 +28,13 @@ export default async function MessengerAdminPage() {
           <Empty>ยังไม่ได้เชื่อมต่อ Facebook</Empty>
         ) : (
           <div>
+            <Row label="การตอบข้อความ">
+              {status.messagingOk ? (
+                <span className="text-emerald-700">✓ โทเค็นเพจใช้งานได้ บอทส่งและรับข้อความได้</span>
+              ) : (
+                <span className="text-red-700">✗ โทเค็นเพจใช้งานไม่ได้ บอทตอบใครไม่ได้เลย</span>
+              )}
+            </Row>
             <Row label="ชื่อเพจ">{status.pageName ?? "—"}</Row>
             <Row label="รหัสเพจ">{status.pageId ?? "—"}</Row>
             <Row label="การรับข้อมูล">
@@ -42,6 +49,9 @@ export default async function MessengerAdminPage() {
         )}
         {status.errors.map((e) => (
           <p key={e} className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{e}</p>
+        ))}
+        {status.notes.map((n) => (
+          <p key={n} className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{n}</p>
         ))}
       </Card>
 
