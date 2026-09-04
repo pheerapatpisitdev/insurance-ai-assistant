@@ -11,6 +11,10 @@
 next-env.d.ts
 npm-debug.log*
 # ไฟล์ Excel ของบริษัท (ใหญ่และเป็นข้อมูลภายใน) ไม่เก็บใน git
+# the company's workbooks, and the same path however it is shaped: a trailing slash matches
+# only a directory, so a symlink left here once slipped past this rule, was committed, and
+# was then checked out over the real folder — taking the workbooks with it
+ไฟล์คำนวน
 ไฟล์คำนวน/
 .golden-cache/
 /.next-build/
