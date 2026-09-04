@@ -1,4 +1,6 @@
 import type { ModePremium } from "@/calc/mode-premiums";
+import type { PayMode, Sex } from "@/calc/types";
+import { formatBaht } from "@/calc/money";
 
 /**
  * The instalment to put in the largest type. A customer reads a monthly figure as what the
@@ -25,4 +27,38 @@ export function displayPremium(
  */
 export function perDay(annualSatang: number): number {
   return Math.ceil(annualSatang / 100 / 365);
+}
+
+/** How each instalment reads after a figure, where the customer says it out loud. */
+const PER: Record<PayMode, string> = { annual: "/ปี", semi: "/6 เดือน", monthly: "/เดือน" };
+
+const SEX_WORD: Record<Sex, string> = { M: "ชาย", F: "หญิง" };
+
+export interface LegacyFacts {
+  /** the tier, as the round number of millions the family receives */
+  millions: number;
+  age: number | "";
+  sex: Sex;
+  /** whether the bundle will take this age at all */
+  inRange: boolean;
+  /** the instalment on the card, or undefined when no price is being shown */
+  premium: ModePremium | undefined;
+}
+
+/**
+ * What the customer's chat opens with. The same sentence goes to LINE, to Messenger and to
+ * the assistant, so whoever answers starts from the figures already on screen instead of
+ * asking for them again.
+ *
+ * Each shortfall says what it wants instead of falling silent: no age yet asks about the
+ * sum, an age the bundle refuses asks for a plan that fits it, and a withheld price asks
+ * for the current one.
+ */
+export function legacyMessage(facts: LegacyFacts): string {
+  const head = `สนใจมรดกเพื่อครอบครัว ${facts.millions} ล้าน`;
+  if (facts.age === "") return head;
+  const who = `${head} อายุ ${facts.age} ${SEX_WORD[facts.sex]}`;
+  if (!facts.inRange) return `${who} ขอแบบที่เหมาะกับอายุนี้`;
+  if (!facts.premium) return `${who} ขอราคาปัจจุบัน`;
+  return `${who} เบี้ยประมาณ ${formatBaht(facts.premium.total)} บาท${PER[facts.premium.mode]}`;
 }

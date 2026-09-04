@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModePremium } from "@/calc/mode-premiums";
-import { displayPremium, perDay } from "@/lib/legacy-cta";
+import { displayPremium, legacyMessage, perDay } from "@/lib/legacy-cta";
 
 /** ชาย 38 ปี มรดก 3 ล้าน — every mode is issuable */
 const AFFORDABLE: ModePremium[] = [
@@ -43,5 +43,32 @@ describe("perDay", () => {
   it("rounds up, so the figure is never one the premium undershoots", () => {
     // หญิง 30 · 1 ล้าน: 4,123 บาท/ปี ÷ 365 = 11.3 → 12
     expect(perDay(412_300)).toBe(12);
+  });
+});
+
+describe("legacyMessage", () => {
+  it("carries the sum, the insured and the headline premium", () => {
+    expect(legacyMessage({ millions: 3, age: 38, sex: "M", inRange: true, premium: AFFORDABLE[2] }))
+      .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน อายุ 38 ชาย เบี้ยประมาณ 1,501 บาท/เดือน");
+  });
+
+  it("names the yearly premium when that is what is on the card", () => {
+    expect(legacyMessage({ millions: 1, age: 30, sex: "F", inRange: true, premium: UNDER_FLOOR[0] }))
+      .toBe("สนใจมรดกเพื่อครอบครัว 1 ล้าน อายุ 30 หญิง เบี้ยประมาณ 4,123 บาท/ปี");
+  });
+
+  it("asks about the sum alone before an age has been entered", () => {
+    expect(legacyMessage({ millions: 3, age: "", sex: "M", inRange: false, premium: undefined }))
+      .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน");
+  });
+
+  it("asks for something else when the age is outside what the bundle takes", () => {
+    expect(legacyMessage({ millions: 3, age: 68, sex: "F", inRange: false, premium: undefined }))
+      .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน อายุ 68 หญิง ขอแบบที่เหมาะกับอายุนี้");
+  });
+
+  it("asks for the current price when no premium may be shown", () => {
+    expect(legacyMessage({ millions: 3, age: 38, sex: "M", inRange: true, premium: undefined }))
+      .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน อายุ 38 ชาย ขอราคาปัจจุบัน");
   });
 });
