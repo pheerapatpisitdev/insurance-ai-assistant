@@ -2,6 +2,10 @@ import { Card, Empty, Stat } from "../ui";
 import { ConversationList } from "@/components/ConversationList";
 import { channelActivity, recentConversations } from "@/lib/chat/history";
 import { facebookStatus } from "@/lib/facebook/status";
+import { pageConnection, readPending } from "@/lib/facebook/connection";
+import { listPages, oauthIsConfigured, SCOPES } from "@/lib/facebook/oauth";
+import { DisconnectButton } from "./DisconnectButton";
+import { PagePicker, type Choice } from "./PagePicker";
 
 export const dynamic = "force-dynamic";
 
@@ -14,16 +18,94 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export default async function MessengerAdminPage() {
-  const [status, conversations, activity] = await Promise.all([
+const OUTCOMES: Record<string, { tone: "ok" | "warn" | "bad"; text: string }> = {
+  connected: { tone: "ok", text: "เชื่อมต่อเพจเรียบร้อยแล้ว บอทเริ่มตอบข้อความได้ทันที" },
+  choose: { tone: "warn", text: "เข้าสู่ระบบ Facebook แล้ว เหลือเลือกเพจที่จะให้บอทตอบ" },
+  cancelled: { tone: "warn", text: "ยกเลิกจากหน้า Facebook ยังไม่ได้เชื่อมต่ออะไร" },
+  state: { tone: "bad", text: "ลิงก์เชื่อมต่อหมดอายุแล้ว กดเชื่อมต่อใหม่อีกครั้ง" },
+  nopages: { tone: "bad", text: "บัญชี Facebook นี้ไม่ได้เป็นแอดมินเพจไหนเลย" },
+  unconfigured: { tone: "bad", text: "ยังไม่ได้ตั้งค่า FB_APP_ID กับ FB_APP_SECRET" },
+  failed: { tone: "bad", text: "เชื่อมต่อไม่สำเร็จ" },
+};
+
+const TONES = {
+  ok: "bg-emerald-50 text-emerald-800",
+  warn: "bg-amber-50 text-amber-800",
+  bad: "bg-red-50 text-red-700",
+};
+
+/** The Pages a half-finished login is waiting to choose between. */
+async function pendingChoices(): Promise<Choice[]> {
+  const pending = await readPending();
+  if (!pending) return [];
+  try {
+    return (await listPages(pending.token)).map((p) => ({ id: p.id, name: p.name }));
+  } catch {
+    return [];
+  }
+}
+
+export default async function MessengerAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const outcome = OUTCOMES[String(params.fb ?? "")];
+  const detail = typeof params.detail === "string" ? params.detail : undefined;
+
+  const [status, connection, choices, conversations, activity] = await Promise.all([
     facebookStatus(),
+    pageConnection(),
+    pendingChoices(),
     recentConversations("facebook"),
     channelActivity("facebook"),
   ]);
 
   return (
     <>
-      <Card title="สถานะเพจ Facebook" hint="อ่านสดจาก Meta ทุกครั้งที่เปิดหน้านี้">
+      {outcome && (
+        <p className={`mb-4 rounded-md px-3 py-2 text-sm ${TONES[outcome.tone]}`}>
+          {outcome.text}{detail ? ` — ${detail}` : ""}
+        </p>
+      )}
+
+      <Card title="เพจที่บอทตอบให้" hint="เชื่อมต่อผ่านหน้า login ของ Facebook ไม่ต้องคัดลอกโทเค็นเอง">
+        {choices.length > 0 ? (
+          <PagePicker pages={choices} />
+        ) : connection ? (
+          <div>
+            <Row label="ชื่อเพจ"><span className="font-medium">{connection.pageName}</span></Row>
+            <Row label="รหัสเพจ">{connection.pageId}</Row>
+            <Row label="เชื่อมต่อเมื่อ">
+              {new Date(connection.connectedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+            </Row>
+            <Row label="สิทธิ์ที่ได้รับ">{connection.scopes.join(", ") || "—"}</Row>
+            <Row label="เหตุการณ์ที่รับ">{connection.fields.join(", ") || "—"}</Row>
+            <div className="pt-3"><DisconnectButton /></div>
+          </div>
+        ) : (
+          <div>
+            <p className="mb-3 text-sm text-slate-700">
+              กดปุ่มแล้วเข้าสู่ระบบ Facebook ด้วยบัญชีที่เป็นแอดมินเพจ ระบบจะขอสิทธิ์เท่าที่จำเป็น
+              เก็บโทเค็นให้เอง และสมัครรับข้อความจากเพจให้เสร็จในขั้นตอนเดียว
+            </p>
+            {oauthIsConfigured() ? (
+              <a
+                href="/api/facebook/connect"
+                className="inline-block rounded-md bg-[#0866FF] px-4 py-2 text-sm font-medium text-white hover:bg-[#0653cc]"
+              >
+                เชื่อมต่อกับ Facebook
+              </a>
+            ) : (
+              <Empty>ยังตั้งค่า FB_APP_ID กับ FB_APP_SECRET ไม่ครบ</Empty>
+            )}
+            <p className="mt-3 text-xs text-slate-500">สิทธิ์ที่ขอ: {SCOPES.join(", ")}</p>
+          </div>
+        )}
+      </Card>
+
+      <Card title="สถานะจาก Meta" hint="อ่านสดทุกครั้งที่เปิดหน้านี้">
         {!status.configured ? (
           <Empty>ยังไม่ได้เชื่อมต่อ Facebook</Empty>
         ) : (
@@ -35,8 +117,8 @@ export default async function MessengerAdminPage() {
                 <span className="text-red-700">✗ โทเค็นเพจใช้งานไม่ได้ บอทตอบใครไม่ได้เลย</span>
               )}
             </Row>
-            <Row label="ชื่อเพจ">{status.pageName ?? "—"}</Row>
-            <Row label="รหัสเพจ">{status.pageId ?? "—"}</Row>
+            <Row label="ชื่อเพจ">{status.pageName ?? connection?.pageName ?? "—"}</Row>
+            <Row label="รหัสเพจ">{status.pageId ?? connection?.pageId ?? "—"}</Row>
             <Row label="การรับข้อมูล">
               {status.subscribed === undefined ? "—" : status.subscribed ? (
                 <span className="text-emerald-700">✓ เพจส่งข้อมูลมาที่แอปนี้แล้ว</span>

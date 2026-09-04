@@ -8,6 +8,8 @@
  * messages at all is an error, because only that stops the bot.
  */
 
+import { pageToken } from "./connection";
+
 const GRAPH = "https://graph.facebook.com/v23.0";
 
 export interface FacebookStatus {
@@ -53,8 +55,8 @@ async function get<T>(path: string, token: string): Promise<T> {
 }
 
 export async function facebookStatus(): Promise<FacebookStatus> {
-  const token = process.env.FB_PAGE_ACCESS_TOKEN;
-  if (!token) return { configured: false, notes: [], errors: ["ยังไม่ได้ตั้งค่า FB_PAGE_ACCESS_TOKEN"] };
+  const token = await pageToken();
+  if (!token) return { configured: false, notes: [], errors: ["ยังไม่ได้เชื่อมต่อเพจ Facebook"] };
 
   const status: FacebookStatus = { configured: true, notes: [], errors: [] };
   // each call stands on its own: one refused read should not blank the whole page

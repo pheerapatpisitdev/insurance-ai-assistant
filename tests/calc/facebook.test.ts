@@ -3,6 +3,9 @@ import crypto from "crypto";
 import { verifySignature, verifyTokenMatches, hashUserId } from "@/lib/facebook/verify";
 import { toParts } from "@/lib/facebook/client";
 import { facebookStatus } from "@/lib/facebook/status";
+import { forgetCachedToken } from "@/lib/facebook/connection";
+import { authorizeUrl, makeState, redirectUri, stateIsValid } from "@/lib/facebook/oauth";
+import { requestOrigin } from "@/lib/facebook/origin";
 
 const SECRET = "test-app-secret";
 
@@ -110,9 +113,13 @@ describe("splitting an answer into Messenger messages", () => {
 
 describe("page status", () => {
   const real = globalThis.fetch;
-  beforeEach(() => { process.env.FB_PAGE_ACCESS_TOKEN = "page-token"; });
+  beforeEach(() => {
+    process.env.FB_PAGE_ACCESS_TOKEN = "page-token";
+    forgetCachedToken();
+  });
   afterEach(() => {
     delete process.env.FB_PAGE_ACCESS_TOKEN;
+    forgetCachedToken();
     globalThis.fetch = real;
   });
 
@@ -131,6 +138,7 @@ describe("page status", () => {
 
   it("says so when no token is configured", async () => {
     delete process.env.FB_PAGE_ACCESS_TOKEN;
+    forgetCachedToken();
     const status = await facebookStatus();
     expect(status.configured).toBe(false);
     expect(status.errors).toHaveLength(1);
@@ -174,5 +182,55 @@ describe("page status", () => {
     expect(status.fields).toEqual(["messages"]);
     expect(status.notes).toEqual([]);
     expect(status.errors).toEqual([]);
+  });
+});
+
+describe("connect flow", () => {
+  beforeEach(() => {
+    process.env.ADMIN_SESSION_SECRET = "state-secret";
+    process.env.FB_APP_ID = "1234567890";
+  });
+  afterEach(() => {
+    delete process.env.ADMIN_SESSION_SECRET;
+    delete process.env.FB_APP_ID;
+  });
+
+  it("accepts the state it just signed", () => {
+    expect(stateIsValid(makeState())).toBe(true);
+  });
+
+  it("rejects a state signed with someone else's secret", () => {
+    const state = makeState();
+    process.env.ADMIN_SESSION_SECRET = "another-secret";
+    expect(stateIsValid(state)).toBe(false);
+  });
+
+  it("rejects a state that has expired", () => {
+    const [, nonce, mac] = makeState().split(".");
+    expect(stateIsValid(`${Date.now() - 1000}.${nonce}.${mac}`)).toBe(false);
+  });
+
+  it("rejects a missing or malformed state", () => {
+    expect(stateIsValid(null)).toBe(false);
+    expect(stateIsValid("nonsense")).toBe(false);
+  });
+
+  it("asks Meta for exactly the permissions the bot needs", () => {
+    const url = new URL(authorizeUrl("https://www.advisortool.app", makeState()));
+    expect(url.searchParams.get("scope")).toBe("pages_show_list,pages_messaging,pages_manage_metadata");
+    expect(url.searchParams.get("redirect_uri")).toBe("https://www.advisortool.app/api/facebook/connect/callback");
+    expect(url.searchParams.get("client_id")).toBe("1234567890");
+  });
+
+  it("builds the redirect URI from the address the browser used, not the internal host", () => {
+    const req = new Request("https://internal.vercel.app/api/facebook/connect", {
+      headers: { "x-forwarded-host": "www.advisortool.app", "x-forwarded-proto": "https" },
+    });
+    expect(redirectUri(requestOrigin(req))).toBe("https://www.advisortool.app/api/facebook/connect/callback");
+  });
+
+  it("falls back to the request host when nothing is forwarded", () => {
+    const req = new Request("http://localhost:3000/api/facebook/connect");
+    expect(requestOrigin(req)).toBe("http://localhost:3000");
   });
 });

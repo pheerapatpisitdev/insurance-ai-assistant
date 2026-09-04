@@ -1,12 +1,14 @@
+import { pageToken } from "./connection";
+
 const GRAPH = "https://graph.facebook.com/v23.0/me";
 
 /** Messenger refuses a message longer than this, so a long answer is split across messages. */
 const MAX_TEXT = 1900;
 const MAX_PARTS = 5;
 
-function token(): string {
-  const t = process.env.FB_PAGE_ACCESS_TOKEN;
-  if (!t) throw new Error("FB_PAGE_ACCESS_TOKEN is not set");
+async function token(): Promise<string> {
+  const t = await pageToken();
+  if (!t) throw new Error("ยังไม่ได้เชื่อมต่อเพจ Facebook");
   return t;
 }
 
@@ -37,7 +39,7 @@ async function post(path: string, body: unknown): Promise<void> {
   // proxy caches, and this one can send messages as the page
   const res = await fetch(`${GRAPH}/${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${token()}` },
+    headers: { "content-type": "application/json", authorization: `Bearer ${await token()}` },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Messenger ${res.status}: ${(await res.text()).slice(0, 300)}`);
