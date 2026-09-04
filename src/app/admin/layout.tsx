@@ -5,6 +5,7 @@ import { SignOutButton } from "./SignOutButton";
 
 const TABS = [
   { href: "/admin/ai", label: "AI" },
+  { href: "/admin/chat", label: "แชท AI" },
   { href: "/admin/knowledge", label: "คลังความรู้" },
   { href: "/admin/rules", label: "กฎประกัน" },
 ];

@@ -1,5 +1,6 @@
 import { chat, parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
+import type { TraceStep } from "./answer";
 import { getPlan } from "@/calc/plans/registry";
 import { getBundle, listBundles } from "@/calc/bundles/registry";
 import { planCatalogue } from "./catalogue";
@@ -56,15 +57,24 @@ export function recentTurns(history: ChatMessage[], count: number): ChatMessage[
 }
 
 /** Reads the conversation and returns what the user is asking for. Cheap model, strict JSON. */
-export async function routeMessage(history: ChatMessage[]): Promise<Routed> {
+export async function routeMessage(history: ChatMessage[], trace?: TraceStep[]): Promise<Routed> {
   const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM + planCatalogue() },
     ...recentTurns(history, 6),
   ];
   const r = await chat({ tier: "small", task: "route", messages, maxTokens: 300, json: true });
   const parsed = parseJsonReply<Routed>(r.text);
+  trace?.push({
+    step: "อ่านคำถาม แยกเจตนา",
+    model: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens, costThb: r.costThb,
+    detail: parsed ? JSON.stringify(parsed, null, 0) : `อ่านคำตอบไม่ได้: ${r.text.slice(0, 200)}`,
+  });
   if (!parsed) return { intent: "other" };
-  return clean(parsed, history);
+  const cleaned = clean(parsed, history);
+  if (JSON.stringify(cleaned) !== JSON.stringify(parsed)) {
+    trace?.push({ step: "ตรวจกับรายการจริง", detail: JSON.stringify(cleaned, null, 0) });
+  }
+  return cleaned;
 }
 
 /**

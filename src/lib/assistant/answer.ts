@@ -10,6 +10,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { embedTexts } from "@/lib/ai/client";
 import { allPlanFacts } from "./catalogue";
 import { mergeSlots, recentTurns, routeMessage, type Routed } from "./route";
+import { promptText } from "./prompts";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleAgeRange, bundleModePremiums, describeTier, quoteBundle } from "@/calc/bundles/quote";
 
@@ -24,22 +25,44 @@ export interface Answer {
   slots: Routed;
 }
 
-export async function answerQuestion(history: ChatMessage[], previous: Routed | null = null): Promise<Answer> {
-  const slots = mergeSlots(previous, await routeMessage(history));
+/**
+ * One thing the assistant did on the way to an answer. Collected only when a caller asks for
+ * it — the back office does, so an odd reply can be explained instead of guessed at.
+ */
+export interface TraceStep {
+  step: string;
+  model?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  costThb?: number;
+  detail?: string;
+}
+
+export async function answerQuestion(
+  history: ChatMessage[], previous: Routed | null = null, trace?: TraceStep[],
+): Promise<Answer> {
+  const routed = await routeMessage(history, trace);
+  const slots = mergeSlots(previous, routed);
+  trace?.push({
+    step: "รวมกับบทสนทนาก่อนหน้า",
+    detail: JSON.stringify(slots, null, 0),
+  });
   // a bundle is a whole arrangement the agency sells under its own name, so asking for one by
   // name is answered as that arrangement rather than as its base plan
   if (slots.bundleCode && slots.intent !== "doc_qa") {
+    trace?.push({ step: "เส้นทาง: ชุดจัดเอง", detail: "คำนวณด้วยเครื่องคำนวณ ไม่ใช้ AI" });
     return { ...answerBundle(slots), slots };
   }
   switch (slots.intent) {
     case "quote":
+      trace?.push({ step: "เส้นทาง: คำนวณเบี้ย", detail: "คำนวณด้วยเครื่องคำนวณ ไม่ใช้ AI" });
       return { ...(await answerQuote(slots)), slots };
     case "plan_info":
-      return { ...(await answerPlanInfo(slots)), slots };
+      return { ...(await answerPlanInfo(slots, trace)), slots };
     case "doc_qa":
-      return { ...(await answerFromDocuments(slots)), slots };
+      return { ...(await answerFromDocuments(slots, trace)), slots };
     default:
-      return { ...(await answerSmallTalk(history)), slots };
+      return { ...(await answerSmallTalk(history, trace)), slots };
   }
 }
 
@@ -138,18 +161,7 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
 
 // ---------- plan information ----------
 
-const PLAN_INFO_SYSTEM = `คุณเป็นผู้ช่วยของตัวแทนประกันชีวิต ตอบคำถามด้วยข้อเท็จจริงที่ให้ไว้ข้างล่างเท่านั้น
-- ถ้าข้อเท็จจริงไม่มีคำตอบ ให้บอกตรง ๆ ว่าไม่มีข้อมูลนี้ ห้ามเดา
-- ห้ามบอกตัวเลขเบี้ยประกัน ถ้าเขาอยากรู้เบี้ยให้บอกว่าขออายุ เพศ และทุนประกัน แล้วจะคำนวณให้
-- ตอบเฉพาะสิ่งที่ถาม ไม่ต้องไล่อายุที่รับและทุนขั้นต่ำทุกครั้ง บอกเมื่อเขาถามหรือเมื่อจำเป็นจริง ๆ
-- ตอบภาษาไทย สั้น กระชับ
-รูปแบบการตอบ
-- ข้อความธรรมดา ห้ามใช้ ** หรือ # หรือสัญลักษณ์มาร์กดาวน์ เพราะ LINE แสดงเป็นตัวอักษรจริง
-- เรียกชื่อแบบประกันเป็นภาษาคน ห้ามใช้รหัสภายในเช่น WLCI05 WLF99H W80F06
-- ขึ้นต้นบรรทัดรายการด้วย - เท่านั้น
-- ตอบให้จบใน 5 บรรทัด ถ้าจำเป็นต้องยาวกว่านั้นให้ตัดเนื้อหาที่ไม่ได้ถาม`;
-
-async function answerPlanInfo(slots: Routed): Promise<Omit<Answer, "slots">> {
+async function answerPlanInfo(slots: Routed, trace?: TraceStep[]): Promise<Omit<Answer, "slots">> {
   // Every plan's facts go in, always. Narrowing to the plan carried from an earlier turn is
   // what made "สนใจประกันมรดก" come back about Life Protect+ alone: the customer had opened a
   // fresh question and the answer could not see the other four plans. The plan under
@@ -161,29 +173,19 @@ async function answerPlanInfo(slots: Routed): Promise<Omit<Answer, "slots">> {
     tier: "small",
     task: "plan_info",
     messages: [
-      { role: "system", content: `${PLAN_INFO_SYSTEM}\n\n${focus}ข้อเท็จจริง\n${allPlanFacts()}` },
+      { role: "system", content: `${await promptText("plan_info")}\n\n${focus}ข้อเท็จจริง\n${allPlanFacts()}` },
       { role: "user", content: slots.question ?? "" },
     ],
     maxTokens: 800,
   });
+  trace?.push({ step: "เส้นทาง: เงื่อนไขแบบประกัน", model: r.model, inputTokens: r.inputTokens,
+    outputTokens: r.outputTokens, costThb: r.costThb, detail: "ข้อเท็จจริงจากตารางเบี้ยของทุกแบบ" });
   return { reply: replaceCodes(r.text.trim()), sources: [] };
 }
 
 // ---------- questions answered from the uploaded documents ----------
 
-const DOC_SYSTEM = `คุณเป็นผู้ช่วยของตัวแทนประกันชีวิต ตอบจากเอกสารอ้างอิงข้างล่างเท่านั้น
-- ถ้าเอกสารไม่ได้ตอบคำถามนี้ ให้บอกว่ายังไม่มีเอกสารเรื่องนี้ ห้ามเดา
-- ห้ามใส่หมายเลขอ้างอิงเช่น [1] ระบบเติมที่มาให้ท้ายคำตอบอยู่แล้ว
-- เอกสารบางฉบับอ่านจากไฟล์ PDF จึงอาจมีตัวอักษรเพี้ยนบ้าง ให้ตีความตามบริบท
-- ตอบภาษาไทย สั้น กระชับ
-รูปแบบการตอบ
-- ข้อความธรรมดา ห้ามใช้ ** หรือ # หรือสัญลักษณ์มาร์กดาวน์ เพราะ LINE แสดงเป็นตัวอักษรจริง
-- เรียกชื่อแบบประกันเป็นภาษาคน ห้ามใช้รหัสภายในเช่น WLCI05 WLF99H W80F06
-- ขึ้นต้นบรรทัดรายการด้วย - เท่านั้น หัวข้อไม่ต้องขึ้นต้นด้วย -
-- ไม่เกิน 8 บรรทัด ถ้ามีหลายหัวข้อ ให้สรุปหัวข้อละ 1 บรรทัด
-- ตอบเฉพาะที่ถาม ไม่ต้องเล่าเนื้อหาอื่นในเอกสาร`;
-
-async function answerFromDocuments(slots: Routed): Promise<Omit<Answer, "slots">> {
+async function answerFromDocuments(slots: Routed, trace?: TraceStep[]): Promise<Omit<Answer, "slots">> {
   const question = slots.question ?? "";
   const [embedding] = await embedTexts([question], "search");
   const { data, error } = await supabaseAdmin().rpc("ins_search_chunks", {
@@ -205,18 +207,21 @@ async function answerFromDocuments(slots: Routed): Promise<Omit<Answer, "slots">
     tier: "large",
     task: "doc_qa",
     messages: [
-      { role: "system", content: `${DOC_SYSTEM}\n\nเอกสารอ้างอิง\n${context}` },
+      { role: "system", content: `${await promptText("doc_qa")}\n\nเอกสารอ้างอิง\n${context}` },
       { role: "user", content: question },
     ],
     maxTokens: 1600,
   });
   const sources = hits.map((h) => ({ title: h.doc_title, page: h.page }));
+  trace?.push({ step: "เส้นทาง: ค้นจากเอกสาร", model: r.model, inputTokens: r.inputTokens,
+    outputTokens: r.outputTokens, costThb: r.costThb,
+    detail: `ค้นเจอ ${hits.length} ท่อน จาก ${new Set(hits.map((h) => h.doc_title)).size} ไฟล์` });
   return { reply: `${replaceCodes(r.text.trim())}\n\n${citationLine(sources)}`, sources };
 }
 
 // ---------- anything else ----------
 
-async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "slots">> {
+async function answerSmallTalk(history: ChatMessage[], trace?: TraceStep[]): Promise<Omit<Answer, "slots">> {
   const plans = listPlans().map((p) => p.name).join(", ");
   const r = await chat({
     tier: "small",
@@ -224,15 +229,13 @@ async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "sl
     messages: [
       {
         role: "system",
-        content: `คุณเป็นผู้ช่วยของตัวแทนประกันชีวิต ตอบสั้น ๆ เป็นภาษาไทยอย่างสุภาพ
-คุณช่วยได้ 3 เรื่อง คำนวณเบี้ยประกัน, เงื่อนไขของแบบประกัน และคำถามจากเอกสารที่บริษัทให้มา
-แบบประกันที่มี: ${plans}
-ถ้าถูกถามเรื่องนอกเหนือจากประกัน ให้บอกว่าช่วยเรื่องนี้ไม่ได้ แล้วชวนกลับมาเรื่องประกัน
-ตอบไม่เกิน 3 บรรทัด ข้อความธรรมดา ห้ามใช้มาร์กดาวน์`,
+        content: `${await promptText("smalltalk")}\n\nแบบประกันที่มี: ${plans}`,
       },
       ...recentTurns(history, 4),
     ],
     maxTokens: 300,
   });
+  trace?.push({ step: "เส้นทาง: ทักทาย/นอกเรื่อง", model: r.model, inputTokens: r.inputTokens,
+    outputTokens: r.outputTokens, costThb: r.costThb });
   return { reply: replaceCodes(r.text.trim()), sources: [] };
 }
