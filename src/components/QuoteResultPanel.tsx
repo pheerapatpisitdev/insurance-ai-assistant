@@ -10,13 +10,11 @@ export interface QuoteResultPanelProps {
   mode: PayMode;
   summary: string;
   derivedSumAssured: boolean;
-  /** off for a bundle: the parts are not sold separately, so a price per line invites a question with no answer */
-  linePremiums?: boolean;
   /** when given, every payment mode is priced at once instead of only the one picked */
   modePremiums?: ModePremium[];
 }
 
-export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, linePremiums = true, modePremiums }: QuoteResultPanelProps) {
+export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, modePremiums }: QuoteResultPanelProps) {
   // A bundle is sold whole, so a total of 0 is not a price — say so instead of showing it.
   const incomplete = result.warnings.find((w) => w.code === "BUNDLE_INCOMPLETE");
   return (
@@ -32,7 +30,6 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, lin
             <tr className="border-b text-left text-slate-500">
               <th className="py-2">รายการ</th>
               <th className="py-2 pl-3 text-right whitespace-nowrap">ทุนประกัน</th>
-              {linePremiums && <th className="py-2 pl-3 text-right whitespace-nowrap">เบี้ย{PAY_MODE_LABEL[mode]}</th>}
             </tr>
           </thead>
           <tbody>
@@ -43,9 +40,6 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, lin
                   {it.message && <div className="text-xs text-red-600">{it.message}</div>}
                 </td>
                 <td className="py-2 pl-3 text-right whitespace-nowrap">{it.amountLabel ?? it.amount.toLocaleString("en-US")}</td>
-                {linePremiums && (
-                  <td className="py-2 pl-3 text-right tabular-nums whitespace-nowrap">{it.eligible ? formatBaht(it.modal) : "-"}</td>
-                )}
               </tr>
             ))}
           </tbody>
