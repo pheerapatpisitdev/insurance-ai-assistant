@@ -76,6 +76,8 @@ export async function readProfile(token: string): Promise<MessengerProfile> {
     }
     throw new ProfileError(code, message);
   }
+  // temporary: the greeting reads back empty after a successful write; see what Meta sends
+  console.log("messenger_profile raw:", text.slice(0, 1500));
   const body = JSON.parse(text) as { data?: ProfileRow[] };
   const row = body.data?.[0] ?? {};
   const greeting = row.greeting?.find((r) => r.locale === "default") ?? row.greeting?.[0];
