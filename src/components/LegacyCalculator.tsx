@@ -97,7 +97,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
               onChange={(e) => setAge(e.target.value === "" || e.target.value === "other"
                 ? (e.target.value as LegacyAge)
                 : Number(e.target.value))}
-              className="mt-1.5 w-full appearance-none rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-navy-lift)] px-3 py-2.5 text-lg tabular-nums text-[var(--lg-white)]"
+              className="mt-1.5 w-full appearance-none rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-lg tabular-nums text-[var(--lg-white)]"
             >
               <option value="">เลือกอายุ</option>
               {AGES.map((a) => <option key={a} value={a}>{a} ปี</option>)}
@@ -133,7 +133,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
           ชุดนี้รับอายุ {RANGE.min}–{RANGE.max} ปี ทักมาให้เราช่วยหาแบบที่เหมาะกับคุณ
         </div>
       ) : (
-        <div className="space-y-5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-navy-lift)] p-5">
+        <div className="space-y-5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5">
           {headline && annual ? (
             <div>
               <div className="text-sm text-[var(--lg-mute)]">เบี้ยประกัน</div>
@@ -183,7 +183,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
       <ContactButtons channels={channels} message={message} />
 
       {sticky && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-navy)]/95 p-3 backdrop-blur sm:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
           <ContactButtons channels={channels} message={message} compact />
         </div>
       )}

@@ -77,7 +77,7 @@ export function WhySection() {
  */
 export function DifferenceSection() {
   return (
-    <section className="relative overflow-hidden rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-navy-lift)] px-6 py-9">
+    <section className="relative overflow-hidden rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] px-6 py-9">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 -top-24 h-48 bg-[radial-gradient(60%_100%_at_50%_100%,var(--lg-gold-glow),transparent_70%)]"
