@@ -38,14 +38,17 @@ const TONES = {
   bad: "bg-red-50 text-red-700",
 };
 
-/** What the Page currently greets a new person with; empty when unreadable, so the form still opens. */
-async function currentProfile(): Promise<MessengerProfile> {
+/**
+ * What the Page currently greets a new person with. Null when Meta would not say: an empty
+ * form over an unread profile invites saving blanks, and saving blanks deletes what is there.
+ */
+async function currentProfile(): Promise<MessengerProfile | null> {
   const token = await pageToken();
-  if (!token) return { greeting: "", questions: [] };
+  if (!token) return null;
   try {
     return await readProfile(token);
   } catch {
-    return { greeting: "", questions: [] };
+    return null;
   }
 }
 
@@ -130,7 +133,11 @@ export default async function MessengerAdminPage({
 
       {connection && (
         <Card title="หน้าเปิดแชท" hint="ข้อความทักทายและปุ่มคำถามที่คนเห็นก่อนพิมพ์ข้อความแรก อ่านค่าปัจจุบันจากเพจ">
-          <ProfileForm initial={profile} />
+          {profile ? (
+            <ProfileForm initial={profile} />
+          ) : (
+            <Empty>อ่านค่าปัจจุบันจากเพจไม่ได้ในตอนนี้ (Meta จำกัดจำนวนครั้ง) ลองเปิดหน้านี้ใหม่ในอีกสักครู่</Empty>
+          )}
         </Card>
       )}
 
@@ -140,7 +147,9 @@ export default async function MessengerAdminPage({
         ) : (
           <div>
             <Row label="การตอบข้อความ">
-              {status.messagingOk ? (
+              {status.messagingOk === undefined ? (
+                <span className="text-amber-800">ตรวจไม่ได้ชั่วคราว</span>
+              ) : status.messagingOk ? (
                 <span className="text-emerald-700">✓ โทเค็นเพจใช้งานได้ บอทส่งและรับข้อความได้</span>
               ) : (
                 <span className="text-red-700">✗ โทเค็นเพจใช้งานไม่ได้ บอทตอบใครไม่ได้เลย</span>

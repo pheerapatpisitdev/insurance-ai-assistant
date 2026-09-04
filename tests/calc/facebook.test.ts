@@ -171,6 +171,19 @@ describe("page status", () => {
     expect(status.notes).toEqual([]);
   });
 
+  it("treats Meta's rate limit as a pause, not a broken token", async () => {
+    graph({
+      "/me/messenger_profile": [613, "Calls to this api have exceeded the rate limit."],
+      "/me": [613, "Calls to this api have exceeded the rate limit."],
+      "/me/subscribed_apps": [613, "Calls to this api have exceeded the rate limit."],
+    });
+    const status = await facebookStatus();
+    expect(status.messagingOk).toBeUndefined();
+    expect(status.errors).toEqual([]);
+    expect(status.notes).toHaveLength(1);
+    expect(status.notes[0]).toContain("จำกัดจำนวนครั้ง");
+  });
+
   it("reads the page and its subscription when the token carries the permissions", async () => {
     graph({
       "/me/messenger_profile": { data: [] },
