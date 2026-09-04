@@ -299,28 +299,25 @@ describe("what a webhook event says", () => {
 
 describe("messenger profile", () => {
   it("drops blank questions and trims the rest", () => {
-    const p = normaliseProfile({ greeting: " สวัสดี ", questions: ["", " ก ", "ข", ""] });
-    expect(p).toEqual({ greeting: "สวัสดี", questions: ["ก", "ข"] });
+    expect(normaliseProfile({ questions: ["", " ก ", "ข", ""] })).toEqual({ questions: ["ก", "ข"] });
   });
 
   it("refuses more than four questions or one that is too long", () => {
-    expect(() => normaliseProfile({ greeting: "", questions: ["1", "2", "3", "4", "5"] })).toThrow("4");
-    expect(() => normaliseProfile({ greeting: "", questions: ["ก".repeat(81)] })).toThrow("80");
+    expect(() => normaliseProfile({ questions: ["1", "2", "3", "4", "5"] })).toThrow("4");
+    expect(() => normaliseProfile({ questions: ["ก".repeat(81)] })).toThrow("80");
   });
 
   it("sends each question as its own payload, so a tap reads like a typed message", () => {
-    const body = profileBody({ greeting: "สวัสดี", questions: ["มรดก 3 ล้าน เบี้ยเท่าไหร่"] }) as {
-      greeting: { locale: string; text: string }[];
+    const body = profileBody({ questions: ["มรดก 3 ล้าน เบี้ยเท่าไหร่"] }) as {
       ice_breakers: { locale: string; call_to_actions: { question: string; payload: string }[] }[];
     };
-    expect(body.greeting).toEqual([{ locale: "default", text: "สวัสดี" }]);
     expect(body.ice_breakers[0].call_to_actions).toEqual([
       { question: "มรดก 3 ล้าน เบี้ยเท่าไหร่", payload: "มรดก 3 ล้าน เบี้ยเท่าไหร่" },
     ]);
   });
 
-  it("leaves out what is empty rather than sending an empty list", () => {
-    expect(profileBody({ greeting: "", questions: [] })).toEqual({});
+  it("never asks Meta to store an empty list, because Meta refuses one", () => {
+    expect(profileBody({ questions: [] })).toEqual({});
   });
 });
 
@@ -334,13 +331,12 @@ describe("reading the messenger profile", () => {
     globalThis.fetch = (async () => {
       calls++;
       return new Response(JSON.stringify({ data: [{
-        greeting: [{ locale: "default", text: "สวัสดี" }],
         ice_breakers: [{ locale: "default", call_to_actions: [{ question: "ก", payload: "ก" }] }],
       }] }), { status: 200 });
     }) as typeof fetch;
     const a = await readProfile("t");
     const b = await readProfile("t");
-    expect(a).toEqual({ greeting: "สวัสดี", questions: ["ก"] });
+    expect(a).toEqual({ questions: ["ก"] });
     expect(b).toEqual(a);
     expect(calls).toBe(1);
   });
@@ -348,16 +344,15 @@ describe("reading the messenger profile", () => {
   it("reads the flat shape Meta answers with, as well as the one it is written in", async () => {
     forgetProfile();
     globalThis.fetch = (async () => new Response(JSON.stringify({ data: [{
-      greeting: [{ locale: "default", text: "สวัสดี" }],
       ice_breakers: [{ question: "ก", payload: "ก" }, { question: "ข", payload: "ข" }],
     }] }), { status: 200 })) as typeof fetch;
-    expect(await readProfile("t2")).toEqual({ greeting: "สวัสดี", questions: ["ก", "ข"] });
+    expect(await readProfile("t2")).toEqual({ questions: ["ก", "ข"] });
   });
 
   it("copes with a profile that has nothing set", async () => {
     forgetProfile();
     globalThis.fetch = (async () => new Response(JSON.stringify({ data: [{}] }), { status: 200 })) as typeof fetch;
-    expect(await readProfile("t3")).toEqual({ greeting: "", questions: [] });
+    expect(await readProfile("t3")).toEqual({ questions: [] });
   });
 
   it("names a rate limit as such", async () => {

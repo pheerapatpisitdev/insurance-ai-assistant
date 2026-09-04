@@ -139,7 +139,7 @@ export default async function MessengerAdminPage({
       </Card>
 
       {connection && (
-        <Card title="หน้าเปิดแชท" hint="ข้อความทักทายและปุ่มคำถามที่คนเห็นก่อนพิมพ์ข้อความแรก อ่านค่าปัจจุบันจากเพจ">
+        <Card title="ปุ่มคำถามหน้าเปิดแชท" hint="ปุ่มที่คนเห็นก่อนพิมพ์ข้อความแรก กดแล้วบอทตอบทันที อ่านค่าปัจจุบันจากเพจ">
           {current.profile ? (
             <ProfileForm initial={current.profile} />
           ) : (

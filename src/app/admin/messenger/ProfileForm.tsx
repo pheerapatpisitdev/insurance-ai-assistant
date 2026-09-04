@@ -1,10 +1,9 @@
 "use client";
 import { useState, useTransition } from "react";
 import { saveMessengerProfile } from "./actions";
-import { MAX_GREETING_CHARS, MAX_ICE_BREAKERS, MAX_QUESTION_CHARS, type MessengerProfile } from "@/lib/facebook/profile";
+import { MAX_ICE_BREAKERS, MAX_QUESTION_CHARS, type MessengerProfile } from "@/lib/facebook/profile";
 
 export function ProfileForm({ initial }: { initial: MessengerProfile }) {
-  const [greeting, setGreeting] = useState(initial.greeting);
   const [questions, setQuestions] = useState<string[]>(
     [...initial.questions, ...Array(MAX_ICE_BREAKERS)].slice(0, MAX_ICE_BREAKERS).map((q) => q ?? ""),
   );
@@ -18,7 +17,7 @@ export function ProfileForm({ initial }: { initial: MessengerProfile }) {
         setStatus(null);
         start(async () => {
           try {
-            await saveMessengerProfile({ greeting, questions });
+            await saveMessengerProfile({ questions });
             setStatus({ ok: true, text: "บันทึกแล้ว คนที่เปิดแชทใหม่จะเห็นทันที" });
           } catch (err) {
             setStatus({ ok: false, text: err instanceof Error ? err.message : "บันทึกไม่ได้" });
@@ -27,17 +26,6 @@ export function ProfileForm({ initial }: { initial: MessengerProfile }) {
       }}
       className="space-y-3"
     >
-      <label className="block text-sm">
-        <span className="text-slate-500">ข้อความทักทาย</span>
-        <textarea
-          value={greeting}
-          onChange={(e) => setGreeting(e.target.value)}
-          maxLength={MAX_GREETING_CHARS}
-          rows={3}
-          className="mt-1 w-full rounded-md border px-3 py-2"
-        />
-        <span className="text-xs text-slate-400">{greeting.length}/{MAX_GREETING_CHARS}</span>
-      </label>
       <div className="space-y-2">
         <span className="text-sm text-slate-500">ปุ่มคำถาม (สูงสุด {MAX_ICE_BREAKERS} ปุ่ม เว้นว่างได้)</span>
         {questions.map((q, i) => (
@@ -63,6 +51,10 @@ export function ProfileForm({ initial }: { initial: MessengerProfile }) {
           <span className={`text-sm ${status.ok ? "text-emerald-700" : "text-red-700"}`}>{status.text}</span>
         )}
       </div>
+      <p className="text-xs text-slate-500">
+        ข้อความทักทายเหนือปุ่มตั้งที่นี่ไม่ได้ Meta เอาออกจาก API แล้ว ตั้งได้ที่ Meta Business Suite →
+        กล่องข้อความ → ระบบอัตโนมัติ → ข้อความทักทาย
+      </p>
     </form>
   );
 }
