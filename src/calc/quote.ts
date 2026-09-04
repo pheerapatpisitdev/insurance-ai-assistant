@@ -1,4 +1,4 @@
-import type { Availability, BasePackage, DeathBenefit, PlanRates, QuoteInput, QuoteItem, PlanRules, QuoteResult, RiderInput, Warning } from "./types";
+import type { Availability, BasePackage, DeathBenefit, MaturityBenefit, PlanRates, QuoteInput, QuoteItem, PlanRules, QuoteResult, RiderInput, Warning } from "./types";
 import { getPlan, productLabel } from "./plans/registry";
 import { basePremium, type BasePremiumResult } from "./base-premium";
 import { sumAssuredFromPremium } from "./sa-from-premium";
@@ -234,6 +234,7 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
   return {
     items, totalAnnual, totalModal, warnings, availability, sumAssured: sa,
     deathBenefit: deathBenefitFor(rules, pkg, input.age, sa, live ? riderDeathCover : 0),
+    maturityBenefit: maturityBenefitFor(rules, input.age, sa),
     meta: { planName: rates.planName, version: rates.version, expiresOn: rates.expiresOn, expired, minMonthlyTotal: rules.minMonthlyTotal },
   };
 }
@@ -257,4 +258,29 @@ function deathBenefitFor(
     sumFrom: sa + riderCover,
     alreadyPastAge,
   };
+}
+
+/**
+ * Excel ตารางแสดงผลประโยชน์: the last policy year pays a percentage of the sum assured, and
+ * the plans with a yearly survival benefit pay one in every year before it (ไอสมาร์ท 80/6:
+ * 1% of the sum assured in policy years 1-5, 2% from year 6 to the year before maturity,
+ * then 200% at the anniversary at age 80). Each year is rounded on its own, as the sheet does.
+ */
+function maturityBenefitFor(rules: PlanRules, age: number, sa: number): MaturityBenefit | undefined {
+  const rule = rules.base.maturity;
+  if (!rule || sa <= 0) return undefined;
+  const years = rule.age - age; // policy years, the last of which ends at maturity
+  if (years <= 0) return undefined;
+  const share = (percent: number) => Math.round((sa * percent) / 100);
+  const amount = share(rule.percentOfSumAssured);
+  if (!rule.survivalPayout) return { age: rule.age, amount };
+  let survivalTotal = 0;
+  let year = 1;
+  for (const band of rule.survivalPayout) {
+    const last = Math.min(band.throughPolicyYear ?? years - 1, years - 1);
+    if (last < year) continue;
+    survivalTotal += share(band.percentOfSumAssured) * (last - year + 1);
+    year = last + 1;
+  }
+  return { age: rule.age, amount, survivalTotal, total: amount + survivalTotal };
 }

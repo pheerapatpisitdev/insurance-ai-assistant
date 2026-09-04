@@ -138,6 +138,34 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, mod
         </div>
       )}
 
+      {result.maturityBenefit && !incomplete && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+          <div className="font-medium text-slate-700">ผลประโยชน์ครบสัญญา</div>
+          <div className="mt-1 flex justify-between gap-3">
+            <span className="text-slate-600">ครบสัญญาอายุ {result.maturityBenefit.age} ปี</span>
+            <span className="font-semibold tabular-nums">
+              {result.maturityBenefit.amount.toLocaleString("en-US")} บาท
+            </span>
+          </div>
+          {result.maturityBenefit.survivalTotal !== undefined && (
+            <>
+              <div className="mt-0.5 flex justify-between gap-3">
+                <span className="text-slate-600">เงินจ่ายคืนระหว่างสัญญา รวม</span>
+                <span className="font-semibold tabular-nums">
+                  {result.maturityBenefit.survivalTotal.toLocaleString("en-US")} บาท
+                </span>
+              </div>
+              <div className="mt-1 flex justify-between gap-3 border-t border-slate-200 pt-1">
+                <span className="text-slate-600">รวมรับทั้งสิ้น</span>
+                <span className="font-semibold tabular-nums">
+                  {(result.maturityBenefit.total ?? 0).toLocaleString("en-US")} บาท
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* last, because it is reference rather than a figure: whoever is reading the quote has
           finished with the numbers by the time they wonder what counts as a critical illness */}
       {result.items

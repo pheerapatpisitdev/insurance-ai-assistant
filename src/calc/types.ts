@@ -211,6 +211,8 @@ export interface PlanRules {
      * assured on top of it (ไลฟ์ โพรเทค+: the package's booster, 0.5 or 1).
      */
     extraDeathBenefitBeforeAge?: number;
+    /** what the plan pays an insured who lives to the end of the contract */
+    maturity?: MaturityRule;
   };
   minMonthlyTotal: number;
   riders: Record<string, RiderRule>;
@@ -281,6 +283,19 @@ export interface Availability {
   needsPayer?: boolean;
   reason?: string;
 }
+/** Excel ตารางแสดงผลประโยชน์: what living to the end of the contract pays. */
+export interface MaturityRule {
+  /** the policy anniversary at which the contract ends */
+  age: number;
+  /** paid at that anniversary, as a percentage of the sum assured */
+  percentOfSumAssured: number;
+  /**
+   * Plans that also pay a yearly survival benefit (ไอสมาร์ท). Bands run in order from
+   * policy year 1; the last one covers every year up to the one before maturity.
+   */
+  survivalPayout?: { throughPolicyYear?: number; percentOfSumAssured: number }[];
+}
+
 export interface DeathBenefit {
   /** the age at which the extra amount stops */
   beforeAge: number;
@@ -290,6 +305,17 @@ export interface DeathBenefit {
   sumFrom: number;
   /** true when the insured is already at or past that age, so only sumFrom applies */
   alreadyPastAge: boolean;
+}
+
+export interface MaturityBenefit {
+  /** the age at which the contract matures */
+  age: number;
+  /** payable at maturity */
+  amount: number;
+  /** every yearly survival benefit added up, for the plans that pay one */
+  survivalTotal?: number;
+  /** amount + survivalTotal, set only alongside survivalTotal */
+  total?: number;
 }
 
 export interface QuoteResult {
@@ -303,6 +329,8 @@ export interface QuoteResult {
   sumAssured: number;
   /** the plan's death benefit, when it steps down at a given age */
   deathBenefit?: DeathBenefit;
+  /** what the plan pays at the end of the contract, when it pays anything */
+  maturityBenefit?: MaturityBenefit;
   meta: { planName: string; version: string; expiresOn: string; expired: boolean; minMonthlyTotal: number };
 }
 

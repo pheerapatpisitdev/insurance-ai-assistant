@@ -55,6 +55,15 @@ export function summaryText(input: QuoteInput, result: QuoteResult, options: Sum
       lines.push(`- อายุ ${db.beforeAge} ปีขึ้นไป: ${db.sumFrom.toLocaleString("en-US")} บาท`);
     }
   }
+  const maturity = result.maturityBenefit;
+  if (maturity) {
+    lines.push("ผลประโยชน์ครบสัญญา");
+    lines.push(`- ครบสัญญาอายุ ${maturity.age} ปี: ${maturity.amount.toLocaleString("en-US")} บาท`);
+    if (maturity.survivalTotal !== undefined) {
+      lines.push(`- เงินจ่ายคืนระหว่างสัญญา รวม: ${maturity.survivalTotal.toLocaleString("en-US")} บาท`);
+      lines.push(`- รวมรับทั้งสิ้น: ${(maturity.total ?? 0).toLocaleString("en-US")} บาท`);
+    }
+  }
   if (modes) {
     lines.push("เบี้ยประกันที่ต้องชำระ");
     for (const m of modes) {

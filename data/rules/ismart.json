@@ -4,7 +4,15 @@
     "ageMin": 25,
     "ageMax": 65,
     "saMin": 150000,
-    "saZeroWhenIneligible": true
+    "saZeroWhenIneligible": true,
+    "maturity": {
+      "age": 80,
+      "percentOfSumAssured": 200,
+      "survivalPayout": [
+        { "throughPolicyYear": 5, "percentOfSumAssured": 1 },
+        { "percentOfSumAssured": 2 }
+      ]
+    }
   },
   "minMonthlyTotal": 1000,
   "riders": {
