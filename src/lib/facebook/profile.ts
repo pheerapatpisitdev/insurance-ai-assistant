@@ -131,5 +131,8 @@ export async function writeProfile(token: string, input: MessengerProfile): Prom
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`บันทึกไม่ได้ ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const answer = await res.text();
+  // temporary: the greeting is not stored although the write succeeds; see both sides
+  console.log("messenger_profile write:", JSON.stringify(body).slice(0, 800), "->", res.status, answer.slice(0, 300));
+  if (!res.ok) throw new Error(`บันทึกไม่ได้ ${res.status}: ${answer.slice(0, 200)}`);
 }
