@@ -1,4 +1,5 @@
 import { LegacyCalculator } from "@/components/LegacyCalculator";
+import { legacyChannels } from "@/lib/legacy-channels";
 import { Hero } from "@/components/legacy/Hero";
 import {
   DifferenceSection, DiseaseSection, Disclaimer, FaqSection, StructureSection, WhySection,
@@ -11,6 +12,12 @@ export const metadata = {
 };
 
 /**
+ * Regenerated hourly rather than on every hit: the contact channels are read from LINE and
+ * from the database, and an ad's worth of visitors should not each wait for that.
+ */
+export const revalidate = 3600;
+
+/**
  * The order answers the questions in the order a stranger asks them: what is this, what does
  * it cost me, why would I need it, what makes it different, what am I buying, what exactly is
  * covered, what am I still worried about.
@@ -19,12 +26,13 @@ export const metadata = {
  * a page that makes a cold reader scroll past four blocks to reach it loses them at the
  * first.
  */
-export default function LegacyPage() {
+export default async function LegacyPage() {
+  const channels = await legacyChannels();
   return (
     <main className="mx-auto max-w-lg px-4 pb-28 sm:pb-10">
       <Hero />
       <section id="calc" className="scroll-mt-4">
-        <LegacyCalculator sticky />
+        <LegacyCalculator channels={channels} sticky />
       </section>
       <WhySection />
       <DifferenceSection />
