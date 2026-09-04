@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import type { QuoteResult, PayMode } from "@/calc/types";
 import { riderDiseases } from "@/calc/riders/diseases";
 import type { ModePremium } from "@/calc/mode-premiums";
@@ -18,39 +17,28 @@ export interface QuoteResultPanelProps {
 }
 
 /**
- * The illnesses a rider names, folded away under it. This sits with the result rather than
- * with the form because it is the result an agent turns around and shows a customer — and a
- * bundle has no rider form at all.
+ * The illnesses a rider names, shown outright. Folding them away saved space on a screen
+ * nobody was short of, and cost a customer the one answer they came for.
  */
 function Diseases({ code, riderName }: { code: string; riderName: string }) {
-  const [open, setOpen] = useState(false);
   const info = riderDiseases(code);
   if (!info) return null;
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="text-xs text-slate-500 underline decoration-dotted underline-offset-2"
-      >
-        {open ? "ซ่อนรายชื่อโรค" : `ดูรายชื่อ ${info.diseases.length} โรคที่คุ้มครอง`}
-      </button>
-      {open && (
-        <div className="mt-1 rounded border bg-slate-50 p-2">
-          <p className="text-xs font-medium text-slate-700">{riderName}</p>
-          <p className="mb-1 text-xs text-slate-600">{info.note}</p>
-          {/* newspaper columns rather than a grid: the numbers should read down the first
-              column and continue at the top of the second, not left to right in pairs */}
-          <ol className="text-xs text-slate-700 sm:columns-2 sm:gap-x-6">
-            {info.diseases.map((d, i) => (
-              <li key={d} className="flex gap-1.5 break-inside-avoid pb-0.5">
-                <span className="shrink-0 tabular-nums text-slate-400">{i + 1}.</span>
-                <span>{d}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div className="text-sm font-medium text-slate-700">
+        {riderName} คุ้มครอง {info.diseases.length} โรค
+      </div>
+      <p className="mt-0.5 text-xs text-slate-600">{info.note}</p>
+      {/* newspaper columns rather than a grid: the numbers should read down the first
+          column and continue at the top of the second, not left to right in pairs */}
+      <ol className="mt-2 text-xs text-slate-700 sm:columns-2 sm:gap-x-6">
+        {info.diseases.map((d, i) => (
+          <li key={d} className="flex gap-1.5 break-inside-avoid pb-0.5">
+            <span className="shrink-0 tabular-nums text-slate-400">{i + 1}.</span>
+            <span>{d}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
