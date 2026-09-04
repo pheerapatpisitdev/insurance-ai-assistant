@@ -1,6 +1,7 @@
 import { getPlan, listPlans, trimSuffix } from "@/calc/plans/registry";
 import { listBundles, getBundle } from "@/calc/bundles/registry";
 import { bundleAgeRange } from "@/calc/bundles/quote";
+import { riderDiseases } from "@/calc/riders/diseases";
 import { baseAgeRange, baseSumAssuredLimits } from "@/calc/rules";
 
 /**
@@ -32,7 +33,9 @@ export function riderCatalogue(planCode: string): string {
     .map((code) => {
       const r = plan.rules.riders[code];
       if (!r) return null;
-      return `  · ${r.name} รับอายุ ${r.ageMin}-${r.ageMax} ปี`;
+      const illnesses = riderDiseases(code);
+      const covers = illnesses ? ` คุ้มครอง ${illnesses.diseases.length} โรค: ${illnesses.diseases.join(", ")}` : "";
+      return `  · ${r.name} รับอายุ ${r.ageMin}-${r.ageMax} ปี${covers}`;
     })
     .filter(Boolean)
     .join("\n");

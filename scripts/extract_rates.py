@@ -542,6 +542,60 @@ def extract_lifeprotect_cash_values():
     })
 
 
+# ---------------------------------------------------------------------------
+# The illnesses DCI covers
+# ---------------------------------------------------------------------------
+
+# The workbook keeps the whole list in one cell of the rider benefits sheet, numbered inline.
+# Every plan that sells DCI carries the same wording, so they are all read and required to
+# agree — a list that differed between workbooks would mean one of them is out of date.
+DCI_SHEET = "ผลประโยชน์ (Rider)"
+DCI_MARKER = "โรคสมองเสื่อมชนิดอัลไซเมอร์"
+DCI_COUNT = 31
+
+
+def _dci_from(path):
+    import re
+    wb = openpyxl.load_workbook(path, data_only=True)
+    if DCI_SHEET not in wb.sheetnames:
+        return None
+    ws = wb[DCI_SHEET]
+    for row in ws.iter_rows(max_col=15):
+        for c in row:
+            v = c.value
+            if isinstance(v, str) and DCI_MARKER in v and len(v) > 500:
+                # split on the inline numbering: "1. name 2. name ..."
+                parts = re.split(r"(?<![\d])(\d{1,2})\.\s*", v)
+                names = []
+                for i in range(1, len(parts) - 1, 2):
+                    no, text = int(parts[i]), parts[i + 1].strip()
+                    assert no == len(names) + 1, f"{path}: numbering jumps at {no}"
+                    names.append(" ".join(text.split()))
+                return names
+    return None
+
+
+def extract_dci_diseases():
+    lists = {}
+    for filename in {**W_FAMILY}.values():
+        names = _dci_from(XLSX_DIR / filename)
+        if names:
+            lists[filename] = names
+    assert lists, "no workbook carries the DCI list"
+    first = next(iter(lists.values()))
+    for filename, names in lists.items():
+        assert names == first, f"{filename} lists different illnesses from the others"
+    assert len(first) == DCI_COUNT, f"expected {DCI_COUNT} illnesses, found {len(first)}"
+
+    write_json(OUT_DIR.parent / "riders" / "dci-diseases.json", {
+        "code": "DCI",
+        "name": "สัญญาเพิ่มเติมคุ้มครองเสียชีวิตและโรคร้ายแรง (DCI)",
+        "sources": sorted(lists),
+        "note": "จ่ายเมื่อเสียชีวิต หรือเจ็บป่วยด้วยโรคร้ายแรงในรายการนี้ ตามคำนิยามในกรมธรรม์",
+        "diseases": first,
+    })
+
+
 EXTRACTORS = {
     "plb": extract_plb,
     "ishield": extract_ishield,
@@ -549,6 +603,7 @@ EXTRACTORS = {
     "lifetreasure": lambda: extract_w_family("LIFETREASURE", W_FAMILY["LIFETREASURE"]),
     "lifeprotect": lambda: extract_w_family("LIFEPROTECT", W_FAMILY["LIFEPROTECT"]),
     "lifeprotect-cv": extract_lifeprotect_cash_values,
+    "dci-diseases": extract_dci_diseases,
 }
 
 
