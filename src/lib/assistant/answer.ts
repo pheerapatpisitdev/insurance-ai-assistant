@@ -50,7 +50,7 @@ export async function answerQuestion(
   });
   // a bundle is a whole arrangement the agency sells under its own name, so asking for one by
   // name is answered as that arrangement rather than as its base plan
-  if (slots.bundleCode && slots.intent !== "doc_qa") {
+  if (isBundleTurn(routed, slots)) {
     trace?.push({ step: "เส้นทาง: ชุดจัดเอง", detail: "คำนวณด้วยเครื่องคำนวณ ไม่ใช้ AI" });
     return { ...answerBundle(slots), slots };
   }
@@ -106,6 +106,18 @@ async function answerFromFaq(
 
 // ---------- an agency bundle ----------
 
+/**
+ * Whether this turn is about the bundle. Naming it is; so is asking for a price while the
+ * conversation is already about it. A greeting or an unrelated question in the middle of
+ * that conversation is not — answering "สวัสดีครับ" with a fresh quotation reads as a bot
+ * that is not listening.
+ */
+export function isBundleTurn(routed: Routed, slots: Routed): boolean {
+  if (slots.intent === "doc_qa") return false;
+  if (routed.bundleCode) return true;
+  return Boolean(slots.bundleCode) && routed.intent === "quote";
+}
+
 /** Exported for its tests: the replies below are what an advert's first click lands on. */
 export function answerBundle(slots: Routed): Omit<Answer, "slots"> {
   const bundle = getBundle(slots.bundleCode!)!;
@@ -115,6 +127,15 @@ export function answerBundle(slots: Routed): Omit<Answer, "slots"> {
 
   const range = bundleAgeRange(bundle);
   const chosen = slots.tier === undefined ? undefined : describeTier(bundle, slots.tier);
+  const intro = [bundle.description, `รับอายุ ${range.min}-${range.max} ปี`].filter(Boolean).join("\n");
+
+  // asked about, not asked to price: say what it is, whatever is already known about the person
+  if (slots.intent !== "quote") {
+    return {
+      reply: `ชุด${bundle.name}\n${intro}\n\nเลือกวงเงินได้\n${choices}\n\nอยากดูเบี้ยพิมพ์ เพศ อายุ และวงเงินได้เลยครับ\nเช่น "ชาย 35 ${example}"`,
+      sources: [],
+    };
+  }
 
   if (slots.age === undefined || slots.sex === undefined) {
     const missing = [slots.age === undefined ? "อายุ" : null, slots.sex === undefined ? "เพศ" : null].filter(Boolean);
@@ -127,7 +148,6 @@ export function answerBundle(slots: Routed): Omit<Answer, "slots"> {
     }
     // a first contact — typically someone arriving from an advert — is told what the
     // arrangement is before being asked anything
-    const intro = [bundle.description, `รับอายุ ${range.min}-${range.max} ปี`].filter(Boolean).join("\n");
     return {
       reply: `ชุด${bundle.name}\n${intro}\n\nเลือกวงเงินได้\n${choices}\n\nขอ${missing.join("และ")}ของผู้เอาประกัน และระดับที่ต้องการด้วยครับ\nเช่น "ชาย 35 ${example}"`,
       sources: [],

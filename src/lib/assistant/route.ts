@@ -167,7 +167,13 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
   // the bundle and its step travel together, for the same reason a term belongs to its plan
   if (merged.bundleCode === undefined) {
     merged.bundleCode = previous.bundleCode;
-    if (merged.tier === undefined) merged.tier = previous.tier;
+    if (merged.tier === undefined && merged.bundleCode) {
+      // "ทุน 1,000,000" in a conversation already about the bundle is a new step, not a
+      // repeat of the old one; an amount that is not a step leaves the step to be asked for
+      merged.tier = current.sumAssured !== undefined
+        ? tierForSum(merged.bundleCode, current.sumAssured)
+        : previous.tier;
+    }
   } else if (merged.tier === undefined && merged.bundleCode === previous.bundleCode) {
     merged.tier = previous.tier;
   }

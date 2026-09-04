@@ -4,7 +4,7 @@ import { bundleFacts } from "@/lib/assistant/catalogue";
 import { bundleReply, tierChoices } from "@/lib/assistant/format";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleModePremiums, describeTier, quoteBundle } from "@/calc/bundles/quote";
-import { answerBundle } from "@/lib/assistant/answer";
+import { answerBundle, isBundleTurn } from "@/lib/assistant/answer";
 
 describe("recognising the bundle by name", () => {
   it.each([
@@ -36,6 +36,17 @@ describe("reading which step of the bundle was asked for", () => {
   it("keeps the bundle and its step together across turns", () => {
     const first: Routed = { intent: "quote", bundleCode: "LEGACY_FAMILY", tier: 3, age: 35, sex: "M" };
     expect(mergeSlots(first, { intent: "quote", sex: "F" })).toMatchObject({ bundleCode: "LEGACY_FAMILY", tier: 3 });
+  });
+
+  it("re-picks the step from a fresh amount while the bundle is carried over", () => {
+    const first: Routed = { intent: "quote", bundleCode: "LEGACY_FAMILY", tier: 2, age: 40, sex: "M" };
+    const merged = mergeSlots(first, { intent: "quote", age: 35, sumAssured: 1_000_000 });
+    expect(merged).toMatchObject({ bundleCode: "LEGACY_FAMILY", tier: 1, age: 35, sex: "M" });
+  });
+
+  it("forgets the old step when the fresh amount is not a step the bundle sells", () => {
+    const first: Routed = { intent: "quote", bundleCode: "LEGACY_FAMILY", tier: 2 };
+    expect(mergeSlots(first, { intent: "quote", sumAssured: 1_500_000 }).tier).toBeUndefined();
   });
 
   it("drops the step when the customer moves to a different bundle", () => {
@@ -152,5 +163,35 @@ describe("what a first message about the bundle gets back", () => {
     const reply = ask({ age: 40, sex: "M" });
     expect(reply).toContain("ต้องการระดับไหนครับ");
     expect(reply).toContain("มรดก 3 ล้าน");
+  });
+});
+
+describe("which turns belong to the bundle", () => {
+  const carried: Routed = { intent: "other", bundleCode: "LEGACY_FAMILY", tier: 2, age: 40, sex: "M" };
+
+  it("naming it is enough", () => {
+    expect(isBundleTurn({ intent: "plan_info", bundleCode: "LEGACY_FAMILY" }, carried)).toBe(true);
+  });
+
+  it("asking for a price while it is the topic is enough", () => {
+    expect(isBundleTurn({ intent: "quote", age: 35, sumAssured: 1_000_000 }, { ...carried, intent: "quote" })).toBe(true);
+  });
+
+  it("a greeting in the middle of that conversation is not", () => {
+    expect(isBundleTurn({ intent: "other" }, carried)).toBe(false);
+  });
+
+  it("a question for the documents is not, even when named", () => {
+    expect(isBundleTurn({ intent: "doc_qa", bundleCode: "LEGACY_FAMILY" }, { ...carried, intent: "doc_qa" })).toBe(false);
+  });
+});
+
+describe("asking about the bundle rather than for a price", () => {
+  it("describes it even when the person is already known", () => {
+    const reply = answerBundle({ intent: "plan_info", bundleCode: "LEGACY_FAMILY", tier: 2, age: 40, sex: "M" }).reply;
+    expect(reply.startsWith("ชุดมรดกเพื่อครอบครัว\n")).toBe(true);
+    expect(reply).toContain("รับอายุ 20-65 ปี");
+    expect(reply).toContain("มรดก 10 ล้าน");
+    expect(reply).not.toContain("รายปี");
   });
 });
