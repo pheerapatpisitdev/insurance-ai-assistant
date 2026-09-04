@@ -8,7 +8,7 @@ import { citationLine, quoteFooter, quoteReply } from "./format";
 import { replaceCodes } from "./codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { embedTexts } from "@/lib/ai/client";
-import { allPlanFacts, planFacts } from "./catalogue";
+import { allPlanFacts } from "./catalogue";
 import { mergeSlots, recentTurns, routeMessage, type Routed } from "./route";
 
 export interface Source {
@@ -101,6 +101,7 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
 const PLAN_INFO_SYSTEM = `คุณเป็นผู้ช่วยของตัวแทนประกันชีวิต ตอบคำถามด้วยข้อเท็จจริงที่ให้ไว้ข้างล่างเท่านั้น
 - ถ้าข้อเท็จจริงไม่มีคำตอบ ให้บอกตรง ๆ ว่าไม่มีข้อมูลนี้ ห้ามเดา
 - ห้ามบอกตัวเลขเบี้ยประกัน ถ้าเขาอยากรู้เบี้ยให้บอกว่าขออายุ เพศ และทุนประกัน แล้วจะคำนวณให้
+- ตอบเฉพาะสิ่งที่ถาม ไม่ต้องไล่อายุที่รับและทุนขั้นต่ำทุกครั้ง บอกเมื่อเขาถามหรือเมื่อจำเป็นจริง ๆ
 - ตอบภาษาไทย สั้น กระชับ
 รูปแบบการตอบ
 - ข้อความธรรมดา ห้ามใช้ ** หรือ # หรือสัญลักษณ์มาร์กดาวน์ เพราะ LINE แสดงเป็นตัวอักษรจริง
@@ -109,12 +110,18 @@ const PLAN_INFO_SYSTEM = `คุณเป็นผู้ช่วยของต
 - ตอบให้จบใน 5 บรรทัด ถ้าจำเป็นต้องยาวกว่านั้นให้ตัดเนื้อหาที่ไม่ได้ถาม`;
 
 async function answerPlanInfo(slots: Routed): Promise<Omit<Answer, "slots">> {
-  const facts = slots.planCode ? planFacts(slots.planCode)! : allPlanFacts();
+  // Every plan's facts go in, always. Narrowing to the plan carried from an earlier turn is
+  // what made "สนใจประกันมรดก" come back about Life Protect+ alone: the customer had opened a
+  // fresh question and the answer could not see the other four plans. The plan under
+  // discussion is named instead, so a genuine follow-up still lands on the right one.
+  const focus = slots.planCode
+    ? `ลูกค้ากำลังคุยเรื่อง ${getPlan(slots.planCode)!.planLabel ?? slots.planCode} อยู่ ถ้าคำถามล่าสุดเป็นการถามต่อ ให้ตอบเรื่องแบบนี้ ถ้าเป็นคำถามใหม่ที่กว้างกว่านั้น ให้ดูทุกแบบ\n\n`
+    : "";
   const r = await chat({
     tier: "small",
     task: "plan_info",
     messages: [
-      { role: "system", content: `${PLAN_INFO_SYSTEM}\n\nข้อเท็จจริง\n${facts}` },
+      { role: "system", content: `${PLAN_INFO_SYSTEM}\n\n${focus}ข้อเท็จจริง\n${allPlanFacts()}` },
       { role: "user", content: slots.question ?? "" },
     ],
     maxTokens: 800,
