@@ -1,4 +1,7 @@
+"use client";
+import { useState } from "react";
 import type { QuoteResult, PayMode } from "@/calc/types";
+import { riderDiseases } from "@/calc/riders/diseases";
 import type { ModePremium } from "@/calc/mode-premiums";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
@@ -12,6 +15,41 @@ export interface QuoteResultPanelProps {
   derivedSumAssured: boolean;
   /** when given, every payment mode is priced at once instead of only the one picked */
   modePremiums?: ModePremium[];
+}
+
+/**
+ * The illnesses a rider names, folded away under it. This sits with the result rather than
+ * with the form because it is the result an agent turns around and shows a customer — and a
+ * bundle has no rider form at all.
+ */
+function Diseases({ code }: { code: string }) {
+  const [open, setOpen] = useState(false);
+  const info = riderDiseases(code);
+  if (!info) return null;
+  return (
+    <div className="mt-0.5">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="text-xs text-slate-500 underline decoration-dotted underline-offset-2"
+      >
+        {open ? "ซ่อนรายชื่อโรค" : `ดูรายชื่อ ${info.diseases.length} โรคที่คุ้มครอง`}
+      </button>
+      {open && (
+        <div className="mt-1 rounded border bg-slate-50 p-2">
+          <p className="mb-1 text-xs text-slate-600">{info.note}</p>
+          <ol className="grid gap-x-4 gap-y-0.5 text-xs text-slate-700 sm:grid-cols-2">
+            {info.diseases.map((d, i) => (
+              <li key={d} className="flex gap-1.5">
+                <span className="shrink-0 tabular-nums text-slate-400">{i + 1}.</span>
+                <span>{d}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -48,6 +86,7 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, mod
                 <td className="py-2">
                   {it.name}
                   {it.message && <div className="text-xs text-red-600">{it.message}</div>}
+                  {it.eligible && <Diseases code={it.code} />}
                 </td>
                 <td className="py-2 pl-3 text-right whitespace-nowrap">{it.amountLabel ?? it.amount.toLocaleString("en-US")}</td>
               </tr>
