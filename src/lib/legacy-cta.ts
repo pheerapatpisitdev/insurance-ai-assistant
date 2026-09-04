@@ -62,3 +62,19 @@ export function legacyMessage(facts: LegacyFacts): string {
   if (!facts.premium) return `${who} ขอราคาปัจจุบัน`;
   return `${who} เบี้ยประมาณ ${formatBaht(facts.premium.total)} บาท${PER[facts.premium.mode]}`;
 }
+
+/**
+ * Every channel is opened with the message waiting in the input box, never sent for the
+ * customer: the first thing they do in the chat should still be their own doing.
+ */
+export function lineUrl(oaId: string, text: string): string {
+  return `https://line.me/R/oaMessage/${encodeURIComponent(oaId)}/?${encodeURIComponent(text)}`;
+}
+
+export function messengerUrl(page: string, text: string): string {
+  return `https://m.me/${encodeURIComponent(page)}?text=${encodeURIComponent(text)}`;
+}
+
+export function chatUrl(text: string): string {
+  return `/chat?q=${encodeURIComponent(text)}`;
+}

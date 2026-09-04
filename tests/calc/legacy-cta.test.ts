@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModePremium } from "@/calc/mode-premiums";
-import { displayPremium, legacyMessage, perDay } from "@/lib/legacy-cta";
+import { chatUrl, displayPremium, legacyMessage, lineUrl, messengerUrl, perDay } from "@/lib/legacy-cta";
 
 /** ชาย 38 ปี มรดก 3 ล้าน — every mode is issuable */
 const AFFORDABLE: ModePremium[] = [
@@ -70,5 +70,23 @@ describe("legacyMessage", () => {
   it("asks for the current price when no premium may be shown", () => {
     expect(legacyMessage({ millions: 3, age: 38, sex: "M", inRange: true, premium: undefined }))
       .toBe("สนใจมรดกเพื่อครอบครัว 3 ล้าน อายุ 38 ชาย ขอราคาปัจจุบัน");
+  });
+});
+
+describe("contact links", () => {
+  const text = "สนใจมรดกเพื่อครอบครัว 3 ล้าน";
+
+  it("opens the LINE official account with the message ready to send", () => {
+    expect(lineUrl("@luckyplanner", text))
+      .toBe("https://line.me/R/oaMessage/%40luckyplanner/?" + encodeURIComponent(text));
+  });
+
+  it("opens Messenger with the message ready to send", () => {
+    expect(messengerUrl("LuckyPlanner", text))
+      .toBe("https://m.me/LuckyPlanner?text=" + encodeURIComponent(text));
+  });
+
+  it("opens the in-app assistant with the question in the box", () => {
+    expect(chatUrl(text)).toBe("/chat?q=" + encodeURIComponent(text));
   });
 });
