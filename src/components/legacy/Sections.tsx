@@ -90,8 +90,15 @@ export function DifferenceSection({ facts }: { facts: LegacyCopyFacts }) {
       </h2>
       <p className="relative mt-5 text-sm leading-[1.9] text-[var(--lg-mute)]">
         ตรวจพบมะเร็งระยะลุกลาม เส้นเลือดสมองแตก ไตวายเรื้อรัง หรือ 1 ใน {facts.diseaseCount} โรคตามคำนิยามในกรมธรรม์{" "}
-        <span className="font-medium text-[var(--lg-white)]">รับเงินก้อนเต็มวงเงินทันที</span>{" "}
+        <span className="font-medium text-[var(--lg-white)]">
+          รับเงินสดก้อนใหญ่เข้ามือทันที
+        </span>{" "}
         เอาไปรักษา เอาไปส่งลูกเรียน เอาไปปิดหนี้บ้าน — ทั้งที่คุณยังอยู่ดูแลเขาเอง
+      </p>
+      <p className="relative mt-4 text-sm leading-[1.9] text-[var(--lg-mute)]">
+        แผนมรดก 1 ล้าน ได้เงินสด{" "}
+        <span className="font-medium text-[var(--lg-gold)]">{facts.plan1.critical} บาท</span>{" "}
+        และประกันชีวิตหลักยังอยู่ต่อ จ่ายให้ครอบครัวอีก {facts.plan1.endSum} บาทเมื่อคุณจากไป
       </p>
       <p className="relative mt-4 text-xs text-[var(--lg-mute)] opacity-70">
         ความคุ้มครองโรคร้ายแรงมีถึงอายุ {facts.plan1.endAge} ปี
@@ -204,7 +211,7 @@ export function FaqSection({ facts }: { facts: LegacyCopyFacts }) {
     },
     {
       q: "ถ้าเป็นโรคร้ายแรงแล้วได้เงินไปแล้ว ครอบครัวยังได้อีกไหม",
-      a: "สัญญาเพิ่มเติมโรคร้ายแรงจ่ายครั้งเดียวแล้วสิ้นสุด ส่วนประกันชีวิตหลักยังอยู่ และจ่ายให้ครอบครัวเมื่อเสียชีวิต",
+      a: `ได้ทั้งสองทาง — คนละก้อนกัน สัญญาเพิ่มเติมโรคร้ายแรงจ่ายเงินสดให้คุณครั้งเดียวแล้วสิ้นสุด (แผนมรดก 1 ล้าน ได้ ${facts.plan1.critical} บาท) ส่วนประกันชีวิตหลักยังอยู่ต่อ และจ่ายให้ครอบครัวอีก ${facts.plan1.endSum} บาทเมื่อคุณเสียชีวิต`,
     },
     {
       q: "จ่ายไม่ไหวกลางทางทำยังไง",

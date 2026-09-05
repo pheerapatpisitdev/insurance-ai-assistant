@@ -173,10 +173,27 @@ export function LegacyCalculator({ table, channels, sticky = false }: LegacyCalc
             <div className="text-sm font-medium text-[var(--lg-gold)]">ขอราคาปัจจุบันได้ทางแชทด้านล่าง</div>
           )}
 
+          {inRange && (
+            <div className="pt-1">
+              <hr className="lg-rule" />
+              {/* the claim that is paid while the customer is alive to spend it comes first:
+                  it is the half of this arrangement people do not expect to exist */}
+              <div className="pt-4 text-sm text-[var(--lg-mute)]">
+                ตรวจพบโรคร้ายแรง รับเงินสดเอง
+              </div>
+              <div className="lg-figure mt-1 text-2xl tabular-nums text-[var(--lg-white)]">
+                {table.critical[millions - 1].toLocaleString("en-US")} บาท
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-[var(--lg-mute)] opacity-80">
+                จ่ายครั้งเดียวแล้วสัญญาโรคร้ายแรงสิ้นสุด ประกันชีวิตหลักยังอยู่ต่อให้ครอบครัว
+              </p>
+            </div>
+          )}
+
           {death && (
             <div className="pt-1">
               <hr className="lg-rule" />
-              <div className="pt-4 text-sm text-[var(--lg-mute)]">ครอบครัวได้รับ</div>
+              <div className="pt-4 text-sm text-[var(--lg-mute)]">ครอบครัวได้รับเมื่อเสียชีวิต</div>
               {/* every band at the same size: the one that shrinks is the one a customer
                   most needs to see, so it does not get to be the small print */}
               <dl className="mt-2 space-y-2">
@@ -193,8 +210,8 @@ export function LegacyCalculator({ table, channels, sticky = false }: LegacyCalc
           )}
 
           <p className="border-t border-[var(--lg-panel-line)] pt-4 text-xs leading-[1.8] text-[var(--lg-mute)] opacity-80">
-            เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป · จ่ายเมื่อเสียชีวิต
-            หรือเมื่อตรวจพบ 1 ใน {table.diseaseCount} โรคร้ายแรงตามคำนิยามในกรมธรรม์
+            เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป · โรคร้ายแรงเป็นไปตาม
+            คำนิยาม 1 ใน {table.diseaseCount} โรคในกรมธรรม์
           </p>
         </div>
       )}

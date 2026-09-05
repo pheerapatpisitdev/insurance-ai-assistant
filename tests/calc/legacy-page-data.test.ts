@@ -64,7 +64,7 @@ describe("legacyFacts", () => {
     });
     expect(f.plan1).toEqual({
       base: "150,000", rider: "850,000", total: "1,000,000", before60: "1,150,000",
-      endAge: 75, endSum: "150,000",
+      endAge: 75, endSum: "150,000", critical: "850,000",
     });
   });
 });
@@ -94,5 +94,28 @@ describe("once the rate table has lapsed", () => {
   /** The benefits do not come from the rate table, so they are still true and still shown. */
   it("but still says what the family receives", () => {
     expect(legacyFacts(AFTER).plan1.total).toBe("1,000,000");
+  });
+});
+
+/**
+ * A critical-illness claim is paid by the rider alone. The base policy pays on death, so it
+ * stays in force — which is the good news — but it also means the cash in hand is the
+ * rider's sum, not the tier's headline. The page said "the full amount", which overstated
+ * every plan by the base sum.
+ */
+describe("what a living claimant receives", () => {
+  it("is the rider's sum, one base policy short of the death benefit", () => {
+    const t = legacyTable(WHILE_CURRENT);
+    expect(t.critical).toEqual([
+      850_000, 1_850_000, 2_850_000, 3_850_000, 4_850_000,
+      5_850_000, 6_850_000, 7_850_000, 8_850_000, 9_850_000,
+    ]);
+    for (const [i, cash] of t.critical.entries()) {
+      expect(t.death[i].from.sumFrom - cash).toBe(150_000);
+    }
+  });
+
+  it("reaches the sales copy as a figure, not as a promise of the whole sum", () => {
+    expect(legacyFacts(WHILE_CURRENT).plan1.critical).toBe("850,000");
   });
 });

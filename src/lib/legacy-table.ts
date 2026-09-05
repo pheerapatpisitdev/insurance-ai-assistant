@@ -34,6 +34,14 @@ export interface LegacyTable {
   premiums: Record<Sex, (readonly number[] | null)[][]>;
   /** [tier - 1] — the bands turn only on whether the insured has reached the booster age */
   death: { under: DeathBenefit; from: DeathBenefit }[];
+  /**
+   * [tier - 1] — what the insured receives in their own hand on a critical illness claim.
+   *
+   * It is the rider's sum assured, not the tier's headline: the base policy pays on death
+   * only, so it stays in force and is not part of this. Saying "the full amount" here, as
+   * the page first did, overstates the smallest plan by 150,000 baht.
+   */
+  critical: number[];
 }
 
 const BUNDLE = getBundle("LEGACY_FAMILY")!;
@@ -78,6 +86,7 @@ export function legacyTable(today: Date = new Date()): LegacyTable {
     diseaseCount: riderDiseases(BUNDLE.tiers[0].riders[0].code)?.diseases.length ?? 0,
     premiums: { M: forSex("M"), F: forSex("F") },
     death,
+    critical: BUNDLE.tiers.map((t) => t.riders.reduce((sum, r) => sum + (r.sumAssured ?? 0), 0)),
   };
   return { ...cached, expired };
 }

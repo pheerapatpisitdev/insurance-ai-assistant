@@ -30,7 +30,12 @@ export interface LegacyCopyFacts {
   /** what waiting costs, for the question about the premium rising */
   waiting: { youngAge: number; young: string; olderAge: number; older: string } | null;
   /** the smallest plan, itemised for the block that shows what is being bought */
-  plan1: { base: string; rider: string; total: string; before60: string; endAge: number; endSum: string };
+  plan1: {
+    base: string; rider: string; total: string; before60: string;
+    endAge: number; endSum: string;
+    /** the cash a living claimant receives — the rider's sum, not the tier's headline */
+    critical: string;
+  };
 }
 
 const BUNDLE = getBundle("LEGACY_FAMILY")!;
@@ -69,6 +74,7 @@ export function legacyFacts(today: Date = new Date()): LegacyCopyFacts {
       before60: death.sumBefore.toLocaleString("en-US"),
       endAge: death.riderCoverEnds!.age,
       endSum: death.riderCoverEnds!.sum.toLocaleString("en-US"),
+      critical: table.critical[0].toLocaleString("en-US"),
     },
   };
 }
