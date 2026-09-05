@@ -36,8 +36,18 @@ LINE ให้ส่งข้อความหาคนอื่นฟรี **
 
 แอปที่ล่มแล้วบอกตัวเองไม่ได้ ต้องมีตัวเฝ้าจากข้างนอก
 
-**หน้าเช็คสุขภาพ** `GET https://www.advisortool.app/api/health`
+**หน้าเช็คสุขภาพ**
+
+```
+GET https://insurance-ai-assistant-pheerapatpisit.vercel.app/api/health
+```
+
 ตอบ 200 พร้อม `{"ok":true,...}` เมื่อปกติ และ 503 เมื่อมีอะไรเสีย ไม่มีความลับอยู่ในคำตอบ
+
+**ต้องใช้ที่อยู่ .vercel.app ไม่ใช่ www.advisortool.app** โดเมนหลักเปิดระบบกันบอทของ Vercel อยู่
+คนเปิดด้วยเบราว์เซอร์ผ่านได้ แต่อะไรที่เป็นเครื่องยิงเข้ามาจะได้ 403 ตัวเฝ้าก็นับเป็นเครื่อง
+ถ้าชี้ไปที่โดเมนหลักจะเตือนผิดตลอดเวลา เว็บฮุกของ LINE กับ Messenger ก็ตั้งที่ .vercel.app
+ด้วยเหตุผลเดียวกัน (ตรวจซ้ำ 6 ก.ย. 2569: โดเมนหลักตอบ 403 ส่วน .vercel.app ตอบ 200)
 
 > เคสจริงที่เคยเกิด 4 ก.ย. 2569 Vercel เปิดระบบกันบอท เว็บยังเปิดดูได้ปกติแต่ LINE กับ Meta
 > ยิงเข้ามาไม่ได้ บอททั้งสองตัวหยุดตอบลูกค้าโดยไม่มีใครรู้ หน้านี้จะจับได้ เพราะตัวเฝ้าก็เป็นบอทเหมือนกัน
@@ -45,14 +55,14 @@ LINE ให้ส่งข้อความหาคนอื่นฟรี **
 **ให้แจ้งเข้า LINE** ตัวเฝ้ายิงกลับมาที่
 
 ```
-POST https://www.advisortool.app/api/alerts/notify
+POST https://insurance-ai-assistant-pheerapatpisit.vercel.app/api/alerts/notify
 x-alert-secret: <ค่าใน ALERT_WEBHOOK_SECRET>
 {"text":"เว็บไม่ตอบมา 5 นาที"}
 ```
 
 ### ตั้งด้วย UptimeRobot (ฟรี)
 
-1. Add New Monitor → HTTP(s) → URL `https://www.advisortool.app/api/health` → ทุก 5 นาที
+1. Add New Monitor → HTTP(s) → URL `https://insurance-ai-assistant-pheerapatpisit.vercel.app/api/health` → ทุก 5 นาที
 2. Alert Contacts → เพิ่ม Webhook ชี้มาที่ `/api/alerts/notify` ใส่หัวข้อ `x-alert-secret`
 
 ### ตั้งด้วย n8n
