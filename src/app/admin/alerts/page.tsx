@@ -43,12 +43,6 @@ export default async function AlertsAdminPage() {
           <code className="rounded bg-slate-100 px-1">POST /api/alerts/notify</code>{" "}
           พร้อมหัวข้อ <code className="rounded bg-slate-100 px-1">x-alert-secret</code> แล้วข้อความจะเข้า LINE เส้นเดียวกับด้านบน
         </p>
-        <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          ตั้งตัวเฝ้าให้ชี้ไปที่{" "}
-          <code className="rounded bg-amber-100 px-1">insurance-ai-assistant-pheerapatpisit.vercel.app</code>{" "}
-          ไม่ใช่ advisortool.app เพราะโดเมนหลักเปิดระบบกันบอทของ Vercel อยู่ เครื่องยิงเข้าจะได้ 403 เสมอ
-          และตัวเฝ้าจะเตือนผิดตลอด
-        </p>
         <p className="mt-2 text-xs text-slate-500">วิธีตั้งค่าอยู่ในไฟล์ docs/alerts.md ในโปรเจกต์</p>
       </Card>
 
