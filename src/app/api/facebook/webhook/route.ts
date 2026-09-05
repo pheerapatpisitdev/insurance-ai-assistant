@@ -8,6 +8,7 @@ import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { eventKey, textOf, type Messaging } from "@/lib/facebook/events";
+import { alertLead } from "@/lib/alerts/lead";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -83,6 +84,10 @@ async function handle(event: Messaging): Promise<void> {
     const answer = await answerQuestion(history, session.slots);
     await sendMessage(psid, answer.reply);
     await saveSession("facebook", userHash, [...history, { role: "assistant", content: answer.reply }], answer.slots);
+    await alertLead({
+      channel: "facebook", userHash, question: text, reply: answer.reply,
+      priced: Boolean(answer.priced), isNew: session.messages.length === 0,
+    });
   } catch (e) {
     await sendMessage(psid, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);
     throw e;

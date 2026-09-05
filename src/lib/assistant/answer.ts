@@ -24,6 +24,8 @@ export interface Answer {
   sources: Source[];
   /** carried into the next turn so follow-up questions keep the age, sex and plan */
   slots: Routed;
+  /** the answer carries a premium — the moment a browser turns into someone worth calling */
+  priced?: boolean;
 }
 
 /**
@@ -167,7 +169,10 @@ export function answerBundle(slots: Routed): Omit<Answer, "slots"> {
   if (!result || !tierName) {
     return { reply: `ชุด${bundle.name} ไม่มีระดับที่ขอครับ\n${choices}`, sources: [] };
   }
-  return { reply: bundleReply(bundle.name, tierName, who, result, bundleModePremiums(bundle, slots.tier, who)), sources: [] };
+  return {
+    reply: bundleReply(bundle.name, tierName, who, result, bundleModePremiums(bundle, slots.tier, who)),
+    sources: [], priced: true,
+  };
 }
 
 // ---------- quote ----------
@@ -227,7 +232,10 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
   const result = quote(input);
   const assumedTerm = !slots.variant && Object.keys(plan.variantLabels).length > 1;
   const assumedAmount = !saLimits.exact && slots.sumAssured === undefined;
-  return { reply: `${quoteReply(input, result)}\n\n${quoteFooter(assumedTerm, assumedAmount, input.mode)}`, sources: [] };
+  return {
+    reply: `${quoteReply(input, result)}\n\n${quoteFooter(assumedTerm, assumedAmount, input.mode)}`,
+    sources: [], priced: true,
+  };
 }
 
 // ---------- plan information ----------

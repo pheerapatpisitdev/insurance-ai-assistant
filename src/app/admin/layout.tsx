@@ -9,6 +9,7 @@ const TABS = [
   { href: "/admin/faq", label: "คำตอบที่เขียนเอง" },
   { href: "/admin/line", label: "LINE" },
   { href: "/admin/messenger", label: "Messenger" },
+  { href: "/admin/alerts", label: "แจ้งเตือน" },
   { href: "/admin/knowledge", label: "คลังความรู้" },
   { href: "/admin/rules", label: "กฎประกัน" },
 ];

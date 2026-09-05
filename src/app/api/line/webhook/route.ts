@@ -7,6 +7,8 @@ import { answerQuestion } from "@/lib/assistant/answer";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
+import { alertLead } from "@/lib/alerts/lead";
+import { registrationReply } from "@/lib/alerts/register";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -57,6 +59,13 @@ async function handle(event: LineEvent): Promise<void> {
   // a redelivery of an event already answered must not answer it a second time
   if (event.webhookEventId && !(await claimEvent("line", event.webhookEventId))) return;
 
+  // the owner registering this account for alerts is not a customer question
+  const registered = await registrationReply(text, userId);
+  if (registered) {
+    await say(replyToken, userId, registered);
+    return;
+  }
+
   const userHash = hashUserId(userId);
   if (!allow(`line:${userHash}`)) {
     await say(replyToken, userId, BUSY);
@@ -70,6 +79,10 @@ async function handle(event: LineEvent): Promise<void> {
     const answer = await answerQuestion(history, session.slots);
     await say(replyToken, userId, answer.reply);
     await saveSession("line", userHash, [...history, { role: "assistant", content: answer.reply }], answer.slots);
+    await alertLead({
+      channel: "line", userHash, question: text, reply: answer.reply,
+      priced: Boolean(answer.priced), isNew: session.messages.length === 0,
+    });
   } catch (e) {
     await say(replyToken, userId, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);
     throw e;
