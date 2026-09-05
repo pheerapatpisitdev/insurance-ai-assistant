@@ -13,13 +13,14 @@
    ```
    https://www.advisortool.app/api/facebook/connect/callback
    https://advisortool.app/api/facebook/connect/callback
-   https://www.advisorx.biz/api/facebook/connect/callback
-   https://advisorx.biz/api/facebook/connect/callback
    https://insurance-ai-assistant-pheerapatpisit.vercel.app/api/facebook/connect/callback
    ```
 
    ใส่ให้ครบทุกบรรทัด เพราะเปิดแอดมินจากโดเมนไหน Meta ก็ต้องรู้จักโดเมนนั้น
-   เว็บนี้ผูกไว้หลายโดเมน ถ้าใส่ไม่ครบแล้วบังเอิญเปิดจากโดเมนที่ตกหล่น จะขึ้น URL blocked
+   ถ้าใส่ไม่ครบแล้วบังเอิญเปิดจากโดเมนที่ตกหล่น จะขึ้น URL blocked
+
+   advisorx.biz ถอดออกจากโปรเจกต์แล้วเมื่อ 6 ก.ย. 2569 URL ของโดเมนนั้นยังค้างอยู่ในรายการ
+   ฝั่ง Meta ซึ่งไม่มีผลอะไร ใช้ไม่ได้อยู่แล้ว ลบทิ้งได้ถ้าอยากให้สะอาด
 
    `localhost` ใส่ไม่ได้ Meta อนุญาตให้เองเฉพาะตอนแอปอยู่ในโหมดพัฒนา
    แอปนี้เผยแพร่แล้ว จึงทดสอบปุ่มนี้ในเครื่องไม่ได้ ต้องทดสอบบนเว็บจริง
