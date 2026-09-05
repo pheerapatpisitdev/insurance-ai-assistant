@@ -122,6 +122,25 @@ body:has(.theme-legacy) {
   color: transparent;
 }
 
+/* The ramp is painted behind the glyphs and shown through them, so the lettering itself
+   is transparent. Anywhere that paint does not survive — a forced-colours mode, a browser
+   without background-clip — transparent lettering leaves nothing at all, and the headline,
+   every sum of money and the deed's total would simply not be there. Both cases fall back
+   to the flat gold, which is what the ramp is made of anyway. */
+@media (forced-colors: active) {
+  .lg-metal-text {
+    background: none;
+    color: var(--lg-gold);
+    -webkit-text-fill-color: currentColor;
+  }
+}
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .lg-metal-text {
+    background: none;
+    color: var(--lg-gold);
+  }
+}
+
 /* A struck face: lit along the top edge, shadowed at the bottom, throwing a little
    of its own colour onto the navy underneath. */
 .lg-metal-face {
