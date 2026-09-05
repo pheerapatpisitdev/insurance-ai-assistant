@@ -1,5 +1,7 @@
 import { LegacyCalculator } from "@/components/LegacyCalculator";
 import { legacyChannels } from "@/lib/legacy-channels";
+import { legacyTable } from "@/lib/legacy-table";
+import { legacyFacts } from "@/lib/legacy-facts";
 import { Hero } from "@/components/legacy/Hero";
 import {
   DifferenceSection, DiseaseSection, Disclaimer, FaqSection, StructureSection, WhySection,
@@ -28,18 +30,20 @@ export const revalidate = 3600;
  */
 export default async function LegacyPage() {
   const channels = await legacyChannels();
+  const table = legacyTable();
+  const facts = legacyFacts();
   return (
     <main className="mx-auto max-w-lg px-4 pb-28 sm:pb-10">
-      <Hero />
+      <Hero facts={facts} />
       <section id="calc" className="scroll-mt-4">
-        <LegacyCalculator channels={channels} sticky />
+        <LegacyCalculator table={table} channels={channels} sticky />
       </section>
       <WhySection />
-      <DifferenceSection />
-      <StructureSection />
+      <DifferenceSection facts={facts} />
+      <StructureSection facts={facts} />
       <DiseaseSection />
-      <FaqSection />
-      <Disclaimer />
+      <FaqSection facts={facts} />
+      <Disclaimer facts={facts} />
     </main>
   );
 }

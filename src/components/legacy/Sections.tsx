@@ -1,4 +1,5 @@
 import { riderDiseases } from "@/calc/riders/diseases";
+import type { LegacyCopyFacts } from "@/lib/legacy-facts";
 
 /** A heading that reads at arm's length on a phone, without shouting on a desktop. */
 function H2({ children }: { children: React.ReactNode }) {
@@ -75,7 +76,7 @@ export function WhySection() {
  * the bundle puts most of the sum into the critical-illness rider rather than the base plan,
  * so it gets the page's only framed panel.
  */
-export function DifferenceSection() {
+export function DifferenceSection({ facts }: { facts: LegacyCopyFacts }) {
   return (
     <section className="relative overflow-hidden rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] px-6 py-9">
       <div
@@ -88,12 +89,12 @@ export function DifferenceSection() {
         <span className="lg-metal-text">แบบนี้จ่ายตั้งแต่วันที่คุณยังอยู่</span>
       </h2>
       <p className="relative mt-5 text-sm leading-[1.9] text-[var(--lg-mute)]">
-        ตรวจพบมะเร็งระยะลุกลาม เส้นเลือดสมองแตก ไตวายเรื้อรัง หรือ 1 ใน 31 โรคตามคำนิยามในกรมธรรม์{" "}
+        ตรวจพบมะเร็งระยะลุกลาม เส้นเลือดสมองแตก ไตวายเรื้อรัง หรือ 1 ใน {facts.diseaseCount} โรคตามคำนิยามในกรมธรรม์{" "}
         <span className="font-medium text-[var(--lg-white)]">รับเงินก้อนเต็มวงเงินทันที</span>{" "}
         เอาไปรักษา เอาไปส่งลูกเรียน เอาไปปิดหนี้บ้าน — ทั้งที่คุณยังอยู่ดูแลเขาเอง
       </p>
       <p className="relative mt-4 text-xs text-[var(--lg-mute)] opacity-70">
-        ความคุ้มครองโรคร้ายแรงมีถึงอายุ 75 ปี
+        ความคุ้มครองโรคร้ายแรงมีถึงอายุ {facts.plan1.endAge} ปี
       </p>
     </section>
   );
@@ -105,10 +106,10 @@ export function DifferenceSection() {
  *
  * Laid out as a deed: the parts, a gold rule, then the sum they come to.
  */
-export function StructureSection() {
+export function StructureSection({ facts }: { facts: LegacyCopyFacts }) {
   const parts = [
-    { label: "ประกันชีวิตตลอดชีพ Life Protect x 2 (ชำระเบี้ยถึงอายุ 99)", sum: "150,000" },
-    { label: "สัญญาเพิ่มเติมโรคร้ายแรง DCI", sum: "850,000" },
+    { label: "ประกันชีวิตตลอดชีพ Life Protect x 2 (ชำระเบี้ยถึงอายุ 99)", sum: facts.plan1.base },
+    { label: "สัญญาเพิ่มเติมโรคร้ายแรง DCI", sum: facts.plan1.rider },
   ];
   return (
     <section className="py-12">
@@ -129,17 +130,17 @@ export function StructureSection() {
         <div className="pt-5">
           <div className="text-sm text-[var(--lg-mute)]">ครอบครัวได้รับ</div>
           <div className="lg-figure mt-1 text-3xl tabular-nums">
-            <span className="lg-metal-text">1,000,000</span>{" "}
+            <span className="lg-metal-text">{facts.plan1.total}</span>{" "}
             <span className="text-lg text-[var(--lg-gold)]">บาท</span>
           </div>
         </div>
       </div>
       <p className="mt-5 text-sm leading-[1.85] text-[var(--lg-mute)]">
-        ✦ เสียชีวิตก่อนอายุ 60 ปี ได้ 1,150,000 บาท เพราะทุนหลักจ่ายสองเท่า
+        ✦ เสียชีวิตก่อนอายุ 60 ปี ได้ {facts.plan1.before60} บาท เพราะทุนหลักจ่ายสองเท่า
       </p>
       <p className="mt-2 text-sm leading-[1.85] text-[var(--lg-mute)] opacity-80">
-        สัญญาเพิ่มเติมโรคร้ายแรงคุ้มครองถึงอายุ 75 ปี ตั้งแต่อายุ 75 เป็นต้นไป
-        เหลือทุนของประกันชีวิตหลัก 150,000 บาท
+        สัญญาเพิ่มเติมโรคร้ายแรงคุ้มครองถึงอายุ {facts.plan1.endAge} ปี ตั้งแต่อายุ{" "}
+        {facts.plan1.endAge} เป็นต้นไป เหลือทุนของประกันชีวิตหลัก {facts.plan1.endSum} บาท
       </p>
     </section>
   );
@@ -184,15 +185,18 @@ export function DiseaseSection() {
  * it is the fact most likely to be discovered later and resented — said plainly here it turns
  * into the reason to start now, which is what it honestly is.
  */
-export function FaqSection() {
+export function FaqSection({ facts }: { facts: LegacyCopyFacts }) {
   const faqs = [
     {
       q: "เบี้ยคงที่ตลอดไหม",
-      a: "ส่วนประกันชีวิตหลักคงที่ ส่วนสัญญาเพิ่มเติมโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นทุกปี ยิ่งเริ่มเร็วยิ่งได้เปรียบ — ชายอายุ 30 วงเงิน 1 ล้าน ปีแรกจ่าย 4,897 บาท ถ้ารอถึงอายุ 45 ปีแรกจ่าย 10,716 บาท เท่าตัวกว่า",
+      a: "ส่วนประกันชีวิตหลักคงที่ ส่วนสัญญาเพิ่มเติมโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นทุกปี ยิ่งเริ่มเร็วยิ่งได้เปรียบ"
+        + (facts.waiting
+          ? ` — ชายอายุ ${facts.waiting.youngAge} วงเงิน 1 ล้าน ปีแรกจ่าย ${facts.waiting.young} บาท ถ้ารอถึงอายุ ${facts.waiting.olderAge} ปีแรกจ่าย ${facts.waiting.older} บาท เท่าตัวกว่า`
+          : ""),
     },
     {
       q: "คุ้มครองยาวถึงอายุเท่าไหร่",
-      a: "ประกันชีวิตหลักคุ้มครองถึงอายุ 99 ปี ส่วนสัญญาเพิ่มเติมโรคร้ายแรงคุ้มครองถึงอายุ 75 ปี — แผนมรดก 1 ล้าน ครอบครัวจึงได้ 1 ล้านเมื่อเสียชีวิตก่อนอายุ 75 และได้ทุนของสัญญาหลัก 150,000 บาท ตั้งแต่อายุ 75 เป็นต้นไป ถ้าต้องการวงเงินเต็มยาวกว่านี้ ทักมาคุยกัน มีแบบอื่นที่จัดให้ได้",
+      a: `ประกันชีวิตหลักคุ้มครองถึงอายุ 99 ปี ส่วนสัญญาเพิ่มเติมโรคร้ายแรงคุ้มครองถึงอายุ ${facts.plan1.endAge} ปี — แผนมรดก 1 ล้าน ครอบครัวจึงได้ 1 ล้านเมื่อเสียชีวิตก่อนอายุ ${facts.plan1.endAge} และได้ทุนของสัญญาหลัก ${facts.plan1.endSum} บาท ตั้งแต่อายุ ${facts.plan1.endAge} เป็นต้นไป ถ้าต้องการวงเงินเต็มยาวกว่านี้ ทักมาคุยกัน มีแบบอื่นที่จัดให้ได้`,
     },
     {
       q: "ต้องตรวจสุขภาพไหม",
@@ -226,14 +230,15 @@ export function FaqSection() {
 }
 
 /** What the figures on this page are and are not. Required of any insurance advertisement. */
-export function Disclaimer() {
+export function Disclaimer({ facts }: { facts: LegacyCopyFacts }) {
   return (
     <footer className="pb-10">
       <Rule />
       <div className="pt-7 text-xs leading-[1.9] text-[var(--lg-mute)] opacity-80">
         <p>
-          เบี้ยที่แสดงเป็นเบี้ยปีแรกโดยประมาณ คำนวณจากตารางเบี้ยฉบับ A2026-1
-          ใช้ประกอบการตัดสินใจเบื้องต้นเท่านั้น ไม่ใช่ใบเสนอราคาและไม่ใช่ส่วนหนึ่งของสัญญาประกันภัย
+          {facts.expired
+            ? "ตารางเบี้ยชุดที่ใช้คำนวณหมดอายุแล้ว หน้านี้จึงไม่แสดงเบี้ย ขอราคาปัจจุบันได้ทางแชท"
+            : `เบี้ยที่แสดงเป็นเบี้ยปีแรกโดยประมาณ คำนวณจากตารางเบี้ยฉบับ ${facts.rateVersion} ใช้ประกอบการตัดสินใจเบื้องต้นเท่านั้น ไม่ใช่ใบเสนอราคาและไม่ใช่ส่วนหนึ่งของสัญญาประกันภัย`}
         </p>
         <p className="mt-2.5">
           ความคุ้มครอง ข้อยกเว้น ระยะเวลารอคอย และคำนิยามโรคร้ายแรง เป็นไปตามที่ระบุในกรมธรรม์

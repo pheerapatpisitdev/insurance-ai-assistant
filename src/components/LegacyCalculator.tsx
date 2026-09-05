@@ -1,25 +1,37 @@
 "use client";
 import { useMemo, useState } from "react";
+import type { ModePremium } from "@/calc/mode-premiums";
 import type { PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
-import { getBundle } from "@/calc/bundles/registry";
-import { bundleAgeRange, bundleModePremiums, quoteBundle } from "@/calc/bundles/quote";
 import { formatBaht } from "@/calc/money";
 import type { LegacyAge } from "@/lib/legacy-cta";
 import { chatUrl, displayPremium, legacyMessage, lineUrl, messengerUrl, perDay } from "@/lib/legacy-cta";
 import type { LegacyChannels } from "@/lib/legacy-channels";
+import type { LegacyTable } from "@/lib/legacy-table";
 import { deathBenefitRows } from "@/lib/death-benefit";
-
-const BUNDLE = getBundle("LEGACY_FAMILY")!;
-const RANGE = bundleAgeRange(BUNDLE);
 
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
 const PER_LABEL: Record<PayMode, string> = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" };
 
-/** Every age the bundle issues at, so the picker offers them rather than trusting typing. */
-const AGES = Array.from({ length: RANGE.max - RANGE.min + 1 }, (_, i) => RANGE.min + i);
+/** The order the server packed each row of prices in. */
+const ROW_MODES: PayMode[] = ["annual", "semi", "monthly"];
+
+/** One row of the priced table, back in the shape the rest of the page reads. */
+function rowToModes(row: readonly number[] | null): ModePremium[] | undefined {
+  if (!row) return undefined;
+  return ROW_MODES.map((mode, i) => ({
+    mode,
+    total: row[i],
+    belowMinimum: mode === "monthly" && row[3] === 1,
+  }));
+}
 
 export interface LegacyCalculatorProps {
+  /**
+   * Every price the page can show, worked out on the server. The engine and the rate tables
+   * it reads never reach the browser.
+   */
+  table: LegacyTable;
   /**
    * Where the contact buttons point. Resolved on the server from the channels the bot
    * already answers on, so the page cannot end up offering a Page nobody is listening to.
@@ -38,7 +50,12 @@ export interface LegacyCalculatorProps {
  * sum, the age and the sex — every other decision was made when the bundle was designed, and
  * the agent's own calculator is where the rest of them can still be changed.
  */
-export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorProps) {
+export function LegacyCalculator({ table, channels, sticky = false }: LegacyCalculatorProps) {
+  const RANGE = { min: table.ageMin, max: table.ageMax };
+  const AGES = useMemo(
+    () => Array.from({ length: RANGE.max - RANGE.min + 1 }, (_, i) => RANGE.min + i),
+    [RANGE.min, RANGE.max],
+  );
   const [millions, setMillions] = useState(1);
   const [age, setAge] = useState<LegacyAge>("");
   const [sex, setSex] = useState<Sex>("M");
@@ -47,21 +64,23 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
   // everyone else picks the way out and is answered rather than quoted.
   const inRange = typeof age === "number";
 
-  const result = useMemo(
-    () => (typeof age === "number" ? quoteBundle(BUNDLE, millions, { age, sex, mode: "annual" }) : undefined),
-    [age, sex, millions],
-  );
   const modes = useMemo(
-    () => (typeof age === "number" ? bundleModePremiums(BUNDLE, millions, { age, sex }) : undefined),
-    [age, sex, millions],
+    () => (typeof age === "number"
+      ? rowToModes(table.premiums[sex][millions - 1][age - table.ageMin] ?? null)
+      : undefined),
+    [table, age, sex, millions],
   );
+  // the bands turn only on whether the insured has reached the booster age
+  const death = typeof age === "number"
+    ? (age >= table.death[millions - 1].under.beforeAge
+      ? table.death[millions - 1].from
+      : table.death[millions - 1].under)
+    : undefined;
 
-  const expired = result?.meta.expired ?? false;
-  const headline = displayPremium(modes, expired);
+  const headline = displayPremium(modes, table.expired);
   const annual = modes?.find((m) => m.mode === "annual");
   // the instalments the headline did not take, minus any the company will not accept
-  const others = (modes ?? []).filter((m) => m !== headline && !m.belowMinimum);
-  const death = result?.deathBenefit;
+  const others = (modes ?? []).filter((m) => m.mode !== headline?.mode && !m.belowMinimum);
 
   const message = legacyMessage({ millions, age, sex, range: RANGE, premium: headline });
 
@@ -77,13 +96,13 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
             <span className="text-lg text-[var(--lg-mute)]">บาท</span>
           </div>
           <input
-            id="legacy-sum" type="range" min={1} max={BUNDLE.tiers.length} step={1} value={millions}
+            id="legacy-sum" type="range" min={1} max={table.tiers} step={1} value={millions}
             onChange={(e) => setMillions(Number(e.target.value))}
             className="mt-4 w-full accent-[var(--lg-gold)]"
           />
           <div className="mt-1 flex justify-between text-xs text-[var(--lg-mute)] opacity-70">
             <span>1 ล้าน</span>
-            <span>{BUNDLE.tiers.length} ล้าน</span>
+            <span>{table.tiers} ล้าน</span>
           </div>
         </div>
 
@@ -128,7 +147,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
         <p className="rounded-sm border border-dashed border-[var(--lg-panel-line)] px-5 py-7 text-center text-sm text-[var(--lg-mute)]">
           เลือกอายุเพื่อดูเบี้ยของคุณ
         </p>
-      ) : !inRange || !result ? (
+      ) : !inRange || !modes ? (
         <div className="rounded-sm border border-[var(--lg-gold)] bg-[var(--lg-panel)] px-5 py-7 text-center text-sm leading-relaxed text-[var(--lg-white)]">
           ชุดนี้รับอายุ {RANGE.min}–{RANGE.max} ปี ทักมาให้เราช่วยหาแบบที่เหมาะกับคุณ
         </div>
@@ -175,7 +194,7 @@ export function LegacyCalculator({ channels, sticky = false }: LegacyCalculatorP
 
           <p className="border-t border-[var(--lg-panel-line)] pt-4 text-xs leading-[1.8] text-[var(--lg-mute)] opacity-80">
             เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป · จ่ายเมื่อเสียชีวิต
-            หรือเมื่อตรวจพบ 1 ใน 31 โรคร้ายแรงตามคำนิยามในกรมธรรม์
+            หรือเมื่อตรวจพบ 1 ใน {table.diseaseCount} โรคร้ายแรงตามคำนิยามในกรมธรรม์
           </p>
         </div>
       )}

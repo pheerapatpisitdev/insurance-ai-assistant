@@ -1,3 +1,5 @@
+import type { LegacyCopyFacts } from "@/lib/legacy-facts";
+
 /**
  * The first three seconds. A customer arriving from an ad knows neither the agency nor the
  * product, so the block promises a number, says what makes this one different, and points at
@@ -9,7 +11,7 @@
  * Kept apart from the rest of the copy because it is the part that gets rewritten every time
  * an ad is tested.
  */
-export function Hero() {
+export function Hero({ facts }: { facts: LegacyCopyFacts }) {
   return (
     <header className="pt-14 pb-12">
       <p
@@ -44,7 +46,10 @@ export function Hero() {
           ดูเบี้ยของฉัน ↓
         </a>
         <p className="mt-4 text-center text-xs leading-relaxed text-[var(--lg-mute)]">
-          อายุ 35 เริ่มต้นวันละ 14 บาท · รับอายุ 20–65 ปี · ไม่ต้องกรอกเบอร์
+          {facts.fromPerDay !== null && (
+            <>อายุ {facts.fromAge} เริ่มต้นวันละ {facts.fromPerDay} บาท · </>
+          )}
+          รับอายุ {facts.ageMin}–{facts.ageMax} ปี · ไม่ต้องกรอกเบอร์
         </p>
       </div>
     </header>
