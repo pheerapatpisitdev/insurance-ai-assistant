@@ -17,9 +17,9 @@ export function DoubleSection({ facts }: { facts: LifeProtectCopyFacts }) {
         className="pointer-events-none absolute inset-x-0 -top-24 h-48 bg-[radial-gradient(60%_100%_at_50%_100%,var(--lg-gold-glow),transparent_70%)]"
       />
       <h2 className="relative text-[1.4rem] font-medium leading-snug sm:text-2xl">
-        <span className="text-[var(--lg-mute)]">จ่ายเบี้ยจากทุน {facts.double.sum}</span>
+        <span className="text-[var(--lg-mute)]">จ่ายเบี้ยจากทุน {facts.double.sumShort}</span>
         <br />
-        <span className="lg-metal-text">แต่ครอบครัวได้ {facts.double.before}</span>
+        <span className="lg-metal-text">แต่ครอบครัวได้ {facts.double.beforeShort}</span>
       </h2>
       <p className="relative mt-5 text-sm leading-[1.9] text-[var(--lg-mute)]">
         แบบนี้จ่ายเพิ่มอีก 1 เท่าของทุน เมื่อเสียชีวิตก่อนครบรอบปีกรมธรรม์ที่อายุ {facts.boosterBeforeAge}{" "}
