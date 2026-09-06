@@ -16,8 +16,10 @@ import type { PayMode, Sex } from "@/calc/types";
  */
 export interface LifeProtectTerm {
   variant: string;
-  /** what the term is called on the button and in the chat message, e.g. "จ่าย 19 ปี" */
+  /** what the term is called in prose and in the chat message, e.g. "จ่าย 19 ปี" */
   label: string;
+  /** the same term as it fits on a third of a phone screen, e.g. "ถึงอายุ 99" */
+  short: string;
   /** premium-paying years, when fixed */
   payTerm?: number;
   /** the age premiums are paid to, when the term runs to an age instead */
@@ -54,10 +56,10 @@ export interface LifeProtectTable {
 const PLAN_CODE = "LIFEPROTECT";
 
 /** The three payment terms of ไลฟ์ โพรเทค+ 100, in the order the page offers them. */
-const TERMS: { variant: string; label: string }[] = [
-  { variant: "WLF09H", label: "จ่าย 9 ปี" },
-  { variant: "WLF19H", label: "จ่าย 19 ปี" },
-  { variant: "WLF99H", label: "จ่ายถึงอายุ 99" },
+const TERMS: { variant: string; label: string; short: string }[] = [
+  { variant: "WLF09H", label: "จ่าย 9 ปี", short: "จ่าย 9 ปี" },
+  { variant: "WLF19H", label: "จ่าย 19 ปี", short: "จ่าย 19 ปี" },
+  { variant: "WLF99H", label: "จ่ายถึงอายุ 99", short: "ถึงอายุ 99" },
 ];
 
 /** The ages the page quotes a cash value at, besides the end of the contract. */
@@ -99,6 +101,7 @@ export function lifeProtectTable(today: Date = new Date()): LifeProtectTable {
     return {
       variant: t.variant,
       label: t.label,
+      short: t.short,
       ...(pkg.payTermToAge !== undefined ? { payToAge: pkg.payTermToAge } : { payTerm: pkg.payTerm }),
       rates: {
         M: ages.map((age) => baseRate(rates, t.variant, "M", age) ?? null),

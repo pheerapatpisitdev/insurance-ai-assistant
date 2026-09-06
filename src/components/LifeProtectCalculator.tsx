@@ -102,7 +102,7 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
                     on ? "lg-metal-face border-[var(--lg-gold)] font-medium" : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
                   }`}
                 >
-                  <span className="block text-sm">{t.label}</span>
+                  <span className="block text-sm">{t.short}</span>
                   {price && <span className="mt-0.5 block text-xs tabular-nums opacity-80">{price}</span>}
                 </button>
               );
