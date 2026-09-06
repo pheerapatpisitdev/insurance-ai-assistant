@@ -63,9 +63,9 @@ describe("lifeProtectFacts", () => {
     expect(f).toMatchObject({
       expired: false, rateVersion: "A2026-1", ageMin: 0, ageMax: 80, boosterBeforeAge: 60, coverToAge: 99,
       // หญิง 35 · ทุน 500,000 · ถึง 99: 7,100 บาท/ปี ÷ 365 = 19.5 → 20
-      fromAge: 35, fromSum: "500,000", fromPerDay: 20,
+      fromAge: 35, fromSum: "500,000", fromDouble: "1,000,000", fromPerDay: 20,
       // ลูกชายแรกเกิด · 1 ล้าน · จ่าย 19 ปี: 14.00 per thousand → 1,260 a month
-      newborn: { sum: "1,000,000", termLabel: "จ่าย 19 ปี", years: 19, premium: "1,260", per: "/เดือน" },
+      newborn: { sum: "1,000,000", double: "2,000,000", termLabel: "จ่าย 19 ปี", years: 19, premium: "1,260", per: "/เดือน" },
       double: { sum: "1,000,000", before: "2,000,000" },
       cash60: "504,000",
     });

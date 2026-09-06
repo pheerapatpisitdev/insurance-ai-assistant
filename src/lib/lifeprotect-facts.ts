@@ -32,11 +32,13 @@ export interface LifeProtectCopyFacts {
   /** the cheapest honest opening figure: a woman of `fromAge` on the smallest sum, paying to 99 */
   fromAge: number;
   fromSum: string;
+  /** what the family receives on that smallest sum before the booster age — twice it */
+  fromDouble: string;
   fromPerDay: number | null;
   /** the block that compares the three terms */
   example: { age: number; sex: Sex; sum: string; terms: TermExample[] };
   /** the block about buying for a child */
-  newborn: { sum: string; termLabel: string; years: number; premium: string | null; per: string | null };
+  newborn: { sum: string; double: string; termLabel: string; years: number; premium: string | null; per: string | null };
   /** the block about paying double */
   double: { sum: string; before: string };
   /** the cash value the FAQ quotes: the example insured, 19-year term, at 60 */
@@ -74,6 +76,7 @@ export function lifeProtectFacts(today: Date = new Date()): LifeProtectCopyFacts
     coverToAge: table.coverToAge,
     fromAge: FROM.age,
     fromSum: money(FROM.sum),
+    fromDouble: money(deathBenefitOf(table, FROM.age, FROM.sum).sumBefore),
     fromPerDay: table.expired || !from ? null : perDay(from.total),
     example: {
       age: EXAMPLE.age,
@@ -94,6 +97,7 @@ export function lifeProtectFacts(today: Date = new Date()): LifeProtectCopyFacts
     },
     newborn: {
       sum: money(NEWBORN.sum),
+      double: money(deathBenefitOf(table, NEWBORN.age, NEWBORN.sum).sumBefore),
       termLabel: childTerm.label,
       years: payYears(childTerm, NEWBORN.age),
       premium: child ? formatBaht(child.total) : null,

@@ -3,18 +3,62 @@ import { Fold, H2, Rule } from "@/components/sales/Blocks";
 import type { LifeProtectCopyFacts } from "@/lib/lifeprotect-facts";
 
 /**
- * What sets a level-premium, limited-pay whole life apart from the cover people think they
- * already have. Three counted points, as on /legacy: a reckoning, not a feature list.
+ * The page's pitch, in its only framed panel and straight after the price: the sum the
+ * customer chose, and twice it for the family while the children are still young. The
+ * worked example uses the same insured as the calculator's opening state, so a reader who
+ * has just seen 2,583 a month sees what that buys.
  */
-export function WhySection() {
+export function DoubleSection({ facts }: { facts: LifeProtectCopyFacts }) {
+  const term19 = facts.example.terms[1];
+  return (
+    <section className="relative overflow-hidden rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] px-6 py-9">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 -top-24 h-48 bg-[radial-gradient(60%_100%_at_50%_100%,var(--lg-gold-glow),transparent_70%)]"
+      />
+      <h2 className="relative text-[1.4rem] font-medium leading-snug sm:text-2xl">
+        <span className="text-[var(--lg-mute)]">จ่ายเบี้ยจากทุน {facts.double.sum}</span>
+        <br />
+        <span className="lg-metal-text">แต่ครอบครัวได้ {facts.double.before}</span>
+      </h2>
+      <p className="relative mt-5 text-sm leading-[1.9] text-[var(--lg-mute)]">
+        แบบนี้จ่ายเพิ่มอีก 1 เท่าของทุน เมื่อเสียชีวิตก่อนครบรอบปีกรมธรรม์ที่อายุ {facts.boosterBeforeAge}{" "}
+        <span className="font-medium text-[var(--lg-white)]">
+          ช่วงที่ลูกยังเรียน บ้านยังผ่อน และครอบครัวพึ่งรายได้ของคุณมากที่สุด
+        </span>
+      </p>
+      <p className="relative mt-4 text-sm leading-[1.9] text-[var(--lg-mute)]">
+        ชายอายุ {facts.example.age} ทำทุน {facts.example.sum} บาท {term19.label}
+        {term19.premium ? ` เดือนละ ${term19.premium} บาท` : ""} ถ้าจากไปก่อนอายุ {facts.boosterBeforeAge} ครอบครัวได้{" "}
+        <span className="font-medium text-[var(--lg-gold)]">{facts.double.before} บาท</span>{" "}
+        ตั้งแต่อายุ {facts.boosterBeforeAge} ถึง {facts.coverToAge} ได้ {facts.double.sum} บาท
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Why twice the sum is the thing to buy, in three counted points: it lands in the years
+ * that matter, the premium is level and stops, and the cover does not end at 60.
+ */
+export function WhySection({ facts }: { facts: LifeProtectCopyFacts }) {
   const points = [
-    { title: "เบี้ยเท่าเดิมทุกปี", body: "คิดจากอายุวันที่เริ่ม ไม่ขึ้นตามอายุ ไม่ต้องลุ้นทุกปีว่าจะจ่ายไหวไหม" },
-    { title: "จ่าย 9 หรือ 19 ปีแล้วจบ", body: "แต่ความคุ้มครองอยู่ถึงอายุ 99 จ่ายจบตอนยังทำงานอยู่ ไม่ต้องจ่ายตอนเกษียณ" },
-    { title: "ไม่ใช่จ่ายทิ้ง", body: "กรมธรรม์มีมูลค่าเงินสดสะสม ต้องใช้ฉุกเฉินก็เวนคืนหรือกู้ได้ตามเงื่อนไข" },
+    {
+      title: "ได้ 2 เท่าในช่วงที่เสี่ยงที่สุด",
+      body: `อายุ 30–59 คือช่วงที่ภาระหนักที่สุดและครอบครัวขาดคุณไม่ได้ แบบนี้จ่าย 2 เท่าตรงช่วงนั้นพอดี ทุน ${facts.double.sum} จึงเป็น ${facts.double.before} ในวันที่ต้องใช้`,
+    },
+    {
+      title: "เบี้ยเท่าเดิมทุกปี และจ่ายจบ",
+      body: "เบี้ยคิดจากอายุวันที่เริ่ม ไม่ขึ้นตามอายุ เลือกจ่าย 9 หรือ 19 ปีแล้วจบ ความคุ้มครองอยู่ต่อโดยไม่ต้องจ่ายอีก",
+    },
+    {
+      title: `หลังอายุ ${facts.boosterBeforeAge} ยังอยู่ต่อถึง ${facts.coverToAge}`,
+      body: "ความคุ้มครองเท่าทุนต่อจนถึงอายุ 99 พร้อมมูลค่าเงินสดสะสมที่เวนคืนหรือกู้ได้ตามเงื่อนไข ไม่ใช่จ่ายทิ้ง",
+    },
   ];
   return (
     <section className="py-12">
-      <H2>ประกันที่จ่ายจบ แล้วอยู่กับครอบครัวไปตลอด</H2>
+      <H2>ทุนเท่ากัน แต่ครอบครัวได้มากกว่า</H2>
       <div className="mt-7 space-y-6">
         {points.map((p, i) => (
           <div key={p.title} className="flex gap-4">
@@ -28,31 +72,6 @@ export function WhySection() {
           </div>
         ))}
       </div>
-    </section>
-  );
-}
-
-/** The secondary promise, in the page's only framed panel. */
-export function DoubleSection({ facts }: { facts: LifeProtectCopyFacts }) {
-  return (
-    <section className="relative overflow-hidden rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] px-6 py-9">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-24 h-48 bg-[radial-gradient(60%_100%_at_50%_100%,var(--lg-gold-glow),transparent_70%)]"
-      />
-      <h2 className="relative text-[1.4rem] font-medium leading-snug sm:text-2xl">
-        <span className="text-[var(--lg-mute)]">ช่วงที่ครอบครัวพึ่งคุณที่สุด</span>
-        <br />
-        <span className="lg-metal-text">ก่อนอายุ {facts.boosterBeforeAge} ครอบครัวได้ 2 เท่าของทุน</span>
-      </h2>
-      <p className="relative mt-5 text-sm leading-[1.9] text-[var(--lg-mute)]">
-        ช่วงที่ลูกยังเรียน บ้านยังผ่อน คือช่วงที่การจากไปกระทบหนักที่สุด แบบนี้จึงจ่ายสองเท่าในช่วงนั้น
-      </p>
-      <p className="relative mt-4 text-sm leading-[1.9] text-[var(--lg-mute)]">
-        ทุน {facts.double.sum} บาท → เสียชีวิตก่อนอายุ {facts.boosterBeforeAge} ได้{" "}
-        <span className="font-medium text-[var(--lg-gold)]">{facts.double.before} บาท</span>{" "}
-        ตั้งแต่อายุ {facts.boosterBeforeAge} ถึง {facts.coverToAge} ได้ {facts.double.sum} บาท
-      </p>
     </section>
   );
 }
@@ -73,6 +92,7 @@ export function TermsSection({ facts }: { facts: LifeProtectCopyFacts }) {
       <H2>เลือกงวดชำระแบบไหนดี</H2>
       <p className="mt-2 text-sm text-[var(--lg-mute)]">
         ตัวอย่าง{facts.example.sex === "M" ? "ชาย" : "หญิง"}อายุ {facts.example.age} ทุน {facts.example.sum} บาท
+        {" "}— ทุกแบบครอบครัวได้ {facts.double.before} ก่อนอายุ {facts.boosterBeforeAge} เท่ากัน ต่างกันที่จ่ายกี่ปี
       </p>
       <div className="mt-7 space-y-6">
         {facts.example.terms.map((t, i) => (
@@ -95,21 +115,25 @@ export function TermsSection({ facts }: { facts: LifeProtectCopyFacts }) {
   );
 }
 
-/** The second buyer: a parent, for whom the level premium is at its cheapest. */
+/**
+ * The second buyer: a parent. For a newborn the doubled sum runs for sixty years, and the
+ * level premium is at its cheapest, so the same arithmetic reads even better here.
+ */
 export function ChildSection({ facts }: { facts: LifeProtectCopyFacts }) {
   const n = facts.newborn;
   return (
     <section className="pb-12">
       <Rule />
       <div className="pt-8">
-        <H2>ของขวัญที่จ่ายจบก่อนลูกเรียนจบ</H2>
+        <H2>ให้ลูก: ทุนคูณสองไปจนถึงอายุ {facts.boosterBeforeAge} ของเขา</H2>
         <p className="mt-5 text-sm leading-[1.9] text-[var(--lg-mute)]">
-          ลูกชายแรกเกิด ทุน {n.sum} บาท {n.termLabel}
+          ลูกชายแรกเกิด ทำทุน {n.sum} บาท {n.termLabel}
           {n.premium ? (
             <> ราว <span className="font-medium text-[var(--lg-white)]">{n.premium} บาท{n.per}</span></>
           ) : null}
-          {" "}เบี้ยล็อกที่อายุแรกเกิดตลอด {n.years} ปี พอลูกอายุ {n.years} พ่อแม่จ่ายจบ ลูกมีประกันชีวิตติดตัวถึงอายุ{" "}
-          {facts.coverToAge} พร้อมมูลค่าเงินสดที่โตขึ้นทุกปี
+          {" "}พ่อแม่จ่ายจบตอนลูกอายุ {n.years} ลูกมีความคุ้มครอง{" "}
+          <span className="font-medium text-[var(--lg-gold)]">{n.double} บาท</span> ติดตัวไปจนถึงอายุ {facts.boosterBeforeAge}{" "}
+          แล้วต่อด้วย {n.sum} บาทถึงอายุ {facts.coverToAge} พร้อมมูลค่าเงินสดที่โตขึ้นทุกปี เบี้ยล็อกที่อายุแรกเกิดตลอด {n.years} ปี
         </p>
         <p className="mt-3 text-xs text-[var(--lg-mute)] opacity-75">ผู้เยาว์ต้องมีผู้ชำระเบี้ย ทักมาให้เราจัดให้</p>
       </div>
@@ -117,9 +141,17 @@ export function ChildSection({ facts }: { facts: LifeProtectCopyFacts }) {
   );
 }
 
-/** The objections, answered before they are raised. Whether the premium rises leads. */
+/** The objections, answered before they are raised. Where the doubling comes from leads. */
 export function FaqSection({ facts }: { facts: LifeProtectCopyFacts }) {
   const faqs: { q: string; a: React.ReactNode }[] = [
+    {
+      q: "ทำไมครอบครัวถึงได้ 2 เท่า",
+      a: `Life Protect+ 100 จ่ายทุนประกันบวกเพิ่มอีก 1 เท่า เมื่อเสียชีวิตก่อนครบรอบปีกรมธรรม์ที่อายุ ${facts.boosterBeforeAge} ตั้งแต่อายุ ${facts.boosterBeforeAge} เป็นต้นไปจ่ายเท่าทุนจนถึงอายุ ${facts.coverToAge} เป็นเงื่อนไขของแบบประกันเอง ไม่ต้องซื้อสัญญาเพิ่มเติม`,
+    },
+    {
+      q: `ถ้าเริ่มทำตอนอายุ ${facts.boosterBeforeAge} ขึ้นไป ยังได้ 2 เท่าไหม`,
+      a: `ไม่ได้ ส่วนเพิ่มมีเฉพาะก่อนอายุ ${facts.boosterBeforeAge} ตัวคำนวณด้านบนจะแสดงความคุ้มครองเท่าทุนให้เห็นตรง ๆ เมื่อเลือกอายุตั้งแต่ ${facts.boosterBeforeAge} ปี`,
+    },
     {
       q: "เบี้ยจะขึ้นไหม",
       a: "ไม่ขึ้น เบี้ยของแบบหลักคิดจากอายุวันที่เริ่ม และคงที่ตลอดระยะเวลาชำระ ต่างจากสัญญาเพิ่มเติมโรคร้ายแรงที่ปรับตามอายุ",
@@ -179,6 +211,7 @@ export function Disclaimer({ facts }: { facts: LifeProtectCopyFacts }) {
             : `เบี้ยที่แสดงเป็นเบี้ยมาตรฐานโดยประมาณ คำนวณจากตารางเบี้ยฉบับ ${facts.rateVersion} ใช้ประกอบการตัดสินใจเบื้องต้นเท่านั้น ไม่ใช่ใบเสนอราคาและไม่ใช่ส่วนหนึ่งของสัญญาประกันภัย`}
         </p>
         <p className="mt-2.5">
+          ผลประโยชน์ 2 เท่าจ่ายเมื่อเสียชีวิตก่อนครบรอบปีกรมธรรม์ที่อายุ {facts.boosterBeforeAge} ตามเงื่อนไขในกรมธรรม์
           มูลค่าเวนคืนเป็นไปตามตารางในกรมธรรม์ ความคุ้มครองและข้อยกเว้นเป็นไปตามที่ระบุในกรมธรรม์
           การพิจารณารับประกันเป็นไปตามหลักเกณฑ์ของบริษัท
         </p>

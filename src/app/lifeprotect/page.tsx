@@ -8,17 +8,18 @@ import {
 } from "@/components/lifeprotect/Sections";
 
 export const metadata = {
-  title: "Life Protect+ 100 — มรดกที่แน่นอน จ่ายจบ ไม่ต้องจ่ายทั้งชีวิต",
+  title: "Life Protect+ 100 — ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้าน",
   description:
-    "ประกันชีวิตตลอดชีพ เลือกจ่าย 9 ปี 19 ปี หรือถึงอายุ 99 เบี้ยคงที่ คุ้มครองถึงอายุ 99 เสียชีวิตก่อน 60 ครอบครัวได้ 2 เท่า คำนวณเบี้ยของคุณเองได้ทันที",
+    "ประกันชีวิตตลอดชีพ เสียชีวิตก่อนอายุ 60 ครอบครัวได้ 2 เท่าของทุน เบี้ยเท่าเดิมทุกปี เลือกจ่าย 9 ปี 19 ปี หรือถึงอายุ 99 คำนวณเบี้ยของคุณเองได้ทันที",
 };
 
 /** Regenerated hourly, as /legacy is: the contact channels are read from LINE and the database. */
 export const revalidate = 3600;
 
 /**
- * Same order of questions as /legacy — what is this, what does it cost, why would I need it,
- * what else does it do, which term, who else is it for, what am I still worried about.
+ * What is this, what does it cost, why twice the sum, what else is true of it, which term,
+ * who else is it for, what am I still worried about. The doubled sum is the page's pitch, so
+ * its panel comes straight after the price rather than after the reasons.
  */
 export default async function LifeProtectPage() {
   const channels = await legacyChannels();
@@ -30,8 +31,8 @@ export default async function LifeProtectPage() {
       <section id="calc" className="scroll-mt-4">
         <LifeProtectCalculator table={table} channels={channels} sticky />
       </section>
-      <WhySection />
       <DoubleSection facts={facts} />
+      <WhySection facts={facts} />
       <TermsSection facts={facts} />
       <ChildSection facts={facts} />
       <FaqSection facts={facts} />

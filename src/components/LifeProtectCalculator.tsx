@@ -98,6 +98,23 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
             <span>5 แสน</span>
             <span>50 ล้าน</span>
           </div>
+          {/* the doubled sum sits under the sum being chosen, because it is the reason to choose
+              it; once the insured is past the booster age the line tells the plain truth instead */}
+          {ageNum !== undefined && ageNum >= table.boosterBeforeAge ? (
+            <p className="mt-4 text-sm leading-relaxed text-[var(--lg-mute)]">
+              ครอบครัวได้รับ{" "}
+              <span className="lg-figure text-lg tabular-nums text-[var(--lg-white)]">{sumAssured.toLocaleString("en-US")}</span> บาท
+              {" "}· ตั้งแต่อายุ {table.boosterBeforeAge} คุ้มครองเท่าทุน
+            </p>
+          ) : (
+            <p className="mt-4 text-sm leading-relaxed text-[var(--lg-mute)]">
+              เสียชีวิตก่อนอายุ {table.boosterBeforeAge} ครอบครัวได้{" "}
+              <span className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">
+                {deathBenefitOf(table, 0, sumAssured).sumBefore.toLocaleString("en-US")}
+              </span>{" "}
+              บาท <span className="opacity-70">(2 เท่าของทุน)</span>
+            </p>
+          )}
         </div>
 
         <div>

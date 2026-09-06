@@ -1,9 +1,10 @@
 import type { LifeProtectCopyFacts } from "@/lib/lifeprotect-facts";
 
 /**
- * The first three seconds. The promise is a sum that arrives for certain and a premium that
- * stops, which is the opposite pitch to /legacy — and the page says so before the fold, with
- * the one figure a stranger can hold and the reassurance that nothing will be asked of them.
+ * The first three seconds. The pitch is arithmetic a stranger can check on the spot: the sum
+ * they choose, and twice it for the family while the children are still young. The premium
+ * that stops and the cover that runs to 99 follow, and the line under the button says that
+ * nothing will be asked of them for the number.
  */
 export function Hero({ facts }: { facts: LifeProtectCopyFacts }) {
   return (
@@ -16,16 +17,17 @@ export function Hero({ facts }: { facts: LifeProtectCopyFacts }) {
         className="lg-rise mt-5 text-[2rem] font-medium leading-[1.28] text-[var(--lg-white)] sm:text-[2.6rem]"
         style={{ animationDelay: "90ms" }}
       >
-        มรดกที่แน่นอน
+        ทำทุนไว้ {facts.double.sum}
         <br />
-        <span className="lg-metal-text">จ่ายจบ ไม่ต้องจ่ายทั้งชีวิต</span>
+        <span className="lg-metal-text">ครอบครัวได้ {facts.double.before}</span>
       </h1>
 
       <p className="lg-rise mt-5 text-base leading-[1.85] text-[var(--lg-mute)]" style={{ animationDelay: "180ms" }}>
-        เลือกจ่าย 9 ปี 19 ปี หรือถึงอายุ {facts.coverToAge} เบี้ยเท่าเดิมทุกปี คุ้มครองถึงอายุ {facts.coverToAge}{" "}
         <span className="font-medium text-[var(--lg-white)]">
-          เสียชีวิตก่อน {facts.boosterBeforeAge} ครอบครัวได้ 2 เท่า
-        </span>
+          เสียชีวิตก่อนอายุ {facts.boosterBeforeAge} รับ 2 เท่าของทุนประกัน
+        </span>{" "}
+        ในช่วงที่ลูกยังเรียน บ้านยังผ่อน เบี้ยเท่าเดิมทุกปี เลือกจ่าย 9 ปี 19 ปี หรือถึงอายุ {facts.coverToAge}{" "}
+        คุ้มครองถึงอายุ {facts.coverToAge}
       </p>
 
       <div className="lg-rise" style={{ animationDelay: "270ms" }}>
@@ -37,7 +39,7 @@ export function Hero({ facts }: { facts: LifeProtectCopyFacts }) {
         </a>
         <p className="mt-4 text-center text-xs leading-relaxed text-[var(--lg-mute)]">
           {facts.fromPerDay !== null && (
-            <>อายุ {facts.fromAge} เริ่มต้นวันละ {facts.fromPerDay} บาท · </>
+            <>ทุน {facts.fromSum} คุ้มครอง {facts.fromDouble} เริ่มต้นวันละ {facts.fromPerDay} บาท (อายุ {facts.fromAge}) · </>
           )}
           รับแรกเกิด–{facts.ageMax} ปี · ไม่ต้องกรอกเบอร์
         </p>
