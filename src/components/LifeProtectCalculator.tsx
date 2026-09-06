@@ -14,10 +14,16 @@ import { ContactButtons } from "@/components/sales/ContactButtons";
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
 const PER_LABEL = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" } as const;
 
-const SUM_MIN = 500_000;
-const SUM_MAX = 10_000_000;
-const SUM_STEP = 500_000;
-const SUM_START = 1_000_000;
+/**
+ * The sums the slider offers: every half million up to ten, then every million up to fifty.
+ * One step the whole way would be a hundred stops on a thumb-wide track; the coarser upper
+ * half keeps the slider usable where the extra half-millions matter least.
+ */
+const SUMS = [
+  ...Array.from({ length: 20 }, (_, i) => 500_000 * (i + 1)),
+  ...Array.from({ length: 40 }, (_, i) => 11_000_000 + 1_000_000 * i),
+];
+const SUM_START_INDEX = SUMS.indexOf(1_000_000);
 /** the term the page opens on: the middle one, and the one the copy recommends */
 const TERM_START = "WLF19H";
 /** the last age the "bought for a child" note shows at */
@@ -41,7 +47,8 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
     () => Array.from({ length: table.ageMax - table.ageMin + 1 }, (_, i) => table.ageMin + i),
     [table.ageMin, table.ageMax],
   );
-  const [sumAssured, setSum] = useState(SUM_START);
+  const [sumIndex, setSumIndex] = useState(SUM_START_INDEX);
+  const sumAssured = SUMS[sumIndex];
   const [variant, setVariant] = useState(TERM_START);
   const [age, setAge] = useState<LifeProtectAge>("");
   const [sex, setSex] = useState<Sex>("M");
@@ -79,13 +86,13 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
             <span className="text-lg text-[var(--lg-mute)]">บาท</span>
           </div>
           <input
-            id="lp-sum" type="range" min={SUM_MIN} max={SUM_MAX} step={SUM_STEP} value={sumAssured}
-            onChange={(e) => setSum(Number(e.target.value))}
+            id="lp-sum" type="range" min={0} max={SUMS.length - 1} step={1} value={sumIndex}
+            onChange={(e) => setSumIndex(Number(e.target.value))}
             className="mt-4 w-full accent-[var(--lg-gold)]"
           />
           <div className="mt-1 flex justify-between text-xs text-[var(--lg-mute)] opacity-70">
             <span>5 แสน</span>
-            <span>10 ล้าน</span>
+            <span>50 ล้าน</span>
           </div>
         </div>
 
