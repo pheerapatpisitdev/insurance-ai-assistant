@@ -13,21 +13,23 @@ export function Hero({ facts }: { facts: LifeProtectCopyFacts }) {
         ประกันชีวิตตลอดชีพ Life Protect+ 100
       </p>
 
+      {/* Two short lines a thumb can read mid-scroll: the customer's number, then the
+          family's. Spelled "1 ล้าน", not "1,000,000" — seven digits twice is arithmetic
+          homework, two words is a claim. */}
       <h1
-        className="lg-rise mt-5 text-[2rem] font-medium leading-[1.28] text-[var(--lg-white)] sm:text-[2.6rem]"
+        className="lg-rise mt-5 text-[2.2rem] font-medium leading-[1.2] text-[var(--lg-white)] sm:text-[2.9rem]"
         style={{ animationDelay: "90ms" }}
       >
-        ทำทุนไว้ {facts.double.sum}
+        {facts.double.sumShort}ของคุณ
         <br />
-        <span className="lg-metal-text">ครอบครัวได้ {facts.double.before}</span>
+        <span className="lg-metal-text">= {facts.double.beforeShort}ของครอบครัว</span>
       </h1>
 
       <p className="lg-rise mt-5 text-base leading-[1.85] text-[var(--lg-mute)]" style={{ animationDelay: "180ms" }}>
         <span className="font-medium text-[var(--lg-white)]">
-          เสียชีวิตก่อนอายุ {facts.boosterBeforeAge} รับ 2 เท่าของทุนประกัน
+          จากไปก่อนอายุ {facts.boosterBeforeAge} ครอบครัวรับ 2 เท่าของทุน
         </span>{" "}
-        ในช่วงที่ลูกยังเรียน บ้านยังผ่อน เบี้ยเท่าเดิมทุกปี เลือกจ่าย 9 ปี 19 ปี หรือถึงอายุ {facts.coverToAge}{" "}
-        คุ้มครองถึงอายุ {facts.coverToAge}
+        ช่วงที่ลูกยังเรียน บ้านยังผ่อน · เบี้ยเท่าเดิมทุกปี จ่ายจบใน 9 หรือ 19 ปี คุ้มครองถึงอายุ {facts.coverToAge}
       </p>
 
       <div className="lg-rise" style={{ animationDelay: "270ms" }}>

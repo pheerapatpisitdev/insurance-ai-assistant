@@ -39,8 +39,8 @@ export interface LifeProtectCopyFacts {
   example: { age: number; sex: Sex; sum: string; terms: TermExample[] };
   /** the block about buying for a child */
   newborn: { sum: string; double: string; termLabel: string; years: number; premium: string | null; per: string | null };
-  /** the block about paying double */
-  double: { sum: string; before: string };
+  /** the block about paying double; the short forms ("1 ล้าน") are for the headline */
+  double: { sum: string; before: string; sumShort: string; beforeShort: string };
   /** the cash value the FAQ quotes: the example insured, 19-year term, at 60 */
   cash60: string;
 }
@@ -51,6 +51,11 @@ const NEWBORN = { age: 0, sex: "M" as Sex, sum: 1_000_000 };
 const CHILD_TERM = "WLF19H";
 
 const money = (baht: number) => baht.toLocaleString("en-US");
+/** A round sum the way it is said out loud: 1,000,000 → "1 ล้าน", 500,000 → "5 แสน". */
+export const spoken = (baht: number) =>
+  baht % 1_000_000 === 0 ? `${baht / 1_000_000} ล้าน`
+    : baht % 100_000 === 0 ? `${baht / 100_000} แสน`
+      : money(baht);
 
 export function lifeProtectFacts(today: Date = new Date()): LifeProtectCopyFacts {
   const table = lifeProtectTable(today);
@@ -103,7 +108,10 @@ export function lifeProtectFacts(today: Date = new Date()): LifeProtectCopyFacts
       premium: child ? formatBaht(child.total) : null,
       per: child ? PER[child.mode] : null,
     },
-    double: { sum: money(EXAMPLE.sum), before: money(death.sumBefore) },
+    double: {
+      sum: money(EXAMPLE.sum), before: money(death.sumBefore),
+      sumShort: spoken(EXAMPLE.sum), beforeShort: spoken(death.sumBefore),
+    },
     cash60: money(cash60.amount),
   };
 }
