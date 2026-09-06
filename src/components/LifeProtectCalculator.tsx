@@ -69,11 +69,15 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
 
   const message = lifeProtectMessage({ sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline });
 
-  /** the figure on a term button: that term's own headline instalment, once there is an age */
+  /**
+   * The figure on a term button: that term's yearly premium, once there is an age. Yearly on
+   * every button, whatever the card headlines — a row that mixed months and years (because
+   * one term fell under the monthly floor) could not be compared at a glance.
+   */
   const buttonPrice = (v: string): string | undefined => {
-    if (!who) return undefined;
-    const p = displayPremium(lifeProtectModes(table, termAt(table, v), who), table.expired);
-    return p ? `${formatBaht(p.total)}${PER[p.mode]}` : undefined;
+    if (!who || table.expired) return undefined;
+    const yearly = lifeProtectModes(table, termAt(table, v), who)?.find((m) => m.mode === "annual");
+    return yearly ? `${formatBaht(yearly.total)}${PER.annual}` : undefined;
   };
 
   return (
