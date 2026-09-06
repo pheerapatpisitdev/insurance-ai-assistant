@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { lifeProtectTable } from "@/lib/lifeprotect-table";
 import { getPlan } from "@/calc/plans/registry";
+import { lifeProtectFacts } from "@/lib/lifeprotect-facts";
 
 /** The rate table behind the page lapses on 2027-03-31. */
 const WHILE_CURRENT = new Date("2026-09-05");
@@ -53,5 +54,41 @@ describe("once the rate table has lapsed", () => {
     lifeProtectTable(WHILE_CURRENT);
     expect(lifeProtectTable(AFTER).expired).toBe(true);
     expect(lifeProtectTable(WHILE_CURRENT).expired).toBe(false);
+  });
+});
+
+describe("lifeProtectFacts", () => {
+  it("takes the sales copy's figures from the engine", () => {
+    const f = lifeProtectFacts(WHILE_CURRENT);
+    expect(f).toMatchObject({
+      expired: false, rateVersion: "A2026-1", ageMin: 0, ageMax: 80, boosterBeforeAge: 60, coverToAge: 99,
+      // หญิง 35 · ทุน 500,000 · ถึง 99: 7,100 บาท/ปี ÷ 365 = 19.5 → 20
+      fromAge: 35, fromSum: "500,000", fromPerDay: 20,
+      // ลูกชายแรกเกิด · 1 ล้าน · จ่าย 19 ปี: 14.00 per thousand → 1,260 a month
+      newborn: { sum: "1,000,000", termLabel: "จ่าย 19 ปี", years: 19, premium: "1,260", per: "/เดือน" },
+      double: { sum: "1,000,000", before: "2,000,000" },
+      cash60: "504,000",
+    });
+  });
+
+  it("compares the three terms for ชาย 35 · 1 ล้าน", () => {
+    const f = lifeProtectFacts(WHILE_CURRENT);
+    expect(f.example).toMatchObject({ age: 35, sum: "1,000,000" });
+    expect(f.example.terms).toEqual([
+      { label: "จ่าย 9 ปี", years: 9, premium: "4,914", per: "/เดือน", total: "491,400" },
+      { label: "จ่าย 19 ปี", years: 19, premium: "2,583", per: "/เดือน", total: "545,300" },
+      { label: "จ่ายถึงอายุ 99", years: 64, premium: "1,548", per: "/เดือน", total: "1,100,800" },
+    ]);
+  });
+
+  it("stops quoting a premium once the rate table has lapsed, but still states the benefits", () => {
+    const f = lifeProtectFacts(new Date("2027-04-01"));
+    expect(f.expired).toBe(true);
+    expect(f.fromPerDay).toBeNull();
+    expect(f.newborn.premium).toBeNull();
+    expect(f.example.terms.every((t) => t.premium === null && t.total === null)).toBe(true);
+    expect(f.example.terms.map((t) => t.years)).toEqual([9, 19, 64]);
+    expect(f.double.before).toBe("2,000,000");
+    expect(f.cash60).toBe("504,000");
   });
 });
