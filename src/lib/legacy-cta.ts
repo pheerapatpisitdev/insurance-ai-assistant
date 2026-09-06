@@ -30,7 +30,7 @@ export function perDay(annualSatang: number): number {
 }
 
 /** How each instalment reads after a figure, where the customer says it out loud. */
-const PER: Record<PayMode, string> = { annual: "/ปี", semi: "/6 เดือน", monthly: "/เดือน" };
+export const PER: Record<PayMode, string> = { annual: "/ปี", semi: "/6 เดือน", monthly: "/เดือน" };
 
 const SEX_WORD: Record<Sex, string> = { M: "ชาย", F: "หญิง" };
 

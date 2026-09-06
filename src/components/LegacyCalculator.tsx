@@ -5,7 +5,8 @@ import type { PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import type { LegacyAge } from "@/lib/legacy-cta";
-import { chatUrl, displayPremium, legacyMessage, lineUrl, messengerUrl, perDay } from "@/lib/legacy-cta";
+import { displayPremium, legacyMessage, perDay } from "@/lib/legacy-cta";
+import { ContactButtons } from "@/components/sales/ContactButtons";
 import type { LegacyChannels } from "@/lib/legacy-channels";
 import type { LegacyTable } from "@/lib/legacy-table";
 import { deathBenefitRows } from "@/lib/death-benefit";
@@ -223,44 +224,6 @@ export function LegacyCalculator({ table, channels, sticky = false }: LegacyCalc
           <ContactButtons channels={channels} message={message} compact />
         </div>
       )}
-    </div>
-  );
-}
-
-/**
- * The way out of the page, in every channel that has been configured. A channel with no
- * setting is left out rather than shown broken, so a page with only the assistant wired up
- * still reads as finished.
- *
- * The message is prepared, never sent: pressing send stays the customer's own act.
- */
-function ContactButtons(
-  { channels, message, compact = false }: { channels: LegacyChannels; message: string; compact?: boolean },
-) {
-  const shape = compact
-    ? "rounded-sm px-3 py-2.5 text-center text-sm font-medium"
-    : "rounded-sm px-5 py-3.5 text-center font-medium tracking-wide";
-  return (
-    <div className={compact ? "flex gap-2 [&>*]:flex-1" : "grid gap-2"}>
-      {channels.lineOaId && (
-        <a
-          href={lineUrl(channels.lineOaId, message)} target="_blank" rel="noopener noreferrer"
-          className={`${shape} lg-metal-face${compact ? "" : " lg-sheen"}`}
-        >
-          {compact ? "ทักไลน์" : "ทักไลน์ปรึกษาฟรี"}
-        </a>
-      )}
-      {channels.messengerPage && (
-        <a
-          href={messengerUrl(channels.messengerPage, message)} target="_blank" rel="noopener noreferrer"
-          className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`}
-        >
-          {compact ? "Messenger" : "ทัก Messenger"}
-        </a>
-      )}
-      <a href={chatUrl(message)} className={`${shape} border border-[var(--lg-panel-line)] text-[var(--lg-mute)]`}>
-        {compact ? "ถาม AI" : "ถาม AI ก่อนก็ได้"}
-      </a>
     </div>
   );
 }
