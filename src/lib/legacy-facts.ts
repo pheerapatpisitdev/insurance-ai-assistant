@@ -39,8 +39,11 @@ export interface LegacyCopyFacts {
 }
 
 const BUNDLE = getBundle("LEGACY_FAMILY")!;
-/** The figure in the hero belongs to a woman of this age on the smallest plan. */
-const FROM_AGE = 35;
+/**
+ * The figure in the hero belongs to a woman of this age on the smallest plan — the same
+ * pair the calculator opens on, so the page does not quote one example and then show another.
+ */
+const FROM_AGE = 30;
 /** The two ages the FAQ contrasts to show what starting later costs. */
 const WAIT_FROM = 30;
 const WAIT_TO = 45;

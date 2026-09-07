@@ -14,6 +14,17 @@ import { deathBenefitRows } from "@/lib/death-benefit";
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
 const PER_LABEL: Record<PayMode, string> = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" };
 
+/**
+ * The card opens on a priced example rather than empty. A cold visitor should meet a number,
+ * not a form: an empty card is one more thing to do before the thing they came for.
+ *
+ * A woman of 30 on the smallest plan is the cheapest honest opening in the table, and the
+ * one the hero already quotes. Anyone whose own figures differ changes two controls to see
+ * them.
+ */
+const AGE_START = 30;
+const SEX_START: Sex = "F";
+
 /** The order the server packed each row of prices in. */
 const ROW_MODES: PayMode[] = ["annual", "semi", "monthly"];
 
@@ -58,8 +69,8 @@ export function LegacyCalculator({ table, channels, sticky = false }: LegacyCalc
     [RANGE.min, RANGE.max],
   );
   const [millions, setMillions] = useState(1);
-  const [age, setAge] = useState<LegacyAge>("");
-  const [sex, setSex] = useState<Sex>("M");
+  const [age, setAge] = useState<LegacyAge>(AGE_START);
+  const [sex, setSex] = useState<Sex>(SEX_START);
 
   // The picker only offers ages the bundle takes, so a number here is always one of them;
   // everyone else picks the way out and is answered rather than quoted.

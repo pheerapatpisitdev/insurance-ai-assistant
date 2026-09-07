@@ -58,8 +58,8 @@ describe("legacyFacts", () => {
     const f = legacyFacts(WHILE_CURRENT);
     expect(f).toMatchObject({
       expired: false, rateVersion: "A2026-1", ageMin: 20, ageMax: 65, diseaseCount: 31,
-      // หญิง 35 · มรดก 1 ล้าน: 4,858.50 บาท/ปี ÷ 365
-      fromAge: 35, fromPerDay: 14,
+      // หญิง 30 · มรดก 1 ล้าน: 4,123 บาท/ปี ÷ 365 — the pair the calculator opens on
+      fromAge: 30, fromPerDay: 12,
       waiting: { youngAge: 30, young: "4,897", olderAge: 45, older: "10,716" },
     });
     expect(f.plan1).toEqual({
