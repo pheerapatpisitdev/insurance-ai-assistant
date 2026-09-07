@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { siteUrl } from "@/lib/site-url";
 import { after } from "next/server";
 import { verifySignature, verifyTokenMatches, hashUserId } from "@/lib/facebook/verify";
 import { claimEvent, loadSession, saveSession } from "@/lib/chat/session";
-import { sendMessage, showTyping } from "@/lib/facebook/client";
+import { sendMessage, showTyping, sendImage } from "@/lib/facebook/client";
 import { answerQuestion } from "@/lib/assistant/answer";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
@@ -83,6 +84,8 @@ async function handle(event: Messaging): Promise<void> {
   try {
     const answer = await answerQuestion(history, session.slots);
     await sendMessage(psid, answer.reply);
+    // the card follows the words, so the customer reads the answer before the picture of it
+    if (answer.card) await sendImage(psid, siteUrl(answer.card)).catch((e) => console.error("card failed:", e));
     await saveSession("facebook", userHash, [...history, { role: "assistant", content: answer.reply }], answer.slots);
     await alertLead({
       channel: "facebook", userHash, question: text, reply: answer.reply,

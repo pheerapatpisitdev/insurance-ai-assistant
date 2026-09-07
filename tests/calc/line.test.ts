@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import crypto from "crypto";
 import { verifySignature, hashUserId } from "@/lib/line/verify";
-import { toBubbles } from "@/lib/line/client";
+import { toBubbles, toMessages } from "@/lib/line/client";
 
 const SECRET = "test-channel-secret";
 
@@ -81,5 +81,33 @@ describe("splitting an answer into LINE bubbles", () => {
   it("keeps every character of an answer that fits", () => {
     const text = `${"จ".repeat(3000)}\n\n${"ฉ".repeat(3000)}`;
     expect(toBubbles(text).map((b) => b.text).join("\n\n")).toBe(text);
+  });
+});
+
+/**
+ * A priced answer now carries a card, and LINE takes at most five messages in one reply — so
+ * the picture takes the last slot rather than being dropped, and the words give one up.
+ */
+describe("toMessages", () => {
+  it("sends the words alone when there is no card", () => {
+    expect(toMessages("สวัสดีครับ")).toEqual([{ type: "text", text: "สวัสดีครับ" }]);
+  });
+
+  it("puts the card after the words", () => {
+    const url = "https://www.advisortool.app/api/card?plan=LIFEPROTECT";
+    expect(toMessages("เบี้ยรายเดือน 2,583 บาท", url)).toEqual([
+      { type: "text", text: "เบี้ยรายเดือน 2,583 บาท" },
+      { type: "image", originalContentUrl: url, previewImageUrl: url },
+    ]);
+  });
+
+  it("never sends more than the five LINE accepts", () => {
+    const long = Array.from({ length: 8 }, (_, i) => `ย่อหน้า ${i}`).join("\n\n".repeat(1));
+    const many = Array.from({ length: 8 }, (_, i) => "ก".repeat(4800) + i).join("\n\n");
+    for (const text of [long, many]) {
+      const messages = toMessages(text, "https://example.com/card.png");
+      expect(messages.length).toBeLessThanOrEqual(5);
+      expect(messages[messages.length - 1].type).toBe("image");
+    }
   });
 });

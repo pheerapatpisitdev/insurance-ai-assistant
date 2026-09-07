@@ -9,6 +9,8 @@ interface Turn {
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
+  /** where a priced answer is drawn as a card the customer can save */
+  card?: string;
 }
 
 const EXAMPLES = [
@@ -58,7 +60,7 @@ export function ChatClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "ตอบไม่ได้ในตอนนี้");
       slots.current = data.slots ?? null;
-      setTurns([...next, { role: "assistant", content: data.reply, sources: data.sources }]);
+      setTurns([...next, { role: "assistant", content: data.reply, sources: data.sources, card: data.card }]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "ตอบไม่ได้ในตอนนี้");
     } finally {
@@ -96,6 +98,15 @@ export function ChatClient() {
               }
             >
               {t.content}
+              {t.card && (
+                // the card is drawn per quote and already sized for a phone, so there is
+                // nothing for the image optimiser to do but add a hop
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={t.card} alt="สรุปเบี้ยและผลประโยชน์" width={1000} height={1000}
+                  className="mt-3 h-auto w-full max-w-[420px] rounded-xl border border-slate-300"
+                />
+              )}
               {t.sources && t.sources.length > 0 && (
                 <div className="mt-2 border-t border-slate-300 pt-2 text-xs text-slate-500">
                   {t.sources.map((s, n) => (

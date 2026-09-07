@@ -33,6 +33,26 @@ export function toBubbles(text: string): { type: "text"; text: string }[] {
   return chunks.slice(0, MAX_BUBBLES).map((t) => ({ type: "text" as const, text: t }));
 }
 
+export type LineMessage =
+  | { type: "text"; text: string }
+  | { type: "image"; originalContentUrl: string; previewImageUrl: string };
+
+/**
+ * The words, and the card underneath them when there is one.
+ *
+ * LINE takes at most five messages in one reply, so the picture takes the last slot and the
+ * text gives one up rather than being dropped — an answer that ran to five bubbles was
+ * already too long to read on a phone.
+ */
+export function toMessages(text: string, imageUrl?: string): LineMessage[] {
+  const bubbles = toBubbles(text);
+  if (!imageUrl) return bubbles;
+  return [
+    ...bubbles.slice(0, MAX_BUBBLES - 1),
+    { type: "image", originalContentUrl: imageUrl, previewImageUrl: imageUrl },
+  ];
+}
+
 async function send(url: string, body: unknown): Promise<void> {
   const res = await fetch(url, {
     method: "POST",
@@ -42,11 +62,11 @@ async function send(url: string, body: unknown): Promise<void> {
   if (!res.ok) throw new Error(`LINE ${res.status}: ${(await res.text()).slice(0, 300)}`);
 }
 
-export async function reply(replyToken: string, text: string): Promise<void> {
-  await send(REPLY_URL, { replyToken, messages: toBubbles(text) });
+export async function reply(replyToken: string, text: string, imageUrl?: string): Promise<void> {
+  await send(REPLY_URL, { replyToken, messages: toMessages(text, imageUrl) });
 }
 
 /** Used when the reply token has expired, which happens once an answer takes too long. */
-export async function push(to: string, text: string): Promise<void> {
-  await send(PUSH_URL, { to, messages: toBubbles(text) });
+export async function push(to: string, text: string, imageUrl?: string): Promise<void> {
+  await send(PUSH_URL, { to, messages: toMessages(text, imageUrl) });
 }

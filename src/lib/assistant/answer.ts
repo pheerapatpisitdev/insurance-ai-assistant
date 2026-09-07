@@ -13,6 +13,7 @@ import { mergeSlots, recentTurns, routeMessage, type Routed } from "./route";
 import { promptText } from "./prompts";
 import { MATCH_THRESHOLD, searchFaq } from "./faq";
 import { getBundle } from "@/calc/bundles/registry";
+import { cardPath } from "@/lib/quote-card";
 import { bundleAgeRange, bundleModePremiums, describeTier, quoteBundle } from "@/calc/bundles/quote";
 
 export interface Source {
@@ -26,6 +27,12 @@ export interface Answer {
   slots: Routed;
   /** the answer carries a premium — the moment a browser turns into someone worth calling */
   priced?: boolean;
+  /**
+   * Where the quote is drawn as a picture, as a path on this site. Set only when a premium
+   * was actually quoted: a card is the answer in a form the customer can keep and show
+   * someone else, and there is nothing to keep about a question that was answered in words.
+   */
+  card?: string;
 }
 
 /**
@@ -235,6 +242,7 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
   return {
     reply: `${quoteReply(input, result)}\n\n${quoteFooter(assumedTerm, assumedAmount, input.mode)}`,
     sources: [], priced: true,
+    card: cardPath({ planCode, variant, age, sex: input.sex, sumAssured, mode: input.mode }),
   };
 }
 

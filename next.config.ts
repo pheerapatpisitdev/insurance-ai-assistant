@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   // path and the import fails ("Setting up fake worker failed"), so keep it external and
   // let Node resolve it from node_modules.
   serverExternalPackages: ["pdfjs-dist"],
+  // the quote card draws Thai text, and the drawing library needs the font files themselves
+  outputFileTracingIncludes: { "/api/card": ["./src/app/api/card/*.ttf"] },
   /* config options here */
 };
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { siteUrl } from "@/lib/site-url";
 import { after } from "next/server";
 import { verifySignature, hashUserId } from "@/lib/line/verify";
 import { claimEvent, loadSession, saveSession } from "@/lib/chat/session";
@@ -77,7 +78,7 @@ async function handle(event: LineEvent): Promise<void> {
 
   try {
     const answer = await answerQuestion(history, session.slots);
-    await say(replyToken, userId, answer.reply);
+    await say(replyToken, userId, answer.reply, answer.card && siteUrl(answer.card));
     await saveSession("line", userHash, [...history, { role: "assistant", content: answer.reply }], answer.slots);
     await alertLead({
       channel: "line", userHash, question: text, reply: answer.reply,
@@ -90,11 +91,11 @@ async function handle(event: LineEvent): Promise<void> {
 }
 
 /** A reply token is only good for a short while; once it lapses the answer is pushed instead. */
-async function say(replyToken: string, userId: string, text: string): Promise<void> {
+async function say(replyToken: string, userId: string, text: string, imageUrl?: string): Promise<void> {
   try {
-    await reply(replyToken, text);
+    await reply(replyToken, text, imageUrl);
   } catch (e) {
     console.error("reply failed, pushing instead:", e);
-    await push(userId, text);
+    await push(userId, text, imageUrl);
   }
 }

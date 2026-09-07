@@ -50,6 +50,19 @@ export async function showTyping(psid: string): Promise<void> {
   await post("messages", { recipient: { id: psid }, sender_action: "typing_on" });
 }
 
+/**
+ * The quote as a picture. Messenger fetches the URL itself, so it has to be one the public
+ * internet can reach — which the card route is, and which is why the card carries no more
+ * than the arrangement it draws.
+ */
+export async function sendImage(psid: string, url: string): Promise<void> {
+  await post("messages", {
+    recipient: { id: psid },
+    messaging_type: "RESPONSE",
+    message: { attachment: { type: "image", payload: { url, is_reusable: true } } },
+  });
+}
+
 export async function sendMessage(psid: string, text: string): Promise<void> {
   // parts go one after another, because Messenger shows them in the order they arrive
   for (const part of toParts(text)) {
