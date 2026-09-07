@@ -17,11 +17,6 @@ describe("lifeProtectMessage", () => {
       .toBe("สนใจ Life Protect+ 100 ทุน 1,000,000 จ่ายถึงอายุ 99 อายุแรกเกิด ชาย เบี้ยประมาณ 6,000 บาท/ปี");
   });
 
-  it("asks about the sum and term before an age has been picked", () => {
-    expect(lifeProtectMessage({ ...base, age: "", premium: undefined }))
-      .toBe("สนใจ Life Protect+ 100 ทุน 1,000,000 จ่าย 19 ปี");
-  });
-
   it("asks for something else for an age past the plan's last", () => {
     expect(lifeProtectMessage({ ...base, sex: "F", age: "over", premium: undefined }))
       .toBe("สนใจ Life Protect+ 100 ทุน 1,000,000 อายุเกิน 80 ปี ขอแบบที่เหมาะกับอายุนี้");

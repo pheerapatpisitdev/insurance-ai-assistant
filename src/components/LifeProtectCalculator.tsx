@@ -26,6 +26,12 @@ const SUMS = [
 const SUM_START_INDEX = SUMS.indexOf(1_000_000);
 /** the term the page opens on: the middle one, and the one the copy recommends */
 const TERM_START = "WLF19H";
+/**
+ * The age the page opens on. A visitor arriving from an ad sees a real price before touching
+ * anything — an empty card asking to be filled in is one more thing to do before the number
+ * they came for. 35 is the age the hero already quotes and the middle of who buys this.
+ */
+const AGE_START = 35;
 /** the last age the "bought for a child" note shows at */
 const CHILD_MAX_AGE = 15;
 
@@ -50,7 +56,7 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
   const [sumIndex, setSumIndex] = useState(SUM_START_INDEX);
   const sumAssured = SUMS[sumIndex];
   const [variant, setVariant] = useState(TERM_START);
-  const [age, setAge] = useState<LifeProtectAge>("");
+  const [age, setAge] = useState<LifeProtectAge>(AGE_START);
   const [sex, setSex] = useState<Sex>("M");
 
   const term = termAt(table, variant);
@@ -145,12 +151,9 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
                 the keypad, and there is no way to arrive at an age nobody is */}
             <select
               id="lp-age" value={age}
-              onChange={(e) => setAge(e.target.value === "" || e.target.value === "over"
-                ? (e.target.value as LifeProtectAge)
-                : Number(e.target.value))}
+              onChange={(e) => setAge(e.target.value === "over" ? "over" : Number(e.target.value))}
               className="mt-1.5 w-full appearance-none rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-lg tabular-nums text-[var(--lg-white)]"
             >
-              <option value="">เลือกอายุ</option>
               {AGES.map((a) => <option key={a} value={a}>{a === 0 ? "แรกเกิด" : `${a} ปี`}</option>)}
               <option value="over">{table.ageMax + 1} ปีขึ้นไป</option>
             </select>
@@ -173,11 +176,7 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
         </div>
       </div>
 
-      {age === "" ? (
-        <p className="rounded-sm border border-dashed border-[var(--lg-panel-line)] px-5 py-7 text-center text-sm text-[var(--lg-mute)]">
-          เลือกอายุเพื่อดูเบี้ยของคุณ
-        </p>
-      ) : !inRange || !modes ? (
+      {!inRange || !modes ? (
         <div className="rounded-sm border border-[var(--lg-gold)] bg-[var(--lg-panel)] px-5 py-7 text-center text-sm leading-relaxed text-[var(--lg-white)]">
           แบบนี้รับถึงอายุ {table.ageMax} ปี ทักมาให้เราช่วยหาแบบที่เหมาะกับคุณ
         </div>

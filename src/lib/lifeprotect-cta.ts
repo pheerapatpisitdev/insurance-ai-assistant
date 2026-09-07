@@ -3,8 +3,8 @@ import type { Sex } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { PER } from "@/lib/legacy-cta";
 
-/** The age picker's value: an age the plan takes, "over" for everyone past it, "" before one is picked. */
-export type LifeProtectAge = number | "over" | "";
+/** The age picker's value: an age the plan takes, or "over" for everyone past its last. */
+export type LifeProtectAge = number | "over";
 
 export interface LifeProtectCtaFacts {
   sumAssured: number;
@@ -32,9 +32,7 @@ export function ageWord(age: number): string {
 export function lifeProtectMessage(f: LifeProtectCtaFacts): string {
   const head = `สนใจ Life Protect+ 100 ทุน ${f.sumAssured.toLocaleString("en-US")}`;
   if (f.age === "over") return `${head} อายุเกิน ${f.ageMax} ปี ขอแบบที่เหมาะกับอายุนี้`;
-  const withTerm = `${head} ${f.termLabel}`;
-  if (f.age === "") return withTerm;
-  const who = `${withTerm} อายุ${f.age === 0 ? "" : " "}${ageWord(f.age)} ${SEX_WORD[f.sex]}`;
+  const who = `${head} ${f.termLabel} อายุ${f.age === 0 ? "" : " "}${ageWord(f.age)} ${SEX_WORD[f.sex]}`;
   if (!f.premium) return `${who} ขอราคาปัจจุบัน`;
   return `${who} เบี้ยประมาณ ${formatBaht(f.premium.total)} บาท${PER[f.premium.mode]}`;
 }
