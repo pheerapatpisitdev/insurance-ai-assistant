@@ -6,7 +6,7 @@ import { formatBaht } from "@/calc/money";
 import { PER, displayPremium, perDay } from "@/lib/legacy-cta";
 import type { LegacyChannels } from "@/lib/legacy-channels";
 import type { LifeProtectTable } from "@/lib/lifeprotect-table";
-import { cashAt, deathBenefitOf, lifeProtectModes, payYears, termAt, totalPaid } from "@/lib/lifeprotect-quote";
+import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { ageWord, lifeProtectMessage, type LifeProtectAge } from "@/lib/lifeprotect-cta";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import { ContactButtons } from "@/components/sales/ContactButtons";
@@ -74,7 +74,6 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
   const headline = displayPremium(modes, table.expired);
   const annual = modes?.find((m) => m.mode === "annual");
   const others = (modes ?? []).filter((m) => m.mode !== headline?.mode && !m.belowMinimum);
-  const years = who ? payYears(term, who.age) : undefined;
   const death = who ? deathBenefitOf(table, who.age, sumAssured) : undefined;
   const cash = who ? cashAt(term, sex, who.age, sumAssured, table.ageMin) : [];
 
@@ -187,7 +186,7 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
         </div>
       ) : (
         <div className="space-y-5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5">
-          {headline && annual && years !== undefined ? (
+          {headline && annual ? (
             <div>
               <div className="text-sm text-[var(--lg-mute)]">เบี้ยประกัน · {term.label}</div>
               <div className="lg-figure mt-1 text-[2.6rem] leading-none tabular-nums">
@@ -200,11 +199,6 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
                   {others.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`).join(" · ")}
                 </div>
               )}
-              <p className="mt-3 text-sm leading-relaxed text-[var(--lg-white)]">
-                จ่ายทั้งหมด {years} ปี รวมประมาณ{" "}
-                <span className="lg-figure tabular-nums text-[var(--lg-gold)]">{formatBaht(totalPaid(annual.total, years))}</span> บาท
-                {" "}· คุ้มครอง {sumAssured.toLocaleString("en-US")} บาทถึงอายุ {table.coverToAge}
-              </p>
             </div>
           ) : (
             <div className="text-sm font-medium text-[var(--lg-gold)]">ขอราคาปัจจุบันได้ทางแชทด้านล่าง</div>
