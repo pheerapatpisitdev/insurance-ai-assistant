@@ -24,8 +24,13 @@ const SUMS = [
   ...Array.from({ length: 40 }, (_, i) => 11_000_000 + 1_000_000 * i),
 ];
 const SUM_START_INDEX = SUMS.indexOf(1_000_000);
-/** the term the page opens on: the middle one, and the one the copy recommends */
-const TERM_START = "WLF19H";
+/**
+ * The term the page opens on: the one that puts the smallest number in front of a stranger.
+ * The other two are a tap away with their own prices already on them, so opening cheap costs
+ * nothing — and the figure the hero quotes comes from this term too, so the page does not
+ * promise one price above the fold and show another below it.
+ */
+const TERM_START = "WLF99H";
 /**
  * The age the page opens on. A visitor arriving from an ad sees a real price before touching
  * anything — an empty card asking to be filled in is one more thing to do before the number
