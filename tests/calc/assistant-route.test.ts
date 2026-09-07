@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { planNamedIn, mergeSlots, recentTurns, type Routed } from "@/lib/assistant/route";
+import { planNamedIn, mergeSlots, recentTurns, type Routed, lifeProtectVariantIn } from "@/lib/assistant/route";
 import type { ChatMessage } from "@/lib/ai/types";
 
 describe("reading the plan name out of a message", () => {
@@ -78,5 +78,35 @@ describe("cutting a conversation down to the last few turns", () => {
 
   it("handles an empty conversation", () => {
     expect(recentTurns([], 6)).toEqual([]);
+  });
+});
+
+/**
+ * The sales page at /lifeprotect sends the customer into the chat with the term they picked
+ * written into the message. Before the term was read off the text, the router left the
+ * choice to the model, which left it out — and the quote came back on the pay-to-99 package
+ * at about half the premium the page had shown a moment earlier.
+ */
+describe("lifeProtectVariantIn", () => {
+  it("reads the term the sales page writes", () => {
+    expect(lifeProtectVariantIn("สนใจ Life Protect+ 100 ทุน 1,000,000 จ่าย 19 ปี อายุ 35 ชาย")).toBe("WLF19H");
+    expect(lifeProtectVariantIn("สนใจ Life Protect+ 100 ทุน 500,000 จ่าย 9 ปี อายุ 35 ชาย")).toBe("WLF09H");
+    expect(lifeProtectVariantIn("สนใจ Life Protect+ 100 ทุน 1,000,000 จ่ายถึงอายุ 99 อายุแรกเกิด ชาย")).toBe("WLF99H");
+  });
+
+  it("reads the term the way the plan picker words it", () => {
+    expect(lifeProtectVariantIn("ไลฟ์ โพรเทค ชำระเบี้ย 19 ปี")).toBe("WLF19H");
+    expect(lifeProtectVariantIn("ไลฟ์ โพรเทค ชำระเบี้ยครบอายุ 99 ปี")).toBe("WLF99H");
+  });
+
+  it("takes the x1.5 product only when the message asks for it", () => {
+    expect(lifeProtectVariantIn("ไลฟ์ โพรเทค+ 50 จ่าย 19 ปี")).toBe("WLF19L");
+    expect(lifeProtectVariantIn("Life Protect x 1.5 จ่าย 9 ปี")).toBe("WLF09L");
+  });
+
+  it("leaves the choice alone when no term is named", () => {
+    expect(lifeProtectVariantIn("ไลฟ์ โพรเทค ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่")).toBeUndefined();
+    // an age is not a term, however it is written
+    expect(lifeProtectVariantIn("ไลฟ์ โพรเทค อายุ 19 ปี ชาย")).toBeUndefined();
   });
 });

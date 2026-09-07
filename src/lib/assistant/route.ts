@@ -123,6 +123,39 @@ export function planNamedIn(text: string): string | undefined {
   return PLAN_ALIASES.find(([, re]) => re.test(text))?.[0];
 }
 
+/**
+ * How ไลฟ์ โพรเทค+ names its payment terms, in the customer's words and in the workbook's.
+ *
+ * The plan sells six of them: three terms under two products that differ only in how much
+ * they pay on early death. That is two decisions the model has to make from prose, and it
+ * was making neither — a customer arriving from /lifeprotect having chosen "จ่าย 19 ปี" was
+ * quoted the pay-to-99 term instead, at nearly half the premium the page had just shown.
+ * A price that changes between the page and the chat is the one thing neither will forgive,
+ * so both halves are read off the text here rather than left to the model.
+ *
+ * A term counts only where the customer is paying — "จ่าย 19 ปี", "ชำระเบี้ย 19 ปี" — never
+ * from a bare number of years, because "อายุ 19 ปี" is an insured, not a term.
+ */
+const LIFEPROTECT_TERMS: [string, RegExp][] = [
+  ["99", /(?:ถึง|ครบ)\s*อายุ\s*99|จนอายุ\s*99|to\s*99/i],
+  ["19", /(?:จ่าย|ชำระ)(?:เบี้ย)?\s*19\s*ปี|19\s*ปีจบ/i],
+  ["09", /(?:จ่าย|ชำระ)(?:เบี้ย)?\s*9\s*ปี|(?:^|[^\d])9\s*ปีจบ/i],
+];
+
+/** The x1.5 product; anything else on this plan is the x2 one the agency actually sells. */
+const LIFEPROTECT_HALF = /\+\s*50|x\s*1\.5|โพรเทค\s*\+?\s*50/i;
+
+/**
+ * The ไลฟ์ โพรเทค+ package a message asks for, when it names a payment term. Undefined when
+ * no term is named, which leaves the choice where it was — the model, then the plan's own
+ * default.
+ */
+export function lifeProtectVariantIn(text: string): string | undefined {
+  const term = LIFEPROTECT_TERMS.find(([, re]) => re.test(text))?.[0];
+  if (!term) return undefined;
+  return `WLF${term}${LIFEPROTECT_HALF.test(text) ? "L" : "H"}`;
+}
+
 /** Anything the model returns is checked here, so a hallucinated plan code never reaches the engine. */
 function clean(raw: Routed, history: ChatMessage[]): Routed {
   const out: Routed = { intent: ["quote", "plan_info", "doc_qa", "other"].includes(raw.intent) ? raw.intent : "other" };
@@ -131,8 +164,12 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
   const plan = planCode ? getPlan(planCode) : undefined;
   if (plan && planCode) {
     out.planCode = planCode;
+    // the term written in the message wins over the model's, for the same reason the plan
+    // name does: it is what the customer chose, and it is on their screen
+    const named = planCode === "LIFEPROTECT" ? lifeProtectVariantIn(last) : undefined;
+    const variant = named ?? raw.variant;
     // a variant only makes sense on the plan it belongs to
-    if (raw.variant && raw.variant in plan.variantLabels) out.variant = raw.variant;
+    if (variant && variant in plan.variantLabels) out.variant = variant;
   }
   if (typeof raw.age === "number" && raw.age >= 0 && raw.age <= 99) out.age = Math.trunc(raw.age);
   if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
