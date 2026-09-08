@@ -228,11 +228,11 @@ export function LegacyCalculator({ table, channels, sticky = false }: LegacyCalc
         </div>
       )}
 
-      <ContactButtons channels={channels} message={message} />
+      <ContactButtons channels={channels} message={message} assistant={false} />
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons channels={channels} message={message} compact />
+          <ContactButtons channels={channels} message={message} compact assistant={false} />
         </div>
       )}
     </div>

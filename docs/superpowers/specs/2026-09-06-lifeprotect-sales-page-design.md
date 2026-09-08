@@ -127,6 +127,7 @@ interface Term {
 
 ### ปุ่มทัก
 `ContactButtons` ตัวเดิมย้ายมาเป็นคอมโพเนนต์กลาง ใช้ `legacyChannels()` เดิมหาช่องทาง แถบติดขอบล่างบนมือถือเหมือนเดิม
+**หน้านี้ไม่มีปุ่ม "ถาม AI"** (ผู้ใช้สั่ง 2026-09-07) มีเฉพาะ LINE กับ Messenger ที่คนตอบ `/legacy` ยังมีปุ่ม AI ตามเดิม
 ข้อความสร้างโดย `lifeProtectMessage()` ใน `src/lib/lifeprotect-cta.ts`:
 
 ```
