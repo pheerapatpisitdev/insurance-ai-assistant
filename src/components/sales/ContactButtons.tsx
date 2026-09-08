@@ -9,7 +9,16 @@ import type { LegacyChannels } from "@/lib/legacy-channels";
  * The message is prepared, never sent: pressing send stays the customer's own act.
  */
 export function ContactButtons(
-  { channels, message, compact = false }: { channels: LegacyChannels; message: string; compact?: boolean },
+  { channels, message, compact = false, assistant = true }: {
+    channels: LegacyChannels;
+    message: string;
+    compact?: boolean;
+    /**
+     * Whether to offer the in-app assistant as well. A page that wants every lead in a
+     * human's chat turns it off; the buttons that remain are the channels a person answers.
+     */
+    assistant?: boolean;
+  },
 ) {
   const shape = compact
     ? "rounded-sm px-3 py-2.5 text-center text-sm font-medium"
@@ -32,9 +41,11 @@ export function ContactButtons(
           {compact ? "Messenger" : "ทัก Messenger"}
         </a>
       )}
-      <a href={chatUrl(message)} className={`${shape} border border-[var(--lg-panel-line)] text-[var(--lg-mute)]`}>
-        {compact ? "ถาม AI" : "ถาม AI ก่อนก็ได้"}
-      </a>
+      {assistant && (
+        <a href={chatUrl(message)} className={`${shape} border border-[var(--lg-panel-line)] text-[var(--lg-mute)]`}>
+          {compact ? "ถาม AI" : "ถาม AI ก่อนก็ได้"}
+        </a>
+      )}
     </div>
   );
 }
