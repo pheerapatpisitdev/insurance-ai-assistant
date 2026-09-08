@@ -56,6 +56,12 @@ function toQuoteInput(s: FormState, eligibleCodes: Set<string>): QuoteInput | nu
   };
 }
 
+/** Opened in a new tab so a half-finished quotation is still there when the agent comes back. */
+const SALES_PAGES = [
+  { href: "/legacy", label: "มรดกเพื่อครอบครัว" },
+  { href: "/lifeprotect", label: "Life Protect x 2" },
+];
+
 export default function Home() {
   const [state, setStateRaw] = useState<FormState>(INITIAL);
   const plan = getPlan(state.planCode)!;
@@ -152,7 +158,16 @@ export default function Home() {
           <Link href="/privacy" className="underline">ความเป็นส่วนตัว</Link>
         </span>
       </div>
-      <p className="mb-4 text-sm text-slate-500">{bundle ? `ชุด${bundle.name}` : plan.planLabel ?? plan.rates.planName}</p>
+      <p className="text-sm text-slate-500">{bundle ? `ชุด${bundle.name}` : plan.planLabel ?? plan.rates.planName}</p>
+      {/* the calculator is the agent's tool; these are the pages an agent sends a customer to */}
+      <p className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-slate-500">
+        <span>หน้าขายสำหรับลูกค้า</span>
+        {SALES_PAGES.map((page) => (
+          <Link key={page.href} href={page.href} target="_blank" rel="noreferrer" className="underline">
+            {page.label}
+          </Link>
+        ))}
+      </p>
       <ExpiryBanner expired={result?.meta.expired ?? false} expiresOn={plan.rates.expiresOn} />
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border bg-white p-4">
