@@ -1,10 +1,13 @@
-import { chatUrl, lineUrl, messengerUrl } from "@/lib/legacy-cta";
+import { lineUrl, messengerUrl } from "@/lib/legacy-cta";
 import type { LegacyChannels } from "@/lib/legacy-channels";
 
 /**
  * The way out of the page, in every channel that has been configured. A channel with no
- * setting is left out rather than shown broken, so a page with only the assistant wired up
- * still reads as finished.
+ * setting is left out rather than shown broken.
+ *
+ * The customer is handed to a person, not to the assistant: someone ready to buy a legacy
+ * policy wants the agent, and a third button offering a robot instead was the weakest thing
+ * on the page. The assistant still answers at /chat for anyone sent there directly.
  *
  * The message is prepared, never sent: pressing send stays the customer's own act.
  */
@@ -32,9 +35,6 @@ export function ContactButtons(
           {compact ? "Messenger" : "ทัก Messenger"}
         </a>
       )}
-      <a href={chatUrl(message)} className={`${shape} border border-[var(--lg-panel-line)] text-[var(--lg-mute)]`}>
-        {compact ? "ถาม AI" : "ถาม AI ก่อนก็ได้"}
-      </a>
     </div>
   );
 }
