@@ -176,9 +176,24 @@ export function answerBundle(slots: Routed): Omit<Answer, "slots"> {
   if (!result || !tierName) {
     return { reply: `ชุด${bundle.name} ไม่มีระดับที่ขอครับ\n${choices}`, sources: [] };
   }
+
+  // The same rule the card draws by: a bundle that cannot be issued whole has no price to
+  // quote and no picture to send. MIN_MONTHLY is not that — it is a fact about one instalment,
+  // and the arrangement still stands, so it is priced and carries a card as usual. quoteBundle
+  // already writes the reason into a warning in plain Thai; that sentence is reused as-is
+  // rather than inventing a second one, and it says more than "no such tier" would — the tier
+  // exists, this particular person just cannot be issued it.
+  const refusal = result.warnings.find((w) => w.level === "error" && w.code !== "MIN_MONTHLY");
+  if (refusal) {
+    return { reply: refusal.message, sources: [] };
+  }
   return {
     reply: bundleReply(bundle.name, tierName, who, result, bundleModePremiums(bundle, slots.tier, who)),
     sources: [], priced: true,
+    card: cardPath({
+      kind: "bundle", bundleCode: bundle.code, tier: slots.tier, age: who.age, sex: who.sex,
+      mode: slots.mode,
+    }),
   };
 }
 

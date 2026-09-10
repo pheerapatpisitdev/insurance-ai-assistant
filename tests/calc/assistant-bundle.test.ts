@@ -203,3 +203,57 @@ describe("asking about the bundle rather than for a price", () => {
     expect(reply).not.toContain("รายปี");
   });
 });
+
+describe("the bundle answer's card", () => {
+  it("carries a card once it has priced the arrangement", () => {
+    const answer = answerBundle({
+      intent: "quote", bundleCode: "LEGACY_FAMILY", tier: 1, age: 40, sex: "M",
+    });
+    expect(answer.priced).toBe(true);
+    expect(answer.card).toBe("/api/card?bundle=LEGACY_FAMILY&tier=1&age=40&sex=M");
+  });
+
+  it("passes on the instalment the customer asked in", () => {
+    const answer = answerBundle({
+      intent: "quote", bundleCode: "LEGACY_FAMILY", tier: 1, age: 40, sex: "M", mode: "monthly",
+    });
+    expect(answer.card).toBe("/api/card?bundle=LEGACY_FAMILY&tier=1&age=40&sex=M&mode=monthly");
+  });
+
+  /** While the chat is still collecting the insured there is nothing to draw. */
+  it("sends no card while it is still asking who the customer is", () => {
+    expect(answerBundle({ intent: "quote", bundleCode: "LEGACY_FAMILY", tier: 1 }).card).toBeUndefined();
+    expect(answerBundle({ intent: "quote", bundleCode: "LEGACY_FAMILY", age: 40, sex: "M" }).card)
+      .toBeUndefined();
+  });
+
+  it("sends no card for an age the bundle cannot be issued at", () => {
+    expect(answerBundle({
+      intent: "quote", bundleCode: "LEGACY_FAMILY", tier: 1, age: 70, sex: "M",
+    }).card).toBeUndefined();
+  });
+
+  /**
+   * MIN_MONTHLY is not the refusal the card and the reply withhold on: the arrangement is
+   * still sellable, only this instalment falls under the minimum. Same case as
+   * tests/golden/legacy-family.test.ts's "flags the 1,000 baht monthly minimum" fixture.
+   */
+  it("still prices and cards a bundle whose only warning is the monthly minimum", () => {
+    const answer = answerBundle({
+      intent: "quote", bundleCode: "LEGACY_FAMILY", tier: 5, age: 20, sex: "F", mode: "monthly",
+    });
+    expect(answer.priced).toBe(true);
+    expect(answer.card).toBe("/api/card?bundle=LEGACY_FAMILY&tier=5&age=20&sex=F&mode=monthly");
+  });
+
+  /**
+   * A bundle that cannot be issued whole (BUNDLE_INCOMPLETE) is supposed to withhold both the
+   * card and the priced reply above, per the guard added to answerBundle. There is no honest
+   * way to reach that state through answerBundle with today's LEGACY_FAMILY data: bundleAgeRange()
+   * narrows to exactly DCI's own age window (20-65), so any age that clears the age check above
+   * also clears DCI's own eligibility, and every tier's DCI sum assured (850,000-9,850,000) sits
+   * inside DCI's own saMin/saMaxCap. The guard is exercised indirectly above (it must not fire on
+   * MIN_MONTHLY) and otherwise verified by inspection: it is the exact rule bundleCard() already
+   * uses and is tested against in src/lib/quote-card.ts.
+   */
+});
