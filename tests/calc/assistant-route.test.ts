@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { planNamedIn, mergeSlots, recentTurns, type Routed, lifeProtectVariantIn } from "@/lib/assistant/route";
+import { planNamedIn, mergeSlots, recentTurns, type Routed, lifeProtectVariantIn, asksAboutDeathBenefit } from "@/lib/assistant/route";
 import type { ChatMessage } from "@/lib/ai/types";
 
 describe("reading the plan name out of a message", () => {
@@ -108,5 +108,30 @@ describe("lifeProtectVariantIn", () => {
     expect(lifeProtectVariantIn("ไลฟ์ โพรเทค ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่")).toBeUndefined();
     // an age is not a term, however it is written
     expect(lifeProtectVariantIn("ไลฟ์ โพรเทค อายุ 19 ปี ชาย")).toBeUndefined();
+  });
+});
+
+/**
+ * "ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้านจริงไหม" is the sentence the adverts put in a customer's
+ * mouth, and the router was sending it to the document search, which answered "ยังไม่มีเอกสาร
+ * เรื่องนี้" over four unrelated files. What the plan pays on death is in the rate tables, not
+ * in the uploaded documents, so a question about the multiple is answered from the plan facts.
+ */
+describe("asksAboutDeathBenefit", () => {
+  it.each([
+    "ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้านจริงไหม",
+    "คุ้มครอง 2 เท่าจริงหรือเปล่า",
+    "จ่ายกี่เท่าของทุนประกัน",
+    "ได้สองเท่าตอนไหน",
+    "ทุนคูณสองคืออะไร",
+    "x2 หมายความว่าอะไร",
+  ])("%s", (text) => {
+    expect(asksAboutDeathBenefit(text)).toBe(true);
+  });
+
+  it("leaves the questions the documents really do answer alone", () => {
+    expect(asksAboutDeathBenefit("ขั้นตอนการเคลมทำอย่างไร")).toBe(false);
+    expect(asksAboutDeathBenefit("ระยะเวลารอคอยกี่วัน")).toBe(false);
+    expect(asksAboutDeathBenefit("ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่")).toBe(false);
   });
 });

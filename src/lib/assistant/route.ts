@@ -27,7 +27,7 @@ const SYSTEM = `คุณเป็นตัวช่วยของตัวแ�
 
 intent มี 4 แบบ
 - "quote" = ขอเบี้ยประกัน ต้องคำนวณเป็นตัวเลข
-- "plan_info" = ถามว่าแบบประกันมีอะไรบ้าง เงื่อนไข อายุที่รับ ทุนขั้นต่ำ สัญญาเพิ่มเติม
+- "plan_info" = ถามว่าแบบประกันมีอะไรบ้าง เงื่อนไข อายุที่รับ ทุนขั้นต่ำ สัญญาเพิ่มเติม รวมถึงผลประโยชน์ที่จ่ายให้ เช่น เสียชีวิตแล้วครอบครัวได้เท่าไหร่ จ่ายกี่เท่าของทุน คุ้มครองถึงอายุเท่าไหร่
 - "doc_qa" = ถามเรื่องทั่วไปในเอกสาร เช่น การเคลม ระยะรอคอย ข้อยกเว้น
 - "other" = ทักทายหรือเรื่องอื่น
 
@@ -124,6 +124,23 @@ export function planNamedIn(text: string): string | undefined {
 }
 
 /**
+ * How people ask what the plan pays out — nearly always as a multiple of the sum, because
+ * that is how the adverts word it.
+ *
+ * "ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้านจริงไหม" was going to the document search, which has
+ * nothing on it: what a plan pays on death lives in the rate tables, and the uploaded
+ * documents are about claims and waiting periods. The search answered "ยังไม่มีเอกสารเรื่องนี้"
+ * and cited four unrelated files, so the campaign's own headline came back denied.
+ */
+const DEATH_BENEFIT_QUESTION =
+  /กี่เท่า|\d+(?:\.\d+)?\s*เท่า|สองเท่า|คูณ\s*(?:สอง|2)|\bx\s*2\b|ครอบครัวได้|ได้(?:รับ)?\s*เท่า(?:ไหร่|ไร)/i;
+
+/** Whether a message is asking what the plan pays, rather than what a document says. */
+export function asksAboutDeathBenefit(text: string): boolean {
+  return DEATH_BENEFIT_QUESTION.test(text);
+}
+
+/**
  * How ไลฟ์ โพรเทค+ names its payment terms, in the customer's words and in the workbook's.
  *
  * The plan sells six of them: three terms under two products that differ only in how much
@@ -160,6 +177,9 @@ export function lifeProtectVariantIn(text: string): string | undefined {
 function clean(raw: Routed, history: ChatMessage[]): Routed {
   const out: Routed = { intent: ["quote", "plan_info", "doc_qa", "other"].includes(raw.intent) ? raw.intent : "other" };
   const last = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+  // the plan's own tables answer this, not the document search; a request for a premium is
+  // still a request for a premium, so only the search is overruled
+  if (out.intent === "doc_qa" && asksAboutDeathBenefit(last)) out.intent = "plan_info";
   const planCode = planNamedIn(last) ?? raw.planCode;
   const plan = planCode ? getPlan(planCode) : undefined;
   if (plan && planCode) {
