@@ -140,7 +140,12 @@ export function bundleReply(
     blocks.push(`⚠ ${w.message}`);
   }
 
-  blocks.push("· เบี้ยประมาณการจากตารางเบี้ยบริษัท ไม่ใช่ใบเสนอราคา");
+  // A rider priced on attained age makes every figure above a first-year figure. Saying so
+  // is not small print: it is the difference between a quote and a promise the premium holds.
+  const risesWithAge = result.items.some((it) => it.eligible && it.code === "DCI");
+  blocks.push(risesWithAge
+    ? "· เบี้ยปีแรกโดยประมาณ สัญญาโรคร้ายแรงคิดตามอายุ เบี้ยจึงปรับขึ้นในปีถัดไป ไม่ใช่ใบเสนอราคา"
+    : "· เบี้ยประมาณการจากตารางเบี้ยบริษัท ไม่ใช่ใบเสนอราคา");
   return blocks.join("\n\n");
 }
 
