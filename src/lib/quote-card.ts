@@ -1,8 +1,9 @@
 import { quote } from "@/calc/quote";
-import { quoteModePremiums } from "@/calc/mode-premiums";
+import { quoteModePremiums, type ModePremium } from "@/calc/mode-premiums";
 import { cashValueSchedule, maturityValue, type CashValueRow } from "@/calc/cash-value";
 import { getPlan } from "@/calc/plans/registry";
 import { getBundle } from "@/calc/bundles/registry";
+import { bundleModePremiums, quoteBundle } from "@/calc/bundles/quote";
 import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL, type DeathBenefit, type PayMode, type QuoteInput, type Sex } from "@/calc/types";
 import { deathBenefitRows } from "@/lib/death-benefit";
@@ -211,13 +212,56 @@ function cashRowsFor(
 }
 
 /**
+ * The premium as a card states it: one instalment in the largest type, the day rate under it,
+ * and whatever instalments the headline did not take.
+ *
+ * Shared by both kinds of card because a card's price lines are the same question whatever is
+ * being priced — and because when they were written twice, only one of the two remembered to
+ * withhold the other instalments once the rate table had lapsed.
+ */
+function premiumLines(modes: ModePremium[] | undefined, expired: boolean, asked?: PayMode): {
+  premium: QuoteCard["premium"];
+  perDay: string | null;
+  others: string | null;
+} {
+  const headline = displayPremium(modes, expired) ?? (asked && !expired ? modes?.find((m) => m.mode === asked) : undefined);
+  const annual = modes?.find((m) => m.mode === "annual");
+  // a lapsed table has no price to show, and the other instalments are prices too
+  const others = expired ? [] : (modes ?? [])
+    .filter((m) => m.mode !== headline?.mode && !m.belowMinimum)
+    .map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`);
+  return {
+    premium: headline ? { amount: formatBaht(headline.total), per: PER_LABEL[headline.mode] } : null,
+    perDay: headline && annual && !expired ? `ตกวันละ ${perDay(annual.total)} บาท` : null,
+    others: others.length ? others.join(" · ") : null,
+  };
+}
+
+/**
+ * The small print, which is the same small print whatever was priced. Written once because
+ * the two builders had already drifted apart on the expired case once, and the words a card
+ * ends on are the words a customer quotes back.
+ */
+function cardNotes(expired: boolean, version: string, headline: string, extra: string[] = []): string[] {
+  return expired
+    ? ["ตารางเบี้ยชุดนี้หมดอายุแล้ว ขอราคาปัจจุบันได้ทางแชท", "ไม่ใช่ใบเสนอราคา และไม่ใช่ส่วนหนึ่งของสัญญาประกันภัย"]
+    : [`${headline} · ตารางเบี้ยฉบับ ${version}`, ...extra, "ไม่ใช่ใบเสนอราคา ผลประโยชน์เป็นไปตามที่ระบุในกรมธรรม์"];
+}
+
+/**
+ * The card for an arrangement, or undefined when the company would not issue it — a card
+ * that says nothing is worse than no card, and the chat still has its own words for why.
+ */
+export function quoteCard(input: CardInput, today: Date = new Date()): QuoteCard | undefined {
+  return input.kind === "bundle" ? bundleCard(input, today) : planCard(input, today);
+}
+
+/**
  * The card for an arrangement, or undefined when the plan cannot be issued to that insured
  * at that sum — a card that says nothing is worse than no card, and the chat still has its
  * own words for why.
  */
-export function quoteCard(input: CardInput, today: Date = new Date()): QuoteCard | undefined {
-  // a bundle is drawn by its own routine, which does not exist yet
-  if (input.kind !== "plan") return undefined;
+function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
   const plan = getPlan(input.planCode);
   if (!plan) return undefined;
   // priced yearly for the check, whatever instalment the customer is thinking in: the monthly
@@ -231,12 +275,7 @@ export function quoteCard(input: CardInput, today: Date = new Date()): QuoteCard
   if (result.warnings.some((w) => w.level === "error")) return undefined;
 
   const modes = quoteModePremiums(quoteInput(input, "annual"), today);
-  const headline = displayPremium(modes, result.meta.expired)
-    ?? (input.mode && !result.meta.expired ? modes?.find((m) => m.mode === input.mode) : undefined);
-  const annual = modes?.find((m) => m.mode === "annual");
-  const others = (modes ?? [])
-    .filter((m) => m.mode !== headline?.mode && !m.belowMinimum)
-    .map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`);
+  const { premium, perDay: perDayLine, others } = premiumLines(modes, result.meta.expired, input.mode);
 
   const sections: CardSection[] = [];
   if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
@@ -250,15 +289,80 @@ export function quoteCard(input: CardInput, today: Date = new Date()): QuoteCard
   return {
     planLine: variantLabel.includes("·") ? variantLabel : `${planLabel} · ${variantLabel}`,
     insuredLine: `${SEX_WORD[input.sex]} ${input.age} ปี · ทุน ${money(result.sumAssured)} บาท`,
-    premium: headline ? { amount: formatBaht(headline.total), per: PER_LABEL[headline.mode] } : null,
-    perDay: headline && annual && !result.meta.expired ? `ตกวันละ ${perDay(annual.total)} บาท` : null,
-    others: others.length ? others.join(" · ") : null,
+    premium,
+    perDay: perDayLine,
+    others,
     sections,
-    notes: result.meta.expired
-      ? ["ตารางเบี้ยชุดนี้หมดอายุแล้ว ขอราคาปัจจุบันได้ทางแชท", "ไม่ใช่ใบเสนอราคา และไม่ใช่ส่วนหนึ่งของสัญญาประกันภัย"]
-      : [
-        `เบี้ยมาตรฐานโดยประมาณ · ตารางเบี้ยฉบับ ${result.meta.version}`,
-        "ไม่ใช่ใบเสนอราคา ผลประโยชน์เป็นไปตามที่ระบุในกรมธรรม์",
-      ],
+    notes: cardNotes(result.meta.expired, result.meta.version, "เบี้ยมาตรฐานโดยประมาณ"),
+  };
+}
+
+/**
+ * The rider a bundle pays a critical-illness lump sum through. Named here rather than
+ * inferred, because "what this pays on a diagnosis" is a claim about a specific contract and
+ * a bundle built on some other rider must not inherit the sentence. In practice: a bundle
+ * built on some other critical-illness rider comes out with no diagnosis section and no
+ * rate-rises note, silently — whoever adds such a bundle has to notice that and decide then
+ * whether the rider should declare this itself, in its own data, instead of here.
+ */
+const CI_RIDER = "DCI";
+
+/**
+ * The card for one tier of an agency bundle.
+ *
+ * A bundle is sold whole, so it is drawn whole: what it is made of, what the family receives,
+ * what a diagnosis pays, and what surrender would return. The premium is priced from the rate
+ * tables at draw time exactly as a plan's is, so the link cannot make the company advertise a
+ * figure it never quoted.
+ */
+function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined {
+  const bundle = getBundle(input.bundleCode);
+  const tier = bundle?.tiers.find((t) => t.no === input.tier);
+  if (!bundle || !tier) return undefined;
+
+  const who = { age: input.age, sex: input.sex };
+  const result = quoteBundle(bundle, input.tier, { ...who, mode: "annual" }, today);
+  if (!result) return undefined;
+  // a bundle that cannot be issued whole is no longer the arrangement the agency designed,
+  // and a picture of it would be a picture of something nobody can buy. MIN_MONTHLY is not
+  // that: it is a fact about one instalment, and the card answers it by headlining the year.
+  if (result.warnings.some((w) => w.level === "error" && w.code !== "MIN_MONTHLY")) return undefined;
+
+  const modes = bundleModePremiums(bundle, input.tier, who, today);
+  const { premium, perDay: perDayLine, others } = premiumLines(modes, result.meta.expired, input.mode);
+
+  const covered = result.items.filter((it) => it.eligible);
+  const ci = covered.find((it) => it.code === CI_RIDER);
+
+  const sections: CardSection[] = [];
+  if (covered.length) {
+    sections.push({
+      title: "ชุดนี้ประกอบด้วย",
+      rows: covered.map((it) => ({ label: it.name, amount: money(it.amount) })),
+    });
+  }
+  if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
+  if (ci) {
+    sections.push({
+      title: "ตรวจพบโรคร้ายแรง รับเงินก้อน",
+      rows: [{ label: "จ่ายครั้งเดียว", amount: money(ci.amount) }],
+    });
+  }
+  const cashRows = cashRowsFor(bundle.planCode, bundle.variant, input.sex, input.age, tier.sumAssured);
+  if (cashRows.length) sections.push({ title: CASH_TITLE, rows: cashRows });
+
+  return {
+    planLine: `ชุด${bundle.name}`,
+    insuredLine: `${SEX_WORD[input.sex]} ${input.age} ปี · ${tier.name}`,
+    premium,
+    perDay: perDayLine,
+    others,
+    sections,
+    // DCI is priced on attained age, so every figure here is a first-year figure. A picture
+    // outlives the sentence that framed it, so it has to carry the caveat itself.
+    notes: cardNotes(
+      result.meta.expired, result.meta.version, "เบี้ยปีแรกโดยประมาณ",
+      ci ? ["สัญญาโรคร้ายแรงคิดตามอายุ เบี้ยจึงปรับขึ้นในปีถัดไป"] : [],
+    ),
   };
 }

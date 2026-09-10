@@ -107,6 +107,7 @@ describe("quoteCard", () => {
     const card = quoteCard(MAN35, new Date("2027-04-01"))!;
     expect(card.premium).toBeNull();
     expect(card.perDay).toBeNull();
+    expect(card.others).toBeNull();
     expect(card.notes[0]).toContain("หมดอายุ");
     // the benefits do not come from the rate table, so they are still true and still drawn
     expect(section(card, DEATH)!.rows[0].amount).toBe("2,000,000");
