@@ -242,7 +242,7 @@ async function answerQuote(slots: Routed): Promise<Omit<Answer, "slots">> {
   return {
     reply: `${quoteReply(input, result)}\n\n${quoteFooter(assumedTerm, assumedAmount, input.mode)}`,
     sources: [], priced: true,
-    card: cardPath({ planCode, variant, age, sex: input.sex, sumAssured, mode: input.mode }),
+    card: cardPath({ kind: "plan", planCode, variant, age, sex: input.sex, sumAssured, mode: input.mode }),
   };
 }
 

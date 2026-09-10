@@ -56,8 +56,7 @@ function heightOf(card: QuoteCard): number {
     + (card.premium ? H.premium : H.noPrice)
     + (card.perDay ? H.perDay : 0)
     + (card.others ? H.others : 0)
-    + sectionHeight(card.death?.rows)
-    + sectionHeight(card.cash?.rows)
+    + card.sections.reduce((h, s) => h + sectionHeight(s.rows), 0)
     + H.gap + H.hairline + H.afterHairline + card.notes.length * H.note;
 }
 
@@ -154,8 +153,7 @@ export async function GET(req: NextRequest) {
         {card.perDay && <div style={{ ...band(H.perDay), fontSize: 26, color: MUTE }}>{card.perDay}</div>}
         {card.others && <div style={{ ...band(H.others), fontSize: 25, color: MUTE }}>{card.others}</div>}
 
-        {card.death && <Rows title={card.death.title} rows={card.death.rows} />}
-        {card.cash && <Rows title={card.cash.title} rows={card.cash.rows} />}
+        {card.sections.map((s) => <Rows key={s.title} title={s.title} rows={s.rows} />)}
 
         <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={spacer(H.gap)} />

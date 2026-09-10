@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cardInputFrom, cardPath, cardUrl, quoteCard, type CardInput } from "@/lib/quote-card";
+import { cardInputFrom, cardPath, cardUrl, quoteCard, type CardInput, type QuoteCard } from "@/lib/quote-card";
 
 /** The rate table behind these figures lapses on 2027-03-31. */
 const WHILE_CURRENT = new Date("2026-09-05");
 
 const MAN35: CardInput = {
+  kind: "plan",
   planCode: "LIFEPROTECT", variant: "WLF19H", age: 35, sex: "M", sumAssured: 1_000_000, mode: "monthly",
 };
 
@@ -52,6 +53,11 @@ describe("cardPath and cardUrl", () => {
   });
 });
 
+const section = (card: QuoteCard, title: string) => card.sections.find((s) => s.title === title);
+
+const DEATH = "ครอบครัวได้รับเมื่อเสียชีวิต";
+const CASH = "มูลค่าเงินสดสะสม (หากเวนคืน)";
+
 describe("quoteCard", () => {
   it("draws what the sales page shows for the same insured", () => {
     const card = quoteCard(MAN35, WHILE_CURRENT)!;
@@ -63,8 +69,8 @@ describe("quoteCard", () => {
   });
 
   it("bands the death benefit the way every other surface does", () => {
-    expect(quoteCard(MAN35, WHILE_CURRENT)!.death).toEqual({
-      title: "ครอบครัวได้รับเมื่อเสียชีวิต",
+    expect(section(quoteCard(MAN35, WHILE_CURRENT)!, DEATH)).toEqual({
+      title: DEATH,
       rows: [
         { label: "เสียชีวิตก่อนอายุ 60 ปี", amount: "2,000,000" },
         { label: "อายุ 60 ปีขึ้นไป", amount: "1,000,000" },
@@ -73,7 +79,7 @@ describe("quoteCard", () => {
   });
 
   it("quotes the surrender value at the milestones still ahead", () => {
-    expect(quoteCard(MAN35, WHILE_CURRENT)!.cash!.rows).toEqual([
+    expect(section(quoteCard(MAN35, WHILE_CURRENT)!, CASH)!.rows).toEqual([
       { label: "อายุ 60 ปี", amount: "504,000" },
       { label: "อายุ 70 ปี", amount: "633,000" },
       { label: "อายุ 80 ปี", amount: "777,000" },
@@ -81,8 +87,13 @@ describe("quoteCard", () => {
     ]);
   });
 
+  /** The order the bands are drawn in is the order the customer reads them. */
+  it("puts what the family receives above what surrender would return", () => {
+    expect(quoteCard(MAN35, WHILE_CURRENT)!.sections.map((s) => s.title)).toEqual([DEATH, CASH]);
+  });
+
   it("leaves out the milestones an older insured has already passed", () => {
-    const rows = quoteCard({ ...MAN35, age: 72 }, WHILE_CURRENT)!.cash!.rows;
+    const rows = section(quoteCard({ ...MAN35, age: 72 }, WHILE_CURRENT)!, CASH)!.rows;
     expect(rows.map((r) => r.label)).toEqual(["อายุ 80 ปี", "อายุ 99 ปี"]);
   });
 
@@ -97,24 +108,24 @@ describe("quoteCard", () => {
     expect(card.perDay).toBeNull();
     expect(card.notes[0]).toContain("หมดอายุ");
     // the benefits do not come from the rate table, so they are still true and still drawn
-    expect(card.death!.rows[0].amount).toBe("2,000,000");
+    expect(section(card, DEATH)!.rows[0].amount).toBe("2,000,000");
   });
 
   it("draws nothing for an arrangement the company will not issue", () => {
     // iShield stops at 5,000,000, so a card for ten million is a card for nothing
     expect(quoteCard(
-      { planCode: "ISHIELD", variant: "WLCI10", age: 35, sex: "M", sumAssured: 10_000_000 },
+      { kind: "plan", planCode: "ISHIELD", variant: "WLCI10", age: 35, sex: "M", sumAssured: 10_000_000 },
       WHILE_CURRENT,
     )).toBeUndefined();
   });
 
   it("prices a plan whose labels carry no product name", () => {
     const card = quoteCard(
-      { planCode: "PLB", variant: "PLB10", age: 35, sex: "F", sumAssured: 500_000 },
+      { kind: "plan", planCode: "PLB", variant: "PLB10", age: 35, sex: "F", sumAssured: 500_000 },
       WHILE_CURRENT,
     )!;
     expect(card.planLine).toBe("Protection Life (PLB) · Protection Life (ชำระเบี้ย 10 ปี)");
     // PLB has no cash-value table extracted, so the card simply has no such section
-    expect(card.cash).toBeNull();
+    expect(section(card, CASH)).toBeUndefined();
   });
 });

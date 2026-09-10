@@ -1,9 +1,9 @@
 import { quote } from "@/calc/quote";
 import { quoteModePremiums } from "@/calc/mode-premiums";
-import { cashValueSchedule, maturityValue } from "@/calc/cash-value";
+import { cashValueSchedule, maturityValue, type CashValueRow } from "@/calc/cash-value";
 import { getPlan } from "@/calc/plans/registry";
 import { formatBaht } from "@/calc/money";
-import { PAY_MODE_LABEL, type PayMode, type QuoteInput, type Sex } from "@/calc/types";
+import { PAY_MODE_LABEL, type DeathBenefit, type PayMode, type QuoteInput, type Sex } from "@/calc/types";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import { displayPremium, perDay } from "@/lib/legacy-cta";
 
@@ -22,6 +22,17 @@ export interface CardRow {
   amount: string;
 }
 
+/**
+ * A titled block of figures. Cards carry a list of these rather than a field per block,
+ * because what a card has to show depends on what is being sold: a plan states a death
+ * benefit and a surrender value, a bundle also has to say what it is made of and what it
+ * pays on a diagnosis. The drawing routine reads the list and never names a block.
+ */
+export interface CardSection {
+  title: string;
+  rows: CardRow[];
+}
+
 export interface QuoteCard {
   /** the product and its payment term, e.g. "Life Protect x 2 · ชำระเบี้ย 19 ปี" */
   planLine: string;
@@ -33,8 +44,8 @@ export interface QuoteCard {
   perDay: string | null;
   /** the instalments the headline did not take */
   others: string | null;
-  death: { title: string; rows: CardRow[] } | null;
-  cash: { title: string; rows: CardRow[] } | null;
+  /** the titled blocks of figures, in the order they are read */
+  sections: CardSection[];
   /** the small print, one line per entry */
   notes: string[];
 }
@@ -52,7 +63,8 @@ const money = (baht: number) => baht.toLocaleString("en-US");
  * What a card can be asked for. It is the quote's own input minus everything a customer
  * never picks in a chat: riders, a payer, the premium basis.
  */
-export interface CardInput {
+export interface PlanCardInput {
+  kind: "plan";
   planCode: string;
   variant: string;
   age: number;
@@ -61,6 +73,9 @@ export interface CardInput {
   /** the instalment the customer is thinking in; the card still shows the others */
   mode?: PayMode;
 }
+
+/** A union of one for now — the agency's own bundle joins it here next. */
+export type CardInput = PlanCardInput;
 
 /**
  * A card's parameters, read from a URL. Everything is checked against the registry, so a
@@ -80,7 +95,7 @@ export function cardInputFrom(params: URLSearchParams): CardInput | undefined {
   if (!Number.isInteger(sumAssured) || sumAssured <= 0) return undefined;
   const raw = params.get("mode");
   const mode = raw === "annual" || raw === "semi" || raw === "monthly" ? raw : undefined;
-  return { planCode, variant, age, sex, sumAssured, mode };
+  return { kind: "plan", planCode, variant, age, sex, sumAssured, mode };
 }
 
 /** The path a card is drawn at, with the arrangement it draws written into it. */
@@ -113,6 +128,38 @@ function quoteInput(input: CardInput, mode: PayMode): QuoteInput {
   };
 }
 
+const CASH_TITLE = "มูลค่าเงินสดสะสม (หากเวนคืน)";
+
+/**
+ * The death benefit as a card block. Shared rather than written per card, because the bands
+ * come from deathBenefitRows and a second hand-written copy is a second chance to promise
+ * cover that has ended.
+ */
+function deathSection(db: DeathBenefit): CardSection {
+  return {
+    title: "ครอบครัวได้รับเมื่อเสียชีวิต",
+    rows: deathBenefitRows(db).map((r) => ({ label: r.label, amount: money(r.amount) })),
+  };
+}
+
+/** The surrender values still ahead of this insured, plus whatever the schedule ends on. */
+function cashRowsFor(
+  planCode: string, variant: string, sex: Sex, age: number, sumAssured: number,
+): CardRow[] {
+  const schedule = cashValueSchedule(planCode, variant, sex, age, sumAssured);
+  const end = maturityValue(schedule);
+  return [
+    ...CASH_AGES
+      .filter((at) => at > age)
+      .map((at) => ({ at, row: schedule.find((r) => r.age === at) }))
+      .filter((x): x is { at: number; row: CashValueRow } => !!x.row && x.row.amount > 0)
+      .map((x) => ({ label: `อายุ ${x.at} ปี`, amount: money(x.row.amount) })),
+    ...(end && end.age > age && end.amount > 0
+      ? [{ label: `อายุ ${end.age} ปี`, amount: money(end.amount) }]
+      : []),
+  ];
+}
+
 /**
  * The card for an arrangement, or undefined when the plan cannot be issued to that insured
  * at that sum — a card that says nothing is worse than no card, and the chat still has its
@@ -139,25 +186,10 @@ export function quoteCard(input: CardInput, today: Date = new Date()): QuoteCard
     .filter((m) => m.mode !== headline?.mode && !m.belowMinimum)
     .map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`);
 
-  const death = result.deathBenefit
-    ? {
-      title: "ครอบครัวได้รับเมื่อเสียชีวิต",
-      rows: deathBenefitRows(result.deathBenefit).map((r) => ({ label: r.label, amount: money(r.amount) })),
-    }
-    : null;
-
-  const schedule = cashValueSchedule(input.planCode, input.variant, input.sex, input.age, result.sumAssured);
-  const end = maturityValue(schedule);
-  const cashRows: CardRow[] = [
-    ...CASH_AGES
-      .filter((at) => at > input.age)
-      .map((at) => ({ at, row: schedule.find((r) => r.age === at) }))
-      .filter((x): x is { at: number; row: { age: number; policyYear: number; amount: number } } => !!x.row && x.row.amount > 0)
-      .map((x) => ({ label: `อายุ ${x.at} ปี`, amount: money(x.row.amount) })),
-    ...(end && end.age > input.age && end.amount > 0
-      ? [{ label: `อายุ ${end.age} ปี`, amount: money(end.amount) }]
-      : []),
-  ];
+  const sections: CardSection[] = [];
+  if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
+  const cashRows = cashRowsFor(input.planCode, input.variant, input.sex, input.age, input.sumAssured);
+  if (cashRows.length) sections.push({ title: CASH_TITLE, rows: cashRows });
 
   // the W-family labels its packages "<product> · <term>" already, and a plan label in front
   // of that reads "Life Protect x 1.5 / x 2 · Life Protect x 2 · ชำระเบี้ย…"
@@ -169,8 +201,7 @@ export function quoteCard(input: CardInput, today: Date = new Date()): QuoteCard
     premium: headline ? { amount: formatBaht(headline.total), per: PER_LABEL[headline.mode] } : null,
     perDay: headline && annual && !result.meta.expired ? `ตกวันละ ${perDay(annual.total)} บาท` : null,
     others: others.length ? others.join(" · ") : null,
-    death,
-    cash: cashRows.length ? { title: "มูลค่าเงินสดสะสม (หากเวนคืน)", rows: cashRows } : null,
+    sections,
     notes: result.meta.expired
       ? ["ตารางเบี้ยชุดนี้หมดอายุแล้ว ขอราคาปัจจุบันได้ทางแชท", "ไม่ใช่ใบเสนอราคา และไม่ใช่ส่วนหนึ่งของสัญญาประกันภัย"]
       : [
