@@ -2,6 +2,7 @@ import { quote } from "@/calc/quote";
 import { quoteModePremiums } from "@/calc/mode-premiums";
 import { cashValueSchedule, maturityValue, type CashValueRow } from "@/calc/cash-value";
 import { getPlan } from "@/calc/plans/registry";
+import { getBundle } from "@/calc/bundles/registry";
 import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL, type DeathBenefit, type PayMode, type QuoteInput, type Sex } from "@/calc/types";
 import { deathBenefitRows } from "@/lib/death-benefit";
@@ -74,39 +75,88 @@ export interface PlanCardInput {
   mode?: PayMode;
 }
 
-/** A union of one for now — the agency's own bundle joins it here next. */
-export type CardInput = PlanCardInput;
+/**
+ * A card for an arrangement the agency sells under its own name. It is named by bundle and
+ * tier rather than by sums assured, because the sums are the bundle's business — a link
+ * that could set them would be a link that could invent an arrangement the agency does not
+ * sell.
+ */
+export interface BundleCardInput {
+  kind: "bundle";
+  bundleCode: string;
+  tier: number;
+  age: number;
+  sex: Sex;
+  /** the instalment the customer is thinking in; the card still shows the others */
+  mode?: PayMode;
+}
+
+/** What a card can be asked for: an arrangement priced from the customer's own sum, or one the agency sells under its own name and tier. */
+export type CardInput = PlanCardInput | BundleCardInput;
+
+/** The instalment named in a query, or undefined when it is one the company does not sell. */
+function modeFrom(params: URLSearchParams): PayMode | undefined {
+  const raw = params.get("mode");
+  return raw === "annual" || raw === "semi" || raw === "monthly" ? raw : undefined;
+}
+
+/** The insured named in a query, or undefined when either half is missing or impossible. */
+function insuredFrom(params: URLSearchParams): { age: number; sex: Sex } | undefined {
+  const age = Number(params.get("age"));
+  if (!Number.isInteger(age) || age < 0 || age > 99) return undefined;
+  const sex = params.get("sex");
+  if (sex !== "M" && sex !== "F") return undefined;
+  return { age, sex };
+}
+
+function bundleInputFrom(code: string, params: URLSearchParams): BundleCardInput | undefined {
+  const bundle = getBundle(code);
+  if (!bundle) return undefined;
+  const tier = Number(params.get("tier"));
+  if (!bundle.tiers.some((t) => t.no === tier)) return undefined;
+  const who = insuredFrom(params);
+  if (!who) return undefined;
+  return { kind: "bundle", bundleCode: code, tier, ...who, mode: modeFrom(params) };
+}
+
+function planInputFrom(params: URLSearchParams): PlanCardInput | undefined {
+  const planCode = params.get("plan") ?? "";
+  const plan = getPlan(planCode);
+  if (!plan) return undefined;
+  const variant = params.get("variant") ?? plan.defaultVariant ?? "";
+  if (!(variant in plan.variantLabels)) return undefined;
+  const who = insuredFrom(params);
+  if (!who) return undefined;
+  const sumAssured = Number(params.get("sum"));
+  if (!Number.isInteger(sumAssured) || sumAssured <= 0) return undefined;
+  return { kind: "plan", planCode, variant, ...who, sumAssured, mode: modeFrom(params) };
+}
 
 /**
  * A card's parameters, read from a URL. Everything is checked against the registry, so a
  * hand-edited link either names a real arrangement or gets nothing at all.
  */
 export function cardInputFrom(params: URLSearchParams): CardInput | undefined {
-  const planCode = params.get("plan") ?? "";
-  const plan = getPlan(planCode);
-  if (!plan) return undefined;
-  const variant = params.get("variant") ?? plan.defaultVariant ?? "";
-  if (!(variant in plan.variantLabels)) return undefined;
-  const age = Number(params.get("age"));
-  if (!Number.isInteger(age) || age < 0 || age > 99) return undefined;
-  const sex = params.get("sex");
-  if (sex !== "M" && sex !== "F") return undefined;
-  const sumAssured = Number(params.get("sum"));
-  if (!Number.isInteger(sumAssured) || sumAssured <= 0) return undefined;
-  const raw = params.get("mode");
-  const mode = raw === "annual" || raw === "semi" || raw === "monthly" ? raw : undefined;
-  return { kind: "plan", planCode, variant, age, sex, sumAssured, mode };
+  const bundleCode = params.get("bundle");
+  return bundleCode ? bundleInputFrom(bundleCode, params) : planInputFrom(params);
 }
 
 /** The path a card is drawn at, with the arrangement it draws written into it. */
 export function cardPath(input: CardInput): string {
-  const q = new URLSearchParams({
-    plan: input.planCode,
-    variant: input.variant,
-    age: String(input.age),
-    sex: input.sex,
-    sum: String(input.sumAssured),
-  });
+  const q = input.kind === "bundle"
+    ? new URLSearchParams({
+      bundle: input.bundleCode,
+      tier: String(input.tier),
+      age: String(input.age),
+      sex: input.sex,
+    })
+    : new URLSearchParams({
+      plan: input.planCode,
+      variant: input.variant,
+      age: String(input.age),
+      sex: input.sex,
+      sum: String(input.sumAssured),
+    });
   if (input.mode) q.set("mode", input.mode);
   return `/api/card?${q.toString()}`;
 }
@@ -116,7 +166,7 @@ export function cardUrl(origin: string, input: CardInput): string {
   return new URL(cardPath(input), origin).toString();
 }
 
-function quoteInput(input: CardInput, mode: PayMode): QuoteInput {
+function quoteInput(input: PlanCardInput, mode: PayMode): QuoteInput {
   return {
     planCode: input.planCode,
     variant: input.variant,
@@ -166,6 +216,8 @@ function cashRowsFor(
  * own words for why.
  */
 export function quoteCard(input: CardInput, today: Date = new Date()): QuoteCard | undefined {
+  // a bundle is drawn by its own routine, which does not exist yet
+  if (input.kind !== "plan") return undefined;
   const plan = getPlan(input.planCode);
   if (!plan) return undefined;
   // priced yearly for the check, whatever instalment the customer is thinking in: the monthly

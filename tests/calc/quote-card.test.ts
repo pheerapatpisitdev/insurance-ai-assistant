@@ -18,7 +18,8 @@ describe("cardInputFrom", () => {
   });
 
   it("falls back to the plan's own default term", () => {
-    expect(cardInputFrom(params("plan=LIFEPROTECT&age=35&sex=M&sum=1000000"))?.variant).toBe("WLF99H");
+    expect(cardInputFrom(params("plan=LIFEPROTECT&age=35&sex=M&sum=1000000")))
+      .toMatchObject({ kind: "plan", variant: "WLF99H" });
   });
 
   /** A card is a public URL, so everything in it is checked before anything is drawn. */
