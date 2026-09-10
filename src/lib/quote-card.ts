@@ -72,7 +72,12 @@ export interface PlanCardInput {
   age: number;
   sex: Sex;
   sumAssured: number;
-  /** the instalment the customer is thinking in; the card still shows the others */
+  /**
+   * The instalment the customer asked about. It does not steer the drawing: the card
+   * headlines the largest instalment this insured can actually pay — monthly when it clears
+   * the company's minimum, otherwise yearly — and lists the rest regardless. Recorded in the
+   * link anyway, because what was asked for is worth keeping even though it changes nothing.
+   */
   mode?: PayMode;
 }
 
@@ -88,7 +93,12 @@ export interface BundleCardInput {
   tier: number;
   age: number;
   sex: Sex;
-  /** the instalment the customer is thinking in; the card still shows the others */
+  /**
+   * The instalment the customer asked about. It does not steer the drawing: the card
+   * headlines the largest instalment this insured can actually pay — monthly when it clears
+   * the company's minimum, otherwise yearly — and lists the rest regardless. Recorded in the
+   * link anyway, because what was asked for is worth keeping even though it changes nothing.
+   */
   mode?: PayMode;
 }
 
@@ -219,12 +229,12 @@ function cashRowsFor(
  * being priced — and because when they were written twice, only one of the two remembered to
  * withhold the other instalments once the rate table had lapsed.
  */
-function premiumLines(modes: ModePremium[] | undefined, expired: boolean, asked?: PayMode): {
+function premiumLines(modes: ModePremium[] | undefined, expired: boolean): {
   premium: QuoteCard["premium"];
   perDay: string | null;
   others: string | null;
 } {
-  const headline = displayPremium(modes, expired) ?? (asked && !expired ? modes?.find((m) => m.mode === asked) : undefined);
+  const headline = displayPremium(modes, expired);
   const annual = modes?.find((m) => m.mode === "annual");
   // a lapsed table has no price to show, and the other instalments are prices too
   const others = expired ? [] : (modes ?? [])
@@ -275,7 +285,7 @@ function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
   if (result.warnings.some((w) => w.level === "error")) return undefined;
 
   const modes = quoteModePremiums(quoteInput(input, "annual"), today);
-  const { premium, perDay: perDayLine, others } = premiumLines(modes, result.meta.expired, input.mode);
+  const { premium, perDay: perDayLine, others } = premiumLines(modes, result.meta.expired);
 
   const sections: CardSection[] = [];
   if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
@@ -329,7 +339,7 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
   if (result.warnings.some((w) => w.level === "error" && w.code !== "MIN_MONTHLY")) return undefined;
 
   const modes = bundleModePremiums(bundle, input.tier, who, today);
-  const { premium, perDay: perDayLine, others } = premiumLines(modes, result.meta.expired, input.mode);
+  const { premium, perDay: perDayLine, others } = premiumLines(modes, result.meta.expired);
 
   const covered = result.items.filter((it) => it.eligible);
   const ci = covered.find((it) => it.code === CI_RIDER);

@@ -246,14 +246,16 @@ describe("the bundle answer's card", () => {
     expect(answer.card).toBe("/api/card?bundle=LEGACY_FAMILY&tier=5&age=20&sex=F&mode=monthly");
   });
 
-  /**
-   * A bundle that cannot be issued whole (BUNDLE_INCOMPLETE) is supposed to withhold both the
-   * card and the priced reply above, per the guard added to answerBundle. There is no honest
-   * way to reach that state through answerBundle with today's LEGACY_FAMILY data: bundleAgeRange()
-   * narrows to exactly DCI's own age window (20-65), so any age that clears the age check above
-   * also clears DCI's own eligibility, and every tier's DCI sum assured (850,000-9,850,000) sits
-   * inside DCI's own saMin/saMaxCap. The guard is exercised indirectly above (it must not fire on
-   * MIN_MONTHLY) and otherwise verified by inspection: it is the exact rule bundleCard() already
-   * uses and is tested against in src/lib/quote-card.ts.
-   */
+  // Note for whoever next touches this describe block: a bundle that cannot be issued whole
+  // (BUNDLE_INCOMPLETE) is supposed to withhold both the card and the priced reply above, per
+  // the guard added to answerBundle. There is no honest way to reach that state through
+  // answerBundle with today's LEGACY_FAMILY data — no test for it is missing, it just cannot be
+  // written yet: bundleAgeRange() narrows to exactly DCI's own age window (20-65), so any age
+  // that clears the age check above also clears DCI's own eligibility, and every tier's DCI sum
+  // assured (850,000-9,850,000) sits inside DCI's own saMin/saMaxCap. The guard is exercised
+  // indirectly above ("still prices and cards a bundle whose only warning is the monthly
+  // minimum" proves it must not fire on MIN_MONTHLY) and otherwise verified by inspection: it is
+  // the exact rule bundleCard() already uses and is tested against in src/lib/quote-card.ts. If
+  // a future bundle's DCI sum assured or age window can diverge from the bundle's own limits,
+  // add a case here that actually reaches BUNDLE_INCOMPLETE.
 });

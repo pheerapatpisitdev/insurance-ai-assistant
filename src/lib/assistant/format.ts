@@ -135,11 +135,6 @@ export function bundleReply(
         ...rows.map((r) => `- ${r.label} ${r.amount.toLocaleString("en-US")} บาท`)].join("\n"));
   }
 
-  // a bundle that cannot be issued whole carries its refusal here rather than a premium
-  for (const w of result.warnings.filter((x) => x.level === "error" && x.code !== "MIN_MONTHLY")) {
-    blocks.push(`⚠ ${w.message}`);
-  }
-
   // A rider priced on attained age makes every figure above a first-year figure. Saying so
   // is not small print: it is the difference between a quote and a promise the premium holds.
   const risesWithAge = result.items.some((it) => it.eligible && it.code === "DCI");
