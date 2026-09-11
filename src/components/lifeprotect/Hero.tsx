@@ -17,7 +17,7 @@ export function Hero({ facts }: { facts: LifeProtectCopyFacts }) {
           does not stop to do arithmetic — it stops for a question about its own house. The
           numbers are two lines below, where someone who has already stopped will read them. */}
       <h1
-        className="lg-rise mt-5 text-[2.3rem] font-medium leading-[1.2] text-[var(--lg-white)] sm:text-[3rem]"
+        className="lg-rise mt-5 max-w-3xl text-[2.3rem] font-medium leading-[1.2] text-[var(--lg-white)] sm:text-[3rem]"
         style={{ animationDelay: "90ms" }}
       >
         ถ้าพรุ่งนี้ไม่มีคุณ
@@ -25,7 +25,7 @@ export function Hero({ facts }: { facts: LifeProtectCopyFacts }) {
         <span className="lg-metal-text">บ้านนี้ไปต่อได้ไหม</span>
       </h1>
 
-      <p className="lg-rise mt-5 text-base leading-[1.85] text-[var(--lg-mute)]" style={{ animationDelay: "180ms" }}>
+      <p className="lg-rise mt-5 max-w-2xl text-base leading-[1.85] text-[var(--lg-mute)]" style={{ animationDelay: "180ms" }}>
         <span className="font-medium text-[var(--lg-white)]">
           ช่วงที่ลูกยังเรียน บ้านยังผ่อน คือช่วงที่ครอบครัวขาดคุณไม่ได้
         </span>{" "}
@@ -33,7 +33,8 @@ export function Hero({ facts }: { facts: LifeProtectCopyFacts }) {
         คุ้มครองถึงอายุ {facts.coverToAge}
       </p>
 
-      <div className="lg-rise" style={{ animationDelay: "270ms" }}>
+      {/* full width under a thumb; a button the width of a desktop is not a button */}
+      <div className="lg-rise sm:max-w-sm" style={{ animationDelay: "270ms" }}>
         <a
           href="#calc"
           className="lg-metal-face lg-sheen mt-9 block rounded-sm px-5 py-4 text-center text-lg font-medium tracking-wide"
