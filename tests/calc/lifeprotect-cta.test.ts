@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModePremium } from "@/calc/mode-premiums";
-import { lifeProtectMessage } from "@/lib/lifeprotect-cta";
+import { lifeProtectMessage, lifeProtectQuoteText } from "@/lib/lifeprotect-cta";
 
 const MONTHLY: ModePremium = { mode: "monthly", total: 258_300, belowMinimum: false };
 const ANNUAL: ModePremium = { mode: "annual", total: 600_000, belowMinimum: false };
@@ -25,5 +25,44 @@ describe("lifeProtectMessage", () => {
   it("asks for the current price when no premium may be shown", () => {
     expect(lifeProtectMessage({ ...base, sex: "F", age: 42, premium: undefined }))
       .toBe("สนใจ Life Protect+ 100 ทุน 1,000,000 จ่าย 19 ปี อายุ 42 หญิง ขอราคาปัจจุบัน");
+  });
+});
+
+describe("lifeProtectQuoteText", () => {
+  // ชาย 35 · 1 ล้าน · จ่ายถึงอายุ 99: the figures the page shows for its opening case
+  const modes: ModePremium[] = [
+    { mode: "monthly", total: 154_800, belowMinimum: false },
+    { mode: "annual", total: 1_720_000, belowMinimum: false },
+    { mode: "semi", total: 894_400, belowMinimum: false },
+  ];
+  const death = { beforeAge: 60, sumBefore: 2_000_000, sumFrom: 1_000_000, alreadyPastAge: false };
+
+  it("writes every figure on the card, in the card's order", () => {
+    const text = lifeProtectQuoteText({
+      sumAssured: 1_000_000, termLabel: "จ่ายถึงอายุ 99", age: 35, sex: "M", modes, death,
+      cash: [{ age: 60, amount: 123_456 }, { age: 99, amount: 1_000_000 }],
+    });
+    expect(text).toBe([
+      "Life Protect+ 100 · ทุน 1,000,000 บาท",
+      "ชาย อายุ 35 · จ่ายถึงอายุ 99",
+      "เบี้ยประมาณ 1,548 บาท/เดือน (ตกวันละ 48 บาท)",
+      "รายเดือน 1,548 บาท · รายปี 17,200 บาท · ราย 6 เดือน 8,944 บาท",
+      "",
+      "ครอบครัวได้รับเมื่อเสียชีวิต",
+      "- เสียชีวิตก่อนอายุ 60 ปี 2,000,000 บาท",
+      "- อายุ 60 ปีขึ้นไป 1,000,000 บาท",
+      "",
+      "มูลค่าเงินสดสะสม (หากเวนคืน)",
+      "- อายุ 60 ปี 123,456 บาท",
+      "- อายุ 99 ปี 1,000,000 บาท",
+      "",
+      "เบี้ยคงที่ตลอดระยะเวลาชำระ · เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน",
+    ].join("\n"));
+  });
+
+  it("leaves the cash-value block out when there is none to show", () => {
+    const text = lifeProtectQuoteText({ sumAssured: 1_000_000, termLabel: "จ่าย 9 ปี", age: 0, sex: "F", modes, death, cash: [] });
+    expect(text).toContain("หญิง อายุ แรกเกิด · จ่าย 9 ปี");
+    expect(text).not.toContain("มูลค่าเงินสด");
   });
 });

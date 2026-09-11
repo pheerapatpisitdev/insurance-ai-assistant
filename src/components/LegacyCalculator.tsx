@@ -5,7 +5,7 @@ import type { PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import type { LegacyAge } from "@/lib/legacy-cta";
-import { displayPremium, legacyMessage, perDay } from "@/lib/legacy-cta";
+import { displayPremium, legacyMessage, legacyQuoteText, perDay } from "@/lib/legacy-cta";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import type { LegacyTable } from "@/lib/legacy-table";
 import { deathBenefitRows } from "@/lib/death-benefit";
@@ -89,6 +89,10 @@ export function LegacyCalculator({ table, sticky = false }: LegacyCalculatorProp
   const others = (modes ?? []).filter((m) => m.mode !== headline?.mode && !m.belowMinimum);
 
   const message = legacyMessage({ millions, age, sex, range: RANGE, premium: headline });
+  // the same figures the card is showing, or nothing: a copied quote must never say more than the page
+  const quoteText = typeof age === "number" && headline && death
+    ? legacyQuoteText({ millions, age, sex, modes: [headline, ...others], critical: table.critical[millions - 1], death, diseaseCount: table.diseaseCount })
+    : undefined;
 
   return (
     <div className="space-y-6">
@@ -222,11 +226,11 @@ export function LegacyCalculator({ table, sticky = false }: LegacyCalculatorProp
         </div>
       )}
 
-      <ContactButtons message={message} />
+      <ContactButtons message={message} copyText={quoteText} />
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} compact />
+          <ContactButtons message={message} copyText={quoteText} compact />
         </div>
       )}
     </div>

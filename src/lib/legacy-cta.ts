@@ -1,6 +1,8 @@
 import type { ModePremium } from "@/calc/mode-premiums";
-import type { PayMode, Sex } from "@/calc/types";
+import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
+import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
+import { deathBenefitRows } from "@/lib/death-benefit";
 
 /**
  * The instalment to put in the largest type. A customer reads a monthly figure as what the
@@ -80,4 +82,39 @@ export const FACEBOOK_PAGE = "105982528649026";
  */
 export function messengerUrl(text: string): string {
   return `https://m.me/${FACEBOOK_PAGE}?text=${encodeURIComponent(text)}`;
+}
+
+export interface LegacyQuoteFacts {
+  millions: number;
+  age: number;
+  sex: Sex;
+  /** every instalment the company will take, headline first */
+  modes: ModePremium[];
+  /** what the insured receives on a critical illness claim, in baht */
+  critical: number;
+  death: DeathBenefit;
+  diseaseCount: number;
+}
+
+/**
+ * The quote as the agent pastes it into a chat: every figure the card shows, in the order
+ * the card shows it, so what the customer reads in the chat is what they saw on the page.
+ */
+export function legacyQuoteText(f: LegacyQuoteFacts): string {
+  const [headline] = f.modes;
+  const annual = f.modes.find((m) => m.mode === "annual");
+  return [
+    `มรดกเพื่อครอบครัว ${f.millions} ล้าน`,
+    `${SEX_WORD[f.sex]} อายุ ${f.age}`,
+    `เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
+    f.modes.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`).join(" · "),
+    "",
+    `ตรวจพบโรคร้ายแรง รับเงินสดเอง ${f.critical.toLocaleString("en-US")} บาท`,
+    "(จ่ายครั้งเดียวแล้วสัญญาโรคร้ายแรงสิ้นสุด ประกันชีวิตหลักยังอยู่ต่อให้ครอบครัว)",
+    "",
+    "ครอบครัวได้รับเมื่อเสียชีวิต",
+    ...deathBenefitRows(f.death).map((r) => `- ${r.label} ${r.amount.toLocaleString("en-US")} บาท`),
+    "",
+    `เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป · โรคร้ายแรงเป็นไปตามคำนิยาม 1 ใน ${f.diseaseCount} โรคในกรมธรรม์`,
+  ].join("\n");
 }

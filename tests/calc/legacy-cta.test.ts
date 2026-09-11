@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModePremium } from "@/calc/mode-premiums";
-import { FACEBOOK_PAGE, displayPremium, legacyMessage, messengerUrl, perDay } from "@/lib/legacy-cta";
+import { FACEBOOK_PAGE, displayPremium, legacyMessage, legacyQuoteText, messengerUrl, perDay } from "@/lib/legacy-cta";
 
 /** ชาย 38 ปี มรดก 3 ล้าน — every mode is issuable */
 const AFFORDABLE: ModePremium[] = [
@@ -85,5 +85,34 @@ describe("contact links", () => {
 
   it("opens the agency's Page in Messenger with the message ready to send", () => {
     expect(messengerUrl(text)).toBe(`https://m.me/${FACEBOOK_PAGE}?text=` + encodeURIComponent(text));
+  });
+});
+
+describe("legacyQuoteText", () => {
+  it("writes every figure on the card, and only the instalments the company will take", () => {
+    // หญิง 30 · 1 ล้าน: the monthly instalment is under the floor, so the card headlines the year
+    const text = legacyQuoteText({
+      millions: 1, age: 30, sex: "F",
+      modes: [UNDER_FLOOR[0], UNDER_FLOOR[1]],
+      critical: 850_000,
+      death: { beforeAge: 60, sumBefore: 1_000_000, sumFrom: 150_000, alreadyPastAge: false, riderCoverEnds: { age: 65, sum: 150_000 } },
+      diseaseCount: 31,
+    });
+    expect(text).toBe([
+      "มรดกเพื่อครอบครัว 1 ล้าน",
+      "หญิง อายุ 30",
+      "เบี้ยประมาณ 4,123 บาท/ปี (ตกวันละ 12 บาท)",
+      "รายปี 4,123 บาท · ราย 6 เดือน 2,143 บาท",
+      "",
+      "ตรวจพบโรคร้ายแรง รับเงินสดเอง 850,000 บาท",
+      "(จ่ายครั้งเดียวแล้วสัญญาโรคร้ายแรงสิ้นสุด ประกันชีวิตหลักยังอยู่ต่อให้ครอบครัว)",
+      "",
+      "ครอบครัวได้รับเมื่อเสียชีวิต",
+      "- เสียชีวิตก่อนอายุ 60 ปี 1,000,000 บาท",
+      "- อายุ 60–64 ปี 150,000 บาท",
+      "- อายุ 65 ปีขึ้นไป 150,000 บาท",
+      "",
+      "เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป · โรคร้ายแรงเป็นไปตามคำนิยาม 1 ใน 31 โรคในกรมธรรม์",
+    ].join("\n"));
   });
 });
