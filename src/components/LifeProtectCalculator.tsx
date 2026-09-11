@@ -5,7 +5,10 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { PER, displayPremium, perDay } from "@/lib/legacy-cta";
 import type { LifeProtectTable } from "@/lib/lifeprotect-table";
-import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
+import { cashAt, deathBenefitOf, lifeProtectModes, payYears, termAt } from "@/lib/lifeprotect-quote";
+import { cashProjection } from "@/lib/cash-projection";
+import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
+import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
 import { ageWord, lifeProtectMessage, lifeProtectQuoteText, type LifeProtectAge } from "@/lib/lifeprotect-cta";
 import { cardPath } from "@/lib/quote-card";
 import { deathBenefitRows } from "@/lib/death-benefit";
@@ -74,6 +77,23 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
   const others = (modes ?? []).filter((m) => m.mode !== headline?.mode && !m.belowMinimum);
   const death = who ? deathBenefitOf(table, who.age, sumAssured) : undefined;
   const cash = who ? cashAt(term, sex, who.age, sumAssured, table.ageMin) : [];
+  /**
+   * Every figure below scales straight off the sum assured, so dragging the slider redraws
+   * the chart and the table without asking the server for anything.
+   */
+  const factors = who ? term.schedule[sex][who.age - table.ageMin] : null;
+  const projection = who && death && factors
+    ? cashProjection({
+        factors, age: who.age, sumAssured,
+        annualSatang: table.expired || !annual ? null : annual.total,
+        payYears: payYears(term, who.age), death,
+      })
+    : undefined;
+  const tableCaption = who
+    ? `ทุนประกัน ${sumAssured.toLocaleString("en-US")} บาท · ${sex === "M" ? "ชาย" : "หญิง"} `
+      + `${who.age === 0 ? "แรกเกิด" : `${who.age} ปี`} · ${term.short}`
+      + (annual && !table.expired ? ` · เบี้ย ${formatBaht(annual.total)} บาท/ปี` : "")
+    : "";
 
   const message = lifeProtectMessage({ sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
@@ -240,6 +260,18 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
                   </div>
                 ))}
               </dl>
+
+              {projection && (
+                <>
+                  <div className="mt-4 text-sm text-[var(--lg-mute)]">เบี้ยที่จ่าย เทียบกับ มูลค่าเงินสด</div>
+                  <CashValueChart projection={projection} age={who!.age} />
+                  <div className="mt-1.5 flex gap-4 text-xs text-[var(--lg-mute)]">
+                    <span><i className="mr-1.5 inline-block h-0.5 w-3.5 bg-[var(--lg-gold)] align-middle" />มูลค่าเวนคืน</span>
+                    <span><i className="mr-1.5 inline-block h-0.5 w-3.5 bg-white/50 align-middle" />เบี้ยสะสม (รายปี)</span>
+                  </div>
+                  <CashValueTable projection={projection} caption={tableCaption} />
+                </>
+              )}
             </div>
           )}
 
