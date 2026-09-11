@@ -73,23 +73,8 @@ async function overrides(): Promise<Map<string, string>> {
   return texts;
 }
 
-/** Forces the next read to go back to the database; used after the admin page saves. */
-export function clearPromptCache() {
-  cached = null;
-}
-
 /** The wording in force for one answer, edited or built-in. */
 export async function promptText(key: PromptKey): Promise<string> {
   const edited = (await overrides()).get(key);
   return edited?.trim() ? edited : BY_KEY.get(key)!.fallback;
-}
-
-/** Every prompt with its built-in text and whatever has been put in its place. */
-export async function promptsWithOverrides(): Promise<(PromptMeta & { current: string; edited: boolean })[]> {
-  const texts = await overrides();
-  return PROMPTS.map((p) => {
-    const edited = texts.get(p.key);
-    const isEdited = Boolean(edited?.trim());
-    return { ...p, current: isEdited ? edited! : p.fallback, edited: isEdited };
-  });
 }
