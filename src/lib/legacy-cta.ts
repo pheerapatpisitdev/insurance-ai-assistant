@@ -53,9 +53,8 @@ export interface LegacyFacts {
 export type LegacyAge = number | "other" | "";
 
 /**
- * What the customer's chat opens with. The same sentence goes to LINE, to Messenger and to
- * the assistant, so whoever answers starts from the figures already on screen instead of
- * asking for them again.
+ * What the customer's chat opens with, so whoever answers starts from the figures already
+ * on screen instead of asking for them again.
  *
  * Each shortfall says what it wants instead of falling silent: no age yet asks about the
  * sum, an age the bundle refuses asks for a plan that fits it, and a withheld price asks
@@ -73,17 +72,9 @@ export function legacyMessage(facts: LegacyFacts): string {
 }
 
 /**
- * Every channel is opened with the message waiting in the input box, never sent for the
+ * The chat is opened with the message waiting in the input box, never sent for the
  * customer: the first thing they do in the chat should still be their own doing.
  */
 export function lineUrl(oaId: string, text: string): string {
   return `https://line.me/R/oaMessage/${encodeURIComponent(oaId)}/?${encodeURIComponent(text)}`;
-}
-
-export function messengerUrl(page: string, text: string): string {
-  return `https://m.me/${encodeURIComponent(page)}?text=${encodeURIComponent(text)}`;
-}
-
-export function chatUrl(text: string): string {
-  return `/chat?q=${encodeURIComponent(text)}`;
 }

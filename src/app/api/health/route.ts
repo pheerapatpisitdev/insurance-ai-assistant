@@ -18,7 +18,6 @@ export async function GET() {
   const checks: Record<string, boolean> = {
     database: false,
     line: Boolean(process.env.LINE_CHANNEL_ACCESS_TOKEN && process.env.LINE_CHANNEL_SECRET),
-    facebook: Boolean(process.env.FB_APP_SECRET && process.env.FB_VERIFY_TOKEN),
   };
   try {
     const { error } = await supabaseAdmin().from("ins_alert_settings").select("id").limit(1);

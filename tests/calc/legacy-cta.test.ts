@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModePremium } from "@/calc/mode-premiums";
-import { chatUrl, displayPremium, legacyMessage, lineUrl, messengerUrl, perDay } from "@/lib/legacy-cta";
+import { displayPremium, legacyMessage, lineUrl, perDay } from "@/lib/legacy-cta";
 
 /** ชาย 38 ปี มรดก 3 ล้าน — every mode is issuable */
 const AFFORDABLE: ModePremium[] = [
@@ -86,14 +86,5 @@ describe("contact links", () => {
   it("opens the LINE official account with the message ready to send", () => {
     expect(lineUrl("@luckyplanner", text))
       .toBe("https://line.me/R/oaMessage/%40luckyplanner/?" + encodeURIComponent(text));
-  });
-
-  it("opens Messenger with the message ready to send", () => {
-    expect(messengerUrl("LuckyPlanner", text))
-      .toBe("https://m.me/LuckyPlanner?text=" + encodeURIComponent(text));
-  });
-
-  it("opens the in-app assistant with the question in the box", () => {
-    expect(chatUrl(text)).toBe("/chat?q=" + encodeURIComponent(text));
   });
 });

@@ -1,22 +1,16 @@
-import { chatUrl, lineUrl, messengerUrl } from "@/lib/legacy-cta";
+import { lineUrl } from "@/lib/legacy-cta";
 import type { LegacyChannels } from "@/lib/legacy-channels";
 
 /**
- * The way out of the page, in every channel that has been configured. A channel with no
- * setting is left out rather than shown broken.
+ * The way out of the page. A channel with no setting is left out rather than shown broken.
  *
  * The message is prepared, never sent: pressing send stays the customer's own act.
  */
 export function ContactButtons(
-  { channels, message, compact = false, assistant = true }: {
+  { channels, message, compact = false }: {
     channels: LegacyChannels;
     message: string;
     compact?: boolean;
-    /**
-     * Whether to offer the in-app assistant as well. A page that wants every lead in a
-     * human's chat turns it off; the buttons that remain are the channels a person answers.
-     */
-    assistant?: boolean;
   },
 ) {
   const shape = compact
@@ -30,19 +24,6 @@ export function ContactButtons(
           className={`${shape} lg-metal-face${compact ? "" : " lg-sheen"}`}
         >
           {compact ? "ทักไลน์" : "ทักไลน์ปรึกษาฟรี"}
-        </a>
-      )}
-      {channels.messengerPage && (
-        <a
-          href={messengerUrl(channels.messengerPage, message)} target="_blank" rel="noopener noreferrer"
-          className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`}
-        >
-          {compact ? "Messenger" : "ทัก Messenger"}
-        </a>
-      )}
-      {assistant && (
-        <a href={chatUrl(message)} className={`${shape} border border-[var(--lg-panel-line)] text-[var(--lg-mute)]`}>
-          {compact ? "ถาม AI" : "ถาม AI ก่อนก็ได้"}
         </a>
       )}
     </div>

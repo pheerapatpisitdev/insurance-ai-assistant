@@ -1,8 +1,8 @@
 /**
  * Where this app answers, as an absolute address.
  *
- * LINE and Messenger fetch an image by URL from their own servers, so a path is not enough
- * and the request's host is not always the public one. The deployment already declares its
+ * LINE fetches an image by URL from its own servers, so a path is not enough and the
+ * request's host is not always the public one. The deployment already declares its
  * address for the links inside alerts; the card uses the same setting rather than a second
  * one that could drift from it.
  */

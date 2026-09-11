@@ -250,11 +250,11 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
         </div>
       )}
 
-      <ContactButtons channels={channels} message={message} assistant={false} />
+      <ContactButtons channels={channels} message={message} />
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons channels={channels} message={message} compact assistant={false} />
+          <ContactButtons channels={channels} message={message} compact />
         </div>
       )}
     </div>

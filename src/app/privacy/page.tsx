@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 /** Last change to what this page describes, not to its wording. */
-const UPDATED = "4 กันยายน 2569";
+const UPDATED = "11 กันยายน 2569";
 const CONTACT = "pheerapatpisit.dev@gmail.com";
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -26,17 +26,17 @@ export default function PrivacyPage() {
 
       <p className="mt-6 text-slate-700">
         advisortool เป็นผู้ช่วยตอบคำถามเรื่องประกันชีวิตของตัวแทน ให้บริการผ่านเว็บไซต์นี้
-        บัญชีทางการ LINE และเพจ Facebook ที่ระบุไว้ในหน้านี้ เอกสารนี้อธิบายว่าเราเก็บอะไร
+        และบัญชีทางการ LINE ที่ระบุไว้ในหน้านี้ เอกสารนี้อธิบายว่าเราเก็บอะไร
         ไม่เก็บอะไร และส่งต่อให้ใครบ้าง
       </p>
 
       <Section id="collect" title="ข้อมูลที่เก็บ">
         <p>
-          <strong>เมื่อคุณทักผ่าน LINE หรือ Messenger</strong> เราเก็บข้อความที่คุณพิมพ์และคำตอบของระบบ
+          <strong>เมื่อคุณทักผ่าน LINE</strong> เราเก็บข้อความที่คุณพิมพ์และคำตอบของระบบ
           ย้อนหลังไม่เกิน 6 ข้อความ เพื่อให้ถามต่อเนื่องได้ เช่น ถามว่า &ldquo;แล้วผู้หญิงล่ะ&rdquo; แล้วระบบยังรู้ว่าพูดถึงแบบไหนอยู่
         </p>
         <p>
-          <strong>รหัสผู้ใช้ของคุณไม่ได้ถูกเก็บตามจริง</strong> LINE และ Facebook ส่งรหัสประจำตัวมาให้ระบบ
+          <strong>รหัสผู้ใช้ของคุณไม่ได้ถูกเก็บตามจริง</strong> LINE ส่งรหัสประจำตัวมาให้ระบบ
           เราแปลงเป็นค่าแฮชด้วยกุญแจลับก่อนบันทึกเสมอ ค่าที่เก็บไว้ใช้ต่อบทสนทนาเดิมได้อย่างเดียว
           ย้อนกลับไปเป็นรหัสจริงหรือหาว่าเป็นบัญชีใดไม่ได้
         </p>
@@ -124,7 +124,7 @@ export default function PrivacyPage() {
         <div className="space-y-2 text-slate-700">
           <p>
             advisortool is an assistant that answers life insurance questions for an agency in Thailand.
-            It runs on this website, on a LINE official account, and on a Facebook Page.
+            It runs on this website and on a LINE official account.
           </p>
           <p>
             <strong>What we keep.</strong> When you message us, we store the last six messages of the

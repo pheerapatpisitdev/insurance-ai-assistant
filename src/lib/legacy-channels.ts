@@ -1,21 +1,15 @@
-import { pageConnection } from "@/lib/facebook/connection";
-
 /**
- * The ways a customer can reach a person from the sales page.
+ * The way a customer reaches a person from the sales page.
  *
- * Both are read from the channels the bot already answers on rather than from settings of
- * their own: the LINE account is asked for its own ID, and the Facebook Page is the one
- * connected in the back office. Connecting a Page there already changes who the bot replies
- * as, and it would be its own kind of bug for the buttons on the sales page to keep pointing
- * somewhere else until a deploy config caught up.
+ * The LINE account is asked for its own ID rather than told it in a setting, so the button
+ * follows whichever account the bot answers as instead of waiting for a deploy config to
+ * catch up.
  *
  * Null means the channel is not set up, and the page leaves that button out.
  */
 export interface LegacyChannels {
   /** the LINE official account's basic ID, e.g. "@006crkvq" */
   lineOaId: string | null;
-  /** the Facebook Page the bot answers as, in the form m.me accepts */
-  messengerPage: string | null;
 }
 
 const INFO_URL = "https://api.line.me/v2/bot/info";
@@ -37,23 +31,14 @@ async function lineBasicId(): Promise<string | null> {
   return ((await res.json()) as { basicId?: string }).basicId ?? null;
 }
 
-async function connectedPage(): Promise<string | null> {
-  return (await pageConnection())?.pageId ?? null;
-}
-
 /**
- * Both channels, each answered on its own. A LINE token that has been revoked, or a database
- * that cannot be reached, costs its own button and nothing else — the page still renders with
- * whatever is left, because a landing page with one way to reach someone beats an error.
+ * A LINE token that has been revoked costs the button and nothing else — the page still
+ * renders with whatever is left, because a landing page that loads beats an error.
  */
 export async function legacyChannels(): Promise<LegacyChannels> {
-  const [line, messenger] = await Promise.allSettled([lineBasicId(), connectedPage()]);
-  return {
-    lineOaId: value(line) ?? fromEnv("NEXT_PUBLIC_LINE_OA_ID"),
-    messengerPage: value(messenger) ?? fromEnv("NEXT_PUBLIC_FB_PAGE"),
-  };
-}
-
-function value<T>(r: PromiseSettledResult<T | null>): T | null {
-  return r.status === "fulfilled" ? r.value : null;
+  try {
+    return { lineOaId: (await lineBasicId()) ?? fromEnv("NEXT_PUBLIC_LINE_OA_ID") };
+  } catch {
+    return { lineOaId: fromEnv("NEXT_PUBLIC_LINE_OA_ID") };
+  }
 }

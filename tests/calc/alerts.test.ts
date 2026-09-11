@@ -35,15 +35,14 @@ describe("what the agent is told about a new customer", () => {
   const reply = "ชุดมรดกเพื่อครอบครัว — มรดก 3 ล้าน\nชาย 40 ปี\n\nรายปี 18,792 บาท\nราย 6 เดือน 9,771.84 บาท";
 
   it("names the channel, the question and what the bot answered", () => {
-    const msg = leadMessage("facebook", "มรดก 3 ล้าน ชาย 40", reply);
-    expect(msg).toContain("Messenger");
+    const msg = leadMessage("line", "มรดก 3 ล้าน ชาย 40", reply);
+    expect(msg).toContain("LINE");
     expect(msg).toContain("มรดก 3 ล้าน ชาย 40");
     expect(msg).toContain("ชุดมรดกเพื่อครอบครัว — มรดก 3 ล้าน · ชาย 40 ปี");
   });
 
   it("links to the conversation on the channel it came from", () => {
     expect(leadMessage("line", "สนใจมรดก", reply)).toContain("/admin/line");
-    expect(leadMessage("facebook", "สนใจมรดก", reply)).toContain("/admin/messenger");
   });
 
   it("carries nothing that identifies the customer, because nothing identifying is kept", () => {

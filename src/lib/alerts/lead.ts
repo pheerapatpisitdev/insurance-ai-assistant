@@ -11,7 +11,7 @@ import { alertSettings } from "./settings";
  * identifies anyone — there is nothing identifying to carry.
  */
 
-const CHANNEL_TH: Record<Channel, string> = { line: "LINE", facebook: "Messenger" };
+const CHANNEL_TH: Record<Channel, string> = { line: "LINE" };
 
 function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.advisortool.app";
@@ -24,7 +24,7 @@ export function leadMessage(channel: Channel, question: string, reply: string): 
     `🔔 ลูกค้าใหม่ทาง ${CHANNEL_TH[channel]}`,
     `ถามว่า: ${question.slice(0, 120)}`,
     headline ? `บอทตอบ: ${headline}` : "",
-    `${siteUrl()}/admin/${channel === "line" ? "line" : "messenger"}`,
+    `${siteUrl()}/admin/${channel}`,
   ].filter(Boolean).join("\n");
 }
 

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { Conversation } from "@/lib/chat/history";
 
-const CHANNEL_LABEL: Record<string, string> = { line: "LINE", facebook: "Messenger" };
+const CHANNEL_LABEL: Record<string, string> = { line: "LINE" };
 
 /** The stored turns of one conversation, opened one at a time. */
 export function ConversationList({ items, showChannel = false }: { items: Conversation[]; showChannel?: boolean }) {

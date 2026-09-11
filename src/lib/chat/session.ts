@@ -2,8 +2,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ChatMessage } from "@/lib/ai/types";
 import type { Routed } from "@/lib/assistant/route";
 
-/** Which messaging service a person wrote from. Conversations never cross between them. */
-export type Channel = "line" | "facebook";
+/** Which messaging service a person wrote from. LINE is the only one the bot answers on. */
+export type Channel = "line";
 
 /** A conversation older than this has almost certainly moved on to a new customer. */
 const MAX_AGE_HOURS = 24;

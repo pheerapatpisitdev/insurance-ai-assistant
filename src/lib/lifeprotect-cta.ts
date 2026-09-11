@@ -26,8 +26,8 @@ export function ageWord(age: number): string {
 }
 
 /**
- * What the customer's chat opens with — the same sentence for LINE, Messenger and the
- * assistant, so whoever answers starts from the figures already on screen.
+ * What the customer's chat opens with, so whoever answers starts from the figures already
+ * on screen.
  */
 export function lifeProtectMessage(f: LifeProtectCtaFacts): string {
   const head = `สนใจ Life Protect+ 100 ทุน ${f.sumAssured.toLocaleString("en-US")}`;

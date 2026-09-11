@@ -101,9 +101,8 @@ const FONT_DIR = path.join(process.cwd(), "src/app/api/card");
 const loadFont = (file: string) => readFile(path.join(FONT_DIR, file));
 
 /**
- * A quote drawn as an image, so LINE, Messenger and the web chat can hand a customer the
- * same card the sales page shows — something to keep, and to show whoever else in the house
- * has to agree to it.
+ * A quote drawn as an image, so LINE can hand a customer the same card the sales page
+ * shows — something to keep, and to show whoever else in the house has to agree to it.
  *
  * The arrangement is named in the query and priced here, never carried in it: the picture is
  * a rendering of the engine's answer, not of whatever the link happened to say.
