@@ -20,29 +20,21 @@ export const metadata = {
 export default async function LifeProtectPage() {
   const table = lifeProtectTable();
   const facts = lifeProtectFacts();
+  // One column at every width: the page is read top to bottom, and the order the parts come
+  // in is the argument. A phone gets the narrowest measure it can hold; a tablet and a
+  // desktop get a wider one, which the chart and the year-by-year table spend on themselves
+  // without the prose lines growing too long to follow.
   return (
-    <main className="mx-auto max-w-lg px-4 pb-28 sm:max-w-2xl sm:pb-10 lg:max-w-6xl">
+    <main className="mx-auto max-w-lg px-4 pb-28 sm:max-w-2xl sm:pb-10">
       <Hero facts={facts} />
-
-      {/* One column on a phone and on a tablet held upright, where the reasons have to be
-          scrolled past to reach the price. Wide enough for two, the price sits beside the
-          reasons instead of below them — a desktop reader compares the two by looking, not
-          by scrolling back up. Neither column is pinned: the calculator is the tallest block
-          on the page, and a sticky panel taller than the window hides its own bottom, which
-          here is the chart and the table. */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-x-14">
-        <section id="calc" className="scroll-mt-4 lg:order-2 lg:col-start-2">
-          <LifeProtectCalculator table={table} sticky />
-        </section>
-        <div className="lg:order-1 lg:col-start-1 lg:row-start-1">
-          <DoubleSection facts={facts} />
-          <WhySection facts={facts} />
-          <TermsSection facts={facts} />
-          <ChildSection facts={facts} />
-          <FaqSection facts={facts} />
-        </div>
-      </div>
-
+      <section id="calc" className="scroll-mt-4">
+        <LifeProtectCalculator table={table} sticky />
+      </section>
+      <DoubleSection facts={facts} />
+      <WhySection facts={facts} />
+      <TermsSection facts={facts} />
+      <ChildSection facts={facts} />
+      <FaqSection facts={facts} />
       <Disclaimer facts={facts} />
     </main>
   );
