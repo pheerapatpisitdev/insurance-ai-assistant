@@ -7,6 +7,7 @@ import { PER, displayPremium, perDay } from "@/lib/legacy-cta";
 import type { LifeProtectTable } from "@/lib/lifeprotect-table";
 import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { ageWord, lifeProtectMessage, lifeProtectQuoteText, type LifeProtectAge } from "@/lib/lifeprotect-cta";
+import { cardPath } from "@/lib/quote-card";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 
@@ -76,6 +77,9 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
 
   const message = lifeProtectMessage({ sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
+  const card = who && headline
+    ? cardPath({ kind: "plan", planCode: table.planCode, variant, age: who.age, sex, sumAssured, mode: headline.mode })
+    : undefined;
   const quoteText = who && headline && death
     ? lifeProtectQuoteText({ sumAssured, termLabel: term.label, age: who.age, sex, modes: [headline, ...others], death, cash })
     : undefined;
@@ -251,11 +255,11 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
         </div>
       )}
 
-      <ContactButtons message={message} copyText={quoteText} />
+      <ContactButtons message={message} copyText={quoteText} cardPath={card} />
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} compact />
+          <ContactButtons message={message} copyText={quoteText} cardPath={card} compact />
         </div>
       )}
     </div>

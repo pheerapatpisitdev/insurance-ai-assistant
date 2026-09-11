@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // dev server's .next (which leaves it throwing "Cannot find module './xxx.js'").
   // Use `npm run verify`, which sets NEXT_DIST_DIR=.next-build.
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
+  // the quote card draws Thai text, and the drawing library needs the font files themselves
+  outputFileTracingIncludes: { "/api/card": ["./src/app/api/card/*.ttf"] },
 };
 
 export default nextConfig;

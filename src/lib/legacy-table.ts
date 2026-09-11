@@ -15,6 +15,8 @@ import type { DeathBenefit, Sex } from "@/calc/types";
  * server.
  */
 export interface LegacyTable {
+  /** the bundle a card for this page is addressed by */
+  bundleCode: string;
   ageMin: number;
   ageMax: number;
   /** the number of tiers, which are the round millions the family receives */
@@ -83,6 +85,7 @@ export function legacyTable(today: Date = new Date()): LegacyTable {
   }));
 
   cached = {
+    bundleCode: BUNDLE.code,
     ageMin: RANGE.min,
     ageMax: RANGE.max,
     tiers: tiers.length,

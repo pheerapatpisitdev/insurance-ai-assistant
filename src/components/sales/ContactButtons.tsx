@@ -1,6 +1,7 @@
 import { messengerUrl } from "@/lib/legacy-cta";
 import { CopyButton } from "./CopyButton";
 import { SendButton } from "./SendButton";
+import { CardButton } from "./CardButton";
 
 /**
  * The way out of the page: a chat with a person on the agency's Facebook Page — and, once a
@@ -10,7 +11,8 @@ import { SendButton } from "./SendButton";
  * The message is prepared, never sent: pressing send stays the customer's own act.
  */
 export function ContactButtons(
-  { message, copyText, compact = false }: { message: string; copyText?: string; compact?: boolean },
+  { message, copyText, cardPath, compact = false }:
+    { message: string; copyText?: string; cardPath?: string; compact?: boolean },
 ) {
   const shape = compact
     ? "rounded-sm px-3 py-2.5 text-center text-sm font-medium"
@@ -23,6 +25,9 @@ export function ContactButtons(
       >
         {compact ? "ทักเพจ" : "ทักเพจปรึกษาฟรี"}
       </a>
+      {cardPath && (
+        <CardButton path={cardPath} compact={compact} className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`} />
+      )}
       {copyText && (
         <>
           <SendButton text={copyText} compact={compact} className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`} />
