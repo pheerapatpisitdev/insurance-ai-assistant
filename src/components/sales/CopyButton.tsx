@@ -9,7 +9,9 @@ import { useEffect, useState } from "react";
  * The async clipboard API is refused on plain http and in some in-app browsers; the
  * hidden-textarea fallback still works there.
  */
-export function CopyButton({ text, className }: { text: string; className: string }) {
+export function CopyButton(
+  { text, className, compact = false }: { text: string; className: string; compact?: boolean },
+) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function CopyButton({ text, className }: { text: string; className: strin
 
   return (
     <button type="button" onClick={copy} className={className} aria-live="polite">
-      {copied ? "คัดลอกแล้ว ✓" : "คัดลอกข้อความ"}
+      {copied ? "คัดลอกแล้ว ✓" : compact ? "คัดลอก" : "คัดลอกข้อความ"}
     </button>
   );
 }

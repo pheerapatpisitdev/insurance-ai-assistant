@@ -1,5 +1,6 @@
 import { messengerUrl } from "@/lib/legacy-cta";
 import { CopyButton } from "./CopyButton";
+import { SendButton } from "./SendButton";
 
 /**
  * The way out of the page: a chat with a person on the agency's Facebook Page — and, once a
@@ -23,7 +24,10 @@ export function ContactButtons(
         {compact ? "ทักเพจ" : "ทักเพจปรึกษาฟรี"}
       </a>
       {copyText && (
-        <CopyButton text={copyText} className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`} />
+        <>
+          <SendButton text={copyText} compact={compact} className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`} />
+          <CopyButton text={copyText} compact={compact} className={`${shape} border border-[var(--lg-panel-line)] text-[var(--lg-mute)]`} />
+        </>
       )}
     </div>
   );

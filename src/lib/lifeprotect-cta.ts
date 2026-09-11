@@ -65,11 +65,13 @@ export function lifeProtectQuoteText(f: LifeProtectQuoteFacts): string {
     ? `ทุน ${baht(f.sumAssured)} บาท`
     : `ทุน ${baht(f.sumAssured)} บาท เพิ่มเป็น ${baht(f.death.sumBefore)} ถึงอายุ ${f.death.beforeAge}`;
   const lines = [
-    "Life Protect+ 100",
+    // an emoji a heading, no more: the text is pasted into a customer's chat, where a wall
+    // of them reads as a broadcast rather than as an agent answering
+    "🛡️ Life Protect+ 100",
     sum,
     "",
     `${SEX_WORD[f.sex]} อายุ ${ageWord(f.age)} · ${f.termLabel}`,
-    `เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
+    `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
     "",
     // one instalment a line, smallest first, whichever the card headlines
     ...INSTALMENT_ORDER.flatMap((mode) => {
@@ -77,13 +79,13 @@ export function lifeProtectQuoteText(f: LifeProtectQuoteFacts): string {
       return m ? [`${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`] : [];
     }),
     "",
-    "ครอบครัวได้รับเมื่อเสียชีวิต",
+    "👪 ครอบครัวได้รับเมื่อเสียชีวิต",
     ...deathBenefitRows(f.death).map((r) => `- ${r.label} ${baht(r.amount)} บาท`),
   ];
   if (f.cash.length > 0) {
-    lines.push("", "มูลค่าเงินสดสะสม (หากเวนคืน)", ...f.cash.map((r) => `- อายุ ${r.age} ปี ${baht(r.amount)} บาท`));
+    lines.push("", "🏦 มูลค่าเงินสดสะสม (หากเวนคืน)", ...f.cash.map((r) => `- อายุ ${r.age} ปี ${baht(r.amount)} บาท`));
   }
-  lines.push("", "เบี้ยคงที่ตลอดระยะเวลาชำระ", "เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน");
+  lines.push("", "📌 เบี้ยคงที่ตลอดระยะเวลาชำระ", "เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน");
   return lines.join("\n");
 }
 

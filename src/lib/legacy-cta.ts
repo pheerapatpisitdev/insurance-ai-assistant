@@ -76,6 +76,9 @@ export function legacyMessage(facts: LegacyFacts): string {
 /** The agency's Facebook Page, LuckyPlanner โชคดีที่มีแพลน — the one place a customer is sent to talk to a person. */
 export const FACEBOOK_PAGE = "105982528649026";
 
+/** Where the agent answers the people who wrote to that Page. */
+export const PAGE_INBOX_URL = "https://business.facebook.com/latest/inbox";
+
 /**
  * The chat is opened with the message waiting in the input box, never sent for the
  * customer: the first thing they do in the chat should still be their own doing.
@@ -107,9 +110,11 @@ export function legacyQuoteText(f: LegacyQuoteFacts): string {
   const annual = f.modes.find((m) => m.mode === "annual");
   const baht = (n: number) => n.toLocaleString("en-US");
   return [
-    `มรดกเพื่อครอบครัว ${f.millions} ล้าน`,
+    // an emoji a heading, no more: the text is pasted into a customer's chat, where a wall
+    // of them reads as a broadcast rather than as an agent answering
+    `🛡️ มรดกเพื่อครอบครัว ${f.millions} ล้าน`,
     `${SEX_WORD[f.sex]} อายุ ${f.age}`,
-    `เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
+    `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
     // one instalment a line, smallest first. An instalment the company refuses is still
     // named, with the reason: an agent asked for it by name should not have to guess why
     // the quote left it out.
@@ -120,13 +125,13 @@ export function legacyQuoteText(f: LegacyQuoteFacts): string {
       return [m.belowMinimum ? `${line} (ต่ำกว่าขั้นต่ำ ${baht(f.minMonthly)} บาท บริษัทไม่รับชำระรายเดือน)` : line];
     }),
     "",
-    `ตรวจพบโรคร้ายแรง รับเงินสดเอง ${baht(f.critical)} บาท`,
+    `🏥 ตรวจพบโรคร้ายแรง รับเงินสดเอง ${baht(f.critical)} บาท`,
     "(จ่ายครั้งเดียวแล้วสัญญาโรคร้ายแรงสิ้นสุด ประกันชีวิตหลักยังอยู่ต่อให้ครอบครัว)",
     "",
-    "ครอบครัวได้รับเมื่อเสียชีวิต",
+    "👪 ครอบครัวได้รับเมื่อเสียชีวิต",
     ...deathBenefitRows(f.death).map((r) => `- ${r.label} ${baht(r.amount)} บาท`),
     "",
-    "เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป",
+    "📌 เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป",
     `โรคร้ายแรงเป็นไปตามคำนิยาม 1 ใน ${f.diseaseCount} โรคในกรมธรรม์`,
   ].join("\n");
 }

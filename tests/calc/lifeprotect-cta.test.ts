@@ -43,25 +43,25 @@ describe("lifeProtectQuoteText", () => {
       cash: [{ age: 60, amount: 123_456 }, { age: 99, amount: 1_000_000 }],
     });
     expect(text).toBe([
-      "Life Protect+ 100",
+      "🛡️ Life Protect+ 100",
       "ทุน 1,000,000 บาท เพิ่มเป็น 2,000,000 ถึงอายุ 60",
       "",
       "ชาย อายุ 35 · จ่ายถึงอายุ 99",
-      "เบี้ยประมาณ 1,548 บาท/เดือน (ตกวันละ 48 บาท)",
+      "💰 เบี้ยประมาณ 1,548 บาท/เดือน (ตกวันละ 48 บาท)",
       "",
       "รายเดือน 1,548 บาท",
       "ราย 6 เดือน 8,944 บาท",
       "รายปี 17,200 บาท",
       "",
-      "ครอบครัวได้รับเมื่อเสียชีวิต",
+      "👪 ครอบครัวได้รับเมื่อเสียชีวิต",
       "- เสียชีวิตก่อนอายุ 60 ปี 2,000,000 บาท",
       "- อายุ 60 ปีขึ้นไป 1,000,000 บาท",
       "",
-      "มูลค่าเงินสดสะสม (หากเวนคืน)",
+      "🏦 มูลค่าเงินสดสะสม (หากเวนคืน)",
       "- อายุ 60 ปี 123,456 บาท",
       "- อายุ 99 ปี 1,000,000 บาท",
       "",
-      "เบี้ยคงที่ตลอดระยะเวลาชำระ",
+      "📌 เบี้ยคงที่ตลอดระยะเวลาชำระ",
       "เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน",
     ].join("\n"));
   });
@@ -69,7 +69,7 @@ describe("lifeProtectQuoteText", () => {
   it("promises no doubling to an insured already past the age it stops at", () => {
     const past = { beforeAge: 60, sumBefore: 1_000_000, sumFrom: 1_000_000, alreadyPastAge: true };
     const text = lifeProtectQuoteText({ sumAssured: 1_000_000, termLabel: "จ่าย 9 ปี", age: 62, sex: "M", modes, death: past, cash: [] });
-    expect(text).toContain("Life Protect+ 100\nทุน 1,000,000 บาท\n\nชาย อายุ 62");
+    expect(text).toContain("🛡️ Life Protect+ 100\nทุน 1,000,000 บาท\n\nชาย อายุ 62");
     expect(text).not.toContain("เพิ่มเป็น");
   });
 
