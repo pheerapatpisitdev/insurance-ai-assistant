@@ -3,7 +3,6 @@ import { baseRate } from "@/calc/lookup";
 import { baseAgeRange } from "@/calc/rules";
 import { cashValueSchedule, maturityValue } from "@/calc/cash-value";
 import type { PayMode, Sex } from "@/calc/types";
-import { CASH_AGES } from "@/lib/lifeprotect-quote";
 
 /**
  * Everything the Life Protect+ 100 page needs to price itself in the browser.

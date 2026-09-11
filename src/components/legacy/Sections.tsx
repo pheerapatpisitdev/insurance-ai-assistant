@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { riderDiseases } from "@/calc/riders/diseases";
 import type { LegacyCopyFacts } from "@/lib/legacy-facts";
 import { Fold, H2, Rule } from "@/components/sales/Blocks";
@@ -158,17 +159,31 @@ export function DiseaseSection() {
  * into the reason to start now, which is what it honestly is.
  */
 export function FaqSection({ facts }: { facts: LegacyCopyFacts }) {
-  const faqs = [
+  const faqs: { q: string; a: React.ReactNode }[] = [
     {
       q: "เบี้ยคงที่ตลอดไหม",
-      a: "ส่วนประกันชีวิตหลักคงที่ ส่วนสัญญาเพิ่มเติมโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นทุกปี ยิ่งเริ่มเร็วยิ่งได้เปรียบ"
-        + (facts.waiting
-          ? ` — ชายอายุ ${facts.waiting.youngAge} วงเงิน 1 ล้าน ปีแรกจ่าย ${facts.waiting.young} บาท ถ้ารอถึงอายุ ${facts.waiting.olderAge} ปีแรกจ่าย ${facts.waiting.older} บาท เท่าตัวกว่า`
-          : ""),
+      a: (
+        <>
+          ส่วนประกันชีวิตหลักคงที่ ส่วนสัญญาเพิ่มเติมโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นทุกปี ยิ่งเริ่มเร็วยิ่งได้เปรียบ
+          {facts.waiting
+            ? ` — ชายอายุ ${facts.waiting.youngAge} วงเงิน 1 ล้าน ปีแรกจ่าย ${facts.waiting.young} บาท ถ้ารอถึงอายุ ${facts.waiting.olderAge} ปีแรกจ่าย ${facts.waiting.older} บาท เท่าตัวกว่า`
+            : ""}{" "}
+          ถ้าอยากได้ความคุ้มครองโรคร้ายแรงที่เบี้ยไม่ขยับเลย มีอีกแบบที่รวมไว้ในสัญญาหลัก{" "}
+          <Link href="/ishield" className="text-[var(--lg-gold)] underline underline-offset-4">ดู iShield</Link>
+        </>
+      ),
     },
     {
       q: "คุ้มครองยาวถึงอายุเท่าไหร่",
-      a: `ประกันชีวิตหลักคุ้มครองถึงอายุ 99 ปี ส่วนสัญญาเพิ่มเติมโรคร้ายแรงคุ้มครองถึงอายุ ${facts.plan1.endAge} ปี — แผนมรดก 1 ล้าน ครอบครัวจึงได้ 1 ล้านเมื่อเสียชีวิตก่อนอายุ ${facts.plan1.endAge} และได้ทุนของสัญญาหลัก ${facts.plan1.endSum} บาท ตั้งแต่อายุ ${facts.plan1.endAge} เป็นต้นไป ถ้าต้องการวงเงินเต็มยาวกว่านี้ ทักมาคุยกัน มีแบบอื่นที่จัดให้ได้`,
+      a: (
+        <>
+          ประกันชีวิตหลักคุ้มครองถึงอายุ 99 ปี ส่วนสัญญาเพิ่มเติมโรคร้ายแรงคุ้มครองถึงอายุ {facts.plan1.endAge} ปี —
+          แผนมรดก 1 ล้าน ครอบครัวจึงได้ 1 ล้านเมื่อเสียชีวิตก่อนอายุ {facts.plan1.endAge} และได้ทุนของสัญญาหลัก{" "}
+          {facts.plan1.endSum} บาท ตั้งแต่อายุ {facts.plan1.endAge} เป็นต้นไป ถ้าต้องการความคุ้มครองโรคร้ายแรงยาวกว่านี้{" "}
+          <Link href="/ishield" className="text-[var(--lg-gold)] underline underline-offset-4">iShield</Link>{" "}
+          คุ้มครองถึงอายุ 85 และจ่ายคืนเต็มทุนถ้าอยู่ครบ หรือทักมาคุยกัน จัดให้ได้อีกหลายแบบ
+        </>
+      ),
     },
     {
       q: "ต้องตรวจสุขภาพไหม",
