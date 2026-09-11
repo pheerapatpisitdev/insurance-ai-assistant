@@ -36,7 +36,7 @@ export interface CashValueChartProps {
  * scrubs.
  */
 export function CashValueChart({ projection, age }: CashValueChartProps) {
-  const { rows, breakEven, maturityAge } = projection;
+  const { rows, breakEven, maturityAge, coverFloor } = projection;
   // opening on the break-even year shows the readout working and names the year that matters
   const [picked, setPicked] = useState(() => (breakEven ? breakEven.policyYear - 1 : rows.length - 1));
   if (!rows.length) return null;
@@ -58,12 +58,11 @@ export function CashValueChart({ projection, age }: CashValueChartProps) {
     .join(" ");
 
   /**
-   * One gridline, at the level the cover settles to — which is the sum assured, the number
-   * the customer picked. It reads the dashed line's lower step for them. Skipped when it
-   * would sit on top of an axis label it would otherwise explain.
+   * One gridline, at the sum assured — the number the customer picked, and the level the
+   * cover steps down to at 60 before any top-up for premiums paid. Skipped when it would sit
+   * on top of an axis label it would otherwise explain.
    */
-  const settledCover = rows[rows.length - 1].cover;
-  const grid = settledCover < top * 0.92 && settledCover > top * 0.08 ? settledCover : null;
+  const grid = coverFloor < top * 0.92 && coverFloor > top * 0.08 ? coverFloor : null;
 
   const ticks = [...new Set([age, 60, 80, maturityAge])].filter((a) => a >= age && a <= maturityAge);
 

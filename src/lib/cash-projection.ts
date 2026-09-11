@@ -13,7 +13,10 @@ export interface ProjectionRow {
   policyYear: number;
   /** the insured's age at the start of that policy year, as the company table labels it */
   age: number;
-  /** what the family receives if the insured dies that year */
+  /**
+   * What the family receives if the insured dies that year — the greater of the plan's
+   * multiple of the sum assured, the surrender value, and 101% of the premiums paid so far
+   */
   cover: number;
   /** the premium falling due that year; 0 once the paying term is over, null with no price */
   premiumDue: number | null;
@@ -31,6 +34,12 @@ export interface Projection {
   zeroYears: number;
   /** the age the last row's money is held at — the company labels it the year after */
   maturityAge: number;
+  /**
+   * The cover the plan promises on the sum assured alone once the booster is past, before
+   * any top-up for premiums paid. The chart rules a line at it because it is the number the
+   * customer chose; `cover` on a row can sit above it.
+   */
+  coverFloor: number;
 }
 
 export interface ProjectionInput {
@@ -54,14 +63,22 @@ export function cashProjection(
     const at = age + i;
     const due = annualSatang === null ? null : i < payYears ? annualSatang : 0;
     if (due !== null) paid += due;
+    // the same ROUND(factor × sum / 1000) baht as cash-value.ts, then carried in satang
+    const cashValue = Math.round((factor * sumAssured) / 1000) * 100;
+    /**
+     * The company's own proposal puts it this way: it pays the multiple of the sum assured,
+     * or the surrender value, or 101% of the premiums paid on the base contract — whichever
+     * is greater. Late in a long contract the second and third overtake the first, and a
+     * cover drawn without them would understate what the family receives.
+     */
+    const promised = (at < death.beforeAge ? death.sumBefore : death.sumFrom) * 100;
     return {
       policyYear: i + 1,
       age: at,
-      cover: (at < death.beforeAge ? death.sumBefore : death.sumFrom) * 100,
+      cover: Math.max(promised, cashValue, annualSatang === null ? 0 : Math.round(paid * 1.01)),
       premiumDue: due,
       premiumPaid: annualSatang === null ? null : paid,
-      // the same ROUND(factor × sum / 1000) baht as cash-value.ts, then carried in satang
-      cashValue: Math.round((factor * sumAssured) / 1000) * 100,
+      cashValue,
     };
   });
 
@@ -69,5 +86,5 @@ export function cashProjection(
   while (zeroYears < rows.length && rows[zeroYears].cashValue === 0) zeroYears += 1;
 
   const breakEven = rows.find((r) => r.premiumPaid !== null && r.cashValue >= r.premiumPaid) ?? null;
-  return { rows, breakEven, zeroYears, maturityAge: age + factors.length };
+  return { rows, breakEven, zeroYears, maturityAge: age + factors.length, coverFloor: death.sumFrom * 100 };
 }

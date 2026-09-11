@@ -6,17 +6,17 @@ import { deathBenefitOf, lifeProtectModes, payYears, termAt } from "@/lib/lifepr
 const table = lifeProtectTable(new Date("2026-09-05"));
 const SUM = 1_000_000;
 
-/** ชาย 35 · ทุน 1 ล้าน, on whichever payment term is asked for. */
-function project(variant: string, withPrice = true) {
+/** ชาย · ทุน 1 ล้าน, on whichever payment term and issue age is asked for. */
+function project(variant: string, withPrice = true, age = 35) {
   const term = termAt(table, variant);
-  const factors = term.schedule.M[35 - table.ageMin]!;
+  const factors = term.schedule.M[age - table.ageMin]!;
   const annualSatang = withPrice
-    ? lifeProtectModes(table, term, { sex: "M", age: 35, sumAssured: SUM })!
+    ? lifeProtectModes(table, term, { sex: "M", age, sumAssured: SUM })!
         .find((m) => m.mode === "annual")!.total
     : null;
   return cashProjection({
-    factors, age: 35, sumAssured: SUM, annualSatang,
-    payYears: payYears(term, 35), death: deathBenefitOf(table, 35, SUM),
+    factors, age, sumAssured: SUM, annualSatang,
+    payYears: payYears(term, age), death: deathBenefitOf(table, age, SUM),
   });
 }
 
@@ -75,6 +75,40 @@ describe("cashProjection · the other two terms", () => {
   });
 });
 
+/**
+ * The company's proposal footnote: it pays the multiple of the sum assured, or the surrender
+ * value, or 101% of the premiums paid on the base contract — whichever is greater.
+ */
+describe("cashProjection · the cover rises with what has been paid", () => {
+  it("stays on the plain sum assured while that is still the biggest of the three", () => {
+    const p = project("WLF99H");
+    expect(p.coverFloor).toBe(100_000_000);
+    expect(p.rows.find((r) => r.age === 59)!.cover).toBe(200_000_000);
+    expect(p.rows.find((r) => r.age === 60)!.cover).toBe(100_000_000);
+    expect(p.rows[56].cover).toBe(100_000_000);
+  });
+
+  it("follows 101% of the premiums once they overtake the sum assured", () => {
+    const p = project("WLF99H");
+    // ปีที่ 58: จ่ายไปแล้ว 997,600 — ร้อยละ 101 คือ 1,007,576 ซึ่งมากกว่าทุน 1 ล้าน
+    expect(p.rows[57]).toMatchObject({ policyYear: 58, premiumPaid: 99_760_000, cover: 100_757_600 });
+    expect(p.rows[58]).toMatchObject({ policyYear: 59, premiumPaid: 101_480_000, cover: 102_494_800 });
+  });
+
+  it("follows the surrender value when that is the biggest of the three", () => {
+    const p = project("WLF99H");
+    // ปีสุดท้าย: เวนคืน 1,112,000 ชนะทั้งทุน 1 ล้าน และ 101% ของเบี้ย 1,111,808
+    expect(p.rows[63]).toMatchObject({ policyYear: 64, cashValue: 111_200_000, cover: 111_200_000 });
+  });
+
+  it("carries an old buyer's cover far above the sum assured", () => {
+    const p = project("WLF19H", true, 80);
+    expect(p.coverFloor).toBe(100_000_000);
+    expect(p.rows[5]).toMatchObject({ policyYear: 6, age: 85, premiumPaid: 111_000_000, cover: 112_110_000 });
+    expect(p.rows[18]).toMatchObject({ policyYear: 19, age: 98, cashValue: 355_000_000, cover: 355_015_000 });
+  });
+});
+
 describe("cashProjection when no price may be shown", () => {
   const p = project("WLF99H", false);
 
@@ -83,5 +117,10 @@ describe("cashProjection when no price may be shown", () => {
     expect(p.breakEven).toBeNull();
     expect(p.zeroYears).toBe(8);
     expect(p.rows[8].cashValue).toBe(1_100_000);
+  });
+
+  it("still lifts the cover to the surrender value, which needs no price", () => {
+    expect(p.rows[63].cover).toBe(111_200_000);
+    expect(p.rows.find((r) => r.age === 59)!.cover).toBe(200_000_000);
   });
 });
