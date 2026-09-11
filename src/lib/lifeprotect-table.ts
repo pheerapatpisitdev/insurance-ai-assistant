@@ -27,11 +27,15 @@ export interface LifeProtectTerm {
   /** rate per thousand, [sex][age - ageMin]; null where the workbook has no rate */
   rates: Record<Sex, (number | null)[]>;
   /**
-   * cash-value factors per thousand of sum assured, [sex][age - ageMin] → milestone age →
-   * factor. Only milestones still ahead of the insured are carried. Null where the company
-   * table has no schedule for that issue age.
+   * cash-value factors per thousand of sum assured, [sex][age - ageMin] → one factor per
+   * policy year, from the first. Null where the company table has no schedule for that
+   * issue age.
+   *
+   * The whole schedule rather than only the milestones, because the chart and the
+   * year-by-year table need every year and the milestones are a subset of it. Sending both
+   * would be one set of numbers travelling two ways, which can drift apart.
    */
-  cash: Record<Sex, (Record<number, number> | null)[]>;
+  schedule: Record<Sex, (number[] | null)[]>;
 }
 
 export interface LifeProtectTable {
@@ -82,18 +86,10 @@ export function lifeProtectTable(today: Date = new Date()): LifeProtectTable {
   // the company's cash-value table stops the year before cover ends
   const coverToAge = maturityValue(cashValueSchedule(PLAN_CODE, TERMS[2].variant, "M", ageMin, 1000))!.age;
 
-  const cashFor = (variant: string, sex: Sex, age: number): Record<number, number> | null => {
+  const scheduleFor = (variant: string, sex: Sex, age: number): number[] | null => {
     // priced on a sum of 1,000 so each row's amount is the factor itself
     const rows = cashValueSchedule(PLAN_CODE, variant, sex, age, 1000);
-    if (!rows.length) return null;
-    const out: Record<number, number> = {};
-    for (const at of CASH_AGES) {
-      const row = rows.find((r) => r.age === at);
-      if (row && at > age) out[at] = row.amount;
-    }
-    const end = maturityValue(rows);
-    if (end && end.age > age) out[end.age] = end.amount;
-    return out;
+    return rows.length ? rows.map((r) => r.amount) : null;
   };
 
   const terms: LifeProtectTerm[] = TERMS.map((t, i) => {
@@ -107,9 +103,9 @@ export function lifeProtectTable(today: Date = new Date()): LifeProtectTable {
         M: ages.map((age) => baseRate(rates, t.variant, "M", age) ?? null),
         F: ages.map((age) => baseRate(rates, t.variant, "F", age) ?? null),
       },
-      cash: {
-        M: ages.map((age) => cashFor(t.variant, "M", age)),
-        F: ages.map((age) => cashFor(t.variant, "F", age)),
+      schedule: {
+        M: ages.map((age) => scheduleFor(t.variant, "M", age)),
+        F: ages.map((age) => scheduleFor(t.variant, "F", age)),
       },
     };
   });

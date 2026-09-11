@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { lifeProtectTable } from "@/lib/lifeprotect-table";
 import { getPlan } from "@/calc/plans/registry";
 import { lifeProtectFacts } from "@/lib/lifeprotect-facts";
+import { cashAt } from "@/lib/lifeprotect-quote";
 
 /** The rate table behind the page lapses on 2027-03-31. */
 const WHILE_CURRENT = new Date("2026-09-05");
@@ -34,15 +35,25 @@ describe("lifeProtectTable", () => {
     }
   });
 
-  it("carries cash-value factors only at the milestones still ahead of the insured", () => {
+  it("carries the whole cash-value schedule, one factor per policy year", () => {
     const t = lifeProtectTable(WHILE_CURRENT);
     const term19 = t.terms[1];
-    // ชาย 35: the company table gives 504 / 633 / 777 per thousand at 60 / 70 / 80, 1000 at 99
-    expect(term19.cash.M[35]).toEqual({ 60: 504, 70: 633, 80: 777, 99: 1000 });
-    // ชาย 70 has passed 60 and 70
-    expect(Object.keys(term19.cash.M[70]!)).toEqual(["80", "99"]);
-    // ชาย 80 has only the end left
-    expect(Object.keys(term19.cash.M[80]!)).toEqual(["99"]);
+    // ชาย 35 runs from 35 to 98 in the company table — 64 policy years
+    expect(term19.schedule.M[35]).toHaveLength(64);
+    // policy year 26 is the one that opens at 60, and the last value is the maturity money
+    expect(term19.schedule.M[35]![25]).toBe(504);
+    expect(term19.schedule.M[35]![63]).toBe(1000);
+    expect(term19.schedule.M[80]).toHaveLength(19);
+  });
+
+  it("still reads the same four milestones the card has always shown", () => {
+    const t = lifeProtectTable(WHILE_CURRENT);
+    expect(cashAt(t.terms[1], "M", 35, 1_000_000, t.ageMin)).toEqual([
+      { age: 60, amount: 504_000 }, { age: 70, amount: 633_000 },
+      { age: 80, amount: 777_000 }, { age: 99, amount: 1_000_000 },
+    ]);
+    expect(cashAt(t.terms[1], "M", 70, 1_000_000, t.ageMin).map((r) => r.age)).toEqual([80, 99]);
+    expect(cashAt(t.terms[1], "M", 80, 1_000_000, t.ageMin).map((r) => r.age)).toEqual([99]);
   });
 });
 

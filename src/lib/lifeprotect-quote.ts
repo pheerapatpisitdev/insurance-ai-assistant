@@ -1,7 +1,7 @@
 import type { ModePremium } from "@/calc/mode-premiums";
 import { applyModeFactor, toHundredths } from "@/calc/money";
 import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
-import type { LifeProtectTable, LifeProtectTerm } from "@/lib/lifeprotect-table";
+import { CASH_AGES, type LifeProtectTable, type LifeProtectTerm } from "@/lib/lifeprotect-table";
 
 /** Same order as calc/mode-premiums; repeated here so the browser does not import the engine. */
 const MODES: PayMode[] = ["annual", "semi", "monthly"];
@@ -68,12 +68,17 @@ export interface CashRow {
 /**
  * The cash value at each milestone still ahead of the insured, worth something. The same
  * ROUND(factor × sum / 1000) as cash-value.ts, so the figure equals the company's table.
+ *
+ * The schedule's last value is the money held when cover ends, which the company labels
+ * with the age after the final policy year rather than the age that year opened at.
  */
 export function cashAt(term: LifeProtectTerm, sex: Sex, age: number, sumAssured: number, ageMin: number): CashRow[] {
-  const factors = term.cash[sex][age - ageMin];
+  const factors = term.schedule[sex][age - ageMin];
   if (!factors) return [];
-  return Object.entries(factors)
-    .map(([at, factor]) => ({ age: Number(at), amount: Math.round((factor * sumAssured) / 1000) }))
-    .filter((r) => r.amount > 0)
-    .sort((a, b) => a.age - b.age);
+  const baht = (factor: number) => Math.round((factor * sumAssured) / 1000);
+  const rows = CASH_AGES
+    .filter((at) => at > age && at - age < factors.length)
+    .map((at) => ({ age: at, amount: baht(factors[at - age]) }));
+  rows.push({ age: age + factors.length, amount: baht(factors[factors.length - 1]) });
+  return rows.filter((r) => r.amount > 0);
 }
