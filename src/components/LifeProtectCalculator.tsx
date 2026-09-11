@@ -263,11 +263,12 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
 
               {projection && (
                 <>
-                  <div className="mt-4 text-sm text-[var(--lg-mute)]">เบี้ยที่จ่าย เทียบกับ มูลค่าเงินสด</div>
+                  <div className="mt-4 text-sm text-[var(--lg-mute)]">ความคุ้มครอง เบี้ย และมูลค่าเงินสด</div>
                   <CashValueChart projection={projection} age={who!.age} />
-                  <div className="mt-1.5 flex gap-4 text-xs text-[var(--lg-mute)]">
+                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--lg-mute)]">
                     <span><i className="mr-1.5 inline-block h-0.5 w-3.5 bg-[var(--lg-gold)] align-middle" />มูลค่าเวนคืน</span>
                     <span><i className="mr-1.5 inline-block h-0.5 w-3.5 bg-white/50 align-middle" />เบี้ยสะสม (รายปี)</span>
+                    <span><i className="mr-1.5 inline-block w-3.5 border-t border-dashed border-white/40 align-middle" />คุ้มครองชีวิต</span>
                   </div>
                   <CashValueTable projection={projection} caption={tableCaption} />
                 </>

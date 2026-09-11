@@ -9,7 +9,7 @@ export interface CashValueTableProps {
   caption: string;
 }
 
-const HEAD = ["ปีที่", "อายุ", "คุ้มครอง", "เบี้ย/ปี", "เบี้ยสะสม", "เวนคืนได้"];
+const HEAD = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"];
 
 /** every column but the first is ruled off from the one before it */
 const RULE = "border-l border-l-white/10";
@@ -73,14 +73,14 @@ export function CashValueTable({ projection, caption }: CashValueTableProps) {
                 >
                   <td className={`${CELL} text-left text-[var(--lg-mute)]`}>{r.policyYear}</td>
                   <td className={`${CELL} ${RULE} text-left text-[var(--lg-mute)]`}>{r.age}</td>
-                  <td className={`${CELL} ${RULE} text-right`}>{formatBaht(r.cover)}</td>
                   <td className={`${CELL} ${RULE} text-right ${dim}`}>
                     {r.premiumDue ? formatBaht(r.premiumDue) : "—"}
                   </td>
                   <td className={`${CELL} ${RULE} text-right ${dim}`}>
                     {r.premiumPaid === null ? "—" : formatBaht(r.premiumPaid)}
                   </td>
-                  <td className={`${CELL} ${RULE} pr-3 text-right ${dim}`}>{formatBaht(r.cashValue)}</td>
+                  <td className={`${CELL} ${RULE} text-right ${dim}`}>{formatBaht(r.cashValue)}</td>
+                  <td className={`${CELL} ${RULE} pr-3 text-right`}>{formatBaht(r.cover)}</td>
                 </tr>
               );
             })}
