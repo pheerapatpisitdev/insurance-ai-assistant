@@ -93,7 +93,8 @@ describe("legacyQuoteText", () => {
     // หญิง 30 · 1 ล้าน: the monthly instalment is under the floor, so the card headlines the year
     const text = legacyQuoteText({
       millions: 1, age: 30, sex: "F",
-      modes: [UNDER_FLOOR[0], UNDER_FLOOR[1]],
+      modes: UNDER_FLOOR,
+      minMonthly: 1_000,
       critical: 850_000,
       death: { beforeAge: 60, sumBefore: 1_000_000, sumFrom: 150_000, alreadyPastAge: false, riderCoverEnds: { age: 65, sum: 150_000 } },
       diseaseCount: 31,
@@ -102,7 +103,9 @@ describe("legacyQuoteText", () => {
       "มรดกเพื่อครอบครัว 1 ล้าน",
       "หญิง อายุ 30",
       "เบี้ยประมาณ 4,123 บาท/ปี (ตกวันละ 12 บาท)",
-      "รายปี 4,123 บาท · ราย 6 เดือน 2,143 บาท",
+      "รายเดือน 371 บาท (ต่ำกว่าขั้นต่ำ 1,000 บาท บริษัทไม่รับชำระรายเดือน)",
+      "ราย 6 เดือน 2,143 บาท",
+      "รายปี 4,123 บาท",
       "",
       "ตรวจพบโรคร้ายแรง รับเงินสดเอง 850,000 บาท",
       "(จ่ายครั้งเดียวแล้วสัญญาโรคร้ายแรงสิ้นสุด ประกันชีวิตหลักยังอยู่ต่อให้ครอบครัว)",
@@ -112,7 +115,18 @@ describe("legacyQuoteText", () => {
       "- อายุ 60–64 ปี 150,000 บาท",
       "- อายุ 65 ปีขึ้นไป 150,000 บาท",
       "",
-      "เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป · โรคร้ายแรงเป็นไปตามคำนิยาม 1 ใน 31 โรคในกรมธรรม์",
+      "เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป",
+      "โรคร้ายแรงเป็นไปตามคำนิยาม 1 ใน 31 โรคในกรมธรรม์",
     ].join("\n"));
+  });
+
+  it("names every instalment plainly when the company takes them all", () => {
+    const text = legacyQuoteText({
+      millions: 3, age: 38, sex: "M", modes: AFFORDABLE, minMonthly: 1_000, critical: 2_550_000,
+      death: { beforeAge: 60, sumBefore: 3_000_000, sumFrom: 450_000, alreadyPastAge: false },
+      diseaseCount: 31,
+    });
+    expect(text).toContain("เบี้ยประมาณ 1,501 บาท/เดือน (ตกวันละ 46 บาท)\nรายเดือน 1,501 บาท\nราย 6 เดือน 8,677 บาท\nรายปี 16,687 บาท");
+    expect(text).not.toContain("ต่ำกว่าขั้นต่ำ");
   });
 });

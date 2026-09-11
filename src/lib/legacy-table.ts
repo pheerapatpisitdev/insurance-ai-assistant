@@ -23,6 +23,8 @@ export interface LegacyTable {
   expired: boolean;
   /** how many illnesses the rider names, for the sentence that counts them */
   diseaseCount: number;
+  /** the smallest monthly instalment the company will accept, in baht */
+  minMonthlyTotal: number;
   /**
    * [tier - 1][age - ageMin] = [annual, semi, monthly, monthlyUnderMinimum], in satang.
    * Null where the arrangement cannot be priced at all.
@@ -57,7 +59,8 @@ const RANGE = bundleAgeRange(BUNDLE);
 let cached: Omit<LegacyTable, "expired"> | undefined;
 
 export function legacyTable(today: Date = new Date()): LegacyTable {
-  const expired = quoteBundle(BUNDLE, 1, { age: RANGE.min, sex: "M", mode: "annual" }, today)!.meta.expired;
+  const meta = quoteBundle(BUNDLE, 1, { age: RANGE.min, sex: "M", mode: "annual" }, today)!.meta;
+  const expired = meta.expired;
   if (cached) return { ...cached, expired };
   const ages = Array.from({ length: RANGE.max - RANGE.min + 1 }, (_, i) => RANGE.min + i);
   const tiers = BUNDLE.tiers.map((t) => t.no);
@@ -84,6 +87,7 @@ export function legacyTable(today: Date = new Date()): LegacyTable {
     ageMax: RANGE.max,
     tiers: tiers.length,
     diseaseCount: riderDiseases(BUNDLE.tiers[0].riders[0].code)?.diseases.length ?? 0,
+    minMonthlyTotal: meta.minMonthlyTotal,
     premiums: { M: forSex("M"), F: forSex("F") },
     death,
     critical: BUNDLE.tiers.map((t) => t.riders.reduce((sum, r) => sum + (r.sumAssured ?? 0), 0)),

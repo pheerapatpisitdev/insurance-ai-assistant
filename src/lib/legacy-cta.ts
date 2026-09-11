@@ -88,8 +88,10 @@ export interface LegacyQuoteFacts {
   millions: number;
   age: number;
   sex: Sex;
-  /** every instalment the company will take, headline first */
+  /** every instalment the arrangement prices, including one the company would refuse */
   modes: ModePremium[];
+  /** the smallest monthly instalment the company accepts, in baht */
+  minMonthly: number;
   /** what the insured receives on a critical illness claim, in baht */
   critical: number;
   death: DeathBenefit;
@@ -101,20 +103,32 @@ export interface LegacyQuoteFacts {
  * the card shows it, so what the customer reads in the chat is what they saw on the page.
  */
 export function legacyQuoteText(f: LegacyQuoteFacts): string {
-  const [headline] = f.modes;
+  const headline = displayPremium(f.modes, false)!;
   const annual = f.modes.find((m) => m.mode === "annual");
+  const baht = (n: number) => n.toLocaleString("en-US");
   return [
     `มรดกเพื่อครอบครัว ${f.millions} ล้าน`,
     `${SEX_WORD[f.sex]} อายุ ${f.age}`,
     `เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
-    f.modes.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`).join(" · "),
+    // one instalment a line, smallest first. An instalment the company refuses is still
+    // named, with the reason: an agent asked for it by name should not have to guess why
+    // the quote left it out.
+    ...INSTALMENT_ORDER.flatMap((mode) => {
+      const m = f.modes.find((x) => x.mode === mode);
+      if (!m) return [];
+      const line = `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`;
+      return [m.belowMinimum ? `${line} (ต่ำกว่าขั้นต่ำ ${baht(f.minMonthly)} บาท บริษัทไม่รับชำระรายเดือน)` : line];
+    }),
     "",
-    `ตรวจพบโรคร้ายแรง รับเงินสดเอง ${f.critical.toLocaleString("en-US")} บาท`,
+    `ตรวจพบโรคร้ายแรง รับเงินสดเอง ${baht(f.critical)} บาท`,
     "(จ่ายครั้งเดียวแล้วสัญญาโรคร้ายแรงสิ้นสุด ประกันชีวิตหลักยังอยู่ต่อให้ครอบครัว)",
     "",
     "ครอบครัวได้รับเมื่อเสียชีวิต",
-    ...deathBenefitRows(f.death).map((r) => `- ${r.label} ${r.amount.toLocaleString("en-US")} บาท`),
+    ...deathBenefitRows(f.death).map((r) => `- ${r.label} ${baht(r.amount)} บาท`),
     "",
-    `เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป · โรคร้ายแรงเป็นไปตามคำนิยาม 1 ใน ${f.diseaseCount} โรคในกรมธรรม์`,
+    "เบี้ยปีแรก ส่วนสัญญาโรคร้ายแรงคิดตามอายุ จึงปรับขึ้นในปีถัดไป",
+    `โรคร้ายแรงเป็นไปตามคำนิยาม 1 ใน ${f.diseaseCount} โรคในกรมธรรม์`,
   ].join("\n");
 }
+
+const INSTALMENT_ORDER: PayMode[] = ["monthly", "semi", "annual"];

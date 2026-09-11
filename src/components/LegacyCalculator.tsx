@@ -90,8 +90,8 @@ export function LegacyCalculator({ table, sticky = false }: LegacyCalculatorProp
 
   const message = legacyMessage({ millions, age, sex, range: RANGE, premium: headline });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
-  const quoteText = typeof age === "number" && headline && death
-    ? legacyQuoteText({ millions, age, sex, modes: [headline, ...others], critical: table.critical[millions - 1], death, diseaseCount: table.diseaseCount })
+  const quoteText = typeof age === "number" && modes && headline && death
+    ? legacyQuoteText({ millions, age, sex, modes, minMonthly: table.minMonthlyTotal, critical: table.critical[millions - 1], death, diseaseCount: table.diseaseCount })
     : undefined;
 
   return (
