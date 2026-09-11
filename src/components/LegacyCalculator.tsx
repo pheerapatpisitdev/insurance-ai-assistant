@@ -6,7 +6,7 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import type { LegacyAge } from "@/lib/legacy-cta";
 import { displayPremium, legacyMessage, legacyQuoteText, perDay } from "@/lib/legacy-cta";
-import { cardPath } from "@/lib/quote-card";
+import { cardPath } from "@/lib/card-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import type { LegacyTable } from "@/lib/legacy-table";
 import { deathBenefitRows } from "@/lib/death-benefit";

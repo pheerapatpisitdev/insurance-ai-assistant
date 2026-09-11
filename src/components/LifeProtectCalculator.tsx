@@ -10,7 +10,7 @@ import { cashProjection } from "@/lib/cash-projection";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
 import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
 import { ageWord, lifeProtectMessage, lifeProtectQuoteText, type LifeProtectAge } from "@/lib/lifeprotect-cta";
-import { cardPath } from "@/lib/quote-card";
+import { cardPath } from "@/lib/card-link";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 

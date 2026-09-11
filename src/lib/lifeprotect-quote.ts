@@ -1,7 +1,10 @@
 import type { ModePremium } from "@/calc/mode-premiums";
 import { applyModeFactor, toHundredths } from "@/calc/money";
 import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
-import { CASH_AGES, type LifeProtectTable, type LifeProtectTerm } from "@/lib/lifeprotect-table";
+import type { LifeProtectTable, LifeProtectTerm } from "@/lib/lifeprotect-table";
+
+/** The ages the page quotes a surrender value at, besides the end of the contract. */
+export const CASH_AGES = [60, 70, 80];
 
 /** Same order as calc/mode-premiums; repeated here so the browser does not import the engine. */
 const MODES: PayMode[] = ["annual", "semi", "monthly"];

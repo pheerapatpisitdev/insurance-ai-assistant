@@ -3,6 +3,7 @@ import { baseRate } from "@/calc/lookup";
 import { baseAgeRange } from "@/calc/rules";
 import { cashValueSchedule, maturityValue } from "@/calc/cash-value";
 import type { PayMode, Sex } from "@/calc/types";
+import { CASH_AGES } from "@/lib/lifeprotect-quote";
 
 /**
  * Everything the Life Protect+ 100 page needs to price itself in the browser.
@@ -65,9 +66,6 @@ const TERMS: { variant: string; label: string; short: string }[] = [
   { variant: "WLF19H", label: "จ่าย 19 ปี", short: "จ่าย 19 ปี" },
   { variant: "WLF99H", label: "จ่ายถึงอายุ 99", short: "ถึงอายุ 99" },
 ];
-
-/** The ages the page quotes a cash value at, besides the end of the contract. */
-export const CASH_AGES = [60, 70, 80];
 
 /** Built once per process; `expired` is asked again on every call, as in legacy-table.ts. */
 let cached: Omit<LifeProtectTable, "expired"> | undefined;
