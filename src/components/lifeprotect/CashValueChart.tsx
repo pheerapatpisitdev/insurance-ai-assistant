@@ -45,6 +45,15 @@ export function CashValueChart({ projection, age }: CashValueChartProps) {
     .join(" ");
   const coverDrops = rows.some((r) => r.cover !== rows[0].cover);
 
+  /**
+   * One gridline, at the level the cover settles to — which is the sum assured, the number
+   * the customer picked. It reads the dashed line's lower step for them, and it is the only
+   * height on this chart worth naming besides the top and the floor. Skipped when it would
+   * sit on top of the axis label it would otherwise explain.
+   */
+  const settledCover = rows[rows.length - 1].cover;
+  const grid = settledCover < top * 0.92 && settledCover > top * 0.08 ? settledCover : null;
+
   const ticks = [...new Set([age, 60, 80, maturityAge])].filter((a) => a >= age && a <= maturityAge);
   // a label near the right edge has to flip left, or its text runs outside the drawing
   const flip = breakEven ? x(breakEven.age) > W * 0.62 : false;
@@ -63,6 +72,14 @@ export function CashValueChart({ projection, age }: CashValueChartProps) {
         {short(Math.round(top / 100))}
       </text>
       <text x={LEFT - 6} y={H - BOTTOM + 4} fill="var(--lg-mute)" fontSize="10" textAnchor="end">0</text>
+      {grid !== null && (
+        <>
+          <line x1={LEFT} y1={y(grid)} x2={W - RIGHT} y2={y(grid)} stroke="var(--lg-panel-line)" />
+          <text x={LEFT - 6} y={y(grid) + 4} fill="var(--lg-mute)" fontSize="10" textAnchor="end">
+            {short(Math.round(grid / 100))}
+          </text>
+        </>
+      )}
       {ticks.map((at) => (
         <text key={at} x={x(at)} y={H - 8} fill="var(--lg-mute)" fontSize="10" textAnchor="middle">{at}</text>
       ))}
