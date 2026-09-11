@@ -1,11 +1,11 @@
 "use client";
-import { useTransition } from "react";
 import { cancelPending, connectPage } from "./actions";
+import { ActionError, useAction } from "./useAction";
 
 export interface Choice { id: string; name: string }
 
 export function PagePicker({ pages }: { pages: Choice[] }) {
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useAction();
   return (
     <div>
       <p className="mb-3 text-sm text-slate-700">คุณเป็นแอดมินหลายเพจ เลือกเพจที่จะให้บอทตอบ</p>
@@ -19,7 +19,7 @@ export function PagePicker({ pages }: { pages: Choice[] }) {
             <button
               type="button"
               disabled={pending}
-              onClick={() => start(() => { void connectPage(p.id); })}
+              onClick={() => run(() => connectPage(p.id))}
               className="shrink-0 rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:opacity-50"
             >
               เลือกเพจนี้
@@ -30,11 +30,12 @@ export function PagePicker({ pages }: { pages: Choice[] }) {
       <button
         type="button"
         disabled={pending}
-        onClick={() => start(() => { void cancelPending(); })}
+        onClick={() => run(() => cancelPending())}
         className="text-sm text-slate-500 underline disabled:opacity-50"
       >
         ยกเลิก
       </button>
+      <ActionError error={error} />
     </div>
   );
 }
