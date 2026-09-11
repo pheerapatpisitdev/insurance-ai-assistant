@@ -5,6 +5,7 @@ Deterministic: running twice on the same Excel files yields byte-identical JSON.
 Never edit data/rates/*.json by hand; edit this script and re-run `npm run extract`.
 """
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -102,8 +103,11 @@ def extract_plb():
 
 
 # ----------------------------------------------------------------------- iShield
+ISHIELD_XLSX = "iShield_A2026-1_01042026.xlsx"
+
+
 def extract_ishield():
-    src = XLSX_DIR / "iShield_A2026-1_01042026.xlsx"
+    src = XLSX_DIR / ISHIELD_XLSX
     wb = openpyxl.load_workbook(src, data_only=True)
     inp, cal, pm, rr, pb = wb["กรอกข้อมูล"], wb["Cal"], wb["Premium&Maturity"], wb["Rate Rider"], wb["Rate PB"]
     variants = ["WLCI05", "WLCI10", "WLCI15", "WLCI20"]
@@ -517,28 +521,42 @@ def extract_w_family(plan_code, filename):
 # The workbook shows the surrender value as ROUND(factor * sumAssured / 1000, 0), where the
 # factor comes from TABCV(<sex>) keyed on the package code, the age at issue and the policy
 # year. Coverage runs to age 99 and the table's last entry is the age-98 policy year, so a
-# row holds exactly 99 - age values; anything past that in the sheet is filler.
-LAST_COVERED_AGE = 98
-CV_SHEETS = {"M": "TABCV(Male) (as of 220626", "F": "TABCV(Female) (as of 220626)"}
+# a row holds exactly (lastCoveredAge + 1 - age) values; anything past that is filler.
+LP_CV_SHEETS = {"M": "TABCV(Male) (as of 220626", "F": "TABCV(Female) (as of 220626)"}
+ISHIELD_CV_SHEETS = {"M": "TABCV(Male)", "F": "TABCV(Female)"}
+
+
+def cash_values(filename, sheets, header, first_value_column, last_covered_age):
+    """
+    The surrender-value tables of every plan are laid out the same way: one row per
+    (variant, sex, issue age), then one factor per policy year across. Only the header and
+    where the factors start differ between workbooks, so both are arguments.
+    """
+    wb = openpyxl.load_workbook(XLSX_DIR / filename, data_only=True)
+    factors = {}
+    for sex, sheet in sheets.items():
+        ws = wb[sheet]
+        got = [cell(ws, 1, c) for c in range(1, len(header) + 1)]
+        assert got == header, f"{sheet}: {got}"
+        plan_col, sex_col, age_col = (header.index(k) for k in ("CVPLAN", "CVSEX", "CVAGE"))
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            variant, row_sex, age = row[plan_col], row[sex_col], row[age_col]
+            # iShield repeats the header between one variant's block and the next
+            if variant is None or variant == header[plan_col]:
+                continue
+            assert row_sex == sex, f"{sheet} row for {variant} says sex {row_sex}"
+            assert isinstance(age, int), f"{sheet} row for {variant} has age {age!r}"
+            years = last_covered_age + 1 - age
+            values = [int(v or 0) for v in row[first_value_column:first_value_column + years]]
+            assert len(values) == years, f"{variant} {sex} age {age}: {len(values)} of {years} years"
+            factors.setdefault(variant, {}).setdefault(sex, {})[age] = values
+    return factors
 
 
 def extract_lifeprotect_cash_values():
     filename = W_FAMILY["LIFEPROTECT"]
-    wb = openpyxl.load_workbook(XLSX_DIR / filename, data_only=True)
-    factors = {}
-    for sex, sheet in CV_SHEETS.items():
-        ws = wb[sheet]
-        header = [cell(ws, 1, c) for c in range(1, 5)]
-        assert header == ["Key", "CVPLAN", "CVSEX", "CVAGE"], header
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            variant, row_sex, age = row[1], row[2], row[3]
-            if variant is None:
-                continue
-            assert row_sex == sex, f"{sheet} row for {variant} says sex {row_sex}"
-            years = LAST_COVERED_AGE + 1 - age
-            values = [int(v or 0) for v in row[4:4 + years]]
-            assert len(values) == years, f"{variant} {sex} age {age}: {len(values)} of {years} years"
-            factors.setdefault(variant, {}).setdefault(sex, {})[age] = values
+    last_covered_age = 98
+    factors = cash_values(filename, LP_CV_SHEETS, ["Key", "CVPLAN", "CVSEX", "CVAGE"], 4, last_covered_age)
 
     variants = sorted(factors)
     assert variants == ["WLF09H", "WLF09L", "WLF19H", "WLF19L", "WLF99H", "WLF99HX", "WLF99L", "WLF99LX"], variants
@@ -550,7 +568,30 @@ def extract_lifeprotect_cash_values():
     write_json(OUT_DIR.parent / "cash-values" / "lifeprotect.json", {
         "planCode": "LIFEPROTECT",
         "source": filename,
-        "lastCoveredAge": LAST_COVERED_AGE,
+        "lastCoveredAge": last_covered_age,
+        "note": "surrender value = round(factor * sumAssured / 1000); factor per policy year, from year 1",
+        "factors": factors,
+    })
+
+
+def extract_ishield_cash_values():
+    """iShield's own table: the KEY column sits after CVAGE, and cover ends at 85, not 99."""
+    filename = ISHIELD_XLSX
+    last_covered_age = 84
+    factors = cash_values(filename, ISHIELD_CV_SHEETS, ["CVPLAN", "CVSEX", "CVAGE", "KEY"], 4, last_covered_age)
+
+    assert sorted(factors) == ["WLCI05", "WLCI10", "WLCI15", "WLCI20"], sorted(factors)
+    # the issue ages a term takes differ, and rules/ishield.json is where that is stated
+    for variant, by_sex in factors.items():
+        assert sorted(by_sex) == ["F", "M"], variant
+        for sex, by_age in by_sex.items():
+            ages = sorted(by_age)
+            assert ages[0] == 0 and ages == list(range(0, ages[-1] + 1)), f"{variant} {sex} ages {ages[:3]}…{ages[-1]}"
+
+    write_json(OUT_DIR.parent / "cash-values" / "ishield.json", {
+        "planCode": "ISHIELD",
+        "source": filename,
+        "lastCoveredAge": last_covered_age,
         "note": "surrender value = round(factor * sumAssured / 1000); factor per policy year, from year 1",
         "factors": factors,
     })
@@ -610,6 +651,43 @@ def extract_dci_diseases():
     })
 
 
+ISHIELD_ILLNESS_BLOCKS = [
+    ("early", "โรคร้ายแรงระยะเริ่มต้น", 12, 21, 20),
+    ("major", "โรคร้ายแรงระยะรุนแรง", 24, 48, 50),
+]
+
+
+def extract_ishield_diseases():
+    """
+    The illnesses iShield covers, from the sheet that lists them for the customer. They are
+    laid out in two newspaper columns — B and I — and each cell already carries its own
+    number, which the page numbers itself, so the number comes off here.
+    """
+    wb = openpyxl.load_workbook(XLSX_DIR / ISHIELD_XLSX, data_only=True)
+    ws = wb["รายชื่อโรคร้ายแรง"]
+    out = {}
+    for key, heading, first_row, last_row, expected in ISHIELD_ILLNESS_BLOCKS:
+        assert heading in " ".join(str(cell(ws, first_row - 1, c) or "") for c in (2, 9)), heading
+        names = []
+        for column in (2, 9):
+            for r in range(first_row, last_row + 1):
+                raw = cell(ws, r, column)
+                if raw is None or not str(raw).strip():
+                    continue
+                names.append(re.sub(r"^\s*\d+\s*\.\s*", "", " ".join(str(raw).split())))
+        assert len(names) == expected, f"{key}: found {len(names)} of {expected}"
+        assert len(set(names)) == expected, f"{key}: duplicate names"
+        out[key] = names
+
+    write_json(OUT_DIR.parent / "riders" / "ishield-diseases.json", {
+        "planCode": "ISHIELD",
+        "source": ISHIELD_XLSX,
+        "note": "ระยะเริ่มต้นจ่าย 25% ของทุนต่อโรค ระยะรุนแรงจ่ายสูงสุด 100% ของทุน ตามคำนิยามในกรมธรรม์",
+        "early": out["early"],
+        "major": out["major"],
+    })
+
+
 EXTRACTORS = {
     "plb": extract_plb,
     "ishield": extract_ishield,
@@ -617,6 +695,8 @@ EXTRACTORS = {
     "lifetreasure": lambda: extract_w_family("LIFETREASURE", W_FAMILY["LIFETREASURE"]),
     "lifeprotect": lambda: extract_w_family("LIFEPROTECT", W_FAMILY["LIFEPROTECT"]),
     "lifeprotect-cv": extract_lifeprotect_cash_values,
+    "ishield-cv": extract_ishield_cash_values,
+    "ishield-diseases": extract_ishield_diseases,
     "dci-diseases": extract_dci_diseases,
 }
 
