@@ -17,6 +17,7 @@ function project(variant: string, withPrice = true, age = 35) {
   return cashProjection({
     factors, age, sumAssured: SUM, annualSatang,
     payYears: payYears(term, age), death: deathBenefitOf(table, age, SUM),
+    topUp: { premiumPercent: 101, includeCashValue: true },
   });
 }
 
@@ -122,5 +123,51 @@ describe("cashProjection when no price may be shown", () => {
   it("still lifts the cover to the surrender value, which needs no price", () => {
     expect(p.rows[63].cover).toBe(111_200_000);
     expect(p.rows.find((r) => r.age === 59)!.cover).toBe(200_000_000);
+  });
+});
+
+/**
+ * iShield's own rule, from the sheet that draws its benefit table: the cover is the greater
+ * of the sum assured and the premiums paid, and the surrender value is not one of the
+ * amounts compared.
+ *
+ *   F = IF(year + issueAge <= 85, MAX(previous, IF(premiums > sumAssured, premiums, sumAssured)), 0)
+ */
+describe("cashProjection · a plan whose top-up leaves the surrender value out", () => {
+  const flat = { beforeAge: 0, sumBefore: 500_000, sumFrom: 500_000, alreadyPastAge: true };
+  const input = {
+    // three years of factors per thousand: nothing, then 14, then 46
+    factors: [0, 14, 46], age: 11, sumAssured: 500_000,
+    annualSatang: 2_210_500, payYears: 10, death: flat,
+    topUp: { premiumPercent: 100, includeCashValue: false },
+  };
+
+  it("reads the company's own first three years back", () => {
+    const p = cashProjection(input);
+    expect(p.rows.map((r) => r.cashValue)).toEqual([0, 700_000, 2_300_000]);
+    expect(p.rows.map((r) => r.premiumPaid)).toEqual([2_210_500, 4_421_000, 6_631_500]);
+    expect(p.rows.map((r) => r.cover)).toEqual([50_000_000, 50_000_000, 50_000_000]);
+    expect(p.coverFloor).toBe(50_000_000);
+  });
+
+  it("leaves the surrender value out, even once it passes the sum assured", () => {
+    // thirty years of factors, paid for ten: the surrender value climbs past the sum, the
+    // premiums never do
+    const grown = { ...input, factors: Array.from({ length: 30 }, (_, i) => i * 40) };
+    const p = cashProjection(grown);
+    expect(p.rows[29].cashValue).toBe(58_000_000);
+    expect(p.rows[29].premiumPaid).toBe(22_105_000);
+    expect(p.rows[29].cover).toBe(50_000_000);
+    expect(p.rows[29].cover).toBeLessThan(p.rows[29].cashValue);
+  });
+
+  it("lifts the cover to the premiums paid, at 100% rather than 101%", () => {
+    // the same contract paid for all thirty years: 23 × 22,105 = 508,415 passes the sum
+    const paidThroughout = {
+      ...input, payYears: 30, factors: Array.from({ length: 30 }, (_, i) => i * 40),
+    };
+    const p = cashProjection(paidThroughout);
+    expect(p.rows[21]).toMatchObject({ policyYear: 22, premiumPaid: 48_631_000, cover: 50_000_000 });
+    expect(p.rows[22]).toMatchObject({ policyYear: 23, premiumPaid: 50_841_500, cover: 50_841_500 });
   });
 });

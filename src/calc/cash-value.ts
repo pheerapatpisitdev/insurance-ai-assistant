@@ -1,4 +1,5 @@
-import cashValues from "../../data/cash-values/lifeprotect.json";
+import lifeprotectCashValues from "../../data/cash-values/lifeprotect.json";
+import ishieldCashValues from "../../data/cash-values/ishield.json";
 
 export interface CashValueRow {
   /** the insured's age at the start of that policy year, as the company table labels it */
@@ -13,11 +14,14 @@ interface CashValueTable {
   lastCoveredAge: number;
   factors: Record<string, Record<string, Record<string, number[]>>>;
 }
-const TABLE = cashValues as unknown as CashValueTable;
 
-/** Only ไลฟ์ โพรเทค+ has a cash value table extracted so far. */
+/** The plans whose surrender tables have been extracted, by the plan code the engine uses. */
+const TABLES: Record<string, CashValueTable> = Object.fromEntries(
+  [lifeprotectCashValues, ishieldCashValues].map((t) => [t.planCode, t as unknown as CashValueTable]),
+);
+
 export function hasCashValues(planCode: string): boolean {
-  return planCode === TABLE.planCode;
+  return planCode in TABLES;
 }
 
 /**
@@ -34,8 +38,9 @@ function cvVariant(variant: string): string {
  * for the positive numbers here.
  */
 export function cashValueSchedule(planCode: string, variant: string, sex: "M" | "F", age: number, sumAssured: number): CashValueRow[] {
-  if (!hasCashValues(planCode)) return [];
-  const factors = TABLE.factors[cvVariant(variant)]?.[sex]?.[String(age)];
+  const table = TABLES[planCode];
+  if (!table) return [];
+  const factors = table.factors[cvVariant(variant)]?.[sex]?.[String(age)];
   if (!factors) return [];
   return factors.map((factor, i) => ({
     age: age + i,

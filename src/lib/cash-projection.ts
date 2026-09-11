@@ -42,6 +42,21 @@ export interface Projection {
   coverFloor: number;
 }
 
+/**
+ * How a plan tops up the death benefit above the sum assured. Both workbooks have a rule and
+ * they are not the same one, so it is stated per plan rather than assumed.
+ *
+ * Life Protect pays the greater of its multiple of the sum assured, the surrender value, or
+ * 101% of the premiums paid. iShield pays the greater of the sum assured or 100% of the
+ * premiums paid, and leaves the surrender value out of it.
+ */
+export interface CoverTopUp {
+  /** percent of the premiums paid so far that the cover is at least worth */
+  premiumPercent: number;
+  /** whether the surrender value is one of the amounts compared */
+  includeCashValue: boolean;
+}
+
 export interface ProjectionInput {
   /** cash-value factors per thousand of sum assured, one per policy year from the first */
   factors: number[];
@@ -53,10 +68,11 @@ export interface ProjectionInput {
   /** how many years the premium is paid */
   payYears: number;
   death: DeathBenefit;
+  topUp: CoverTopUp;
 }
 
 export function cashProjection(
-  { factors, age, sumAssured, annualSatang, payYears, death }: ProjectionInput,
+  { factors, age, sumAssured, annualSatang, payYears, death, topUp }: ProjectionInput,
 ): Projection {
   let paid = 0;
   const rows: ProjectionRow[] = factors.map((factor, i) => {
@@ -66,16 +82,17 @@ export function cashProjection(
     // the same ROUND(factor × sum / 1000) baht as cash-value.ts, then carried in satang
     const cashValue = Math.round((factor * sumAssured) / 1000) * 100;
     /**
-     * The company's own proposal puts it this way: it pays the multiple of the sum assured,
-     * or the surrender value, or 101% of the premiums paid on the base contract — whichever
-     * is greater. Late in a long contract the second and third overtake the first, and a
-     * cover drawn without them would understate what the family receives.
+     * Late in a long contract the premiums paid overtake the sum assured, and a cover drawn
+     * without the top-up would understate what the family receives.
      */
     const promised = (at < death.beforeAge ? death.sumBefore : death.sumFrom) * 100;
+    const floors = [promised];
+    if (topUp.includeCashValue) floors.push(cashValue);
+    if (annualSatang !== null) floors.push(Math.round((paid * topUp.premiumPercent) / 100));
     return {
       policyYear: i + 1,
       age: at,
-      cover: Math.max(promised, cashValue, annualSatang === null ? 0 : Math.round(paid * 1.01)),
+      cover: Math.max(...floors),
       premiumDue: due,
       premiumPaid: annualSatang === null ? null : paid,
       cashValue,
