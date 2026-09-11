@@ -1,5 +1,5 @@
 import type { ModePremium } from "@/calc/mode-premiums";
-import type { DeathBenefit, Sex } from "@/calc/types";
+import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { PER, perDay } from "@/lib/legacy-cta";
@@ -58,18 +58,33 @@ export interface LifeProtectQuoteFacts {
 export function lifeProtectQuoteText(f: LifeProtectQuoteFacts): string {
   const [headline] = f.modes;
   const annual = f.modes.find((m) => m.mode === "annual");
+  const baht = (n: number) => n.toLocaleString("en-US");
+  // the doubled sum is the plan's pitch, so it sits with the sum — unless the insured is
+  // already past the age it stops at, when there is no doubling to promise
+  const sum = f.death.alreadyPastAge
+    ? `ทุน ${baht(f.sumAssured)} บาท`
+    : `ทุน ${baht(f.sumAssured)} บาท เพิ่มเป็น ${baht(f.death.sumBefore)} ถึงอายุ ${f.death.beforeAge}`;
   const lines = [
-    `Life Protect+ 100 · ทุน ${f.sumAssured.toLocaleString("en-US")} บาท`,
+    "Life Protect+ 100",
+    sum,
+    "",
     `${SEX_WORD[f.sex]} อายุ ${ageWord(f.age)} · ${f.termLabel}`,
     `เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
-    f.modes.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`).join(" · "),
+    "",
+    // one instalment a line, smallest first, whichever the card headlines
+    ...INSTALMENT_ORDER.flatMap((mode) => {
+      const m = f.modes.find((x) => x.mode === mode);
+      return m ? [`${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`] : [];
+    }),
     "",
     "ครอบครัวได้รับเมื่อเสียชีวิต",
-    ...deathBenefitRows(f.death).map((r) => `- ${r.label} ${r.amount.toLocaleString("en-US")} บาท`),
+    ...deathBenefitRows(f.death).map((r) => `- ${r.label} ${baht(r.amount)} บาท`),
   ];
   if (f.cash.length > 0) {
-    lines.push("", "มูลค่าเงินสดสะสม (หากเวนคืน)", ...f.cash.map((r) => `- อายุ ${r.age} ปี ${r.amount.toLocaleString("en-US")} บาท`));
+    lines.push("", "มูลค่าเงินสดสะสม (หากเวนคืน)", ...f.cash.map((r) => `- อายุ ${r.age} ปี ${baht(r.amount)} บาท`));
   }
-  lines.push("", "เบี้ยคงที่ตลอดระยะเวลาชำระ · เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน");
+  lines.push("", "เบี้ยคงที่ตลอดระยะเวลาชำระ", "เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน");
   return lines.join("\n");
 }
+
+const INSTALMENT_ORDER: PayMode[] = ["monthly", "semi", "annual"];
