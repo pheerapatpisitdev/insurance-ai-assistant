@@ -22,7 +22,7 @@ export function Hero({ facts }: { facts: LegacyCopyFacts }) {
       </p>
 
       <h1
-        className="lg-rise mt-5 text-[2rem] font-medium leading-[1.28] text-[var(--lg-white)] sm:text-[2.6rem]"
+        className="lg-rise mt-5 max-w-3xl text-[2rem] font-medium leading-[1.28] text-[var(--lg-white)] sm:text-[2.6rem]"
         style={{ animationDelay: "90ms" }}
       >
         วันที่คุณล้ม
@@ -31,14 +31,15 @@ export function Hero({ facts }: { facts: LegacyCopyFacts }) {
       </h1>
 
       <p
-        className="lg-rise mt-5 text-base leading-[1.85] text-[var(--lg-mute)]"
+        className="lg-rise mt-5 max-w-2xl text-base leading-[1.85] text-[var(--lg-mute)]"
         style={{ animationDelay: "180ms" }}
       >
         เตรียมเงินก้อน 1–10 ล้านบาทให้คนข้างหลัง จ่ายทั้งวันที่คุณจากไป{" "}
         <span className="font-medium text-[var(--lg-white)]">และวันที่คุณป่วยหนักแต่ยังอยู่</span>
       </p>
 
-      <div className="lg-rise" style={{ animationDelay: "270ms" }}>
+      {/* full width under a thumb; a button the width of a desktop is not a button */}
+      <div className="lg-rise sm:max-w-sm" style={{ animationDelay: "270ms" }}>
         <a
           href="#calc"
           className="lg-metal-face lg-sheen mt-9 block rounded-sm px-5 py-4 text-center text-lg font-medium tracking-wide"

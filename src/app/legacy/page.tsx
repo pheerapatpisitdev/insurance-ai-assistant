@@ -21,11 +21,14 @@ export const metadata = {
  * a page that makes a cold reader scroll past four blocks to reach it loses them at the
  * first.
  */
+// One column at every width, the same measure as /lifeprotect: a phone gets the narrowest
+// it can hold, a tablet and a desktop a wider one, without the prose lines growing too
+// long to follow.
 export default async function LegacyPage() {
   const table = legacyTable();
   const facts = legacyFacts();
   return (
-    <main className="mx-auto max-w-lg px-4 pb-28 sm:pb-10">
+    <main className="mx-auto max-w-lg px-4 pb-28 sm:max-w-2xl sm:pb-10">
       <Hero facts={facts} />
       <section id="calc" className="scroll-mt-4">
         <LegacyCalculator table={table} sticky />
