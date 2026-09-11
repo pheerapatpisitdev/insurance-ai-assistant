@@ -6,12 +6,10 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import { WarningList } from "./WarningList";
-import { ShareToLineButton } from "./ShareToLineButton";
 
 export interface QuoteResultPanelProps {
   result: QuoteResult;
   mode: PayMode;
-  summary: string;
   derivedSumAssured: boolean;
   /** when given, every payment mode is priced at once instead of only the one picked */
   modePremiums?: ModePremium[];
@@ -50,7 +48,7 @@ function Diseases({ code, riderName }: { code: string; riderName: string }) {
  */
 const UNISSUABLE = new Set(["BASE_SA_MAX", "BASE_SA_MIN", "BASE_SA_EXACT", "BASE_AGE"]);
 
-export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, modePremiums }: QuoteResultPanelProps) {
+export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums }: QuoteResultPanelProps) {
   // A bundle is sold whole, so a total of 0 is not a price — say so instead of showing it.
   const incomplete = result.warnings.find((w) => w.code === "BUNDLE_INCOMPLETE")
     // and neither is a premium for an amount or an age the company refuses: the engine still
@@ -165,7 +163,6 @@ export function QuoteResultPanel({ result, mode, summary, derivedSumAssured, mod
       {/* the bundle's own refusal already headlines the panel; the list keeps the reasons behind it */}
       {/* the bundle's own refusal headlines the panel and the monthly minimum is marked beside its figure */}
       <WarningList warnings={result.warnings.filter((w) => w !== incomplete && !(modePremiums && w.code === "MIN_MONTHLY"))} />
-      <ShareToLineButton text={summary} />
     </section>
   );
 }

@@ -6,13 +6,12 @@ import { getPlan, listPlans } from "@/calc/plans/registry";
 import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "@/calc/rules";
 import type { QuoteInput, RiderInput } from "@/calc/types";
 import { getBundle, listBundles } from "@/calc/bundles/registry";
-import { bundleAgeRange, bundleModePremiums, bundleQuoteInput, describeTier, quoteBundle } from "@/calc/bundles/quote";
+import { bundleAgeRange, bundleModePremiums, bundleQuoteInput, quoteBundle } from "@/calc/bundles/quote";
 import { QuoteForm, type FormState } from "@/components/QuoteForm";
 import { BundleForm } from "@/components/BundleForm";
 import { BUNDLE_PREFIX } from "@/components/PlanSelect";
 import { QuoteResultPanel } from "@/components/QuoteResultPanel";
 import { ExpiryBanner } from "@/components/ExpiryBanner";
-import { summaryText } from "@/lib/summary";
 import { quoteModePremiums } from "@/calc/mode-premiums";
 
 /** Life Protect x 2 paid to age 99 is the plan agents quote most, so start there. */
@@ -139,15 +138,6 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [bundle, state.tier, state.age, state.sex, input],
   );
-  const summary = useMemo(
-    () => (input && result
-      ? summaryText(input, result, {
-        bundle: bundle ? { name: bundle.name, tier: describeTier(bundle, state.tier) ?? "" } : undefined,
-        modes: modePremiums,
-      })
-      : ""),
-    [input, result, bundle, state.tier, modePremiums],
-  );
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -181,7 +171,7 @@ export default function Home() {
         </div>
         <div className="rounded-lg border bg-white p-4">
           {result && input ? (
-            <QuoteResultPanel result={result} mode={input.mode} summary={summary}
+            <QuoteResultPanel result={result} mode={input.mode}
                               derivedSumAssured={input.basis === "premium"} modePremiums={modePremiums} />
           ) : (
             <p className="text-sm text-slate-500">กรอกอายุและจำนวนเงินเอาประกันภัย (หรือเบี้ยที่ต้องการ) เพื่อคำนวณ</p>

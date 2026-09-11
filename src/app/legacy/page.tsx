@@ -1,5 +1,4 @@
 import { LegacyCalculator } from "@/components/LegacyCalculator";
-import { legacyChannels } from "@/lib/legacy-channels";
 import { legacyTable } from "@/lib/legacy-table";
 import { legacyFacts } from "@/lib/legacy-facts";
 import { Hero } from "@/components/legacy/Hero";
@@ -14,12 +13,6 @@ export const metadata = {
 };
 
 /**
- * Regenerated hourly rather than on every hit: the contact channels are read from LINE and
- * from the database, and an ad's worth of visitors should not each wait for that.
- */
-export const revalidate = 3600;
-
-/**
  * The order answers the questions in the order a stranger asks them: what is this, what does
  * it cost me, why would I need it, what makes it different, what am I buying, what exactly is
  * covered, what am I still worried about.
@@ -29,14 +22,13 @@ export const revalidate = 3600;
  * first.
  */
 export default async function LegacyPage() {
-  const channels = await legacyChannels();
   const table = legacyTable();
   const facts = legacyFacts();
   return (
     <main className="mx-auto max-w-lg px-4 pb-28 sm:pb-10">
       <Hero facts={facts} />
       <section id="calc" className="scroll-mt-4">
-        <LegacyCalculator table={table} channels={channels} sticky />
+        <LegacyCalculator table={table} sticky />
       </section>
       <WhySection />
       <DifferenceSection facts={facts} />

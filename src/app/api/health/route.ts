@@ -17,7 +17,6 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const checks: Record<string, boolean> = {
     database: false,
-    line: Boolean(process.env.LINE_CHANNEL_ACCESS_TOKEN && process.env.LINE_CHANNEL_SECRET),
   };
   try {
     const { error } = await supabaseAdmin().from("ins_alert_settings").select("id").limit(1);

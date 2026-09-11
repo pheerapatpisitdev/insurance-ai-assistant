@@ -71,10 +71,13 @@ export function legacyMessage(facts: LegacyFacts): string {
   return `${who} เบี้ยประมาณ ${formatBaht(facts.premium.total)} บาท${PER[facts.premium.mode]}`;
 }
 
+/** The agency's Facebook Page, LuckyPlanner โชคดีที่มีแพลน — the one place a customer is sent to talk to a person. */
+export const FACEBOOK_PAGE = "105982528649026";
+
 /**
  * The chat is opened with the message waiting in the input box, never sent for the
  * customer: the first thing they do in the chat should still be their own doing.
  */
-export function lineUrl(oaId: string, text: string): string {
-  return `https://line.me/R/oaMessage/${encodeURIComponent(oaId)}/?${encodeURIComponent(text)}`;
+export function messengerUrl(text: string): string {
+  return `https://m.me/${FACEBOOK_PAGE}?text=${encodeURIComponent(text)}`;
 }

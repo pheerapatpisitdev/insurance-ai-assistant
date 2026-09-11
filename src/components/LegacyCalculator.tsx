@@ -7,7 +7,6 @@ import { formatBaht } from "@/calc/money";
 import type { LegacyAge } from "@/lib/legacy-cta";
 import { displayPremium, legacyMessage, perDay } from "@/lib/legacy-cta";
 import { ContactButtons } from "@/components/sales/ContactButtons";
-import type { LegacyChannels } from "@/lib/legacy-channels";
 import type { LegacyTable } from "@/lib/legacy-table";
 import { deathBenefitRows } from "@/lib/death-benefit";
 
@@ -45,11 +44,6 @@ export interface LegacyCalculatorProps {
    */
   table: LegacyTable;
   /**
-   * Where the contact buttons point. Resolved on the server from the channels the bot
-   * already answers on, so the page cannot end up offering a Page nobody is listening to.
-   */
-  channels: LegacyChannels;
-  /**
    * Pin a copy of the contact buttons to the bottom of a phone screen. The bar has to be
    * rendered from here rather than by the page, because this is the only place that knows
    * which sum and age the customer has landed on.
@@ -62,7 +56,7 @@ export interface LegacyCalculatorProps {
  * sum, the age and the sex — every other decision was made when the bundle was designed, and
  * the agent's own calculator is where the rest of them can still be changed.
  */
-export function LegacyCalculator({ table, channels, sticky = false }: LegacyCalculatorProps) {
+export function LegacyCalculator({ table, sticky = false }: LegacyCalculatorProps) {
   const RANGE = { min: table.ageMin, max: table.ageMax };
   const AGES = useMemo(
     () => Array.from({ length: RANGE.max - RANGE.min + 1 }, (_, i) => RANGE.min + i),
@@ -228,11 +222,11 @@ export function LegacyCalculator({ table, channels, sticky = false }: LegacyCalc
         </div>
       )}
 
-      <ContactButtons channels={channels} message={message} />
+      <ContactButtons message={message} />
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons channels={channels} message={message} compact />
+          <ContactButtons message={message} compact />
         </div>
       )}
     </div>

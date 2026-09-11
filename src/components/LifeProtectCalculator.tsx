@@ -4,7 +4,6 @@ import type { Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { PER, displayPremium, perDay } from "@/lib/legacy-cta";
-import type { LegacyChannels } from "@/lib/legacy-channels";
 import type { LifeProtectTable } from "@/lib/lifeprotect-table";
 import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { ageWord, lifeProtectMessage, type LifeProtectAge } from "@/lib/lifeprotect-cta";
@@ -43,8 +42,6 @@ const CHILD_MAX_AGE = 15;
 export interface LifeProtectCalculatorProps {
   /** the rates and factors the browser prices from; the engine never leaves the server */
   table: LifeProtectTable;
-  /** where the contact buttons point, resolved on the server */
-  channels: LegacyChannels;
   /** pin a copy of the contact buttons to the bottom of a phone screen */
   sticky?: boolean;
 }
@@ -53,7 +50,7 @@ export interface LifeProtectCalculatorProps {
  * The customer's calculator for the base plan on its own. Four choices — sum, term, age, sex —
  * and every figure on the card follows from them at once, in the browser, from the table.
  */
-export function LifeProtectCalculator({ table, channels, sticky = false }: LifeProtectCalculatorProps) {
+export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalculatorProps) {
   const AGES = useMemo(
     () => Array.from({ length: table.ageMax - table.ageMin + 1 }, (_, i) => table.ageMin + i),
     [table.ageMin, table.ageMax],
@@ -250,11 +247,11 @@ export function LifeProtectCalculator({ table, channels, sticky = false }: LifeP
         </div>
       )}
 
-      <ContactButtons channels={channels} message={message} />
+      <ContactButtons message={message} />
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons channels={channels} message={message} compact />
+          <ContactButtons message={message} compact />
         </div>
       )}
     </div>
