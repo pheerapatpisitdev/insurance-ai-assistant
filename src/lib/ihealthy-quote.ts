@@ -24,6 +24,12 @@ export interface IHealthyPricing {
   base: ComponentPremium[];
   /** the health rider on its own, per mode */
   rider: ComponentPremium[];
+  /**
+   * The daily-cash rider the agency attaches as standard, per mode, and what to call it —
+   * undefined above the age the company writes it at, where the quote is simply the two
+   * contracts.
+   */
+  standard?: { label: string; premiums: ComponentPremium[] };
   /** what the customer actually pays, and the mode that falls under the company's floor */
   total: ModePremium[];
 }
@@ -148,11 +154,32 @@ export function iHealthyPricing(table: IHealthyTable, choice: IHealthyChoice): I
   const base = baseModes(table, choice);
   const rider = riderModes(table, choice);
   if (!base || !rider) return undefined;
+  const standard = standardModes(table, choice.age);
   const total = MODES.map((mode, i) => {
-    const sum = base[i].total + rider[i].total;
+    const sum = base[i].total + rider[i].total + (standard ? standard.premiums[i].total : 0);
     return { mode, total: sum, belowMinimum: mode === "monthly" && sum < table.minMonthly * 100 };
   });
-  return { base, rider, total };
+  return { base, rider, standard, total };
+}
+
+/**
+ * The daily-cash rider at the plan the agency attaches for this age, scaled to each mode the
+ * way the engine scales a fixed annual premium. The server has already decided which plan
+ * the age may have and what it costs a year; nothing about the company's age bands is
+ * repeated here.
+ */
+function standardModes(table: IHealthyTable, age: number): IHealthyPricing["standard"] {
+  const i = age - table.ageMin;
+  const annual = table.standard.annual[i] ?? null;
+  const label = table.standard.label[i];
+  if (annual === null || !label) return undefined;
+  return {
+    label,
+    premiums: MODES.map((mode) => ({
+      mode,
+      total: applyModeFactorToFixed(annual, toHundredths(table.modeFactors[mode])),
+    })),
+  };
 }
 
 /** What quote.ts returns for this base with no death-paying rider attached. */

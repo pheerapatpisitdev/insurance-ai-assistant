@@ -10,6 +10,12 @@ import { arrangementKey, attachedRiders, type RiderPick } from "@/components/ihe
 export interface RiderPanelProps {
   /** everything the action needs except the attached riders themselves */
   request: Omit<RiderQuoteInput, "riders">;
+  /**
+   * The rider the agency attaches as standard, already ticked when the fold is first opened,
+   * so the fold's total agrees with the card above it rather than undercutting it by one
+   * contract. Absent at an age the company does not write it at.
+   */
+  standard?: { code: string; plan: number };
 }
 
 /**
@@ -55,13 +61,15 @@ function range(c: RiderChoice): string {
  * never touches it never pays for the round trip — and never downloads the rate tables the
  * payor riders would need to price in the browser.
  */
-export function RiderPanel({ request }: RiderPanelProps) {
+export function RiderPanel({ request, standard }: RiderPanelProps) {
   // Taken apart at the door. The calculator builds `request` inline, so a fresh object
   // arrives on every render; an effect that listed it as a dependency would ask the server
   // for the same arrangement again, set state, render, and ask again — for ever.
   const { base, age, sex, sumAssured, mode, plan, territory, coverage } = request;
   const [open, setOpen] = useState(false);
-  const [chosen, setChosen] = useState<Record<string, RiderPick>>({});
+  const [chosen, setChosen] = useState<Record<string, RiderPick>>(
+    standard ? { [standard.code]: { plan: standard.plan } } : {},
+  );
   const [answer, setAnswer] = useState<Answer>();
   const [pending, start] = useTransition();
   const newest = useRef(0);

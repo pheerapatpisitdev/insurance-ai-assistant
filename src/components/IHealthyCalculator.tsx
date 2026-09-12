@@ -26,6 +26,8 @@ export interface IHealthyShown {
   /** all three in satang, as the pricing carries them */
   base: number;
   rider: number;
+  /** the daily cash the agency attaches as standard, absent above the age it is written at */
+  standard?: { label: string; total: number };
   total: number;
   belowMinimum: boolean;
   /** the two instalments the card is not showing, in the order the table prices them */
@@ -44,9 +46,13 @@ export function shownAt(priced: IHealthyPricing | undefined, mode: PayMode): IHe
   const rider = priced.rider.find((m) => m.mode === mode);
   const total = priced.total.find((m) => m.mode === mode);
   if (!base || !rider || !total) return undefined;
+  const standard = priced.standard?.premiums.find((m) => m.mode === mode);
   return {
     base: base.total,
     rider: rider.total,
+    ...(priced.standard && standard
+      ? { standard: { label: priced.standard.label, total: standard.total } }
+      : {}),
     total: total.total,
     belowMinimum: total.belowMinimum,
     others: priced.total.filter((m) => m.mode !== mode).map((m) => ({ mode: m.mode, total: m.total })),
@@ -120,6 +126,12 @@ export function IHealthyCalculator(
           return [p.code, priced?.total.find((m) => m.mode === "annual")?.total ?? null];
         }),
       );
+
+  /** The rider the fold opens with ticked, so its total agrees with the card above it. */
+  const standardPlan = table.standard.plan[age - table.ageMin];
+  const standardPick = standardPlan === null
+    ? undefined
+    : { code: table.standard.code, plan: standardPlan };
 
   /**
    * The address bar follows the card, so the link an agent copies opens on the arrangement
@@ -344,6 +356,17 @@ export function IHealthyCalculator(
                     <dt className="text-[var(--lg-mute)]">ไอเฮลท์ตี้ อัลตร้า แผน{plan.name}</dt>
                     <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(shown.rider)}</dd>
                   </div>
+                  {/* The agency sells the daily cash with the health cover rather than beside
+                      it, so it is priced into the figure the customer is quoted instead of
+                      being added on afterwards. The fold below opens with it ticked. */}
+                  {shown.standard && (
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-[var(--lg-mute)]">{shown.standard.label}</dt>
+                      <dd className="lg-figure tabular-nums text-[var(--lg-white)]">
+                        {formatBaht(shown.standard.total)}
+                      </dd>
+                    </div>
+                  )}
                 </dl>
                 <div className="border-t border-[var(--lg-panel-line)] pt-4">
                   <div className="text-sm text-[var(--lg-mute)]">เบี้ยรวม {PAY_MODE_LABEL[mode]}</div>
@@ -427,6 +450,7 @@ export function IHealthyCalculator(
             base: base.variant, age, sex, sumAssured, mode,
             plan: plan.code, territory, coverage,
           }}
+          standard={standardPick}
         />
       )}
 

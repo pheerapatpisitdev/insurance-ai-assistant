@@ -124,6 +124,9 @@ export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
     `💰 เบี้ยรวมประมาณ ${formatBaht(shown.total)} บาท${PER[f.mode]}`,
     `- ${f.baseLabel} ทุน ${baht(f.sumAssured)} บาท · ${formatBaht(shown.base)} บาท`,
     `- ค่ารักษาพยาบาล · ${formatBaht(shown.rider)} บาท`,
+    // the daily cash the agency attaches as standard; above the age it is written at there
+    // is no line rather than a line of nothing
+    ...(shown.standard ? [`- ${shown.standard.label} · ${formatBaht(shown.standard.total)} บาท`] : []),
     "",
     // one instalment a line, smallest first, whichever the card is showing
     ...INSTALMENT_ORDER.flatMap((mode) => {

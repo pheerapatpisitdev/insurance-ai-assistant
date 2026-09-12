@@ -22,7 +22,9 @@ function baht(choice: {
   const priced = iHealthyPricing(table, { ...choice, base: baseFor(table, choice.base).variant });
   const shown = shownAt(priced, choice.mode);
   return shown && {
-    base: formatBaht(shown.base), rider: formatBaht(shown.rider), total: formatBaht(shown.total),
+    base: formatBaht(shown.base), rider: formatBaht(shown.rider),
+    standard: shown.standard && formatBaht(shown.standard.total),
+    total: formatBaht(shown.total),
   };
 }
 
@@ -189,16 +191,17 @@ describe("shownAt", () => {
     });
     const shown = shownAt(priced, "semi")!;
     expect(shown.others.map((o) => o.mode)).toEqual(["annual", "monthly"]);
-    expect(shown.base + shown.rider).toBe(shown.total);
+    // the total is the three lines the card prints, not two of them
+    expect(shown.base + shown.rider + (shown.standard?.total ?? 0)).toBe(shown.total);
   });
 
   /**
-   * The line under the total that names the company's monthly floor is not decoration: the
-   * cheapest arrangement the pickers can reach — the package, สมาร์ท with the deductible, on
-   * a man of eighteen — is 945 a month against a floor of a thousand, so a customer can land
-   * on a total the company will not take an instalment of.
+   * The company's monthly floor is out of reach now that the daily cash is attached as
+   * standard — the cheapest the pickers reach is 1,062 a month against a floor of 1,000 —
+   * so what is pinned here is that nothing the page can sell falls under it. The floor's own
+   * arithmetic is exercised in ihealthy-quote.test.ts against a raised floor.
    */
-  it("flags the cheapest instalment the pickers can reach", () => {
+  it("sells nothing the company would refuse an instalment of", () => {
     const pkg = table.bases.find((b) => b.fixedSum !== undefined)!;
     let cheapest: { total: number; belowMinimum: boolean } | undefined;
     for (let age = table.ageMin; age <= table.ageMax; age++) {
@@ -212,8 +215,8 @@ describe("shownAt", () => {
         }
       }
     }
-    expect(cheapest!.total).toBeLessThan(table.minMonthly * 100);
-    expect(cheapest!.belowMinimum).toBe(true);
+    expect(cheapest!.total).toBeGreaterThanOrEqual(table.minMonthly * 100);
+    expect(cheapest!.belowMinimum).toBe(false);
     // and the arrangement the page opens on is nowhere near it
     expect(shownAt(iHealthyPricing(table, { ...IHEALTHY_OPENING, base: "WLF99H" }), "monthly")!.belowMinimum)
       .toBe(false);
@@ -227,7 +230,7 @@ describe("shownAt", () => {
 describe("what the card shows", () => {
   it("prices the arrangement the page opens on", () => {
     expect(baht({ ...IHEALTHY_OPENING, base: "WLF99H" }))
-      .toEqual({ base: "2,130", rider: "43,800", total: "45,930" });
+      .toEqual({ base: "2,130", rider: "43,800", standard: "1,300", total: "47,230" });
   });
 
   it("prices บรอนซ์ for a woman of 45", () => {
@@ -238,7 +241,8 @@ describe("what the card shows", () => {
     const pkg = table.bases.find((b) => b.fixedSum !== undefined)!;
     expect(baht({
       ...IHEALTHY_OPENING, sex: "M", age: 8, base: pkg.variant, sumAssured: pkg.fixedSum!, plan: "BRONZE",
-    })).toEqual({ base: "380", rider: "38,600", total: "38,980" });
+      // a child is sold the 500 plan of the daily cash, not the 1,000 the agency asks for
+    })).toEqual({ base: "380", rider: "38,600", standard: "475", total: "39,455" });
   });
 
   it("prices แพลทินั่ม anywhere in the world", () => {

@@ -1,5 +1,7 @@
 import { getPlan } from "@/calc/plans/registry";
 import { baseRate } from "@/calc/lookup";
+import { riderAvailability } from "@/calc/rules";
+import { fixedPlanRiderPremium } from "@/calc/riders/fixed-by-plan";
 import { baseAgeRange, baseSumAssuredLimits } from "@/calc/rules";
 import { JUVENILE_BELOW_AGE } from "@/calc/riders/fixed-by-key-age";
 import type { PayMode, Sex } from "@/calc/types";
@@ -42,6 +44,25 @@ export interface IHealthyPlanOption {
   deductible: number;
 }
 
+/**
+ * The daily-cash rider the agency attaches to every one of these quotes as standard, worked
+ * out per age on the server so the browser needs neither its rate table nor its rules.
+ *
+ * The company caps the plan by age — five hundred a day up to ten, a thousand up to fifteen —
+ * and stops writing the rider at sixty-five, so the plan the agency asks for is not always
+ * the plan the age may have, and above sixty-five there is none at all.
+ */
+export interface IHealthyStandardRider {
+  code: string;
+  name: string;
+  /** what it is called to a customer at each age, e.g. "ค่าชดเชยรายวัน 1,000 บาท" */
+  label: (string | null)[];
+  /** the plan attached at each age, null where the age cannot have it */
+  plan: (number | null)[];
+  /** its annual premium in satang at that plan, null where there is none */
+  annual: (number | null)[];
+}
+
 export interface IHealthyTable {
   planCode: string;
   ageMin: number;
@@ -68,10 +89,15 @@ export interface IHealthyTable {
    * must expect it — while null inside a key's array is an age that key is not sold at.
    */
   riderRates: Record<string, Record<Sex, (number | null)[]> | undefined>;
+  /** the daily-cash rider every quote here carries unless the agent takes it off */
+  standard: IHealthyStandardRider;
 }
 
 const PLAN_CODE = "LIFEPROTECT";
 const RIDER = "IHU";
+/** The daily cash the agency sells with this health cover, where the age may have it. */
+const STANDARD_RIDER = "MEB";
+const STANDARD_PLAN = 1_000;
 
 const BASES: { variant: string; short: string; label: string; note?: string }[] = [
   { variant: "WLF99L", short: "x 1.5", label: "ไลฟ์ โพรเทค+ x 1.5", note: "ตั้งทุนเอง" },
@@ -125,6 +151,29 @@ export function iHealthyTable(today: Date = new Date()): IHealthyTable {
     };
   }
 
+  // The largest plan the agency would attach that this age is allowed. The rider's own
+  // planMaxByAge bands are the engine's to apply, so they are asked for rather than
+  // restated, and a nought in the premium table means the same "not offered" here as
+  // everywhere else.
+  const standard: IHealthyStandardRider = {
+    code: STANDARD_RIDER,
+    name: rules.riders[STANDARD_RIDER].name,
+    label: [],
+    plan: [],
+    annual: [],
+  };
+  for (const age of ages) {
+    const offer = riderAvailability(rules, rates, STANDARD_RIDER, { age, baseSumAssured: 0 });
+    const within = offer.eligible ? (offer.plans ?? []).filter((p) => p <= STANDARD_PLAN) : [];
+    const plan = within.length > 0 ? Math.max(...within) : null;
+    const priced = plan === null
+      ? undefined
+      : fixedPlanRiderPremium(rates, STANDARD_RIDER, { age, plan, mode: "annual" });
+    standard.plan.push(priced ? plan : null);
+    standard.annual.push(priced?.annual ?? null);
+    standard.label.push(priced ? `ค่าชดเชยรายวัน ${plan!.toLocaleString("en-US")} บาท` : null);
+  }
+
   cached = {
     planCode: PLAN_CODE,
     ageMin,
@@ -145,6 +194,7 @@ export function iHealthyTable(today: Date = new Date()): IHealthyTable {
     territories: territory,
     coverages: coverage,
     riderRates,
+    standard,
   };
   return { ...cached, expired };
 }

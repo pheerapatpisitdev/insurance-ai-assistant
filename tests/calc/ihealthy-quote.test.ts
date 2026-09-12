@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { quote } from "@/calc/quote";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import { coveragesFor, deathBenefitOf, iHealthyPricing, ihuKey, plansFor, territoriesFor } from "@/lib/ihealthy-quote";
-import type { Sex } from "@/calc/types";
+import type { RiderInput, Sex } from "@/calc/types";
 
 const WHILE_CURRENT = new Date("2026-09-12");
 const table = iHealthyTable(WHILE_CURRENT);
@@ -19,6 +19,16 @@ function rng(seed: number): () => number {
 }
 
 const SUMS = [150_000, 500_000, 1_000_000, 2_000_000, 5_000_000];
+
+/**
+ * What the page actually buys at this age: the health rider, and the daily cash the agency
+ * attaches as standard wherever the company still writes it. The engine has to be asked for
+ * the same arrangement the browser priced, or the two are answering different questions.
+ */
+function attachedAt(age: number, health: RiderInput): RiderInput[] {
+  const plan = table.standard.plan[age - table.ageMin];
+  return plan === null ? [health] : [health, { code: table.standard.code, plan }];
+}
 /** the seed the sweep runs from, quoted in its failures so a case can be re-run */
 const SEED = 20260912;
 
@@ -166,7 +176,7 @@ describe("iHealthyPricing", () => {
         const q = quote({
           planCode: "LIFEPROTECT", variant: base.variant, age, sex, mode: m.mode,
           basis: "sumAssured", sumAssured,
-          riders: [{ code: "IHU", option: plan.code, territory, coverage }],
+          riders: attachedAt(age, { code: "IHU", option: plan.code, territory, coverage }),
         }, WHILE_CURRENT);
         const label = `seed ${SEED} · ${base.variant} ${plan.code} ${territory} ${coverage} ${sex} ${age} ${sumAssured} ${m.mode}`;
         expect(q.totalModal, label).toBe(m.total);
@@ -177,30 +187,34 @@ describe("iHealthyPricing", () => {
   });
 
   /**
-   * The sweep reaches a below-floor arrangement only about one draw in twenty, so the
-   * cheapest thing the page can sell is priced here on purpose — otherwise the floor is
-   * only ever asserted false and could be deleted unnoticed.
+   * The company's monthly floor is out of reach now that the daily cash is attached as
+   * standard: the cheapest thing this page can sell is 1,062 a month against a floor of
+   * 1,000. So the cheapest is pinned, and the check itself is exercised against a floor
+   * raised above it — otherwise `belowMinimum` would only ever be asserted false and could
+   * be deleted unnoticed, which is how it slipped through once already.
    */
-  it("flags the monthly instalment the company will not take, and nothing dearer", () => {
+  it("judges the monthly floor on the whole total, and nothing dearer", () => {
     const cheapest = {
       base: "WLF99HX", sex: "M" as Sex, age: 18, sumAssured: 50_000,
       plan: "SMART", territory: "ประเทศไทย", coverage: "Deductible",
     };
+    // 45 baht of base, 900 of health cover and 117 of daily cash
     const p = iHealthyPricing(table, cheapest)!;
-    // 45 baht of base and 900 of rider: 945 a month, under the company's 1,000 baht floor
-    expect(p.total.find((m) => m.mode === "monthly")).toEqual({ mode: "monthly", total: 94_500, belowMinimum: true });
-    expect(p.total.filter((m) => m.belowMinimum).map((m) => m.mode)).toEqual(["monthly"]);
+    expect(p.total.find((m) => m.mode === "monthly")).toEqual({ mode: "monthly", total: 106_200, belowMinimum: false });
     const q = quote({
       planCode: "LIFEPROTECT", variant: cheapest.base, age: cheapest.age, sex: cheapest.sex, mode: "monthly",
       basis: "sumAssured", sumAssured: cheapest.sumAssured,
-      riders: [{ code: "IHU", option: cheapest.plan, territory: cheapest.territory, coverage: cheapest.coverage }],
+      riders: attachedAt(cheapest.age, {
+        code: "IHU", option: cheapest.plan, territory: cheapest.territory, coverage: cheapest.coverage,
+      }),
     }, WHILE_CURRENT);
-    expect(q.totalModal).toBe(94_500);
-    expect(q.warnings.some((w) => w.code === "MIN_MONTHLY")).toBe(true);
-    // one plan up is 1,143 a month, and the company takes it
-    const bronze = iHealthyPricing(table, { ...cheapest, plan: "BRONZE" })!;
-    expect(bronze.total.find((m) => m.mode === "monthly"))
-      .toEqual({ mode: "monthly", total: 114_300, belowMinimum: false });
+    expect(q.totalModal).toBe(106_200);
+    expect(q.warnings.some((w) => w.code === "MIN_MONTHLY")).toBe(false);
+
+    // the same arrangement under a company that would not take 1,062
+    const strict = iHealthyPricing({ ...table, minMonthly: 1_200 }, cheapest)!;
+    expect(strict.total.find((m) => m.mode === "monthly")!.belowMinimum).toBe(true);
+    expect(strict.total.filter((m) => m.belowMinimum).map((m) => m.mode)).toEqual(["monthly"]);
   });
 
   it("prices a child on the health package the way the engine does", () => {
@@ -210,7 +224,10 @@ describe("iHealthyPricing", () => {
     })!;
     expect(p.base.find((m) => m.mode === "annual")!.total).toBe(38_000);
     expect(p.rider.find((m) => m.mode === "annual")!.total).toBe(3_860_000);
-    expect(p.total.find((m) => m.mode === "annual")!.total).toBe(3_898_000);
+    // a child is sold the 500 plan of the daily cash, not the 1,000 the agency asks for
+    expect(p.standard!.label).toBe("ค่าชดเชยรายวัน 500 บาท");
+    expect(p.standard!.premiums.find((m) => m.mode === "annual")!.total).toBe(47_500);
+    expect(p.total.find((m) => m.mode === "annual")!.total).toBe(3_945_500);
   });
 
   it("refuses a base the table does not carry rather than pricing a stale one", () => {
@@ -240,7 +257,7 @@ describe("deathBenefitOf", () => {
         const q = quote({
           planCode: "LIFEPROTECT", variant: base.variant, age, sex: "F", mode: "annual",
           basis: "sumAssured", sumAssured,
-          riders: [{ code: "IHU", option: "BRONZE", territory: "ประเทศไทย", coverage: "Full Coverage" }],
+          riders: attachedAt(age, { code: "IHU", option: "BRONZE", territory: "ประเทศไทย", coverage: "Full Coverage" }),
         }, WHILE_CURRENT);
         expect(deathBenefitOf(table, base.variant, age, sumAssured), `${base.variant} ${age}`)
           .toEqual(q.deathBenefit);
