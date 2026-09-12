@@ -29,7 +29,7 @@ export default async function IHealthyPage() {
       <section id="calc" className="scroll-mt-4">
         <IHealthyCalculator
           table={table} data={{ rows, plans, copayPercent }}
-          sharedLimit={facts.terms.sharedLimit} initial={IHEALTHY_OPENING}
+          sharedLimit={facts.terms.sharedLimit} initial={IHEALTHY_OPENING} sticky
         />
       </section>
       <TermsSection facts={facts} />

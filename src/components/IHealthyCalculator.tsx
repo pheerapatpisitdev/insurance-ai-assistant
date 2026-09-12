@@ -11,6 +11,8 @@ import { deathBenefitOf, iHealthyPricing, type IHealthyPricing } from "@/lib/ihe
 import {
   baseFor, resolveArrangement, sumFor, sumsFor, type IHealthyInitial,
 } from "@/lib/ihealthy-choice";
+import { ContactButtons } from "@/components/sales/ContactButtons";
+import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
 
 const MODES: PayMode[] = ["annual", "semi", "monthly"];
 const COVERAGE_LABEL: Record<string, string> = {
@@ -57,6 +59,8 @@ export interface IHealthyCalculatorProps {
   /** the one sentence from `terms` the table itself prints under its own scroll hint */
   sharedLimit: string;
   initial: IHealthyInitial;
+  /** pin a copy of the contact buttons to the bottom of a phone screen */
+  sticky?: boolean;
 }
 
 /**
@@ -66,7 +70,9 @@ export interface IHealthyCalculatorProps {
  * the age on screen, so the panel is never showing a price for one arrangement while the
  * pickers show another.
  */
-export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealthyCalculatorProps) {
+export function IHealthyCalculator(
+  { table, data, sharedLimit, initial, sticky = false }: IHealthyCalculatorProps,
+) {
   const AGES = useMemo(
     () => Array.from({ length: table.ageMax - table.ageMin + 1 }, (_, i) => table.ageMin + i),
     [table.ageMin, table.ageMax],
@@ -95,6 +101,32 @@ export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealt
   /** An expired rate set prices, but not at a figure anyone may be quoted. */
   const shown = table.expired ? undefined : shownAt(priced, mode);
   const death = deathBenefitOf(table, base.variant, age, sumAssured);
+
+  /**
+   * The quote the page hands over is the arrangement the card shows — the base plan and the
+   * health rider, and nothing from the agent's fold below it. Those riders live in the
+   * panel's own state, and lifting them up here would make the panel controlled for the sake
+   * of a line of text; the fold's total stays inside the fold on purpose.
+   */
+  const cta: IHealthyCtaFacts = {
+    arrangement: plan && territory && coverage
+      ? {
+          planName: plan.name, annualMax: plan.annualMax, deductible: plan.deductible,
+          territory, coverage,
+        }
+      : undefined,
+    copayPercent: data.copayPercent,
+    age,
+    sex,
+    baseLabel: base.label,
+    sumAssured,
+    death,
+    mode,
+    minMonthly: table.minMonthly,
+    shown,
+  };
+  const quoteText = iHealthyQuoteText(cta);
+  const message = iHealthyMessage(cta);
 
   const label = "block text-sm text-[var(--lg-mute)]";
   const field =
@@ -336,6 +368,19 @@ export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealt
         data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
         sellable={plans.map((p) => p.code)}
       />
+
+      {/* The way out of the page, and last of the three things on it: a health rider is
+          bought on the twenty-eight rows above, so the buttons sit where a reader arrives
+          having read them rather than above the table they came for. */}
+      <div className="print:hidden">
+        <ContactButtons message={message} copyText={quoteText} />
+      </div>
+
+      {sticky && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden print:hidden">
+          <ContactButtons message={message} copyText={quoteText} compact />
+        </div>
+      )}
     </div>
   );
 }
