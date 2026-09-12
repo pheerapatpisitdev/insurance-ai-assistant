@@ -15,58 +15,65 @@ const offered = (r: { available: { code: string; eligible: boolean }[] }) =>
   r.available.filter((a) => a.eligible).map((a) => a.code);
 
 describe("priceWithRiders", () => {
-  it("lists what an adult may attach to the x 2 base", async () => {
+  it("offers the four riders the agency sells here, and no others", async () => {
     const r = await priceWithRiders({ ...ADULT, riders: [] });
-    const codes = offered(r);
-    expect(codes).toContain("AP");
-    expect(codes).toContain("DCI");
-    expect(codes).not.toContain("IHU");
+    // The company sells thirteen with this base. Four are the agency's choice for this page;
+    // the back-office calculator still offers the rest.
+    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI", "RRSS", "CI123"]);
+    expect(offered(r)).toEqual(["MEB", "DCI", "RRSS", "CI123"]);
+  });
+
+  it("will not price a rider this page does not offer, however it is asked for", async () => {
+    const r = await priceWithRiders({ ...ADULT, riders: [{ code: "AP", sumAssured: 1_000_000 }] });
+    expect(r.items.some((i) => i.code === "AP")).toBe(false);
+    expect(r.totalModal).toBe(r.items.reduce((sum, i) => sum + i.modal, 0));
   });
 
   it("drops the riders the health package refuses", async () => {
     const r = await priceWithRiders({ ...PACKAGE, riders: [] });
-    expect(r.available.map((a) => a.code)).toEqual(["AP", "MEX", "MEB", "DCI", "RRSS"]);
+    // CI 123 is one of the four, but the package will not sell it
+    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI", "RRSS"]);
   });
 
-  it("greys the four riders a child is too young for", async () => {
+  it("greys the rider a child is too young for", async () => {
     const r = await priceWithRiders({ ...ADULT, age: 8, sex: "M", riders: [] });
     const greyed = r.available.filter((a) => !a.eligible);
-    expect(greyed.map((a) => a.code)).toEqual(["WP", "ECARE", "DCI", "PLS"]);
+    expect(greyed.map((a) => a.code)).toEqual(["DCI"]);
     // greyed, not gone: the agent asked whether the rider can be added, and "20 - 65 ปี"
     // beside the reason is the answer
     for (const a of greyed) {
       expect(a.reason).toBeTruthy();
       expect(a.ageRange).toMatch(/\d+ - \d+ ปี/);
     }
-    expect(offered(r)).toEqual(["PB", "AP", "MEX", "MEB", "CPR", "HIC", "RRSS", "CI123"]);
+    expect(offered(r)).toEqual(["MEB", "RRSS", "CI123"]);
   });
 
-  it("keeps the package's five at age 8, with the one he is too young for greyed", async () => {
+  it("keeps the package's three at age 8, with the one he is too young for greyed", async () => {
     const r = await priceWithRiders({ ...PACKAGE, age: 8, sex: "M", riders: [] });
-    expect(r.available.map((a) => a.code)).toEqual(["AP", "MEX", "MEB", "DCI", "RRSS"]);
-    expect(offered(r)).toEqual(["AP", "MEX", "MEB", "RRSS"]);
+    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI", "RRSS"]);
+    expect(offered(r)).toEqual(["MEB", "RRSS"]);
   });
 
   it("prices an attached rider on top of the base and the health plan", async () => {
     const bare = await priceWithRiders({ ...ADULT, riders: [] });
-    const withAp = await priceWithRiders({
-      ...ADULT, riders: [{ code: "AP", sumAssured: 1_000_000 }],
+    const withDci = await priceWithRiders({
+      ...ADULT, riders: [{ code: "DCI", sumAssured: 500_000 }],
     });
-    expect(withAp.totalModal).toBeGreaterThan(bare.totalModal);
-    expect(withAp.items.find((i) => i.code === "AP")!.eligible).toBe(true);
+    expect(withDci.totalModal).toBeGreaterThan(bare.totalModal);
+    expect(withDci.items.find((i) => i.code === "DCI")!.eligible).toBe(true);
   });
 
   it("adds up to exactly the rows it is showing", async () => {
     const r = await priceWithRiders({
-      ...ADULT, riders: [{ code: "AP", sumAssured: 1_000_000 }, { code: "DCI", sumAssured: 500_000 }],
+      ...ADULT, riders: [{ code: "MEB", plan: 500 }, { code: "DCI", sumAssured: 500_000 }],
     });
     expect(r.totalModal).toBe(r.items.reduce((sum, i) => sum + i.modal, 0));
   });
 
   it("says which of the two reasons left a ticked rider out", async () => {
-    const byPackage = await priceWithRiders({ ...PACKAGE, riders: [{ code: "ECARE", sumAssured: 500_000 }] });
-    expect(byPackage.items.some((i) => i.code === "ECARE")).toBe(false);
-    expect(byPackage.warnings).toContain("สัญญาเพิ่มเติมอุบัติเหตุ (ECARE) ไม่ขายกับ package นี้ จึงไม่ได้คิดเบี้ยให้");
+    const byPackage = await priceWithRiders({ ...PACKAGE, riders: [{ code: "CI123", sumAssured: 500_000 }] });
+    expect(byPackage.items.some((i) => i.code === "CI123")).toBe(false);
+    expect(byPackage.warnings.some((w) => w.includes("ไม่ขายกับ package นี้"))).toBe(true);
     expect(byPackage.totalModal).toBe(byPackage.items.reduce((sum, i) => sum + i.modal, 0));
 
     const byAge = await priceWithRiders({

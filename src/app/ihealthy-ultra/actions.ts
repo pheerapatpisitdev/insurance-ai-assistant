@@ -10,6 +10,16 @@ import type { PayMode, Sex } from "@/calc/types";
 const PLAN_CODE = "LIFEPROTECT";
 /** The health rider is the page's whole subject; it is never one of the extras. */
 const THE_HEALTH_RIDER = "IHU";
+/**
+ * The riders this page offers alongside the health cover, and nothing else.
+ *
+ * The company sells thirteen with these base plans; the agency sells four of them here. This
+ * is the agency's own choice, not a company rule — the engine still knows about the other
+ * nine and the back-office calculator still offers them, which is why this list lives at the
+ * page's own edge rather than in `data/rules/`. Order follows `riderOrder` so the fold reads
+ * the way the rest of the calculator does.
+ */
+const OFFERED = new Set(["MEB", "DCI", "RRSS", "CI123"]);
 
 export interface AttachedRider {
   code: string;
@@ -169,7 +179,7 @@ export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuot
   // A rider the package does not sell is a different matter: it is not on offer here at all.
   const available: RiderChoice[] = [];
   for (const code of plan.riderOrder) {
-    if (code === THE_HEALTH_RIDER || required.has(code) || off.has(code)) continue;
+    if (!OFFERED.has(code) || required.has(code) || off.has(code)) continue;
     const a = riderAvailability(plan.rules, plan.rates, code, ctx);
     const exact = packageExactSumAssured(plan.rules, seq, code);
     available.push({
