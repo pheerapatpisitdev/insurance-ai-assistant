@@ -58,13 +58,23 @@ export const PHONE_PLANS = ["BRONZE", "SILVER", "GOLD"];
  *
  * One map rather than a list and a lookup, so a row cannot be shown without a name for it.
  */
-const PHONE_ROW_LABEL: Record<number, string> = {
-  1: "ค่าห้องและค่าอาหาร",
-  5: "Day Surgery",
-  7: "อุบัติเหตุ OPD 24 ชม",
-  10: "มะเร็ง รังสีรักษา",
-  18: "ผู้ป่วยนอก OPD",
+const PHONE_ROW_LABEL: Record<number, { icon: string; label: string }> = {
+  1: { icon: "🛏️", label: "ค่าห้องและค่าอาหาร" },
+  5: { icon: "🏥", label: "Day Surgery" },
+  7: { icon: "🚑", label: "อุบัติเหตุ OPD 24 ชม" },
+  10: { icon: "🎗️", label: "มะเร็ง รังสีรักษา" },
+  18: { icon: "💊", label: "ผู้ป่วยนอก OPD" },
 };
+
+/**
+ * The mark beside a short label on a phone. Decoration, so it is hidden from a screen
+ * reader, which has the label itself — and only on a phone, where two words need something
+ * to catch the eye as a reader scans down. A wide screen has the company's own sentence in
+ * that column and needs no help finding a row.
+ */
+function Icon({ mark }: { mark: string }) {
+  return <span aria-hidden className="mr-1.5 inline-block">{mark}</span>;
+}
 /** Hidden at every width, restored from the tablet breakpoint up. */
 const WIDE_ONLY_CELL = "hidden sm:table-cell";
 const WIDE_ONLY_ROW = "hidden sm:table-row";
@@ -229,6 +239,7 @@ export function BenefitTable(
                 scope="row"
                 className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
               >
+                <Icon mark="🛡️" />
                 วงเงินค่ารักษาต่อปี
               </th>
               {plans.map((p) => (
@@ -269,7 +280,12 @@ export function BenefitTable(
                     className={`${PIN} z-10 py-2 text-[0.7rem] font-normal leading-relaxed text-[var(--lg-mute)]`}
                   >
                     <span className="sm:hidden">
-                      {(entry.no !== null && PHONE_ROW_LABEL[entry.no]) || entry.title}
+                      {entry.no !== null && PHONE_ROW_LABEL[entry.no] ? (
+                        <>
+                          <Icon mark={PHONE_ROW_LABEL[entry.no].icon} />
+                          {PHONE_ROW_LABEL[entry.no].label}
+                        </>
+                      ) : entry.title}
                     </span>
                     <span className="hidden sm:inline">{entry.title}</span>
                   </th>
@@ -301,6 +317,7 @@ export function BenefitTable(
                   scope="row"
                   className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
                 >
+                  <span className="sm:hidden"><Icon mark="💵" /></span>
                   ค่าชดเชยรายวัน
                 </th>
                 <td
