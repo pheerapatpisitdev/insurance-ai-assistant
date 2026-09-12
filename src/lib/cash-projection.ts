@@ -1,4 +1,6 @@
-import type { DeathBenefit } from "@/calc/types";
+import type { CoverTopUp, DeathBenefit } from "@/calc/types";
+
+export type { CoverTopUp };
 
 /**
  * One policy walked forward a year at a time — what has been paid in, what the family would
@@ -40,21 +42,6 @@ export interface Projection {
    * customer chose; `cover` on a row can sit above it.
    */
   coverFloor: number;
-}
-
-/**
- * How a plan tops up the death benefit above the sum assured. Both workbooks have a rule and
- * they are not the same one, so it is stated per plan rather than assumed.
- *
- * Life Protect pays the greater of its multiple of the sum assured, the surrender value, or
- * 101% of the premiums paid. iShield pays the greater of the sum assured or 100% of the
- * premiums paid, and leaves the surrender value out of it.
- */
-export interface CoverTopUp {
-  /** percent of the premiums paid so far that the cover is at least worth */
-  premiumPercent: number;
-  /** whether the surrender value is one of the amounts compared */
-  includeCashValue: boolean;
 }
 
 export interface ProjectionInput {

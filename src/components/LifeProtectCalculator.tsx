@@ -86,9 +86,7 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
     ? cashProjection({
         factors, age: who.age, sumAssured,
         annualSatang: table.expired || !annual ? null : annual.total,
-        payYears: payYears(term, who.age), death,
-        // the proposal's footnote: the multiple of the sum, the surrender value, or 101% of premiums
-        topUp: { premiumPercent: 101, includeCashValue: true },
+        payYears: payYears(term, who.age), death, topUp: table.topUp,
       })
     : undefined;
   const tableCaption = who

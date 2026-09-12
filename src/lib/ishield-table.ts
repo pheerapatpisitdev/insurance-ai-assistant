@@ -65,12 +65,6 @@ const TERMS: { variant: string; label: string; short: string }[] = [
  */
 const ILLNESS = { earlyCount: 20, earlyPercent: 25, majorCount: 50, majorPercent: 100, waitingDays: 90 };
 
-/**
- * iShield's benefit sheet pays the greater of the sum assured and the premiums paid, and
- * does not compare the surrender value — which is not the rule Life Protect follows.
- */
-const TOP_UP: CoverTopUp = { premiumPercent: 100, includeCashValue: false };
-
 /** Built once per process; `expired` is asked again on every call, as in lifeprotect-table.ts. */
 let cached: Omit<IShieldTable, "expired"> | undefined;
 
@@ -122,7 +116,7 @@ export function iShieldTable(today: Date = new Date()): IShieldTable {
     saMin: rules.base.saMin,
     saMax: rules.base.saMax!,
     maturityAge,
-    topUp: TOP_UP,
+    topUp: plan.coverTopUp!,
     illness: ILLNESS,
     modeFactors: rates.modeFactors,
     terms,

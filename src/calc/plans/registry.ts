@@ -1,4 +1,4 @@
-import type { BasePackage, PlanRates, PlanRules } from "../types";
+import type { BasePackage, CoverTopUp, PlanRates, PlanRules } from "../types";
 import plbRates from "../../../data/rates/plb.json";
 import plbRules from "../../../data/rules/plb.json";
 import ishieldRates from "../../../data/rates/ishield.json";
@@ -20,6 +20,11 @@ export interface PlanBundle {
   /** what to quote when nobody picks a term; falls back to the first variant */
   defaultVariant?: string;
   variantLabels: Record<string, string>;
+  /**
+   * How the death benefit is topped up above the sum assured, read off the plan's own
+   * benefit sheet. Absent for a plan whose sheet has not been read.
+   */
+  coverTopUp?: CoverTopUp;
 }
 
 /** "(Non-Participating)" / "(ไม่มีเงินปันผล)" adds nothing on screen, so it is trimmed off. */
@@ -35,7 +40,10 @@ export function productLabel(pkg: BasePackage): string | undefined {
 }
 
 /** The three W-family plans share a rider order and take their variant labels from the package table. */
-function wFamily(code: string, rates: unknown, rules: unknown, planLabel?: string, defaultVariant?: string): Record<string, PlanBundle> {
+function wFamily(
+  code: string, rates: unknown, rules: unknown, planLabel?: string, defaultVariant?: string,
+  coverTopUp?: CoverTopUp,
+): Record<string, PlanBundle> {
   const r = rates as PlanRates;
   const packages = r.base.packages ?? [];
   // ไลฟ์ โพรเทค+ sells the same payment terms under two products, so the term alone would
@@ -47,6 +55,7 @@ function wFamily(code: string, rates: unknown, rules: unknown, planLabel?: strin
       rules: rules as PlanRules,
       planLabel,
       defaultVariant,
+      coverTopUp,
       riderOrder: ["PB", "WP", "AP", "ECARE", "MEX", "MEB", "DCI", "PLS", "CPR", "HIC", "IHU", "RRSS", "CI123"],
       variantLabels: Object.fromEntries(packages.map((p) => [
         p.code,
@@ -71,6 +80,8 @@ const PLANS: Record<string, PlanBundle> = {
   },
   ISHIELD: {
     planLabel: "iShield",
+    // ตารางแสดงผลประโยชน์ F: MAX(previous, IF(premiums > sumAssured, premiums, sumAssured))
+    coverTopUp: { premiumPercent: 100, includeCashValue: false },
     rates: ishieldRates as unknown as PlanRates,
     rules: ishieldRules as unknown as PlanRules,
     riderOrder: ["PB", "AP", "ECARE", "MEB", "PLS"],
@@ -84,7 +95,9 @@ const PLANS: Record<string, PlanBundle> = {
   ...wFamily("ISMART", ismartRates, ismartRules, "iSmart 80/6"),
   ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules, "Life Treasure"),
   // Life Protect x 2 paid to age 99 is the one agents quote most, so it is the default here too.
-  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect x 1.5 / x 2", "WLF99H"),
+  // ตารางแสดงผลประโยชน์ H: MAX(multiple × sumAssured, 101% × premiums paid, surrender value)
+  ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect x 1.5 / x 2", "WLF99H",
+    { premiumPercent: 101, includeCashValue: true }),
 };
 
 /** Display order for the plan picker; anything not listed follows in definition order. */

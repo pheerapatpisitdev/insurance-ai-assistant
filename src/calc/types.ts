@@ -372,3 +372,16 @@ export interface Bundle {
   variant: string;
   tiers: BundleTier[];
 }
+
+/**
+ * How a plan tops up the death benefit above the sum assured. Both workbooks have a rule and
+ * they are not the same one, so it is stated per plan rather than assumed: Life Protect
+ * compares 101% of the premiums paid and the surrender value, iShield compares 100% of the
+ * premiums and leaves the surrender value out.
+ */
+export interface CoverTopUp {
+  /** percent of the premiums paid so far that the cover is at least worth */
+  premiumPercent: number;
+  /** whether the surrender value is one of the amounts compared */
+  includeCashValue: boolean;
+}

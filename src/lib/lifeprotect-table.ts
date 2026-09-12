@@ -2,7 +2,7 @@ import { getPlan } from "@/calc/plans/registry";
 import { baseRate } from "@/calc/lookup";
 import { baseAgeRange } from "@/calc/rules";
 import { cashValueSchedule, maturityValue } from "@/calc/cash-value";
-import type { PayMode, Sex } from "@/calc/types";
+import type { CoverTopUp, PayMode, Sex } from "@/calc/types";
 
 /**
  * Everything the Life Protect+ 100 page needs to price itself in the browser.
@@ -53,6 +53,8 @@ export interface LifeProtectTable {
   booster: number;
   /** the age cover runs to */
   coverToAge: number;
+  /** how the death benefit is topped up above the sum assured */
+  topUp: CoverTopUp;
   modeFactors: Record<PayMode, number>;
   terms: LifeProtectTerm[];
 }
@@ -116,6 +118,7 @@ export function lifeProtectTable(today: Date = new Date()): LifeProtectTable {
     boosterBeforeAge: rules.base.extraDeathBenefitBeforeAge!,
     booster: packages[0].booster ?? 0,
     coverToAge,
+    topUp: plan.coverTopUp!,
     modeFactors: rates.modeFactors,
     terms,
   };
