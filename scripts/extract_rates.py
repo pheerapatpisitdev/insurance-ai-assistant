@@ -11,6 +11,8 @@ from pathlib import Path
 
 import openpyxl
 
+from extract_ihu_benefits import extract as extract_ihu_benefits
+
 ROOT = Path(__file__).resolve().parents[1]
 XLSX_DIR = ROOT / "ไฟล์คำนวน"
 OUT_DIR = ROOT / "data" / "rates"
@@ -729,6 +731,7 @@ EXTRACTORS = {
     "ishield-cv": extract_ishield_cash_values,
     "ishield-diseases": extract_ishield_diseases,
     "dci-diseases": extract_dci_diseases,
+    "ihealthy-ultra": extract_ihu_benefits,
 }
 
 
