@@ -5,6 +5,7 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
 import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
+import { planLabel } from "@/lib/ihealthy-facts";
 import { BenefitTable, PHONE_PLANS } from "@/components/ihealthy/BenefitTable";
 import { RiderPanel } from "@/components/ihealthy/RiderPanel";
 import { MODES, deathBenefitOf, iHealthyPricing, type IHealthyPricing } from "@/lib/ihealthy-quote";
@@ -182,7 +183,7 @@ export function IHealthyCalculator(
   const cta: IHealthyCtaFacts = {
     arrangement: plan && territory && coverage
       ? {
-          planName: plan.name, annualMax: plan.annualMax, deductible: plan.deductible,
+          planName: planLabel(plan.code), annualMax: plan.annualMax, deductible: plan.deductible,
           territory, coverage,
         }
       : undefined,
@@ -216,7 +217,7 @@ export function IHealthyCalculator(
           a benefit table with nothing naming who they are for is not a quote. */}
       <div className="hidden print:block">
         <h2 className="text-lg font-medium">
-          iHealthy Ultra แผน{plan?.name ?? "—"} · {territory ?? "—"}
+          iHealthy Ultra {plan ? planLabel(plan.code) : "—"} · {territory ?? "—"}
           {coverage && coverage !== "Full Coverage" ? ` · ${COVERAGE_LABEL[coverage]}` : ""}
         </h2>
         <p className="mt-1 text-sm">
@@ -305,7 +306,7 @@ export function IHealthyCalculator(
                   PHONE_PLANS.includes(p.code) || p.code === plan?.code ? "" : "hidden sm:block"
                 }`}
               >
-                <span className="block">{p.name}</span>
+                <span className="block">{planLabel(p.code)}</span>
                 <span className="mt-0.5 block text-xs tabular-nums opacity-80">
                   {(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน
                 </span>
@@ -317,7 +318,7 @@ export function IHealthyCalculator(
               being a child. It names the age on screen and leaves the reason unsaid. */}
           {plans.length < table.plans.length && (
             <p className={hint}>
-              ที่อายุ {age} ปี บริษัทขายเฉพาะแผน{plans.map((p) => p.name).join("และ")}
+              ที่อายุ {age} ปี บริษัทขายเฉพาะแผน {plans.map((p) => planLabel(p.code)).join(" และ ")}
             </p>
           )}
         </div>
@@ -360,7 +361,7 @@ export function IHealthyCalculator(
                     <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(shown.base)}</dd>
                   </div>
                   <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-[var(--lg-mute)]">iHealthy Ultra แผน{plan.name}</dt>
+                    <dt className="text-[var(--lg-mute)]">iHealthy Ultra {planLabel(plan.code)}</dt>
                     <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(shown.rider)}</dd>
                   </div>
                   {/* The agency sells the daily cash with the health cover rather than beside

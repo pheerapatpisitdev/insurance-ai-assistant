@@ -80,7 +80,7 @@ export function iHealthyMessage(f: IHealthyCtaFacts): string {
   const a = f.arrangement;
   if (a === undefined) return `${head} ${someone} ขอแบบที่เหมาะกับอายุนี้`;
   const cover = COVERAGE_WORD[a.coverage] ?? "";
-  const who = `${head} แผน${a.planName} ${a.territory}${cover ? ` ${cover}` : ""} ${someone}`;
+  const who = `${head} ${a.planName} ${a.territory}${cover ? ` ${cover}` : ""} ${someone}`;
   if (!f.shown) return `${who} ขอราคาปัจจุบัน`;
   return `${who} เบี้ยรวมประมาณ ${formatBaht(f.shown.total)} บาท${PER[f.mode]}`;
 }
@@ -115,7 +115,7 @@ export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
   return [
     // an emoji a heading, no more: the text is pasted into a customer's chat, where a wall
     // of them reads as a broadcast rather than as an agent answering
-    `🏥 iHealthy Ultra แผน${a.planName}`,
+    `🏥 iHealthy Ultra ${a.planName}`,
     `${ceiling} · อาณาเขต${a.territory}`,
     "",
     `${SEX_WORD[f.sex]} อายุ ${f.age} ปี`,

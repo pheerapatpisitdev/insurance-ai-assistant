@@ -1,5 +1,5 @@
 import { formatBaht } from "@/calc/money";
-import { benefitValue, isHeading, type BenefitEntry, type IHealthyFacts } from "@/lib/ihealthy-facts";
+import { benefitValue, isHeading, planLabel, type BenefitEntry, type IHealthyFacts } from "@/lib/ihealthy-facts";
 
 /**
  * The half of the benefit data the browser needs. `terms` and `disclaimer` are three of the
@@ -60,6 +60,9 @@ export const PHONE_PLANS = ["BRONZE", "SILVER", "GOLD"];
  */
 const PHONE_ROW_LABEL: Record<number, string> = {
   1: "ค่าห้องและค่าอาหาร",
+  5: "Day Surgery",
+  7: "อุบัติเหตุ OPD 24 ชม",
+  10: "มะเร็ง รังสีรักษา",
   18: "ผู้ป่วยนอก OPD",
 };
 /** Hidden at every width, restored from the tablet breakpoint up. */
@@ -152,6 +155,9 @@ export function BenefitTable(
   const plans = data.plans;
   /** A column a phone keeps: one of the three, or the one the card is pricing. */
   const onPhone = (code: string) => PHONE_PLANS.includes(code) || code === selected;
+  /** The company's numbered categories a phone does not show, counted from the sheet. */
+  const hidden = data.rows
+    .filter((r) => !isHeading(r) && r.no !== null && !(r.no in PHONE_ROW_LABEL)).length;
   return (
     <div>
       {/* No height of its own: the table runs its full length down the page, so a reader
@@ -196,7 +202,7 @@ export function BenefitTable(
                         : "text-[var(--lg-mute)]"
                     }`}
                   >
-                    {p.name}
+                    {planLabel(p.code)}
                     {/* The ceiling stays even where the plan is not for sale — it is what the
                         whole table is organised around, and four columns of six lose it at a
                         child age. The six are read across the row against one another, which
@@ -339,10 +345,11 @@ export function BenefitTable(
         </table>
       </div>
       <p className="border-t border-[var(--lg-panel-line)] py-2.5 text-[0.7rem] leading-relaxed text-[var(--lg-mute)] opacity-80">
-        {/* A phone is shown three rows of the twenty-eight, so it is told what the other
-            twenty-five do rather than left to read the table as the whole contract. */}
+        {/* A phone is shown a handful of the company's categories, so it is told how many it
+            is not being shown rather than left to read those few as the whole contract. The
+            count is taken from the sheet so it cannot drift from what is on screen. */}
         <span className="sm:hidden">
-          อีก 25 หมวดจ่ายตามจริงเท่ากันทุกแผน รวมผ่าตัด อุบัติเหตุ และมะเร็ง · ดูตารางเต็มได้บนจอคอมพิวเตอร์ ·{" "}
+          ยังคุ้มครองอีก {hidden} หมวด · ดูตารางเต็มได้บนจอคอมพิวเตอร์ ·{" "}
         </span>
         {/* on paper there is nothing to scroll to, and the whole table is already there */}
         <span className="hidden print:hidden sm:inline">เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · </span>

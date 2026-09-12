@@ -99,6 +99,18 @@ function deepFreeze<T>(value: T): T {
 const { name, plans, copayPercent, rows, terms, disclaimer } = raw;
 const sheet = deepFreeze({ name, plans, copayPercent, rows, terms, disclaimer });
 
+/**
+ * What a plan is called on screen.
+ *
+ * The sheet's own name is Thai — สมาร์ท, บรอนซ์ — and stays in the data, because that is the
+ * company's wording and the extract should keep saying what the workbook says. The page
+ * shows the English, which is how the plans are written everywhere else this agency sells
+ * them, and it is the rate key's own code title-cased rather than a seventh list to keep.
+ */
+export function planLabel(code: string): string {
+  return code.charAt(0) + code.slice(1).toLowerCase();
+}
+
 export function isHeading(entry: BenefitEntry): entry is BenefitHeading {
   return "heading" in entry;
 }
