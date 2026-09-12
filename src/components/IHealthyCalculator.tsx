@@ -331,9 +331,20 @@ export function IHealthyCalculator(
                       ต่ำกว่าเบี้ยรายเดือนขั้นต่ำ {table.minMonthly.toLocaleString("en-US")} บาท ที่บริษัทรับชำระ
                     </p>
                   )}
-                  <p className="mt-2 text-xs leading-relaxed text-[var(--lg-mute)]">
-                    {shown.others.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)}`).join(" · ")}
-                  </p>
+                  {/* One instalment to a line, and laid out the way the two contract lines
+                      above are: an agent reading a figure off the screen to a customer
+                      should find it in the same place every time, not somewhere along a
+                      sentence. */}
+                  <dl className="mt-3 space-y-1.5 text-sm">
+                    {shown.others.map((m) => (
+                      <div key={m.mode} className="flex items-baseline justify-between gap-3">
+                        <dt className="text-[var(--lg-mute)]">{PAY_MODE_LABEL[m.mode]}</dt>
+                        <dd className="lg-figure tabular-nums text-[var(--lg-white)]">
+                          {formatBaht(m.total)} <span className="text-xs text-[var(--lg-mute)]">บาท</span>
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
               </>
             ) : (
