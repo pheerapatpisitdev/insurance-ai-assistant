@@ -1,7 +1,7 @@
 import type { ModePremium } from "@/calc/mode-premiums";
 import { applyModeFactor, applyModeFactorToFixed, toHundredths } from "@/calc/money";
 import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
-import type { IHealthyPlanOption, IHealthyTable } from "@/lib/ihealthy-table";
+import type { IHealthyBase, IHealthyPlanOption, IHealthyTable } from "@/lib/ihealthy-table";
 
 /** Same order as calc/mode-premiums; repeated here so the browser does not import the engine. */
 const MODES: PayMode[] = ["annual", "semi", "monthly"];
@@ -16,18 +16,39 @@ export interface IHealthyChoice {
   coverage: string;
 }
 
+/** A component premium. The company's floor is judged on the total, so only the total carries it. */
+type ComponentPremium = Omit<ModePremium, "belowMinimum">;
+
 export interface IHealthyPricing {
   /** the base plan on its own, per mode */
-  base: ModePremium[];
+  base: ComponentPremium[];
   /** the health rider on its own, per mode */
-  rider: ModePremium[];
+  rider: ComponentPremium[];
   /** what the customer actually pays, and the mode that falls under the company's floor */
   total: ModePremium[];
 }
 
+/** The base this variant names. Throws rather than quote a stale one, as `termAt` does. */
+export function baseAt(table: IHealthyTable, variant: string): IHealthyBase {
+  const base = table.bases.find((b) => b.variant === variant);
+  if (!base) throw new Error(`Unknown base: ${variant}`);
+  return base;
+}
+
 /**
- * The key the workbook composes at `'iHealthy Ultra Rate'!D7`:
- * "MHP" + coverage letter + plan number + (age < 11 ? "J" : "S") + territory letter.
+ * The label whose rate-key letter is empty — ประเทศไทย, Full Coverage. The filters probe with
+ * it, and the table carries it as data, so a re-spelled label moves the probe with it.
+ */
+function defaultLabel(letters: Record<string, string>): string {
+  const found = Object.keys(letters).find((label) => letters[label] === "");
+  if (found === undefined) throw new Error("no rate-key letter is the empty one any more");
+  return found;
+}
+
+/**
+ * The key the workbook composes at `'iHealthy Ultra Rate'!D7`. Undefined where a label is
+ * not one the rate table spells a letter for; the two defaults spell the empty letter, so
+ * every lookup here asks for `undefined` rather than for truth.
  */
 export function ihuKey(
   table: IHealthyTable, plan: string, age: number, territory: string, coverage: string,
@@ -39,11 +60,27 @@ export function ihuKey(
   return `MHP${c}${option.planNo}${age < table.juvenileBelowAge ? "J" : "S"}${t}`;
 }
 
+/**
+ * Whether the company sells this key at this age at all. Either sex answers for both: no key
+ * has a rate for one sex only, which ihealthy-table.test.ts asserts across all 28 of them, so
+ * the pickers need not ask the customer's sex before offering a plan. Should a rate revision
+ * ever break that, the assertion fails rather than this offering a plan with a blank price.
+ *
+ * An age off either end of the table reads `undefined`, which is neither of the two absences
+ * the table defines — so it is ruled out first rather than allowed to pass for a sale.
+ */
 function hasRate(table: IHealthyTable, key: string, age: number): boolean {
   const rates = table.riderRates[key];
   if (!rates) return false;
   const i = age - table.ageMin;
+  if (!(i >= 0 && i < rates.M.length)) return false;
   return rates.M[i] !== null || rates.F[i] !== null;
+}
+
+/** Whether one whole arrangement is on sale: the key exists, and it has a rate at this age. */
+function sells(table: IHealthyTable, plan: string, age: number, territory: string, coverage: string): boolean {
+  const key = ihuKey(table, plan, age, territory, coverage);
+  return key !== undefined && hasRate(table, key, age);
 }
 
 /**
@@ -52,46 +89,45 @@ function hasRate(table: IHealthyTable, key: string, age: number): boolean {
  * repeating its conditions.
  */
 export function plansFor(table: IHealthyTable, age: number): IHealthyPlanOption[] {
-  return table.plans.filter((p) => {
-    const key = ihuKey(table, p.code, age, "ประเทศไทย", "Full Coverage");
-    return key !== undefined && hasRate(table, key, age);
-  });
+  const territory = defaultLabel(table.territories);
+  const coverage = defaultLabel(table.coverages);
+  return table.plans.filter((p) => sells(table, p.code, age, territory, coverage));
 }
 
 /** The territories this plan sells in at this age, again read off the rate table. */
 export function territoriesFor(table: IHealthyTable, plan: string, age: number): string[] {
-  return Object.keys(table.territories).filter((t) => {
-    const key = ihuKey(table, plan, age, t, "Full Coverage");
-    return key !== undefined && hasRate(table, key, age);
-  });
+  const coverage = defaultLabel(table.coverages);
+  return Object.keys(table.territories).filter((t) => sells(table, plan, age, t, coverage));
 }
 
-/** Outside Thailand the company sells full cover only. */
-export function coveragesFor(table: IHealthyTable, territory: string): string[] {
-  return territory === "ประเทศไทย" ? Object.keys(table.coverages) : ["Full Coverage"];
+/**
+ * The ways of sharing the bill that this territory sells at this age — full cover everywhere,
+ * the deductible and the co-payment in Thailand only. Read off the rate table like its two
+ * neighbours: the company's own list, not a copy of it that a re-spelling would silence.
+ */
+export function coveragesFor(table: IHealthyTable, territory: string, age: number): string[] {
+  return Object.keys(table.coverages)
+    .filter((c) => table.plans.some((p) => sells(table, p.code, age, territory, c)));
 }
 
-function baseModes(table: IHealthyTable, choice: IHealthyChoice): ModePremium[] | undefined {
-  const base = table.bases.find((b) => b.variant === choice.base);
-  const rate = base?.rates[choice.sex][choice.age - table.ageMin];
+function baseModes(table: IHealthyTable, choice: IHealthyChoice): ComponentPremium[] | undefined {
+  const rate = baseAt(table, choice.base).rates[choice.sex][choice.age - table.ageMin];
   if (rate === null || rate === undefined) return undefined;
   const rate100 = toHundredths(rate);
   return MODES.map((mode) => ({
     mode,
     total: applyModeFactor(rate100, choice.sumAssured, toHundredths(table.modeFactors[mode])),
-    belowMinimum: false,
   }));
 }
 
-function riderModes(table: IHealthyTable, choice: IHealthyChoice): ModePremium[] | undefined {
+function riderModes(table: IHealthyTable, choice: IHealthyChoice): ComponentPremium[] | undefined {
   const key = ihuKey(table, choice.plan, choice.age, choice.territory, choice.coverage);
-  const annual = key ? table.riderRates[key]?.[choice.sex][choice.age - table.ageMin] : null;
+  const annual = key === undefined ? null : table.riderRates[key]?.[choice.sex][choice.age - table.ageMin];
   if (annual === null || annual === undefined) return undefined;
   const annual100 = toHundredths(annual);
   return MODES.map((mode) => ({
     mode,
     total: applyModeFactorToFixed(annual100, toHundredths(table.modeFactors[mode])),
-    belowMinimum: false,
   }));
 }
 
@@ -121,7 +157,7 @@ export function iHealthyPricing(table: IHealthyTable, choice: IHealthyChoice): I
 
 /** What quote.ts returns for this base with no death-paying rider attached. */
 export function deathBenefitOf(table: IHealthyTable, base: string, age: number, sumAssured: number): DeathBenefit {
-  const booster = table.bases.find((b) => b.variant === base)?.booster ?? 0;
+  const { booster } = baseAt(table, base);
   const alreadyPastAge = age >= table.boosterBeforeAge;
   return {
     beforeAge: table.boosterBeforeAge,

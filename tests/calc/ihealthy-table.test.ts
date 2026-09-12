@@ -76,6 +76,22 @@ describe("iHealthyTable", () => {
     }
   });
 
+  /**
+   * The page's filters offer a plan before the customer has said who they are, so they read
+   * one sex and trust it for both. That holds only while the company charges a man and a
+   * woman at every age it sells a key at — if a revision ever splits them, this fails and
+   * the filters need the sex rather than quietly offering a plan with no price behind it.
+   */
+  it("sells every key to both sexes at the same ages", () => {
+    const t = iHealthyTable(WHILE_CURRENT);
+    for (const key of KEYS) {
+      const rates = t.riderRates[key]!;
+      const agesFor = (sex: Sex) =>
+        rates[sex].map((r, i) => (r === null ? null : i + t.ageMin)).filter((a) => a !== null);
+      expect(agesFor("F"), key).toEqual(agesFor("M"));
+    }
+  });
+
   it("reads the rider premium by key, sex and age", () => {
     const t = iHealthyTable(WHILE_CURRENT);
     const premium = (key: string, sex: Sex, age: number) => t.riderRates[key]![sex][age - t.ageMin];

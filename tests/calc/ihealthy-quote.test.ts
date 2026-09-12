@@ -19,6 +19,19 @@ function rng(seed: number): () => number {
 }
 
 const SUMS = [150_000, 500_000, 1_000_000, 2_000_000, 5_000_000];
+/** the seed the sweep runs from, quoted in its failures so a case can be re-run */
+const SEED = 20260912;
+
+/**
+ * Whether the company has a rate for this key at this age, read straight off the table.
+ * Either sex answers for both, the assumption the filters are built on and that
+ * ihealthy-table.test.ts asserts across all 28 keys.
+ */
+function sold(key: string, age: number): boolean {
+  const rates = table.riderRates[key];
+  const i = age - table.ageMin;
+  return rates !== undefined && (rates.M[i] !== null || rates.F[i] !== null);
+}
 
 describe("ihuKey", () => {
   it("builds the workbook's key", () => {
@@ -58,23 +71,65 @@ describe("the option filters", () => {
   });
 
   it("sells the deductible and the co-payment in Thailand only", () => {
-    expect(coveragesFor(table, "ประเทศไทย")).toEqual(["Full Coverage", "Deductible", "Co-Payment"]);
-    expect(coveragesFor(table, "เอเชีย")).toEqual(["Full Coverage"]);
+    expect(coveragesFor(table, "ประเทศไทย", 35)).toEqual(["Full Coverage", "Deductible", "Co-Payment"]);
+    expect(coveragesFor(table, "เอเชีย", 35)).toEqual(["Full Coverage"]);
+    // a child's two plans are sold all three ways, and none of them abroad
+    expect(coveragesFor(table, "ประเทศไทย", 8)).toEqual(["Full Coverage", "Deductible", "Co-Payment"]);
+    expect(coveragesFor(table, "เอเชีย", 8)).toEqual([]);
   });
 
-  it("offers exactly the arrangements the company has a rate for", () => {
-    const offered = new Set<string>();
+  it("probes with whatever label carries the empty letter, not with a spelling of it", () => {
+    // the Thai labels are the workbook's marketing copy; the letters beside them are the data
+    const renamed = {
+      ...table,
+      territories: { "ใน ปท.": "", เอเชีย: "A", ทั่วโลก: "W" },
+      coverages: { เต็มจำนวน: "", Deductible: "D", "Co-Payment": "C" },
+    };
+    expect(plansFor(renamed, 35)).toHaveLength(6);
+    expect(territoriesFor(renamed, "PLATINUM", 35)).toEqual(["ใน ปท.", "เอเชีย", "ทั่วโลก"]);
+    expect(coveragesFor(renamed, "ใน ปท.", 35)).toEqual(["เต็มจำนวน", "Deductible", "Co-Payment"]);
+  });
+
+  it("offers nothing at an age the table does not reach", () => {
+    // undefined past the end of a rate array is not a third kind of absence, and not a sale
+    expect(plansFor(table, table.ageMax + 1)).toEqual([]);
+    expect(plansFor(table, table.ageMin - 1)).toEqual([]);
+    expect(plansFor(table, Number.NaN)).toEqual([]);
+    expect(territoriesFor(table, "PLATINUM", table.ageMax + 1)).toEqual([]);
+    expect(coveragesFor(table, "ประเทศไทย", table.ageMax + 1)).toEqual([]);
+  });
+
+  /**
+   * Age by age, because a union across ages cannot see a filter that drops an arrangement at
+   * one age and keeps it at another. The expectation is the whole cross-product of plan,
+   * territory and coverage sieved through the rate table, so it is the company's answer
+   * rather than the filters' own answer read back.
+   */
+  it("offers, at every age, exactly the arrangements the company sells at that age", () => {
+    const reached = new Set<string>();
     for (let age = table.ageMin; age <= table.ageMax; age++) {
+      const offered: string[] = [];
       for (const p of plansFor(table, age)) {
         for (const t of territoriesFor(table, p.code, age)) {
-          for (const c of coveragesFor(table, t)) {
-            const key = ihuKey(table, p.code, age, t, c);
-            if (key && table.riderRates[key]?.M[age - table.ageMin] !== null) offered.add(key);
+          for (const c of coveragesFor(table, t, age)) {
+            offered.push(`${p.code}|${t}|${c}`);
+            reached.add(ihuKey(table, p.code, age, t, c)!);
           }
         }
       }
+      const onSale: string[] = [];
+      for (const p of table.plans) {
+        for (const t of Object.keys(table.territories)) {
+          for (const c of Object.keys(table.coverages)) {
+            const key = ihuKey(table, p.code, age, t, c);
+            if (key !== undefined && sold(key, age)) onSale.push(`${p.code}|${t}|${c}`);
+          }
+        }
+      }
+      expect(offered.sort(), `age ${age}`).toEqual(onSale.sort());
     }
-    expect([...offered].sort()).toEqual(Object.keys(table.riderRates).sort());
+    // and between them the ages reach every key the company sells: none is unofferable
+    expect([...reached].sort()).toEqual(Object.keys(table.riderRates).sort());
   });
 });
 
@@ -92,7 +147,7 @@ describe("iHealthyPricing", () => {
    * health rider, so it has to be the engine's arithmetic.
    */
   it("agrees with the engine in every mode across random arrangements", () => {
-    const next = rng(20260912);
+    const next = rng(SEED);
     const pick = <T,>(xs: readonly T[]) => xs[Math.floor(next() * xs.length)];
     let checked = 0;
     for (let i = 0; i < 200; i++) {
@@ -101,7 +156,7 @@ describe("iHealthyPricing", () => {
       const age = table.ageMin + Math.floor(next() * (table.ageMax - table.ageMin + 1));
       const plan = pick(plansFor(table, age));
       const territory = pick(territoriesFor(table, plan.code, age));
-      const coverage = pick(coveragesFor(table, territory));
+      const coverage = pick(coveragesFor(table, territory, age));
       const sumAssured = base.fixedSum ?? pick(SUMS);
       const choice = { base: base.variant, sex, age, sumAssured, plan: plan.code, territory, coverage };
       const priced = iHealthyPricing(table, choice);
@@ -113,7 +168,7 @@ describe("iHealthyPricing", () => {
           basis: "sumAssured", sumAssured,
           riders: [{ code: "IHU", option: plan.code, territory, coverage }],
         }, WHILE_CURRENT);
-        const label = `${base.variant} ${plan.code} ${territory} ${coverage} ${sex} ${age} ${sumAssured} ${m.mode}`;
+        const label = `seed ${SEED} · ${base.variant} ${plan.code} ${territory} ${coverage} ${sex} ${age} ${sumAssured} ${m.mode}`;
         expect(q.totalModal, label).toBe(m.total);
         expect(q.warnings.some((w) => w.code === "MIN_MONTHLY"), label).toBe(m.belowMinimum);
       }
@@ -156,6 +211,17 @@ describe("iHealthyPricing", () => {
     expect(p.base.find((m) => m.mode === "annual")!.total).toBe(38_000);
     expect(p.rider.find((m) => m.mode === "annual")!.total).toBe(3_860_000);
     expect(p.total.find((m) => m.mode === "annual")!.total).toBe(3_898_000);
+  });
+
+  it("refuses a base the table does not carry rather than pricing a stale one", () => {
+    // a real LIFEPROTECT variant, but not one of the three this page sells
+    const stale = {
+      base: "WLF19H", sex: "F" as Sex, age: 35, sumAssured: 1_000_000,
+      plan: "BRONZE", territory: "ประเทศไทย", coverage: "Full Coverage",
+    };
+    expect(() => iHealthyPricing(table, stale)).toThrow("Unknown base: WLF19H");
+    // and the cover figure does not answer where the premium panel cannot
+    expect(() => deathBenefitOf(table, "WLF19H", 35, 1_000_000)).toThrow("Unknown base: WLF19H");
   });
 
   it("has no price for a combination the company does not sell", () => {
