@@ -72,10 +72,12 @@ const PLANS: Record<string, PlanBundle> = {
     rules: plbRules as unknown as PlanRules,
     riderOrder: ["AP", "ECARE", "MEB"],
     variantLabels: {
-      PLB05: "Protection Life (ชำระเบี้ย 5 ปี)",
-      PLB10: "Protection Life (ชำระเบี้ย 10 ปี)",
-      PLB12: "Protection Life (ชำระเบี้ย 12 ปี)",
-      PLB15: "Protection Life (ชำระเบี้ย 15 ปี)",
+      // cover runs exactly as long as the premium is paid, so the term is the whole label;
+      // the product's own name is the plan label above it, and on the card in front of it
+      PLB05: "ชำระเบี้ย 5 ปี",
+      PLB10: "ชำระเบี้ย 10 ปี",
+      PLB12: "ชำระเบี้ย 12 ปี",
+      PLB15: "ชำระเบี้ย 15 ปี",
     },
   },
   ISHIELD: {

@@ -127,9 +127,16 @@ describe("quoteCard", () => {
       { kind: "plan", planCode: "PLB", variant: "PLB10", age: 35, sex: "F", sumAssured: 500_000 },
       WHILE_CURRENT,
     )!;
-    expect(card.planLine).toBe("Protection Life (PLB) · Protection Life (ชำระเบี้ย 10 ปี)");
+    expect(card.planLine).toBe("Protection Life (PLB) · ชำระเบี้ย 10 ปี");
     // PLB has no cash-value table extracted, so the card simply has no such section
     expect(section(card, CASH)).toBeUndefined();
+    // and it says so, rather than leaving the absence to be read as an oversight
+    expect(card.notes).toContain("คุ้มครองล้วน ไม่มีมูลค่าเวนคืนและไม่มีเงินคืนเมื่อครบสัญญา");
+    // the engine finds no death benefit for a plan with no booster, so the card states it
+    expect(section(card, "ครอบครัวได้รับเมื่อเสียชีวิต")).toEqual({
+      title: "ครอบครัวได้รับเมื่อเสียชีวิต",
+      rows: [{ label: "ตลอด 10 ปีที่คุ้มครอง (ถึงอายุ 45)", amount: "500,000" }],
+    });
   });
 });
 

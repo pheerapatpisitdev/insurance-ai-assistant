@@ -11,6 +11,8 @@ import { deathBenefitRows } from "@/lib/death-benefit";
 import { cashProjection, type Projection } from "@/lib/cash-projection";
 import { iShieldTable } from "@/lib/ishield-table";
 import { illnessBenefit } from "@/lib/ishield-quote";
+import { plbTable } from "@/lib/plb-table";
+import { coverEndsAt } from "@/lib/plb-quote";
 import { displayPremium, perDay } from "@/lib/legacy-cta";
 
 /**
@@ -308,27 +310,52 @@ function chartFor(
 }
 
 /**
- * What iShield pays, which the engine has no field for: its illnesses are a property of the
- * base contract rather than of a rider, and its death benefit has no booster for
- * `deathBenefitFor` to find, so that function returns nothing at all for it.
+ * What a plan pays where the engine has no field for it. iShield's illnesses are a property
+ * of the base contract rather than of a rider, and neither plan here has a booster for
+ * `deathBenefitFor` to find, so that function returns nothing at all for them — without this
+ * a PLB card would carry a price and not one word about what it buys.
  *
- * Written out per plan rather than inferred. "This contract pays X on a diagnosis" is a
- * claim about a specific policy, and a plan whose benefit sheet has not been read gets no
- * sentence put in its mouth.
+ * Written out per plan rather than inferred. "This contract pays X" is a claim about a
+ * specific policy, and a plan whose benefit sheet has not been read gets no sentence put in
+ * its mouth.
  */
 function planBenefitSection(input: PlanCardInput): CardSection | undefined {
-  if (input.planCode !== "ISHIELD") return undefined;
-  const table = iShieldTable();
-  const benefit = illnessBenefit(table, input.sumAssured);
-  const rows: CardRow[] = [
-    { label: `ตรวจพบโรคร้ายแรงระยะรุนแรง (${table.illness.majorCount} โรค)`, amount: money(benefit.major) },
-    { label: `ตรวจพบระยะเริ่มต้น (${table.illness.earlyCount} โรค) ต่อโรค`, amount: money(benefit.early) },
-    { label: "เสียชีวิต", amount: money(input.sumAssured) },
-  ];
-  if (input.age < table.maturityAge) {
-    rows.push({ label: `อยู่ครบสัญญาอายุ ${table.maturityAge} ปี`, amount: money(input.sumAssured) });
+  if (input.planCode === "ISHIELD") {
+    const table = iShieldTable();
+    const benefit = illnessBenefit(table, input.sumAssured);
+    const rows: CardRow[] = [
+      { label: `ตรวจพบโรคร้ายแรงระยะรุนแรง (${table.illness.majorCount} โรค)`, amount: money(benefit.major) },
+      { label: `ตรวจพบระยะเริ่มต้น (${table.illness.earlyCount} โรค) ต่อโรค`, amount: money(benefit.early) },
+      { label: "เสียชีวิต", amount: money(input.sumAssured) },
+    ];
+    if (input.age < table.maturityAge) {
+      rows.push({ label: `อยู่ครบสัญญาอายุ ${table.maturityAge} ปี`, amount: money(input.sumAssured) });
+    }
+    return { title: "รับเงินก้อนเมื่อ", rows };
   }
-  return { title: "รับเงินก้อนเมื่อ", rows };
+  if (input.planCode === "PLB") {
+    const table = plbTable();
+    const term = table.terms.find((t) => t.variant === input.variant);
+    if (!term) return undefined;
+    return {
+      title: "ครอบครัวได้รับเมื่อเสียชีวิต",
+      rows: [{
+        label: `ตลอด ${term.years} ปีที่คุ้มครอง (ถึงอายุ ${coverEndsAt(term, input.age)})`,
+        amount: money(input.sumAssured),
+      }],
+    };
+  }
+  return undefined;
+}
+
+/**
+ * The small print a plan adds to its own card. PLB pays nothing at all if the insured is
+ * still alive at the end, and a picture outlives the chat that framed it, so the card has to
+ * say so itself rather than trust the agent to.
+ */
+function planNotes(input: PlanCardInput): string[] {
+  if (input.planCode !== "PLB") return [];
+  return ["คุ้มครองล้วน ไม่มีมูลค่าเวนคืนและไม่มีเงินคืนเมื่อครบสัญญา"];
 }
 
 /**
@@ -385,7 +412,7 @@ function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
     perDay: perDayLine,
     others,
     sections,
-    notes: cardNotes(result.meta.expired, result.meta.version, "เบี้ยมาตรฐานโดยประมาณ"),
+    notes: cardNotes(result.meta.expired, result.meta.version, "เบี้ยมาตรฐานโดยประมาณ", planNotes(input)),
     ...(chart ? { chart } : {}),
   };
 }
