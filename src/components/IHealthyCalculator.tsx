@@ -1,0 +1,312 @@
+"use client";
+import { useMemo, useState } from "react";
+import type { PayMode, Sex } from "@/calc/types";
+import { PAY_MODE_LABEL } from "@/calc/types";
+import { formatBaht } from "@/calc/money";
+import type { IHealthyTable } from "@/lib/ihealthy-table";
+import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
+import { BenefitTable } from "@/components/ihealthy/BenefitTable";
+import { deathBenefitOf, iHealthyPricing, type IHealthyPricing } from "@/lib/ihealthy-quote";
+import {
+  baseFor, resolveArrangement, sumFor, sumsFor, type IHealthyInitial,
+} from "@/lib/ihealthy-choice";
+
+const MODES: PayMode[] = ["annual", "semi", "monthly"];
+const COVERAGE_LABEL: Record<string, string> = {
+  "Full Coverage": "เต็มจำนวน",
+  Deductible: "มีความรับผิดส่วนแรก",
+  "Co-Payment": "ร่วมจ่าย",
+};
+
+export interface IHealthyShown {
+  /** all three in satang, as the pricing carries them */
+  base: number;
+  rider: number;
+  total: number;
+  belowMinimum: boolean;
+  /** the two instalments the card is not showing, in the order the table prices them */
+  others: { mode: PayMode; total: number }[];
+}
+
+/**
+ * The three figures for the instalment on screen, or nothing at all.
+ *
+ * Nothing rather than a partial row: a mode the pricing turns out not to carry is a miss,
+ * and a card that printed a total with no base line under it would read as a complete quote.
+ */
+export function shownAt(priced: IHealthyPricing | undefined, mode: PayMode): IHealthyShown | undefined {
+  if (priced === undefined) return undefined;
+  const base = priced.base.find((m) => m.mode === mode);
+  const rider = priced.rider.find((m) => m.mode === mode);
+  const total = priced.total.find((m) => m.mode === mode);
+  if (!base || !rider || !total) return undefined;
+  return {
+    base: base.total,
+    rider: rider.total,
+    total: total.total,
+    belowMinimum: total.belowMinimum,
+    others: priced.total.filter((m) => m.mode !== mode).map((m) => ({ mode: m.mode, total: m.total })),
+  };
+}
+
+export interface IHealthyCalculatorProps {
+  table: IHealthyTable;
+  /** only the benefit rows the browser draws; the contract's prose stays on the server */
+  data: BenefitTableData;
+  /** the one sentence from `terms` the table itself prints under its own scroll hint */
+  sharedLimit: string;
+  initial: IHealthyInitial;
+}
+
+/**
+ * The customer's own quote for the health rider and the plan it rides on.
+ *
+ * State holds what was asked for; every render resolves that to what the company sells at
+ * the age on screen, so the panel is never showing a price for one arrangement while the
+ * pickers show another.
+ */
+export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealthyCalculatorProps) {
+  const AGES = useMemo(
+    () => Array.from({ length: table.ageMax - table.ageMin + 1 }, (_, i) => table.ageMin + i),
+    [table.ageMin, table.ageMax],
+  );
+  const [age, setAge] = useState(initial.age);
+  const [sex, setSex] = useState<Sex>(initial.sex);
+  const [wantBase, setWantBase] = useState(initial.base);
+  const [wantSum, setWantSum] = useState(initial.sumAssured);
+  const [wantPlan, setWantPlan] = useState(initial.plan);
+  const [wantTerritory, setWantTerritory] = useState(initial.territory);
+  const [wantCoverage, setWantCoverage] = useState(initial.coverage);
+  const [mode, setMode] = useState<PayMode>(initial.mode);
+
+  const base = baseFor(table, wantBase);
+  const sumOptions = sumsFor(base);
+  const sumAssured = sumFor(base, wantSum);
+  const { plan, plans, territory, territories, coverage, coverages } = resolveArrangement(
+    table, age, { plan: wantPlan, territory: wantTerritory, coverage: wantCoverage },
+  );
+
+  const priced = plan && territory && coverage
+    ? iHealthyPricing(table, {
+        base: base.variant, sex, age, sumAssured, plan: plan.code, territory, coverage,
+      })
+    : undefined;
+  /** An expired rate set prices, but not at a figure anyone may be quoted. */
+  const shown = table.expired ? undefined : shownAt(priced, mode);
+  const death = deathBenefitOf(table, base.variant, age, sumAssured);
+
+  const label = "block text-sm text-[var(--lg-mute)]";
+  const field =
+    "mt-1.5 w-full appearance-none rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-base text-[var(--lg-white)]";
+  const hint = "mt-1 text-xs leading-relaxed text-[var(--lg-mute)]";
+  const chip = (on: boolean) =>
+    `rounded-sm border px-2 py-2.5 text-center text-sm transition-colors ${
+      on ? "lg-metal-face border-[var(--lg-gold)] font-medium" : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
+    }`;
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] p-5 print:hidden">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="ihu-age" className={label}>อายุ</label>
+            {/* Seventy-five options, and still a picker rather than a number field, for the
+                reason its sibling on /lifeprotect gives: a phone opens the wheel instead of
+                the keypad, and one flick covers a decade. The list is the company's own
+                issue-age range for this rider, so an age it will not cover cannot be reached
+                and then have to be explained away — which is worth more here than on the
+                base plan, because half the arrangement changes with the age. */}
+            <select id="ihu-age" className={field} value={age} onChange={(e) => setAge(Number(e.target.value))}>
+              {AGES.map((a) => <option key={a} value={a}>{a} ปี</option>)}
+            </select>
+          </div>
+          <div>
+            <span className={label}>เพศ</span>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              {(["M", "F"] as Sex[]).map((s) => (
+                <button key={s} type="button" aria-pressed={sex === s} onClick={() => setSex(s)} className={chip(sex === s)}>
+                  {s === "M" ? "ชาย" : "หญิง"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <span className={label}>สัญญาหลัก</span>
+          <div className="mt-1.5 grid grid-cols-3 gap-2">
+            {table.bases.map((b) => (
+              <button
+                key={b.variant} type="button" aria-pressed={b.variant === base.variant}
+                onClick={() => setWantBase(b.variant)} className={chip(b.variant === base.variant)}
+              >
+                <span className="block">{b.short}</span>
+                {/* the package carries no note: its subtitle is its pinned sum, read from
+                    the field itself so the two can never disagree */}
+                <span className="mt-0.5 block text-xs opacity-80">
+                  {b.note ?? `ทุน ${b.fixedSum?.toLocaleString("en-US")}`}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="ihu-sum" className={label}>ทุนสัญญาหลัก</label>
+          {base.fixedSum !== undefined ? (
+            <p className="mt-1.5 rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-base tabular-nums text-[var(--lg-mute)]">
+              {base.fixedSum.toLocaleString("en-US")} บาท · แพ็กเกจกำหนดไว้ เปลี่ยนไม่ได้
+            </p>
+          ) : (
+            <select id="ihu-sum" className={field} value={sumAssured} onChange={(e) => setWantSum(Number(e.target.value))}>
+              {sumOptions.map((s) => <option key={s} value={s}>{s.toLocaleString("en-US")} บาท</option>)}
+            </select>
+          )}
+        </div>
+
+        <div>
+          <span className={label}>แผนสุขภาพ</span>
+          <div className="mt-1.5 grid grid-cols-3 gap-2">
+            {plans.map((p) => (
+              <button
+                key={p.code} type="button" aria-pressed={p.code === plan?.code}
+                onClick={() => setWantPlan(p.code)} className={chip(p.code === plan?.code)}
+              >
+                <span className="block">{p.name}</span>
+                <span className="mt-0.5 block text-xs tabular-nums opacity-80">
+                  {(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน
+                </span>
+              </button>
+            ))}
+          </div>
+          {plans.length < table.plans.length && (
+            <p className={hint}>
+              อายุต่ำกว่า {table.juvenileBelowAge} ปี บริษัทขายเฉพาะแผน
+              {plans.map((p) => p.name).join("และ")}
+            </p>
+          )}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <label htmlFor="ihu-area" className={label}>อาณาเขต</label>
+            <select id="ihu-area" className={field} value={territory ?? ""} onChange={(e) => setWantTerritory(e.target.value)}>
+              {territories.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            {/* which single one it is comes from the rate table, not from here: แผนโกลด์ is
+                Thailand-only today, and the sentence must follow the table if that changes */}
+            {plan && territories.length === 1 && territory && (
+              <p className={hint}>แผน{plan.name}คุ้มครองเฉพาะใน{territory}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="ihu-cover" className={label}>ความคุ้มครอง</label>
+            <select id="ihu-cover" className={field} value={coverage ?? ""} onChange={(e) => setWantCoverage(e.target.value)}>
+              {coverages.map((c) => <option key={c} value={c}>{COVERAGE_LABEL[c] ?? c}</option>)}
+            </select>
+            {coverages.length === 1 && coverage && territory && (
+              <p className={hint}>
+                อาณาเขต{territory}มีเฉพาะความคุ้มครองแบบ{COVERAGE_LABEL[coverage] ?? coverage}
+              </p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="ihu-mode" className={label}>งวดชำระ</label>
+            <select id="ihu-mode" className={field} value={mode} onChange={(e) => setMode(e.target.value as PayMode)}>
+              {MODES.map((m) => <option key={m} value={m}>{PAY_MODE_LABEL[m]}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5">
+        {plan === undefined || priced === undefined ? (
+          // Nothing the pickers can reach lands here; a rate revision that opened a hole in
+          // the key table would, and an empty card says so rather than naming a ceiling the
+          // company is not selling at this age.
+          <p className="text-sm font-medium text-[var(--lg-gold)]">
+            อายุนี้บริษัทยังไม่เปิดขายแผนที่เลือกไว้ ลองเลือกแผนอื่น
+          </p>
+        ) : (
+          <>
+            {shown ? (
+              <>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-[var(--lg-mute)]">
+                      {base.label} ทุน {sumAssured.toLocaleString("en-US")}
+                    </dt>
+                    <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(shown.base)}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-[var(--lg-mute)]">ไอเฮลท์ตี้ อัลตร้า แผน{plan.name}</dt>
+                    <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(shown.rider)}</dd>
+                  </div>
+                </dl>
+                <div className="border-t border-[var(--lg-panel-line)] pt-4">
+                  <div className="text-sm text-[var(--lg-mute)]">เบี้ยรวม {PAY_MODE_LABEL[mode]}</div>
+                  <div className="lg-figure mt-1 text-[2.4rem] leading-none tabular-nums">
+                    <span className="lg-metal-text">{formatBaht(shown.total)}</span>
+                    <span className="ml-2 text-base text-[var(--lg-mute)]">บาท</span>
+                  </div>
+                  {shown.belowMinimum && (
+                    <p className="mt-2 text-xs text-[var(--lg-gold)]">
+                      ต่ำกว่าเบี้ยรายเดือนขั้นต่ำ {table.minMonthly.toLocaleString("en-US")} บาท ที่บริษัทรับชำระ
+                    </p>
+                  )}
+                  <p className="mt-2 text-xs leading-relaxed text-[var(--lg-mute)]">
+                    {shown.others.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)}`).join(" · ")}
+                  </p>
+                </div>
+              </>
+            ) : (
+              // The rate set below this page has lapsed. What the contract pays is still
+              // true; what it costs is not ours to say any more.
+              <p className="text-sm font-medium text-[var(--lg-gold)]">
+                ตารางเบี้ยชุดนี้หมดอายุแล้ว ขอเบี้ยปัจจุบันได้จากตัวแทน
+              </p>
+            )}
+            <div className="border-t border-[var(--lg-panel-line)] pt-4 text-sm text-[var(--lg-mute)]">
+              <p>
+                วงเงินค่ารักษาต่อปี{" "}
+                <span className="lg-figure tabular-nums text-[var(--lg-white)]">
+                  {plan.annualMax.toLocaleString("en-US")}
+                </span>{" "}
+                บาท
+                {coverage === "Deductible" && ` · รับผิดส่วนแรก ${plan.deductible.toLocaleString("en-US")} บาทต่อปี`}
+                {coverage === "Co-Payment" && ` · ร่วมจ่าย ${data.copayPercent} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง`}
+              </p>
+              {/* the rider covers the illness; this is the one thing the base plan is for,
+                  and past the booster age it stops doubling rather than stops paying */}
+              {death.alreadyPastAge ? (
+                <p className="mt-1">
+                  ครอบครัวได้รับ{" "}
+                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">
+                    {death.sumFrom.toLocaleString("en-US")}
+                  </span>{" "}
+                  บาท · ตั้งแต่อายุ {death.beforeAge} คุ้มครองเท่าทุน
+                </p>
+              ) : (
+                <p className="mt-1">
+                  เสียชีวิตก่อนอายุ {death.beforeAge} ครอบครัวได้{" "}
+                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">
+                    {death.sumBefore.toLocaleString("en-US")}
+                  </span>{" "}
+                  บาท
+                </p>
+              )}
+              {shown && (
+                <p className="mt-1 opacity-80">เบี้ยปีแรก ปีต่อไปคิดตามอายุที่เพิ่มขึ้น</p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      <BenefitTable
+        data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
+        sellable={plans.map((p) => p.code)}
+      />
+    </div>
+  );
+}

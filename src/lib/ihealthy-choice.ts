@@ -1,0 +1,121 @@
+import type { PayMode, Sex } from "@/calc/types";
+import { coveragesFor, plansFor, territoriesFor } from "@/lib/ihealthy-quote";
+import type { IHealthyBase, IHealthyPlanOption, IHealthyTable } from "@/lib/ihealthy-table";
+
+/** Every choice the form holds: what a link carries and what the calculator opens on. */
+export interface IHealthyInitial {
+  age: number;
+  sex: Sex;
+  base: string;
+  sumAssured: number;
+  plan: string;
+  territory: string;
+  coverage: string;
+  mode: PayMode;
+}
+
+/**
+ * What a visitor arriving from an ad is shown before touching anything.
+ *
+ * The sum is the smallest the company will write the base for. This page sells the health
+ * rider and the base plan is the vehicle it must ride on — a million of life cover on top
+ * would add more to the total than the health cover the customer came to price, which is
+ * the same reason the Health Ultra Package pins its own sum at fifty thousand.
+ *
+ * โกลด์ rather than the ceiling: the plan buttons carry their own ceilings and are one tap
+ * away, so opening in the middle shows a real premium instead of the largest one.
+ *
+ * The three labels are the company's own wording. Should the rate table ever re-spell one,
+ * `resolveArrangement` falls back to the first arrangement it does sell rather than pricing
+ * nothing, so this stays a preference and never a precondition.
+ */
+export const IHEALTHY_OPENING: IHealthyInitial = {
+  age: 35,
+  sex: "F",
+  base: "WLF99H",
+  sumAssured: 150_000,
+  plan: "GOLD",
+  territory: "ประเทศไทย",
+  coverage: "Full Coverage",
+  mode: "annual",
+};
+
+/**
+ * The sums the form offers where the base lets the customer choose one.
+ *
+ * This list is the browser's half of a rule the engine keeps on the server: `quote()` voids
+ * the whole arrangement to zero below the base's own floor, so a form that could reach a
+ * smaller sum would show a premium for something the company would not issue.
+ */
+const SUMS = [150_000, 300_000, 500_000, 1_000_000, 2_000_000, 3_000_000, 5_000_000];
+
+/** The base a variant names, or — for a variant this rate table no longer carries — the
+ * first one it does. `iHealthyPricing` and `deathBenefitOf` throw on a base they have never
+ * heard of, and a link written against last season's table must not take the page down with
+ * it. The table refuses to build without all three bases, so there is always a first. */
+export function baseFor(table: IHealthyTable, variant: string): IHealthyBase {
+  return table.bases.find((b) => b.variant === variant) ?? table.bases[0];
+}
+
+/** The sums this base can be written for: the one it pins, or the list above less anything
+ * its own floor has risen past. A floor above the whole list narrows it to that floor rather
+ * than leaving the customer a picker with nothing in it. */
+export function sumsFor(base: IHealthyBase): number[] {
+  if (base.fixedSum !== undefined) return [base.fixedSum];
+  const offered = SUMS.filter((s) => s >= base.saMin);
+  return offered.length > 0 ? offered : [base.saMin];
+}
+
+/**
+ * The sum to price, given the one the customer last asked for.
+ *
+ * Reading it back through the base on every render is what stops the package's fifty
+ * thousand from being carried over to a base that is not issued under a hundred and fifty —
+ * an arrangement the engine would zero — and what keeps the select's value one of the
+ * options it is showing.
+ */
+export function sumFor(base: IHealthyBase, wanted: number): number {
+  const sums = sumsFor(base);
+  return sums.includes(wanted) ? wanted : sums[0];
+}
+
+export interface IHealthyArrangement {
+  /** the plan being priced, and every plan this age may buy */
+  plan?: IHealthyPlanOption;
+  plans: IHealthyPlanOption[];
+  territory?: string;
+  territories: string[];
+  coverage?: string;
+  coverages: string[];
+}
+
+function first<T>(xs: T[]): T | undefined {
+  return xs.length > 0 ? xs[0] : undefined;
+}
+
+/**
+ * The nearest arrangement the company actually sells to the one asked for — โกลด์ has no
+ * เอเชีย, an eight-year-old has no ซิลเวอร์ — together with what it may be swapped for.
+ *
+ * One pass, because each list only exists once the answer above it is settled: a plan this
+ * age cannot buy has no territories to offer, and a territory nobody is sold has no way of
+ * sharing the bill.
+ *
+ * Resolved while rendering rather than corrected afterwards in an effect. An effect runs
+ * after the paint, so an age change would put one frame on screen with a plan that has no
+ * price — the card blinking empty between two good arrangements — and a customer scrolling
+ * the age wheel would see it flicker on every step.
+ */
+export function resolveArrangement(
+  table: IHealthyTable,
+  age: number,
+  wanted: { plan: string; territory: string; coverage: string },
+): IHealthyArrangement {
+  const plans = plansFor(table, age);
+  const plan = plans.find((p) => p.code === wanted.plan) ?? first(plans);
+  const territories = plan === undefined ? [] : territoriesFor(table, plan.code, age);
+  const territory = territories.includes(wanted.territory) ? wanted.territory : first(territories);
+  const coverages = territory === undefined ? [] : coveragesFor(table, territory, age);
+  const coverage = coverages.includes(wanted.coverage) ? wanted.coverage : first(coverages);
+  return { plan, plans, territory, territories, coverage, coverages };
+}
