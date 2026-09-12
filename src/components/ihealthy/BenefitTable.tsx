@@ -214,27 +214,6 @@ export function BenefitTable(
                 </td>
               ))}
             </tr>
-            {/* Not one of the company's twenty-eight categories: a second contract the
-                agency sells alongside this one, whose figure the premium row above already
-                counts. Spanning the plans rather than repeating in each says what is true —
-                it is the same cover whichever health plan is bought. */}
-            {dailyCash !== undefined && (
-              <tr className="border-t border-[var(--lg-panel-line)]">
-                <th
-                  scope="row"
-                  className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
-                >
-                  ค่าชดเชยรายวัน
-                </th>
-                <td
-                  colSpan={plans.length}
-                  className="px-1.5 py-2.5 text-center text-[var(--lg-white)] sm:px-3"
-                >
-                  <span className="tabular-nums">{dailyCash.toLocaleString("en-US")}</span> ต่อวัน
-                  <span className="ml-2 text-[0.65rem] text-[var(--lg-mute)]">ทุกแผนเท่ากัน</span>
-                </td>
-              </tr>
-            )}
             {premiums && (
               <tr className="border-t border-[var(--lg-panel-line)]">
                 <th
@@ -307,6 +286,27 @@ export function BenefitTable(
                   })}
                 </tr>
               ),
+            )}
+            {/* Last, and outside the company's own twenty-eight categories: a second
+                contract the agency sells alongside this one, whose cost the premium row
+                already counts. Spanning the plans rather than repeating in each says what is
+                true — it is the same cover whichever health plan is bought. */}
+            {dailyCash !== undefined && (
+              <tr className="border-t border-[var(--lg-panel-line)]">
+                <th
+                  scope="row"
+                  className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
+                >
+                  ค่าชดเชยรายวัน
+                </th>
+                <td
+                  colSpan={plans.length}
+                  className="px-1.5 py-2.5 text-center text-[var(--lg-white)] sm:px-3"
+                >
+                  <span className="tabular-nums">{dailyCash.toLocaleString("en-US")}</span> ต่อวัน
+                  <span className="ml-2 text-[0.65rem] text-[var(--lg-mute)]">ทุกแผนเท่ากัน</span>
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
