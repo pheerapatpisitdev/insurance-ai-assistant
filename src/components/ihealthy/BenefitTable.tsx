@@ -72,17 +72,24 @@ const PIN = `sticky left-0 print:static ${TITLE_W} border-r border-[var(--lg-pan
  * fraction it leaves behind is a sliver of the next row showing through the header's edge.
  */
 const HEAD =
-  "sticky top-0 print:static bg-[var(--lg-ground-deep)] py-2.5 shadow-[0_1px_0_var(--lg-ground-deep),inset_0_-1px_0_var(--lg-panel-line)]";
+  "bg-[var(--lg-ground-deep)] py-2.5 shadow-[0_1px_0_var(--lg-ground-deep),inset_0_-1px_0_var(--lg-panel-line)]";
 
 export function BenefitTable({ data, selected, age, sellable, sharedLimit }: BenefitTableProps) {
   const plans = data.plans;
   return (
-    <div className="overflow-hidden rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)]">
-      {/* A box that scrolls is a control: without a tabindex there is no way to reach the
-          other five plans from a keyboard, and what it needs to hear when it lands there is
-          what the box does. What the table is, its caption already says. */}
+    <div>
+      {/* No height of its own: the table runs its full length down the page, so a reader
+          scrolls the page rather than a window inside it. Sideways is the one direction that
+          still has to scroll — six plans of Thai will not fit a phone at any size worth
+          reading — and a box that scrolls is a control, so it takes a tabindex and says what
+          it does. What the table is, its caption already says.
+
+          The header does not follow the reader down: sideways scrolling needs a scroll
+          container, and a cell can only stick inside the nearest one — which no longer has a
+          height to stick within. The chosen plan's column stays tinted the whole way down,
+          which is the column a reader is following. */}
       <div
-        className="max-h-[70vh] overflow-auto print:max-h-none print:overflow-visible focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--lg-gold)]"
+        className="overflow-x-auto focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--lg-gold)]"
         tabIndex={0}
         role="region"
         aria-label="เลื่อนตารางเพื่อดูแผนอื่น"
@@ -175,7 +182,7 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
           </tbody>
         </table>
       </div>
-      <p className="border-t border-[var(--lg-panel-line)] px-3 py-2.5 text-[0.7rem] leading-relaxed text-[var(--lg-mute)] opacity-80">
+      <p className="border-t border-[var(--lg-panel-line)] py-2.5 text-[0.7rem] leading-relaxed text-[var(--lg-mute)] opacity-80">
         เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · {sharedLimit}
       </p>
     </div>
