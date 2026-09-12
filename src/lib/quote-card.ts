@@ -13,7 +13,8 @@ import { iShieldTable } from "@/lib/ishield-table";
 import { illnessBenefit } from "@/lib/ishield-quote";
 import { plbTable } from "@/lib/plb-table";
 import { coverEndsAt } from "@/lib/plb-quote";
-import { displayPremium, perDay } from "@/lib/legacy-cta";
+import { lifeTreasureTable } from "@/lib/lifetreasure-table";
+import { displayPremium, perDayText } from "@/lib/legacy-cta";
 
 /**
  * The quote as a picture: what a customer can keep, and what a chat can send them.
@@ -211,7 +212,7 @@ function premiumLines(modes: ModePremium[] | undefined, expired: boolean): {
     .map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`);
   return {
     premium: headline ? { amount: formatBaht(headline.total), per: PER_LABEL[headline.mode] } : null,
-    perDay: headline && annual && !expired ? `ตกวันละ ${perDay(annual.total)} บาท` : null,
+    perDay: headline && annual && !expired ? `ตกวันละ ${perDayText(annual.total)} บาท` : null,
     others,
   };
 }
@@ -333,6 +334,13 @@ function planBenefitSection(input: PlanCardInput): CardSection | undefined {
     }
     return { title: "รับเงินก้อนเมื่อ", rows };
   }
+  if (input.planCode === "LIFETREASURE") {
+    const table = lifeTreasureTable();
+    return {
+      title: "ครอบครัวได้รับเมื่อเสียชีวิต",
+      rows: [{ label: `ทุกช่วงอายุ ถึงอายุ ${table.coverToAge}`, amount: money(input.sumAssured) }],
+    };
+  }
   if (input.planCode === "PLB") {
     const table = plbTable();
     const term = table.terms.find((t) => t.variant === input.variant);
@@ -349,13 +357,18 @@ function planBenefitSection(input: PlanCardInput): CardSection | undefined {
 }
 
 /**
- * The small print a plan adds to its own card. PLB pays nothing at all if the insured is
- * still alive at the end, and a picture outlives the chat that framed it, so the card has to
- * say so itself rather than trust the agent to.
+ * The small print a plan adds to its own card. A picture outlives the chat that framed it,
+ * so what a customer would otherwise find out from the agent has to be on the card itself:
+ * PLB pays nothing at all if the insured is still alive at the end, and ไลฟ์เทรเชอร์ never
+ * pays back less than what went into it.
  */
 function planNotes(input: PlanCardInput): string[] {
-  if (input.planCode !== "PLB") return [];
-  return ["คุ้มครองล้วน ไม่มีมูลค่าเวนคืนและไม่มีเงินคืนเมื่อครบสัญญา"];
+  if (input.planCode === "PLB") return ["คุ้มครองล้วน ไม่มีมูลค่าเวนคืนและไม่มีเงินคืนเมื่อครบสัญญา"];
+  if (input.planCode === "LIFETREASURE") {
+    const { premiumPercent } = lifeTreasureTable().topUp;
+    return [`จ่ายไม่น้อยกว่า ${premiumPercent}% ของเบี้ยที่ชำระมาแล้ว หรือมูลค่าเวนคืน แล้วแต่จำนวนใดมากกว่า`];
+  }
+  return [];
 }
 
 /**

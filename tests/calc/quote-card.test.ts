@@ -122,6 +122,25 @@ describe("quoteCard", () => {
     )).toBeUndefined();
   });
 
+  it("states what ไลฟ์เทรเชอร์ pays, which the engine has no field for", () => {
+    const card = quoteCard(
+      { kind: "plan", planCode: "LIFETREASURE", variant: "H99F18A", age: 45, sex: "M", sumAssured: 10_000_000 },
+      WHILE_CURRENT,
+    )!;
+    expect(section(card, "ครอบครัวได้รับเมื่อเสียชีวิต")).toEqual({
+      title: "ครอบครัวได้รับเมื่อเสียชีวิต",
+      rows: [{ label: "ทุกช่วงอายุ ถึงอายุ 99", amount: "10,000,000" }],
+    });
+    // the surrender table was extracted for this plan, so the card carries it and the chart
+    expect(section(card, CASH)).toBeDefined();
+    expect(card.chart).toBeDefined();
+    expect(card.notes).toContain(
+      "จ่ายไม่น้อยกว่า 101% ของเบี้ยที่ชำระมาแล้ว หรือมูลค่าเวนคืน แล้วแต่จำนวนใดมากกว่า",
+    );
+    // a four-figure day rate is grouped like every other figure on the card
+    expect(card.perDay).toBe("ตกวันละ 1,014 บาท");
+  });
+
   it("prices a plan whose labels carry no product name", () => {
     const card = quoteCard(
       { kind: "plan", planCode: "PLB", variant: "PLB10", age: 35, sex: "F", sumAssured: 500_000 },
