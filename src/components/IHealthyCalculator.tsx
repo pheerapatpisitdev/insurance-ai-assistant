@@ -276,7 +276,10 @@ export function IHealthyCalculator(
 
         <div>
           <span className={label}>สัญญาหลัก</span>
-          <div className="mt-1.5 grid grid-cols-3 gap-2">
+          {/* One column per base the page sells, so dropping one closes the gap it left.
+              Written out rather than composed: Tailwind reads these names out of the source
+              and would not generate a class it never sees spelled. */}
+          <div className={`mt-1.5 grid gap-2 ${table.bases.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
             {table.bases.map((b) => (
               <button
                 key={b.variant} type="button" aria-pressed={b.variant === base.variant}

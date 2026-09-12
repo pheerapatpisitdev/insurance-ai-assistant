@@ -76,7 +76,10 @@ describe("the sums the form offers", () => {
 
 describe("baseFor", () => {
   it("hands back a base the engine can price, whatever the link asked for", () => {
-    expect(baseFor(table, "WLF99L").variant).toBe("WLF99L");
+    expect(baseFor(table, "WLF99HX").variant).toBe("WLF99HX");
+    // x 1.5 is a real variant of the plan that this page does not sell, so a link naming it
+    // lands on the page's own first base rather than on a button that is not there
+    expect(baseFor(table, "WLF99L").variant).toBe(table.bases[0].variant);
     // iHealthyPricing throws on a variant the table has never heard of
     expect(baseFor(table, "WLF09H").variant).toBe(table.bases[0].variant);
     expect(() => iHealthyPricing(table, {

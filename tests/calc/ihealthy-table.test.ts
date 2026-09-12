@@ -19,15 +19,16 @@ const KEYS = [
 ];
 
 describe("iHealthyTable", () => {
-  it("offers the three bases the spec keeps, in order", () => {
+  it("offers the two bases the page sells, in order", () => {
     const t = iHealthyTable(WHILE_CURRENT);
+    // x 1.5 is deliberately absent: the rate table still carries it and the back-office
+    // calculator still sells it, but this page does not offer that choice
     expect(t.bases.map((b) => [b.variant, b.short, b.booster, b.fixedSum, b.saMin])).toEqual([
-      ["WLF99L", "x 1.5", 0.5, undefined, 150_000],
       ["WLF99H", "x 2", 1, undefined, 150_000],
       ["WLF99HX", "แพ็กเกจสุขภาพ", 1, 50_000, 50_000],
     ]);
     // the package pins the sum, so its button subtitle comes from fixedSum rather than prose
-    expect(t.bases.map((b) => b.note)).toEqual(["ตั้งทุนเอง", "ตั้งทุนเอง", undefined]);
+    expect(t.bases.map((b) => b.note)).toEqual(["ตั้งทุนเอง", undefined]);
   });
 
   it("takes the age range from the health rider, not the base plan", () => {

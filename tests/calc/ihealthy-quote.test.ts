@@ -265,10 +265,7 @@ describe("deathBenefitOf", () => {
     }
   });
 
-  it("pays one and a half times on x 1.5 and double on x 2, and the sum alone from 60", () => {
-    expect(deathBenefitOf(table, "WLF99L", 35, 1_000_000)).toEqual({
-      beforeAge: 60, sumBefore: 1_500_000, sumFrom: 1_000_000, alreadyPastAge: false,
-    });
+  it("pays double before 60 and the sum alone from then on", () => {
     expect(deathBenefitOf(table, "WLF99H", 35, 1_000_000)).toEqual({
       beforeAge: 60, sumBefore: 2_000_000, sumFrom: 1_000_000, alreadyPastAge: false,
     });

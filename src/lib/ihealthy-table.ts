@@ -100,7 +100,6 @@ const STANDARD_RIDER = "MEB";
 const STANDARD_PLAN = 1_000;
 
 const BASES: { variant: string; short: string; label: string; note?: string }[] = [
-  { variant: "WLF99L", short: "x 1.5", label: "ไลฟ์ โพรเทค+ x 1.5", note: "ตั้งทุนเอง" },
   { variant: "WLF99H", short: "x 2", label: "ไลฟ์ โพรเทค+ x 2", note: "ตั้งทุนเอง" },
   { variant: "WLF99HX", short: "แพ็กเกจสุขภาพ", label: "Health Ultra Package" },
 ];
