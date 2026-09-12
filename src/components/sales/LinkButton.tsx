@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
  * The address is read at the click rather than held in a prop: it changes on every choice,
  * and a prop would be one render behind the arrangement it claims to carry.
  */
-export function LinkButton({ className, compact = false }: { className: string; compact?: boolean }) {
+export function LinkButton({ className }: { className: string }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function LinkButton({ className, compact = false }: { className: string; 
 
   return (
     <button type="button" onClick={copy} className={className} aria-live="polite">
-      {copied ? "คัดลอกแล้ว ✓" : compact ? "ลิงก์" : "คัดลอกลิงก์หน้านี้"}
+      {copied ? "คัดลอกแล้ว ✓" : "คัดลอกลิงก์หน้านี้"}
     </button>
   );
 }

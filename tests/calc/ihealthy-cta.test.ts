@@ -84,7 +84,7 @@ describe("iHealthyQuoteText", () => {
       "- อายุ 60 ปีขึ้นไป 150,000 บาท",
       "",
       "📌 เบี้ยปีแรก เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
-      "เบี้ยของอาชีพชั้น 1 · ความคุ้มครองและข้อยกเว้นเป็นไปตามที่กำหนดในกรมธรรม์",
+      "เบี้ยของอาชีพชั้น 1 · ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกันและที่ระบุในกรมธรรม์",
     ].join("\n"));
   });
 
@@ -98,6 +98,9 @@ describe("iHealthyQuoteText", () => {
       const text = iHealthyQuoteText({ ...facts, mode })!;
       expect(text).toContain("เบี้ยปีแรก เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น");
       expect(text).toContain("อาชีพชั้น 1");
+      // the sentence every sibling page carries: a pasted quote travels further than the
+      // page it came from, and on this product underwriting most often moves the premium
+      expect(text).toContain("ไม่ใช่ใบเสนอราคา");
     }
   });
 

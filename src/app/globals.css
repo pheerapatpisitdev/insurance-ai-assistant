@@ -240,7 +240,34 @@ body:has(.theme-legacy) {
     break-inside: avoid;
   }
 
+  /* The columns sit at a floor wide enough to read on a screen that scrolls sideways. Paper
+     does not scroll: a scroll box clips, and the right-hand plans — sometimes the one being
+     quoted — would simply be cut off the sheet. So on paper the table gives up that floor
+     and fits the page instead. */
   .theme-legacy table {
+    width: 100%;
+    min-width: 0;
     font-size: 9px;
+  }
+
+  .theme-legacy th,
+  .theme-legacy td {
+    min-width: 0;
+  }
+
+  /* A folded block prints as a heading with nothing under it, so the conditions and the
+     exclusions would come out as a list of section titles with their contents cut away. */
+  .theme-legacy details > div {
+    display: block !important;
+  }
+
+  .theme-legacy summary span[aria-hidden] {
+    display: none;
+  }
+
+  /* the ground's texture is painted by fixed pseudo-elements, which repeat on every sheet */
+  .theme-legacy::before,
+  .theme-legacy::after {
+    display: none;
   }
 }

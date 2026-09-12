@@ -36,7 +36,9 @@ export default async function IHealthyPage(
   try {
     query = await searchParams;
   } catch (thrown) {
-    if (!Object.hasOwn(searchParams, "constructor")) throw thrown;
+    // Tight on the one failure it is for, so a future Next version cannot route something
+    // else quietly through this branch.
+    if (!(thrown instanceof TypeError) || !Object.hasOwn(searchParams, "constructor")) throw thrown;
   }
   const initial = initialFrom(table, query);
   // Only the rows and the plan list cross into the browser. The eight long paragraphs of

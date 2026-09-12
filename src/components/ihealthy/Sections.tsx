@@ -71,6 +71,7 @@ export function Disclaimer({ facts, rateVersion }: { facts: IHealthyFacts; rateV
       </p>
       <p className="mt-3 text-xs leading-[1.9] text-[var(--lg-mute)] opacity-80">
         เบี้ยที่แสดงเป็นเบี้ยปีแรกของอาชีพชั้น 1 เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น ·
+        ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกัน ·
         อัตราเบี้ยชุด {rateVersion}
       </p>
     </section>

@@ -89,7 +89,7 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
           height to stick within. The chosen plan's column stays tinted the whole way down,
           which is the column a reader is following. */}
       <div
-        className="overflow-x-auto focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--lg-gold)]"
+        className="overflow-x-auto print:overflow-visible focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--lg-gold)]"
         tabIndex={0}
         role="region"
         aria-label="เลื่อนตารางเพื่อดูแผนอื่น"
@@ -183,7 +183,9 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
         </table>
       </div>
       <p className="border-t border-[var(--lg-panel-line)] py-2.5 text-[0.7rem] leading-relaxed text-[var(--lg-mute)] opacity-80">
-        เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · {sharedLimit}
+        {/* on paper there is nothing to scroll to, and the whole table is already there */}
+        <span className="print:hidden">เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · </span>
+        {sharedLimit}
       </p>
     </div>
   );
