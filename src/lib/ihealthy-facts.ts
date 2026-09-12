@@ -1,5 +1,17 @@
 import { JUVENILE_BELOW_AGE } from "@/calc/riders/fixed-by-key-age";
+import type { IHealthyPlanOption } from "@/lib/ihealthy-table";
 import raw from "../../data/riders/ihealthy-ultra.json";
+
+/**
+ * The ไอเฮลท์ตี้ อัลตร้า benefit sheet, typed.
+ *
+ * Its -facts siblings exist to compute their figures from the engine so that no number is
+ * ever typed into the JSX. This one computes nothing: every string below is the company's
+ * own wording, lifted out of the workbook by scripts/extract_ihu_benefits.py and never
+ * edited by hand. What it adds is the two questions the benefit table would otherwise ask
+ * on every cell — is this row a heading, and does this plan's wording change for a child —
+ * and the one number the sheet does not carry, which it imports rather than repeat.
+ */
 
 /** A row that names a part of the contract and has no figures of its own. */
 export interface BenefitHeading {
@@ -20,6 +32,17 @@ export interface BenefitRow {
 
 export type BenefitEntry = BenefitHeading | BenefitRow;
 
+/**
+ * A plan as the benefit sheet describes it. The five fields come from the rate table's own
+ * `IHealthyPlanOption` rather than a second declaration of them, because the page holds both
+ * lists at once — `plansFor` filters the rate table's for the pickers while the benefit
+ * columns are drawn from these — and two lists that only happen to agree will one day not.
+ * The note is the company's full sentence for the annual maximum, which only this sheet has.
+ */
+export interface IHealthyBenefitPlan extends IHealthyPlanOption {
+  annualMaxNote: string;
+}
+
 export interface IHealthyTerms {
   renewalToAge: number;
   waitingDays: number;
@@ -39,7 +62,7 @@ export interface IHealthyTerms {
 
 export interface IHealthyFacts {
   name: string;
-  plans: { code: string; name: string; planNo: number; annualMax: number; deductible: number }[];
+  plans: IHealthyBenefitPlan[];
   copayPercent: number;
   rows: BenefitEntry[];
   terms: IHealthyTerms;
@@ -47,6 +70,34 @@ export interface IHealthyFacts {
   /** below this age the child columns apply; the same boundary the rate key uses */
   juvenileBelowAge: number;
 }
+
+/**
+ * The sheet is read once at import and every caller is handed the same arrays, so a
+ * component that sorted `facts.rows` in place would quietly reorder every later render in
+ * the process. One pass at startup turns that into a TypeError at the line that does it.
+ */
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    for (const inner of Object.values(value)) deepFreeze(inner);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+/**
+ * Named one by one, and before the freeze, for two different reasons.
+ *
+ * The sheet also carries `code` and, in `source`, the filename of the workbook it was cut
+ * from — ours to know, not a customer's. A property no module ever reads is one the bundler
+ * is free to drop, and webpack does drop it. Freezing the whole import first would instead
+ * walk every property to freeze it, and a property that is read is a property that ships:
+ * that one line is the difference between the filename being in the browser and not.
+ *
+ * Naming them also means a field added to the JSON tomorrow cannot reach a browser until
+ * somebody declares it here on purpose.
+ */
+const { name, plans, copayPercent, rows, terms, disclaimer } = raw;
+const sheet = deepFreeze({ name, plans, copayPercent, rows, terms, disclaimer });
 
 export function isHeading(entry: BenefitEntry): entry is BenefitHeading {
   return "heading" in entry;
@@ -56,20 +107,25 @@ export function isHeading(entry: BenefitEntry): entry is BenefitHeading {
  * What this plan pays on this row for someone of this age. Only the wording changes here —
  * whether the company sells that plan at that age is the rate table's answer, and the table
  * component asks `plansFor` for it rather than keeping a second list of who may buy what.
+ *
+ * `undefined` never means "not covered". Every one of the 36 benefit rows carries all six
+ * plan codes, and a plan that pays nothing on a row says so in the company's words ("-",
+ * "ไม่คุ้มครอง"), so a missing value can only mean the extract dropped a column. Show that
+ * as the fault it is; `?? ""` would render the regression as an ordinary empty cell.
  */
-export function benefitValue(
-  row: BenefitRow, plan: string, age: number, juvenileBelowAge: number,
-): string | undefined {
-  if (age < juvenileBelowAge && row.child && plan in row.child) return row.child[plan];
+export function benefitValue(row: BenefitRow, plan: string, age: number): string | undefined {
+  if (age < JUVENILE_BELOW_AGE && row.child && plan in row.child) return row.child[plan];
   return row.adult[plan];
 }
 
 /**
  * No cast: the return type is what checks the extract script's output against the shapes
  * above, so a heading that loses its text or a row that loses its adult column fails the
- * build rather than the page. The spread is shallow — `rows` and every object inside it are
- * the JSON's own, shared by every caller, so sort or reverse a copy, never `facts.rows`.
+ * build rather than the page.
+ *
+ * The object is fresh each call and the sheet inside it is not, which is the point — the
+ * caller may add to what it hands on, and cannot disturb what it was given.
  */
 export function iHealthyFacts(): IHealthyFacts {
-  return { ...raw, juvenileBelowAge: JUVENILE_BELOW_AGE };
+  return { ...sheet, juvenileBelowAge: JUVENILE_BELOW_AGE };
 }
