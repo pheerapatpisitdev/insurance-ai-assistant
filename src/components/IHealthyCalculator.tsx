@@ -114,7 +114,9 @@ export function IHealthyCalculator(
    * so the two never disagree, and a customer who never opens it is quoted the same
    * arrangement either way.
    */
-  const [attached, setAttached] = useState<{ premiums: ComponentPremium[]; codes: string[] }>();
+  const [attached, setAttached] = useState<{
+    premiums: ComponentPremium[]; codes: string[]; dailyCash: number | null;
+  }>();
   const standardName = table.standard.label[age - table.ageMin];
   const extras = attached && {
     // One rider gets its own name, as the daily cash always had; more than one is a count,
@@ -490,7 +492,15 @@ export function IHealthyCalculator(
       <div className="sm:mx-[calc(50%-50vw)] sm:w-screen sm:px-6">
         <BenefitTable
           data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
-          sellable={plans.map((p) => p.code)} premiums={premiums} dailyCash={standardPick?.plan}
+          sellable={plans.map((p) => p.code)} premiums={premiums}
+          dailyCash={
+            // `??` would be wrong here: null is the fold saying the agent took it off, not
+            // the fold saying nothing yet, and falling through to the standard would put a
+            // figure back in a row the agent has just emptied.
+            standardPick === undefined ? undefined
+              : attached === undefined ? standardPick.plan
+              : attached.dailyCash
+          }
         />
       </div>
 

@@ -19,11 +19,12 @@ export interface BenefitTableProps {
   /** the company's note that the rider and its endorsement share one annual ceiling */
   sharedLimit: string;
   /**
-   * The daily cash the agency attaches as standard, in baht a day — absent above the age the
-   * company writes it at. It does not vary with the health plan, so it is one cell across
-   * them rather than the same figure printed six times.
+   * The daily cash as it stands: the plan attached, null when the agent has taken it off,
+   * and undefined above the age the company writes it at — where the row itself has no
+   * business being on the page. It does not vary with the health plan, so it is one cell
+   * across them rather than the same figure printed six times.
    */
-  dailyCash?: number;
+  dailyCash?: number | null;
   /**
    * Every instalment of the whole arrangement under each plan, in satang — null where that
    * plan has no price at this age, and undefined for all of them when no price may be shown.
@@ -324,8 +325,14 @@ export function BenefitTable(
                   colSpan={plans.length}
                   className="px-1.5 py-2.5 text-center text-[var(--lg-white)] sm:px-3"
                 >
-                  <span className="tabular-nums">{dailyCash.toLocaleString("en-US")}</span> ต่อวัน
-                  <span className="ml-2 text-[0.65rem] text-[var(--lg-mute)]">ทุกแผนเท่ากัน</span>
+                  {dailyCash === null ? (
+                    DASH
+                  ) : (
+                    <>
+                      <span className="tabular-nums">{dailyCash.toLocaleString("en-US")}</span> ต่อวัน
+                      <span className="ml-2 text-[0.65rem] text-[var(--lg-mute)]">ทุกแผนเท่ากัน</span>
+                    </>
+                  )}
                 </td>
               </tr>
             )}

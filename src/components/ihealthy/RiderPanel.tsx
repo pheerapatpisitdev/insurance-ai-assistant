@@ -23,7 +23,12 @@ export interface RiderPanelProps {
    * cover, and this is the rest of the bill. Naming the line is the card's business, since
    * the card is where the standard rider already has a name.
    */
-  onAttached?: (attached: { premiums: { mode: PayMode; total: number }[]; codes: string[] }) => void;
+  onAttached?: (attached: {
+    premiums: { mode: PayMode; total: number }[];
+    codes: string[];
+    /** the plan of the standard rider as priced, or null when it is not attached at all */
+    dailyCash: number | null;
+  }) => void;
 }
 
 /**
@@ -48,7 +53,10 @@ const SETTLE_MS = 300;
 
 /** What a rider starts at when it is ticked: the package's pinned sum, the smallest plan or
  *  the first variant it sells, and its own floor where it takes a sum of its own. */
-function opening(c: RiderChoice): RiderPick {
+function opening(c: RiderChoice, standard?: { code: string; plan: number }): RiderPick {
+  // Ticked back on, the agency's rider comes back at the agency's plan rather than at the
+  // smallest the company sells — which is what it was ticked with in the first place.
+  if (standard && c.code === standard.code) return { plan: standard.plan };
   return {
     ...(c.plans && c.plans.length > 0 ? { plan: c.plans[0] } : {}),
     ...(c.options && c.options.length > 0 ? { option: c.options[0].code } : {}),
@@ -86,6 +94,11 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
   // again on each of them.
   const told = useRef(onAttached);
   told.current = onAttached;
+  // Taken apart for the same reason `request` is: the calculator builds it inline, so the
+  // object is new on every render and the effect below would list a dependency that always
+  // changed.
+  const standardCode = standard?.code;
+  const standardPlan = standard?.plan;
 
   const at = arrangementKey(request);
 
@@ -106,7 +119,13 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
           });
           if (newest.current === generation) {
             setAnswer({ at, result });
-            told.current?.({ premiums: result.extras, codes: result.extraCodes });
+            told.current?.({
+              premiums: result.extras,
+              codes: result.extraCodes,
+              dailyCash: standardCode !== undefined && result.extraCodes.includes(standardCode)
+                ? chosen[standardCode]?.plan ?? standardPlan ?? null
+                : null,
+            });
           }
         } catch {
           // The engine is at the other end of a wire now. A quote that never arrives leaves
@@ -116,7 +135,8 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
       });
     }, wait);
     return () => clearTimeout(timer);
-  }, [open, chosen, at, base, age, sex, sumAssured, mode, plan, territory, coverage, start]);
+  }, [open, chosen, at, base, age, sex, sumAssured, mode, plan, territory, coverage, start,
+      standardCode, standardPlan]);
 
   // The ticks are the agent's and survive the arrangement changing under them — switch to the
   // health package and back, and อุบัติเหตุ is still ticked. The figures do not: an answer
@@ -130,7 +150,7 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
     setChosen((prev) => {
       const next = { ...prev };
       if (c.code in next) delete next[c.code];
-      else next[c.code] = opening(c);
+      else next[c.code] = opening(c, standard);
       return next;
     });
   const amend = (code: string, part: RiderPick) =>
