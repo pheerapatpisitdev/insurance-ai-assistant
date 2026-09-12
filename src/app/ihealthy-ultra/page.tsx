@@ -6,7 +6,7 @@ import { Disclaimer, Hero, TermsSection } from "@/components/ihealthy/Sections";
 import { ExpiryBanner } from "@/components/ExpiryBanner";
 
 export const metadata = {
-  title: "ไอเฮลท์ตี้ อัลตร้า — ค่ารักษาพยาบาลเหมาจ่ายถึง 100 ล้านต่อปี",
+  title: "iHealthy Ultra — ค่ารักษาพยาบาลเหมาจ่ายถึง 100 ล้านต่อปี",
   description:
     "ประกันสุขภาพเหมาจ่าย 6 แผน วงเงิน 3 ถึง 100 ล้านบาทต่อปี ต่ออายุได้ถึงอายุ 98 ปี เทียบผลประโยชน์ครบ 28 หมวด และคำนวณเบี้ยของคุณเองได้ทันที",
 };

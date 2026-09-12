@@ -8,7 +8,7 @@ export function Hero({ facts }: { facts: IHealthyFacts }) {
   return (
     <header className="pt-10 pb-8">
       <h1 className="lg-figure text-[2rem] leading-tight text-[var(--lg-white)] sm:text-4xl">
-        ค่ารักษาพยาบาล <span className="lg-metal-text">ไอเฮลท์ตี้ อัลตร้า</span>
+        ค่ารักษาพยาบาล <span className="lg-metal-text">iHealthy Ultra</span>
       </h1>
       {/* Both ends of the range, not just the ceiling: the card below opens on โกลด์, and a
           hero that named only the hundred million would promise one figure above the fold

@@ -7,7 +7,7 @@ import type { IHealthyTable } from "@/lib/ihealthy-table";
 import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
 import { BenefitTable, PHONE_PLANS } from "@/components/ihealthy/BenefitTable";
 import { RiderPanel } from "@/components/ihealthy/RiderPanel";
-import { deathBenefitOf, iHealthyPricing, type IHealthyPricing } from "@/lib/ihealthy-quote";
+import { MODES, deathBenefitOf, iHealthyPricing, type IHealthyPricing } from "@/lib/ihealthy-quote";
 import {
   baseFor, resolveArrangement, sumFor, sumsFor, type IHealthyInitial,
 } from "@/lib/ihealthy-choice";
@@ -116,16 +116,23 @@ export function IHealthyCalculator(
    */
   const premiums = table.expired
     ? undefined
-    : Object.fromEntries(
-        table.plans.map((p) => {
-          const priced = territory && coverage
+    : (() => {
+        const priced = new Map(table.plans.map((p) => [
+          p.code,
+          territory && coverage
             ? iHealthyPricing(table, {
                 base: base.variant, sex, age, sumAssured, plan: p.code, territory, coverage,
               })
-            : undefined;
-          return [p.code, priced?.total.find((m) => m.mode === "annual")?.total ?? null];
-        }),
-      );
+            : undefined,
+        ]));
+        return MODES.map((m) => ({
+          mode: m,
+          label: PAY_MODE_LABEL[m],
+          byPlan: Object.fromEntries(table.plans.map((p) => [
+            p.code, priced.get(p.code)?.total.find((x) => x.mode === m)?.total ?? null,
+          ])),
+        }));
+      })();
 
   /** The rider the fold opens with ticked, so its total agrees with the card above it. */
   const standardPlan = table.standard.plan[age - table.ageMin];
@@ -209,7 +216,7 @@ export function IHealthyCalculator(
           a benefit table with nothing naming who they are for is not a quote. */}
       <div className="hidden print:block">
         <h2 className="text-lg font-medium">
-          ไอเฮลท์ตี้ อัลตร้า แผน{plan?.name ?? "—"} · {territory ?? "—"}
+          iHealthy Ultra แผน{plan?.name ?? "—"} · {territory ?? "—"}
           {coverage && coverage !== "Full Coverage" ? ` · ${COVERAGE_LABEL[coverage]}` : ""}
         </h2>
         <p className="mt-1 text-sm">
@@ -353,7 +360,7 @@ export function IHealthyCalculator(
                     <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(shown.base)}</dd>
                   </div>
                   <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-[var(--lg-mute)]">ไอเฮลท์ตี้ อัลตร้า แผน{plan.name}</dt>
+                    <dt className="text-[var(--lg-mute)]">iHealthy Ultra แผน{plan.name}</dt>
                     <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(shown.rider)}</dd>
                   </div>
                   {/* The agency sells the daily cash with the health cover rather than beside

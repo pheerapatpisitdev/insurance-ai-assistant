@@ -75,7 +75,7 @@ export interface IHealthyCtaFacts {
  * customer still wants that arrangement, they just cannot be told here what it costs.
  */
 export function iHealthyMessage(f: IHealthyCtaFacts): string {
-  const head = "สนใจประกันสุขภาพ ไอเฮลท์ตี้ อัลตร้า";
+  const head = "สนใจประกันสุขภาพ iHealthy Ultra";
   const someone = `${SEX_WORD[f.sex]} ${f.age} ปี`;
   const a = f.arrangement;
   if (a === undefined) return `${head} ${someone} ขอแบบที่เหมาะกับอายุนี้`;
@@ -115,7 +115,7 @@ export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
   return [
     // an emoji a heading, no more: the text is pasted into a customer's chat, where a wall
     // of them reads as a broadcast rather than as an agent answering
-    `🏥 ไอเฮลท์ตี้ อัลตร้า แผน${a.planName}`,
+    `🏥 iHealthy Ultra แผน${a.planName}`,
     `${ceiling} · อาณาเขต${a.territory}`,
     "",
     `${SEX_WORD[f.sex]} อายุ ${f.age} ปี`,

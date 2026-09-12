@@ -25,15 +25,14 @@ export interface BenefitTableProps {
    */
   dailyCash?: number;
   /**
-   * The whole yearly premium under each plan, in satang, for the arrangement on screen —
-   * null where that plan has no price at this age, and undefined for every plan when no
-   * price may be shown at all.
+   * Every instalment of the whole arrangement under each plan, in satang — null where that
+   * plan has no price at this age, and undefined for all of them when no price may be shown.
    *
    * A table of what six plans pay, with the price of only one of them on the card above it,
    * is half a comparison: the figure a reader is weighing every row against is the one it
    * does not carry. It is also what a printed sheet has instead of a card.
    */
-  premiums?: Record<string, number | null>;
+  premiums?: { mode: string; label: string; byPlan: Record<string, number | null> }[];
 }
 
 /**
@@ -49,8 +48,20 @@ export interface BenefitTableProps {
  * one column missing from the table under it.
  */
 export const PHONE_PLANS = ["BRONZE", "SILVER", "GOLD"];
-/** หมวด 1 is the room rate, หมวด 18 the outpatient allowance; the ceiling has its own row. */
-const PHONE_ROWS = [1, 18];
+/**
+ * The rows a phone shows, and what to call them there.
+ *
+ * The company's own wording runs to thirteen lines in a column a phone can spare for it,
+ * which is a paragraph where a label is wanted. The short form is the page's own and is only
+ * ever a label: a wide screen and a printed sheet both keep the contract's words, which is
+ * what a customer is actually buying.
+ *
+ * One map rather than a list and a lookup, so a row cannot be shown without a name for it.
+ */
+const PHONE_ROW_LABEL: Record<number, string> = {
+  1: "ค่าห้องและค่าอาหาร",
+  18: "ผู้ป่วยนอก OPD",
+};
 /** Hidden at every width, restored from the tablet breakpoint up. */
 const WIDE_ONLY_CELL = "hidden sm:table-cell";
 const WIDE_ONLY_ROW = "hidden sm:table-row";
@@ -91,7 +102,18 @@ export function benefitCell(
   if (isHeading(entry)) return { text: "", unavailable: false };
   if (!sellable.includes(plan)) return { text: DASH, unavailable: true };
   const v = benefitValue(entry, plan, age);
-  return { text: v === undefined || v.trim() === "" ? DASH : v, unavailable: false };
+  if (v === undefined || v.trim() === "") return { text: DASH, unavailable: false };
+  return { text: grouped(v), unavailable: false };
+}
+
+/**
+ * A cell the workbook stored as a number rather than as text arrives as bare digits — "6000"
+ * beside "1,500 ต่อวัน" in the next column reads as a typo on a page a customer is shown. The
+ * digits are grouped and nothing else is added: what unit it is in is the company's to say,
+ * and on these rows it does not say.
+ */
+function grouped(value: string): string {
+  return /^\d+$/.test(value) ? Number(value).toLocaleString("en-US") : value;
 }
 
 /**
@@ -152,7 +174,7 @@ export function BenefitTable(
               width and the Thai wraps; a wide screen gets one sized to its content. */}
           <table className="w-full border-collapse text-xs sm:w-max sm:min-w-full">
           <caption className="sr-only">
-            ตารางผลประโยชน์ ไอเฮลท์ตี้ อัลตร้า ทั้ง {plans.length} แผน
+            ตารางผลประโยชน์ iHealthy Ultra ทั้ง {plans.length} แผน
           </caption>
           <thead>
             <tr>
@@ -214,33 +236,6 @@ export function BenefitTable(
                 </td>
               ))}
             </tr>
-            {premiums && (
-              <tr className="border-t border-[var(--lg-panel-line)]">
-                <th
-                  scope="row"
-                  className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
-                >
-                  เบี้ยรวมต่อปี
-                </th>
-                {plans.map((p) => {
-                  const premium = premiums[p.code];
-                  return (
-                    <td
-                      key={p.code}
-                      className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2.5 text-center font-medium tabular-nums sm:px-3 ${
-                        p.code === selected
-                          ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold)]"
-                          : "text-[var(--lg-white)]"
-                      }`}
-                    >
-                      {premium === null || premium === undefined ? DASH : formatBaht(premium)}
-                    </td>
-                  );
-                })}
-              </tr>
-            )}
-            {/* keyed by the wording rather than by `no`, which a sub-row like หมวดย่อยที่ 2.1
-                does not have; the sheet's 41 titles and headings are all distinct */}
             {data.rows.map((entry) =>
               isHeading(entry) ? (
                 // Sticky on the cell itself would do nothing — it is already as wide as the
@@ -260,14 +255,17 @@ export function BenefitTable(
                 <tr
                   key={entry.title}
                   className={`border-t border-[var(--lg-panel-line)] align-top ${
-                    entry.no !== null && PHONE_ROWS.includes(entry.no) ? "" : WIDE_ONLY_ROW
+                    entry.no !== null && entry.no in PHONE_ROW_LABEL ? "" : WIDE_ONLY_ROW
                   }`}
                 >
                   <th
                     scope="row"
                     className={`${PIN} z-10 py-2 text-[0.7rem] font-normal leading-relaxed text-[var(--lg-mute)]`}
                   >
-                    {entry.title}
+                    <span className="sm:hidden">
+                      {(entry.no !== null && PHONE_ROW_LABEL[entry.no]) || entry.title}
+                    </span>
+                    <span className="hidden sm:inline">{entry.title}</span>
                   </th>
                   {plans.map((p) => {
                     const cell = benefitCell(entry, p.code, age, sellable);
@@ -308,6 +306,35 @@ export function BenefitTable(
                 </td>
               </tr>
             )}
+            {/* What the whole arrangement costs, one instalment to a line and last of all:
+                the rows above are what the customer gets, and the price is what they are
+                weighed against. Each is priced on its own, because the company rounds every
+                instalment down separately — twelve months do not add up to a year. */}
+            {premiums?.map((row) => (
+              <tr key={row.mode} className="border-t border-[var(--lg-panel-line)]">
+                <th
+                  scope="row"
+                  className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
+                >
+                  {row.label}
+                </th>
+                {plans.map((p) => {
+                  const premium = row.byPlan[p.code];
+                  return (
+                    <td
+                      key={p.code}
+                      className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2.5 text-center font-medium tabular-nums sm:px-3 ${
+                        p.code === selected
+                          ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold)]"
+                          : "text-[var(--lg-white)]"
+                      }`}
+                    >
+                      {premium === null || premium === undefined ? DASH : formatBaht(premium)}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

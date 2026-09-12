@@ -32,25 +32,25 @@ const facts: IHealthyCtaFacts = {
 describe("iHealthyMessage", () => {
   it("opens the chat with what is on screen", () => {
     expect(iHealthyMessage(facts)).toBe(
-      "สนใจประกันสุขภาพ ไอเฮลท์ตี้ อัลตร้า แผนโกลด์ ประเทศไทย หญิง 35 ปี เบี้ยรวมประมาณ 45,930 บาท/ปี",
+      "สนใจประกันสุขภาพ iHealthy Ultra แผนโกลด์ ประเทศไทย หญิง 35 ปี เบี้ยรวมประมาณ 45,930 บาท/ปี",
     );
   });
 
   it("says which instalment the figure is", () => {
     expect(iHealthyMessage({ ...facts, mode: "monthly", shown: { ...SHOWN, total: 413_300 } }))
-      .toBe("สนใจประกันสุขภาพ ไอเฮลท์ตี้ อัลตร้า แผนโกลด์ ประเทศไทย หญิง 35 ปี เบี้ยรวมประมาณ 4,133 บาท/เดือน");
+      .toBe("สนใจประกันสุขภาพ iHealthy Ultra แผนโกลด์ ประเทศไทย หญิง 35 ปี เบี้ยรวมประมาณ 4,133 บาท/เดือน");
   });
 
   /** An arrangement paid for out of pocket up to a point is not the same product. */
   it("names a coverage that is not the plain one", () => {
     expect(iHealthyMessage({ ...facts, arrangement: { ...GOLD, coverage: "Co-Payment" }, sex: "M" })).toBe(
-      "สนใจประกันสุขภาพ ไอเฮลท์ตี้ อัลตร้า แผนโกลด์ ประเทศไทย แบบร่วมจ่าย ชาย 35 ปี เบี้ยรวมประมาณ 45,930 บาท/ปี",
+      "สนใจประกันสุขภาพ iHealthy Ultra แผนโกลด์ ประเทศไทย แบบร่วมจ่าย ชาย 35 ปี เบี้ยรวมประมาณ 45,930 บาท/ปี",
     );
   });
 
   it("asks for a price instead when none is being shown", () => {
     expect(iHealthyMessage({ ...facts, shown: undefined })).toBe(
-      "สนใจประกันสุขภาพ ไอเฮลท์ตี้ อัลตร้า แผนโกลด์ ประเทศไทย หญิง 35 ปี ขอราคาปัจจุบัน",
+      "สนใจประกันสุขภาพ iHealthy Ultra แผนโกลด์ ประเทศไทย หญิง 35 ปี ขอราคาปัจจุบัน",
     );
   });
 
@@ -58,7 +58,7 @@ describe("iHealthyMessage", () => {
   it("asks for something that fits when the age has no arrangement at all", () => {
     const none = { ...facts, arrangement: undefined, shown: undefined };
     expect(iHealthyMessage({ ...none, age: 79 })).toBe(
-      "สนใจประกันสุขภาพ ไอเฮลท์ตี้ อัลตร้า หญิง 79 ปี ขอแบบที่เหมาะกับอายุนี้",
+      "สนใจประกันสุขภาพ iHealthy Ultra หญิง 79 ปี ขอแบบที่เหมาะกับอายุนี้",
     );
     expect(iHealthyQuoteText(none)).toBeUndefined();
   });
@@ -67,7 +67,7 @@ describe("iHealthyMessage", () => {
 describe("iHealthyQuoteText", () => {
   it("writes the summary an agent pastes into a chat", () => {
     expect(iHealthyQuoteText(facts)).toBe([
-      "🏥 ไอเฮลท์ตี้ อัลตร้า แผนโกลด์",
+      "🏥 iHealthy Ultra แผนโกลด์",
       "วงเงินค่ารักษา 25,000,000 บาทต่อปี · อาณาเขตประเทศไทย",
       "",
       "หญิง อายุ 35 ปี",

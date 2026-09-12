@@ -62,7 +62,7 @@ const SALES_PAGES = [
   { href: "/ishield", label: "iShield" },
   { href: "/plb", label: "Protection Life" },
   { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์" },
-  { href: "/ihealthy-ultra", label: "ไอเฮลท์ตี้ อัลตร้า" },
+  { href: "/ihealthy-ultra", label: "iHealthy Ultra" },
 ];
 
 export default function Home() {

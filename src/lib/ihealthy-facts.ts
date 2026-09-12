@@ -3,7 +3,7 @@ import type { IHealthyPlanOption } from "@/lib/ihealthy-table";
 import raw from "../../data/riders/ihealthy-ultra.json";
 
 /**
- * The ไอเฮลท์ตี้ อัลตร้า benefit sheet, typed.
+ * The iHealthy Ultra benefit sheet, typed.
  *
  * Its -facts siblings exist to compute their figures from the engine so that no number is
  * ever typed into the JSX. This one computes nothing: every string below is the company's

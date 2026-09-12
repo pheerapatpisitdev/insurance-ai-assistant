@@ -4,7 +4,7 @@ import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
 import type { IHealthyBase, IHealthyPlanOption, IHealthyTable } from "@/lib/ihealthy-table";
 
 /** Same order as calc/mode-premiums; repeated here so the browser does not import the engine. */
-const MODES: PayMode[] = ["annual", "semi", "monthly"];
+export const MODES: PayMode[] = ["annual", "semi", "monthly"];
 
 export interface IHealthyChoice {
   base: string;

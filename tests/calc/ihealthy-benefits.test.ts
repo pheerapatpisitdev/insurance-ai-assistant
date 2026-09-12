@@ -14,7 +14,7 @@ type BenefitRow = {
 const rows = benefits.rows as unknown as Array<Partial<BenefitRow> & { heading?: string }>;
 const row = (no: number) => benefits.rows.find((r) => "no" in r && r.no === no)! as unknown as BenefitRow;
 
-describe("ไอเฮลท์ตี้ อัลตร้า benefit data", () => {
+describe("iHealthy Ultra benefit data", () => {
   it("carries the six plans with the company's annual maximum", () => {
     expect(benefits.plans.map((p) => [p.code, p.annualMax])).toEqual([
       ["SMART", 3_000_000],

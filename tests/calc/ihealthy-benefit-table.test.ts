@@ -71,4 +71,12 @@ describe("benefitCell", () => {
     });
     expect(benefitCell(row(1), "PLATINUM", 35, ALL).text).toBe(row(1).adult.PLATINUM);
   });
+  it("groups a cell the workbook stored as a number, and leaves the rest alone", () => {
+    const opd = facts.rows.find((r) => !isHeading(r) && r.no === 18)! as BenefitRow;
+    // the sheet holds 6000 as a number and "1,500 ต่อวัน" as text; both reach a customer
+    expect(benefitCell(opd, "SILVER", 35, ALL).text).toBe("6,000");
+    const room = facts.rows.find((r) => !isHeading(r) && r.no === 1)! as BenefitRow;
+    expect(benefitCell(room, "SMART", 35, ALL).text).toBe("1,500 ต่อวัน");
+  });
+
 });
