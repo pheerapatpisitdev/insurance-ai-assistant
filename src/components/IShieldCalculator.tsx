@@ -210,9 +210,18 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
                 <span className="ml-2 text-base text-[var(--lg-mute)]">บาท {PER_LABEL[headline.mode]}</span>
               </div>
               <div className="mt-2.5 text-sm text-[var(--lg-mute)]">ตกวันละ {perDay(annual.total)} บาท</div>
+              {/* the instalments the headline did not take. Muted labels, but the figures
+                  themselves in white on the display face: an agent reading a yearly premium
+                  off the screen should not have to lean in for it. */}
               {others.length > 0 && (
-                <div className="mt-1 text-sm text-[var(--lg-mute)] opacity-80">
-                  {others.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`).join(" · ")}
+                <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--lg-mute)]">
+                  {others.map((m) => (
+                    <span key={m.mode}>
+                      {PAY_MODE_LABEL[m.mode]}{" "}
+                      <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span>{" "}
+                      บาท
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
