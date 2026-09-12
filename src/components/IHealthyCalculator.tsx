@@ -405,10 +405,16 @@ export function IHealthyCalculator(
         />
       )}
 
-      <BenefitTable
-        data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
-        sellable={plans.map((p) => p.code)}
-      />
+      {/* On a wide screen the table steps out of the page's reading measure and takes the
+          whole window: all six plans fit there, and scrolling sideways would be a cost with
+          nothing to buy. The prose around it keeps the narrow measure, which is what makes
+          prose readable. On a phone the table stays in the column and scrolls. */}
+      <div className="sm:mx-[calc(50%-50vw)] sm:w-screen sm:px-6">
+        <BenefitTable
+          data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
+          sellable={plans.map((p) => p.code)}
+        />
+      </div>
 
       {/* The way out of the page, and last of the three things on it: a health rider is
           bought on the twenty-eight rows above, so the buttons sit where a reader arrives
