@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
@@ -11,6 +11,7 @@ import { deathBenefitOf, iHealthyPricing, type IHealthyPricing } from "@/lib/ihe
 import {
   baseFor, resolveArrangement, sumFor, sumsFor, type IHealthyInitial,
 } from "@/lib/ihealthy-choice";
+import { queryFrom } from "@/lib/ihealthy-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
 
@@ -92,6 +93,30 @@ export function IHealthyCalculator(
   const { plan, plans, territory, territories, coverage, coverages } = resolveArrangement(
     table, age, { plan: wantPlan, territory: wantTerritory, coverage: wantCoverage },
   );
+
+  /**
+   * The address bar follows the card, so the link an agent copies opens on the arrangement
+   * the agent is looking at. It is written from what was resolved and not from what was
+   * asked for — ask for ซิลเวอร์ at eight and the address ends up saying สมาร์ท, which is the
+   * plan on screen — and the three `??` are only for the age no rate table sells anything at,
+   * where the card says so and the link may as well say what the form is still holding.
+   */
+  const link = queryFrom(table, {
+    age, sex, base: base.variant, sumAssured, mode,
+    plan: plan?.code ?? wantPlan,
+    territory: territory ?? wantTerritory,
+    coverage: coverage ?? wantCoverage,
+  });
+  useEffect(() => {
+    // `replaceState` rather than `push`: a Back button that had to walk out through every
+    // dropdown the reader touched would never reach the page they came from. And only when
+    // the address would really change, so that a customer opening a link the page itself
+    // wrote is not handed a rewritten one on first paint — the hash survives with it, since
+    // this replaces the whole address and not only its query.
+    if (window.location.search.replace(/^\?/, "") !== link) {
+      window.history.replaceState(null, "", `?${link}${window.location.hash}`);
+    }
+  }, [link]);
 
   const priced = plan && territory && coverage
     ? iHealthyPricing(table, {
