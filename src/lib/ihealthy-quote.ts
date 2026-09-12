@@ -101,6 +101,11 @@ function riderModes(table: IHealthyTable, choice: IHealthyChoice): ModePremium[]
  * the rider is a fixed annual premium scaled by the mode factor and rounded down. The
  * company's monthly floor is judged on the total, as `checkMonthlyMinimum` judges it.
  *
+ * One thing base-premium.ts does that this does not: subtract a per-thousand discount for a
+ * large sum assured. This plan's discount table is all zeros, and the parity test draws sums
+ * up to five million, so a rate revision that started discounting would fail it rather than
+ * quietly overcharge the browser's half of the page.
+ *
  * Undefined when the arrangement has no price, which the pickers already prevent.
  */
 export function iHealthyPricing(table: IHealthyTable, choice: IHealthyChoice): IHealthyPricing | undefined {

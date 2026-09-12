@@ -27,6 +27,16 @@ describe("ihuKey", () => {
     expect(ihuKey(table, "DIAMOND", 30, "เอเชีย", "Full Coverage")).toBe("MHP5SA");
     expect(ihuKey(table, "PLATINUM", 30, "ประเทศไทย", "Deductible")).toBe("MHPD6S");
   });
+
+  /**
+   * The switch is at the eleventh birthday, and nothing else in the suite can see it: the
+   * juvenile and standard tables charge the same premium at 11, so a price cannot tell them
+   * apart, and the key set below is a union across ages.
+   */
+  it("reads the juvenile table up to the day before 11", () => {
+    expect(ihuKey(table, "SMART", 10, "ประเทศไทย", "Full Coverage")).toBe("MHP1J");
+    expect(ihuKey(table, "SMART", 11, "ประเทศไทย", "Full Coverage")).toBe("MHP1S");
+  });
 });
 
 describe("the option filters", () => {
@@ -39,6 +49,12 @@ describe("the option filters", () => {
     expect(plansFor(table, 35)).toHaveLength(6);
     expect(territoriesFor(table, "GOLD", 35)).toEqual(["ประเทศไทย"]);
     expect(territoriesFor(table, "PLATINUM", 35)).toEqual(["ประเทศไทย", "เอเชีย", "ทั่วโลก"]);
+  });
+
+  it("opens the other four plans on the eleventh birthday", () => {
+    expect(plansFor(table, 10).map((p) => p.code)).toEqual(["SMART", "BRONZE"]);
+    expect(plansFor(table, 11).map((p) => p.code))
+      .toEqual(["SMART", "BRONZE", "SILVER", "GOLD", "DIAMOND", "PLATINUM"]);
   });
 
   it("sells the deductible and the co-payment in Thailand only", () => {
@@ -102,7 +118,34 @@ describe("iHealthyPricing", () => {
         expect(q.warnings.some((w) => w.code === "MIN_MONTHLY"), label).toBe(m.belowMinimum);
       }
     }
-    expect(checked).toBeGreaterThan(150);
+    expect(checked).toBe(200);
+  });
+
+  /**
+   * The sweep reaches a below-floor arrangement only about one draw in twenty, so the
+   * cheapest thing the page can sell is priced here on purpose — otherwise the floor is
+   * only ever asserted false and could be deleted unnoticed.
+   */
+  it("flags the monthly instalment the company will not take, and nothing dearer", () => {
+    const cheapest = {
+      base: "WLF99HX", sex: "M" as Sex, age: 18, sumAssured: 50_000,
+      plan: "SMART", territory: "ประเทศไทย", coverage: "Deductible",
+    };
+    const p = iHealthyPricing(table, cheapest)!;
+    // 45 baht of base and 900 of rider: 945 a month, under the company's 1,000 baht floor
+    expect(p.total.find((m) => m.mode === "monthly")).toEqual({ mode: "monthly", total: 94_500, belowMinimum: true });
+    expect(p.total.filter((m) => m.belowMinimum).map((m) => m.mode)).toEqual(["monthly"]);
+    const q = quote({
+      planCode: "LIFEPROTECT", variant: cheapest.base, age: cheapest.age, sex: cheapest.sex, mode: "monthly",
+      basis: "sumAssured", sumAssured: cheapest.sumAssured,
+      riders: [{ code: "IHU", option: cheapest.plan, territory: cheapest.territory, coverage: cheapest.coverage }],
+    }, WHILE_CURRENT);
+    expect(q.totalModal).toBe(94_500);
+    expect(q.warnings.some((w) => w.code === "MIN_MONTHLY")).toBe(true);
+    // one plan up is 1,143 a month, and the company takes it
+    const bronze = iHealthyPricing(table, { ...cheapest, plan: "BRONZE" })!;
+    expect(bronze.total.find((m) => m.mode === "monthly"))
+      .toEqual({ mode: "monthly", total: 114_300, belowMinimum: false });
   });
 
   it("prices a child on the health package the way the engine does", () => {
