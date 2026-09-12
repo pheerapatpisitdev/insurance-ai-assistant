@@ -1,13 +1,16 @@
 import { quote } from "@/calc/quote";
 import { quoteModePremiums, type ModePremium } from "@/calc/mode-premiums";
 import { cashValueSchedule, maturityValue, type CashValueRow } from "@/calc/cash-value";
-import { getPlan } from "@/calc/plans/registry";
+import { getPlan, type PlanBundle } from "@/calc/plans/registry";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleModePremiums, quoteBundle } from "@/calc/bundles/quote";
 import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL, type DeathBenefit, type PayMode, type QuoteInput, type Sex } from "@/calc/types";
 import type { BundleCardInput, CardInput, PlanCardInput } from "@/lib/card-link";
 import { deathBenefitRows } from "@/lib/death-benefit";
+import { cashProjection, type Projection } from "@/lib/cash-projection";
+import { iShieldTable } from "@/lib/ishield-table";
+import { illnessBenefit } from "@/lib/ishield-quote";
 import { displayPremium, perDay } from "@/lib/legacy-cta";
 
 /**
@@ -36,6 +39,30 @@ export interface CardSection {
   rows: CardRow[];
 }
 
+/**
+ * The chart as the drawing routine needs it: geometry only, in the viewBox's own units, with
+ * the colours left to the drawing. Worked out here so the picture is the engine's answer and
+ * can be tested without rendering anything, the same way every figure on the card is.
+ */
+export interface CardChart {
+  title: string;
+  width: number;
+  height: number;
+  /** polyline point strings */
+  cover: string;
+  premium: string | null;
+  cash: string;
+  /** the sum assured's own height, when it sits clear of the scale's top and floor */
+  grid: { y: number; label: string } | null;
+  /** ages along the bottom */
+  ticks: { x: number; label: string }[];
+  /** what the top of the scale is worth */
+  topLabel: string;
+  /** where the surrender value overtakes the premiums paid */
+  breakEven: { x: number; y: number; label: string } | null;
+  legend: { label: string; kind: "cash" | "premium" | "cover" }[];
+}
+
 export interface QuoteCard {
   /** the product and its payment term, e.g. "Life Protect x 2 · ชำระเบี้ย 19 ปี" */
   planLine: string;
@@ -51,6 +78,8 @@ export interface QuoteCard {
   sections: CardSection[];
   /** the small print, one line per entry */
   notes: string[];
+  /** drawn under the figures, for the plans whose cover rule has been read off their sheet */
+  chart?: CardChart;
 }
 
 /** How each instalment reads after the figure on the card. */
@@ -194,6 +223,112 @@ function cardNotes(expired: boolean, version: string, headline: string, extra: s
     : [`${headline} · ตารางเบี้ยฉบับ ${version}`, ...extra, "ไม่ใช่ใบเสนอราคา ผลประโยชน์เป็นไปตามที่ระบุในกรมธรรม์"];
 }
 
+/** 1,112,000 → "1.1 ล้าน", for the two labels the chart's vertical scale carries. */
+function shortBaht(baht: number): string {
+  if (baht >= 1_000_000) {
+    const m = baht / 1_000_000;
+    return `${m % 1 ? m.toFixed(1) : m.toFixed(0)} ล้าน`;
+  }
+  if (baht >= 100_000) return `${Math.round(baht / 100_000)} แสน`;
+  return money(baht);
+}
+
+/** How many years the premium is paid, whichever way the plan's tables state it. */
+function payYearsFor(plan: PlanBundle, variant: string, age: number): number {
+  const pkg = plan.rates.base.packages?.find((p) => p.code === variant);
+  if (pkg?.payTermToAge !== undefined) return Math.max(0, pkg.payTermToAge - age);
+  if (pkg?.payTerm !== undefined) return pkg.payTerm;
+  return plan.rates.base.payTerm?.[variant] ?? 0;
+}
+
+const CHART_W = 888, CHART_H = 300, CHART_LEFT = 86, CHART_RIGHT = 14, CHART_TOP = 18, CHART_BOTTOM = 44;
+
+/**
+ * The contract drawn as three lines: what the family would receive, what has been paid in,
+ * and what surrendering would return. It is the one thing on the card that answers "and
+ * then what" without the customer having to read a column of figures.
+ *
+ * Only for a plan whose cover rule has been read off its own benefit sheet — without that
+ * rule the cover line would be a guess, and a guess drawn in gold is still a guess.
+ */
+function chartFor(
+  plan: PlanBundle, input: PlanCardInput, death: DeathBenefit, annualSatang: number | null,
+): CardChart | undefined {
+  if (!plan.coverTopUp) return undefined;
+  const factors = cashValueSchedule(input.planCode, input.variant, input.sex, input.age, 1000).map((r) => r.amount);
+  if (factors.length < 2) return undefined;
+
+  const p: Projection = cashProjection({
+    factors, age: input.age, sumAssured: input.sumAssured, annualSatang,
+    payYears: payYearsFor(plan, input.variant, input.age), death, topUp: plan.coverTopUp,
+  });
+
+  const top = Math.max(...p.rows.map((r) => Math.max(r.cover, r.cashValue, r.premiumPaid ?? 0))) || 1;
+  const x = (at: number) => CHART_LEFT + ((at - input.age) / (p.maturityAge - input.age)) * (CHART_W - CHART_LEFT - CHART_RIGHT);
+  const y = (satang: number) => CHART_H - CHART_BOTTOM - (satang / top) * (CHART_H - CHART_BOTTOM - CHART_TOP);
+  const line = (pick: (r: Projection["rows"][number]) => number) =>
+    p.rows.map((r) => `${x(r.age).toFixed(1)},${y(pick(r)).toFixed(1)}`).join(" ");
+
+  // the cover holds all year and drops on one birthday, so it steps rather than slopes
+  const cover = p.rows
+    .flatMap((r) => [`${x(r.age).toFixed(1)},${y(r.cover).toFixed(1)}`, `${x(r.age + 1).toFixed(1)},${y(r.cover).toFixed(1)}`])
+    .join(" ");
+
+  const grid = p.coverFloor < top * 0.92 && p.coverFloor > top * 0.08
+    ? { y: Number(y(p.coverFloor).toFixed(1)), label: shortBaht(Math.round(p.coverFloor / 100)) }
+    : null;
+
+  return {
+    title: "ความคุ้มครอง เบี้ย และมูลค่าเงินสด",
+    width: CHART_W,
+    height: CHART_H,
+    cover,
+    premium: p.rows[0].premiumPaid === null ? null : line((r) => r.premiumPaid!),
+    cash: line((r) => r.cashValue),
+    grid,
+    ticks: [...new Set([input.age, 60, 80, p.maturityAge])]
+      .filter((a) => a >= input.age && a <= p.maturityAge)
+      .map((a) => ({ x: Number(x(a).toFixed(1)), label: String(a) })),
+    topLabel: shortBaht(Math.round(top / 100)),
+    breakEven: p.breakEven
+      ? {
+        x: Number(x(p.breakEven.age).toFixed(1)),
+        y: Number(y(p.breakEven.cashValue).toFixed(1)),
+        label: `เท่าทุนอายุ ${p.breakEven.age}`,
+      }
+      : null,
+    legend: [
+      { label: "มูลค่าเวนคืน", kind: "cash" },
+      { label: "เบี้ยสะสม (รายปี)", kind: "premium" },
+      { label: "ความคุ้มครอง", kind: "cover" },
+    ],
+  };
+}
+
+/**
+ * What iShield pays, which the engine has no field for: its illnesses are a property of the
+ * base contract rather than of a rider, and its death benefit has no booster for
+ * `deathBenefitFor` to find, so that function returns nothing at all for it.
+ *
+ * Written out per plan rather than inferred. "This contract pays X on a diagnosis" is a
+ * claim about a specific policy, and a plan whose benefit sheet has not been read gets no
+ * sentence put in its mouth.
+ */
+function planBenefitSection(input: PlanCardInput): CardSection | undefined {
+  if (input.planCode !== "ISHIELD") return undefined;
+  const table = iShieldTable();
+  const benefit = illnessBenefit(table, input.sumAssured);
+  const rows: CardRow[] = [
+    { label: `ตรวจพบโรคร้ายแรงระยะรุนแรง (${table.illness.majorCount} โรค)`, amount: money(benefit.major) },
+    { label: `ตรวจพบระยะเริ่มต้น (${table.illness.earlyCount} โรค) ต่อโรค`, amount: money(benefit.early) },
+    { label: "เสียชีวิต", amount: money(input.sumAssured) },
+  ];
+  if (input.age < table.maturityAge) {
+    rows.push({ label: `อยู่ครบสัญญาอายุ ${table.maturityAge} ปี`, amount: money(input.sumAssured) });
+  }
+  return { title: "รับเงินก้อนเมื่อ", rows };
+}
+
 /**
  * The card for an arrangement, or undefined when the company would not issue it — a card
  * that says nothing is worse than no card, and the chat still has its own words for why.
@@ -224,9 +359,18 @@ function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
   const { premium, perDay: perDayLine, others } = premiumLines(modes, result.meta.expired);
 
   const sections: CardSection[] = [];
+  const ownBenefits = planBenefitSection(input);
+  if (ownBenefits) sections.push(ownBenefits);
   if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
   const cashRows = cashRowsFor(input.planCode, input.variant, input.sex, input.age, input.sumAssured);
   if (cashRows.length) sections.push({ title: CASH_TITLE, rows: cashRows });
+
+  // the same figures the sections carry, drawn: a cover the plan does not step down from is
+  // still a line, and a card with no price still shows what the policy is worth
+  const annual = modes?.find((m) => m.mode === "annual");
+  const death = result.deathBenefit
+    ?? { beforeAge: 0, sumBefore: result.sumAssured, sumFrom: result.sumAssured, alreadyPastAge: true };
+  const chart = chartFor(plan, input, death, result.meta.expired || !annual ? null : annual.total);
 
   // the W-family labels its packages "<product> · <term>" already, and a plan label in front
   // of that reads "Life Protect x 1.5 / x 2 · Life Protect x 2 · ชำระเบี้ย…"
@@ -240,6 +384,7 @@ function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
     others,
     sections,
     notes: cardNotes(result.meta.expired, result.meta.version, "เบี้ยมาตรฐานโดยประมาณ"),
+    ...(chart ? { chart } : {}),
   };
 }
 

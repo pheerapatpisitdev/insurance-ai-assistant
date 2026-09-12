@@ -131,3 +131,69 @@ describe("quoteCard", () => {
     expect(section(card, CASH)).toBeUndefined();
   });
 });
+
+/**
+ * iShield's illnesses are a property of the base contract rather than of a rider, and its
+ * death benefit has no booster for the engine's deathBenefitFor to find — so before this the
+ * card carried a price and a surrender schedule and said nothing about what the policy pays.
+ */
+describe("the iShield card", () => {
+  const card = quoteCard(
+    { kind: "plan", planCode: "ISHIELD", variant: "WLCI10", age: 35, sex: "M", sumAssured: 1_000_000 },
+    new Date("2026-09-05"),
+  )!;
+
+  it("leads with what the contract pays, before what it is worth on surrender", () => {
+    expect(card.sections.map((s) => s.title)).toEqual(["รับเงินก้อนเมื่อ", "มูลค่าเงินสดสะสม (หากเวนคืน)"]);
+    expect(card.sections[0].rows).toEqual([
+      { label: "ตรวจพบโรคร้ายแรงระยะรุนแรง (50 โรค)", amount: "1,000,000" },
+      { label: "ตรวจพบระยะเริ่มต้น (20 โรค) ต่อโรค", amount: "250,000" },
+      { label: "เสียชีวิต", amount: "1,000,000" },
+      { label: "อยู่ครบสัญญาอายุ 85 ปี", amount: "1,000,000" },
+    ]);
+  });
+
+  it("does not promise a maturity to someone who is already past it", () => {
+    const old = quoteCard(
+      { kind: "plan", planCode: "ISHIELD", variant: "WLCI15", age: 56, sex: "M", sumAssured: 1_000_000 },
+      new Date("2026-09-05"),
+    )!;
+    expect(old.sections[0].rows.map((r) => r.label)).toContain("อยู่ครบสัญญาอายุ 85 ปี");
+  });
+});
+
+describe("the chart on a card", () => {
+  const lifeProtect = quoteCard(
+    { kind: "plan", planCode: "LIFEPROTECT", variant: "WLF99H", age: 35, sex: "M", sumAssured: 1_000_000 },
+    new Date("2026-09-05"),
+  )!;
+
+  it("draws three lines over the whole contract, and rules the sum assured", () => {
+    const c = lifeProtect.chart!;
+    expect(c.topLabel).toBe("2 ล้าน");
+    expect(c.grid?.label).toBe("1 ล้าน");
+    expect(c.ticks.map((t) => t.label)).toEqual(["35", "60", "80", "99"]);
+    // one point per policy year on the two sloping lines, two per year on the cover's steps
+    expect(c.cash.split(" ")).toHaveLength(64);
+    expect(c.premium!.split(" ")).toHaveLength(64);
+    expect(c.cover.split(" ")).toHaveLength(128);
+    expect(c.breakEven?.label).toBe("เท่าทุนอายุ 98");
+  });
+
+  it("names the year iShield's surrender value overtakes its premiums", () => {
+    const card = quoteCard(
+      { kind: "plan", planCode: "ISHIELD", variant: "WLCI10", age: 35, sex: "M", sumAssured: 1_000_000 },
+      new Date("2026-09-05"),
+    )!;
+    expect(card.chart?.breakEven?.label).toBe("เท่าทุนอายุ 60");
+    expect(card.chart?.topLabel).toBe("1 ล้าน");
+  });
+
+  it("is left off a plan whose benefit sheet has not been read", () => {
+    const plb = quoteCard(
+      { kind: "plan", planCode: "PLB", variant: "PLB10", age: 35, sex: "M", sumAssured: 1_000_000 },
+      new Date("2026-09-05"),
+    );
+    expect(plb?.chart).toBeUndefined();
+  });
+});
