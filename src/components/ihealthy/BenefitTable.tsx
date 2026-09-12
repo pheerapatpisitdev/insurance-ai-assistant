@@ -333,6 +333,19 @@ export function BenefitTable(
                 the rows above are what the customer gets, and the price is what they are
                 weighed against. Each is priced on its own, because the company rounds every
                 instalment down separately — twelve months do not add up to a year. */}
+            {premiums !== undefined && premiums.length > 0 && (
+              // Named, the way the company's own sections are: everything above is what the
+              // customer gets and everything below is what it costs, and a reader coming
+              // down the table should be told where one ends and the other begins.
+              <tr>
+                <th
+                  scope="colgroup" colSpan={plans.length + 1}
+                  className="bg-[var(--lg-ground-deep)] py-2 text-left text-[0.7rem] font-medium leading-relaxed text-[var(--lg-gold)]"
+                >
+                  <span className={`sticky left-0 print:static inline-block ${TITLE_W} px-3`}>เบี้ยประกัน</span>
+                </th>
+              </tr>
+            )}
             {premiums?.map((row) => (
               <tr key={row.mode} className="border-t border-[var(--lg-panel-line)]">
                 <th
