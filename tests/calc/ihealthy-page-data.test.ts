@@ -103,28 +103,78 @@ describe("resolveArrangement", () => {
   });
 
   /**
-   * The panel prices what the pickers are showing. Every age the page offers, against a
-   * preference that is legal at some ages and not at others, has to end somewhere the engine
-   * can price and inside the three lists the form is drawing.
+   * The three fields have to be sold *together*, which is more than each being on its own
+   * list: the territory is asked per plan but the coverages the page can offer are asked for
+   * the whole page, so narrowing them to the resolved plan is the only thing standing between
+   * a legal-looking arrangement and a card with no price and nothing true to say about why.
+   *
+   * Every preference the pickers can hold, at every age the page offers — 54 combinations
+   * across 75 ages — settled and then priced for real, once per base and sex.
    */
-  it("settles on something priced at every age the page offers", () => {
-    const wanted = { plan: "PLATINUM", territory: "ทั่วโลก", coverage: "Co-Payment" };
+  it("settles on an arrangement that is sold as a whole, at every age", () => {
+    const wanted = table.plans.flatMap((p) =>
+      Object.keys(table.territories).flatMap((territory) =>
+        Object.keys(table.coverages).map((coverage) => ({ plan: p.code, territory, coverage }))));
+    expect(wanted).toHaveLength(54);
     for (let age = table.ageMin; age <= table.ageMax; age++) {
-      for (const sex of ["M", "F"] as Sex[]) {
-        for (const base of table.bases) {
-          const r = resolveArrangement(table, age, wanted);
-          expect(r.plan, `age ${age}`).toBeDefined();
-          expect(r.plans).toContain(r.plan);
-          expect(r.territories).toContain(r.territory);
-          expect(r.coverages).toContain(r.coverage);
-          const priced = iHealthyPricing(table, {
-            base: base.variant, sex, age, sumAssured: sumFor(base, IHEALTHY_OPENING.sumAssured),
-            plan: r.plan!.code, territory: r.territory!, coverage: r.coverage!,
-          });
-          expect(priced, `${base.variant} ${sex} ${age}`).toBeDefined();
+      for (const want of wanted) {
+        const where = `age ${age} · ${want.plan} ${want.territory} ${want.coverage}`;
+        const r = resolveArrangement(table, age, want);
+        expect(r.plan, where).toBeDefined();
+        expect(r.plans, where).toContain(r.plan);
+        expect(r.territories, where).toContain(r.territory);
+        expect(r.coverages, where).toContain(r.coverage);
+        for (const sex of ["M", "F"] as Sex[]) {
+          for (const base of table.bases) {
+            const priced = iHealthyPricing(table, {
+              base: base.variant, sex, age, sumAssured: sumFor(base, IHEALTHY_OPENING.sumAssured),
+              plan: r.plan!.code, territory: r.territory!, coverage: r.coverage!,
+            });
+            expect(priced, `${where} · ${base.variant} ${sex}`).toBeDefined();
+          }
         }
       }
     }
+  });
+
+  /**
+   * The list the customer is shown, not only the one item resolved out of it: every way of
+   * sharing the bill the select offers has to be one this plan is actually sold under.
+   *
+   * And it must not overshoot: the territory was reached under the default way of sharing the
+   * bill, so that one is always still on the list once the plan has had its say.
+   */
+  it("offers only the ways of sharing the bill that this plan is sold under", () => {
+    for (let age = table.ageMin; age <= table.ageMax; age++) {
+      for (const p of table.plans) {
+        for (const territory of Object.keys(table.territories)) {
+          const r = resolveArrangement(table, age, { plan: p.code, territory, coverage: FULL });
+          const where = `age ${age} · ${p.code} ${territory}`;
+          expect(r.coverages.length, where).toBeGreaterThan(0);
+          for (const coverage of r.coverages) {
+            expect(iHealthyPricing(table, {
+              base: "WLF99H", sex: "F", age, sumAssured: IHEALTHY_OPENING.sumAssured,
+              plan: r.plan!.code, territory: r.territory!, coverage,
+            }), `${where} · ${coverage}`).toBeDefined();
+          }
+        }
+      }
+    }
+  });
+
+  /**
+   * Today's rate table sells every plan under every way of sharing the bill it sells at all,
+   * so nothing above can tell a narrowed list from an unnarrowed one. This is the rate table
+   * as it would look the morning the company stopped writing แพลทินั่ม with a deductible: the
+   * page-wide list does not notice, because the other five plans still have one.
+   */
+  it("drops a coverage this plan alone has lost", () => {
+    const patched = { ...table, riderRates: { ...table.riderRates, MHPD6S: undefined } };
+    expect(coveragesFor(patched, THAI, 35)).toContain("Deductible");
+    const r = resolveArrangement(patched, 35, { plan: "PLATINUM", territory: THAI, coverage: "Deductible" });
+    expect(r.plan?.code).toBe("PLATINUM");
+    expect(r.coverages).toEqual([FULL, "Co-Payment"]);
+    expect(r.coverage).toBe(FULL);
   });
 });
 

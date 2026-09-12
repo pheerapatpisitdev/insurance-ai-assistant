@@ -152,15 +152,26 @@ export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealt
         </div>
 
         <div>
-          <label htmlFor="ihu-sum" className={label}>ทุนสัญญาหลัก</label>
+          {/* The heading branches with the field under it. `htmlFor` would point at nothing
+              once the select is gone — a paragraph is not labelable, so it cannot take the
+              id and be named by it — and the pinned figure would be read out unnamed. */}
           {base.fixedSum !== undefined ? (
-            <p className="mt-1.5 rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-base tabular-nums text-[var(--lg-mute)]">
-              {base.fixedSum.toLocaleString("en-US")} บาท · แพ็กเกจกำหนดไว้ เปลี่ยนไม่ได้
-            </p>
+            <>
+              <span id="ihu-sum-label" className={label}>ทุนสัญญาหลัก</span>
+              <p
+                aria-labelledby="ihu-sum-label"
+                className="mt-1.5 rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-base tabular-nums text-[var(--lg-mute)]"
+              >
+                {base.fixedSum.toLocaleString("en-US")} บาท · แพ็กเกจกำหนดไว้ เปลี่ยนไม่ได้
+              </p>
+            </>
           ) : (
-            <select id="ihu-sum" className={field} value={sumAssured} onChange={(e) => setWantSum(Number(e.target.value))}>
-              {sumOptions.map((s) => <option key={s} value={s}>{s.toLocaleString("en-US")} บาท</option>)}
-            </select>
+            <>
+              <label htmlFor="ihu-sum" className={label}>ทุนสัญญาหลัก</label>
+              <select id="ihu-sum" className={field} value={sumAssured} onChange={(e) => setWantSum(Number(e.target.value))}>
+                {sumOptions.map((s) => <option key={s} value={s}>{s.toLocaleString("en-US")} บาท</option>)}
+              </select>
+            </>
           )}
         </div>
 
@@ -179,10 +190,12 @@ export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealt
               </button>
             ))}
           </div>
+          {/* Which plans are short is the rate table's answer; why they are short is not, and
+              a revision that withdrew a plan at 76 would have this blaming a 76-year-old for
+              being a child. It names the age on screen and leaves the reason unsaid. */}
           {plans.length < table.plans.length && (
             <p className={hint}>
-              อายุต่ำกว่า {table.juvenileBelowAge} ปี บริษัทขายเฉพาะแผน
-              {plans.map((p) => p.name).join("และ")}
+              ที่อายุ {age} ปี บริษัทขายเฉพาะแผน{plans.map((p) => p.name).join("และ")}
             </p>
           )}
         </div>
@@ -221,11 +234,12 @@ export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealt
 
       <div className="space-y-4 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5">
         {plan === undefined || priced === undefined ? (
-          // Nothing the pickers can reach lands here; a rate revision that opened a hole in
-          // the key table would, and an empty card says so rather than naming a ceiling the
-          // company is not selling at this age.
+          // Nothing the pickers can reach lands here; a rate revision that took a rate away
+          // from either half would, and the half it came from is not worth guessing at — so
+          // the card names no ceiling and sends the reader back to the form rather than to
+          // the health plan in particular.
           <p className="text-sm font-medium text-[var(--lg-gold)]">
-            อายุนี้บริษัทยังไม่เปิดขายแผนที่เลือกไว้ ลองเลือกแผนอื่น
+            ที่อายุ {age} ปี บริษัทยังไม่เปิดขายแบบที่เลือกไว้ ลองเปลี่ยนสัญญาหลักหรือแผนสุขภาพ
           </p>
         ) : (
           <>
