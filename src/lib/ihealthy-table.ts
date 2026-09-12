@@ -1,5 +1,7 @@
 import { getPlan } from "@/calc/plans/registry";
 import { baseRate } from "@/calc/lookup";
+import { baseAgeRange, baseSumAssuredLimits } from "@/calc/rules";
+import { JUVENILE_BELOW_AGE } from "@/calc/riders/fixed-by-key-age";
 import type { PayMode, Sex } from "@/calc/types";
 import benefits from "../../data/riders/ihealthy-ultra.json";
 
@@ -18,19 +20,18 @@ export interface IHealthyBase {
   short: string;
   /** what prose calls it, e.g. "ไลฟ์ โพรเทค+ x 2" */
   label: string;
-  /** the note under the button, e.g. "ตั้งทุนเอง" */
-  note: string;
+  /**
+   * the note under the button, e.g. "ตั้งทุนเอง". Absent where `fixedSum` pins the sum: the
+   * page says that figure from the field itself, so the subtitle cannot drift from it.
+   */
+  note?: string;
   /** the extra multiple paid on death before the booster age (1 = pays double) */
   booster: number;
   /** the package pins the sum assured here and the form must not let it change */
   fixedSum?: number;
   saMin: number;
-  /** rate per thousand, [sex][age - ageMin]; null where the workbook has no rate */
+  /** rate per thousand, [sex][age - ageMin]; null where this base is not issued at that age */
   rates: Record<Sex, (number | null)[]>;
-  /** riders this package refuses to sell, so the fold can grey them without asking */
-  disabledRiders: string[];
-  /** riders this package forces; IHU is always among them for WLF99HX */
-  requiredRiders: string[];
 }
 
 export interface IHealthyPlanOption {
@@ -45,7 +46,7 @@ export interface IHealthyTable {
   planCode: string;
   ageMin: number;
   ageMax: number;
-  /** below this age only สมาร์ท and บรอนซ์ sell, and only in Thailand */
+  /** the age the key builder switches from the juvenile table to the standard one at */
   juvenileBelowAge: number;
   expired: boolean;
   expiresOn: string;
@@ -55,23 +56,27 @@ export interface IHealthyTable {
   modeFactors: Record<PayMode, number>;
   bases: IHealthyBase[];
   plans: IHealthyPlanOption[];
-  /** Thai label → the letter the rate key uses */
+  /** Thai label → the letter the rate key uses; ประเทศไทย is the empty one */
   territories: Record<string, string>;
-  /** Thai label → the letter the rate key uses */
+  /** Thai label → the letter the rate key uses; Full Coverage is the empty one */
   coverages: Record<string, string>;
-  /** rider annual premium, [key][sex][age - ageMin]; null where the workbook has no rate */
-  riderRates: Record<string, Record<Sex, (number | null)[]>>;
+  /**
+   * rider annual premium, [key][sex][age - ageMin].
+   *
+   * Two different absences: a key the company does not sell at all is undefined — only 28 of
+   * the 108 keys the letters can spell exist, so a miss is the ordinary case and the caller
+   * must expect it — while null inside a key's array is an age that key is not sold at.
+   */
+  riderRates: Record<string, Record<Sex, (number | null)[]> | undefined>;
 }
 
 const PLAN_CODE = "LIFEPROTECT";
 const RIDER = "IHU";
-/** The key builder switches from the juvenile table to the standard one here. */
-const JUVENILE_BELOW_AGE = 11;
 
-const BASES: { variant: string; short: string; label: string; note: string }[] = [
+const BASES: { variant: string; short: string; label: string; note?: string }[] = [
   { variant: "WLF99L", short: "x 1.5", label: "ไลฟ์ โพรเทค+ x 1.5", note: "ตั้งทุนเอง" },
   { variant: "WLF99H", short: "x 2", label: "ไลฟ์ โพรเทค+ x 2", note: "ตั้งทุนเอง" },
-  { variant: "WLF99HX", short: "แพ็กเกจสุขภาพ", label: "Health Ultra Package", note: "ทุน 50,000" },
+  { variant: "WLF99HX", short: "แพ็กเกจสุขภาพ", label: "Health Ultra Package" },
 ];
 
 /** Built once per process; `expired` is asked again on every call, as in lifeprotect-table.ts. */
@@ -85,26 +90,30 @@ export function iHealthyTable(today: Date = new Date()): IHealthyTable {
   const { rates, rules } = plan;
   const rider = rates.riders[RIDER];
   if (rider.kind !== "fixedByKeyAge") throw new Error("IHU is not a keyed rider any more");
-  const ageMin = rules.riders[RIDER].ageMin;
-  const ageMax = rules.riders[RIDER].ageMax;
+  // the three tables every rate key is spelled from; a keyed rider may ship without them
+  const { planNo, territory, coverage } = rider;
+  if (!planNo || !territory || !coverage) {
+    throw new Error("the IHU rate table no longer says how its keys are composed");
+  }
+
+  // the base plan issues from birth, but nothing on this page sells without the rider
+  const { ageMin, ageMax } = rules.riders[RIDER];
   const ages = Array.from({ length: ageMax - ageMin + 1 }, (_, i) => ageMin + i);
 
   const bases: IHealthyBase[] = BASES.map((b) => {
-    const pkg = rates.base.packages!.find((p) => p.code === b.variant)!;
-    const rule = (rules.packages ?? []).find((p) => p.seq.includes(pkg.seq));
+    const pkg = rates.base.packages?.find((p) => p.code === b.variant);
+    if (!pkg) throw new Error(`the rate table no longer sells ${b.variant}`);
+    const range = baseAgeRange(rules, b.variant, rates);
+    const sum = baseSumAssuredLimits(rules, b.variant);
+    // the workbook prices WLF99HX from age 0, which its package does not sell
+    const rateAt = (sex: Sex, age: number) =>
+      age >= range.min && age <= range.max ? baseRate(rates, b.variant, sex, age) ?? null : null;
     return {
       ...b,
       booster: pkg.booster ?? 0,
-      ...(rules.base.saExactVariants?.includes(b.variant)
-        ? { fixedSum: rules.base.saMinByVariant![b.variant] }
-        : {}),
-      saMin: rules.base.saMinByVariant?.[b.variant] ?? rules.base.saMin,
-      rates: {
-        M: ages.map((age) => baseRate(rates, b.variant, "M", age) ?? null),
-        F: ages.map((age) => baseRate(rates, b.variant, "F", age) ?? null),
-      },
-      disabledRiders: rule?.disable ?? [],
-      requiredRiders: rule?.require ?? [],
+      ...(sum.exact ? { fixedSum: sum.min } : {}),
+      saMin: sum.min,
+      rates: { M: ages.map((age) => rateAt("M", age)), F: ages.map((age) => rateAt("F", age)) },
     };
   });
 
@@ -127,11 +136,14 @@ export function iHealthyTable(today: Date = new Date()): IHealthyTable {
     boosterBeforeAge: rules.base.extraDeathBenefitBeforeAge!,
     modeFactors: rates.modeFactors,
     bases,
-    plans: benefits.plans.map((p) => ({
-      code: p.code, name: p.name, planNo: p.planNo, annualMax: p.annualMax, deductible: p.deductible,
-    })),
-    territories: rider.territory!,
-    coverages: rider.coverage!,
+    // the number comes from the rate table that keys on it, so the two files join on one map
+    plans: benefits.plans.map((p) => {
+      const no = planNo[p.code];
+      if (no === undefined) throw new Error(`the IHU rate table does not number ${p.code}`);
+      return { code: p.code, name: p.name, planNo: no, annualMax: p.annualMax, deductible: p.deductible };
+    }),
+    territories: territory,
+    coverages: coverage,
     riderRates,
   };
   return { ...cached, expired };

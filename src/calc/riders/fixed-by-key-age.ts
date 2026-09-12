@@ -1,6 +1,13 @@
 import type { PayMode, PlanRates, RiderInput, Sex } from "../types";
 import { applyModeFactorToFixed, toHundredths } from "../money";
 
+/**
+ * Below this age iHealthy Ultra is quoted from its juvenile table ("J") and above it from the
+ * standard one ("S"). The health page composes the same key in the browser, so the switch is
+ * named here once rather than copied to each side of the wire.
+ */
+export const JUVENILE_BELOW_AGE = 11;
+
 export interface FixedByKeyAgeInput {
   age: number;
   sex: Sex;
@@ -16,7 +23,7 @@ export interface FixedByKeyAgeResult {
 /**
  * Builds the rate key the workbook composes:
  *   MEX                 → the plan amount itself ("2200")
- *   iHealthy Ultra      → "MHP" + coverage letter + plan number + (age<11 ? "J" : "S") + territory letter
+ *   iHealthy Ultra      → "MHP" + coverage letter + plan number + (juvenile ? "J" : "S") + territory letter
  *   Roke Rai So Shield  → "MCI" + plan number
  */
 export function fixedRateKey(rates: PlanRates, code: string, age: number, selection: FixedByKeyAgeInput["selection"]): string | undefined {
@@ -31,7 +38,7 @@ export function fixedRateKey(rates: PlanRates, code: string, age: number, select
   const coverage = rider.coverage?.[selection.coverage ?? "Full Coverage"];
   const territory = rider.territory?.[selection.territory ?? "ประเทศไทย"];
   if (coverage === undefined || territory === undefined) return undefined;
-  return `MHP${coverage}${no}${age < 11 ? "J" : "S"}${territory}`;
+  return `MHP${coverage}${no}${age < JUVENILE_BELOW_AGE ? "J" : "S"}${territory}`;
 }
 
 /** Excel Cal!D22/G22 (MEX), G23 (iHealthy Ultra), G24 (Roke Rai So Shield): a fixed annual premium. */
