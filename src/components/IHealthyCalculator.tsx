@@ -16,7 +16,6 @@ import { ContactButtons } from "@/components/sales/ContactButtons";
 import { LinkButton } from "@/components/sales/LinkButton";
 import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
 
-const MODES: PayMode[] = ["annual", "semi", "monthly"];
 const COVERAGE_LABEL: Record<string, string> = {
   "Full Coverage": "เต็มจำนวน",
   Deductible: "มีความรับผิดส่วนแรก",
@@ -84,14 +83,19 @@ export function IHealthyCalculator(
   const [wantBase, setWantBase] = useState(initial.base);
   const [wantSum, setWantSum] = useState(initial.sumAssured);
   const [wantPlan, setWantPlan] = useState(initial.plan);
-  const [wantTerritory, setWantTerritory] = useState(initial.territory);
+  // Held but never set: the form does not ask for a territory, and an arrangement that
+  // arrived by link carrying เอเชีย or ทั่วโลก keeps it rather than being quietly re-priced
+  // for Thailand.
+  const [wantTerritory] = useState(initial.territory);
   const [wantCoverage, setWantCoverage] = useState(initial.coverage);
-  const [mode, setMode] = useState<PayMode>(initial.mode);
+  // Likewise: the card headlines the yearly instalment and prints the other two beneath it,
+  // so there is nothing for a picker to choose that the card is not already showing.
+  const [mode] = useState<PayMode>(initial.mode);
 
   const base = baseFor(table, wantBase);
   const sumOptions = sumsFor(base);
   const sumAssured = sumFor(base, wantSum);
-  const { plan, plans, territory, territories, coverage, coverages } = resolveArrangement(
+  const { plan, plans, territory, coverage, coverages } = resolveArrangement(
     table, age, { plan: wantPlan, territory: wantTerritory, coverage: wantCoverage },
   );
 
@@ -274,35 +278,20 @@ export function IHealthyCalculator(
           )}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <label htmlFor="ihu-area" className={label}>อาณาเขต</label>
-            <select id="ihu-area" className={field} value={territory ?? ""} onChange={(e) => setWantTerritory(e.target.value)}>
-              {territories.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            {/* which single one it is comes from the rate table, not from here: แผนโกลด์ is
-                Thailand-only today, and the sentence must follow the table if that changes */}
-            {plan && territories.length === 1 && territory && (
-              <p className={hint}>แผน{plan.name}คุ้มครองเฉพาะใน{territory}</p>
-            )}
-          </div>
-          <div>
-            <label htmlFor="ihu-cover" className={label}>ความคุ้มครอง</label>
-            <select id="ihu-cover" className={field} value={coverage ?? ""} onChange={(e) => setWantCoverage(e.target.value)}>
-              {coverages.map((c) => <option key={c} value={c}>{COVERAGE_LABEL[c] ?? c}</option>)}
-            </select>
-            {coverages.length === 1 && coverage && territory && (
-              <p className={hint}>
-                อาณาเขต{territory}มีเฉพาะความคุ้มครองแบบ{COVERAGE_LABEL[coverage] ?? coverage}
-              </p>
-            )}
-          </div>
-          <div>
-            <label htmlFor="ihu-mode" className={label}>งวดชำระ</label>
-            <select id="ihu-mode" className={field} value={mode} onChange={(e) => setMode(e.target.value as PayMode)}>
-              {MODES.map((m) => <option key={m} value={m}>{PAY_MODE_LABEL[m]}</option>)}
-            </select>
-          </div>
+        <div>
+          <label htmlFor="ihu-cover" className={label}>ความคุ้มครอง</label>
+          <select id="ihu-cover" className={field} value={coverage ?? ""} onChange={(e) => setWantCoverage(e.target.value)}>
+            {coverages.map((c) => <option key={c} value={c}>{COVERAGE_LABEL[c] ?? c}</option>)}
+          </select>
+          {/* The territory is not asked for: this page sells cover in Thailand, which is the
+              only territory five of the six plans are written for anyway. It stays in the
+              state and in the link, so an arrangement written for เอเชีย or ทั่วโลก still
+              prices if one arrives — there is simply no way to ask for one from here. */}
+          {coverages.length === 1 && coverage && territory && (
+            <p className={hint}>
+              อาณาเขต{territory}มีเฉพาะความคุ้มครองแบบ{COVERAGE_LABEL[coverage] ?? coverage}
+            </p>
+          )}
         </div>
       </div>
 
