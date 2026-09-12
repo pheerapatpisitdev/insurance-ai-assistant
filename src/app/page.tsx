@@ -60,6 +60,7 @@ const SALES_PAGES = [
   { href: "/legacy", label: "มรดกเพื่อครอบครัว" },
   { href: "/lifeprotect", label: "Life Protect x 2" },
   { href: "/ishield", label: "iShield" },
+  { href: "/plb", label: "Protection Life" },
 ];
 
 export default function Home() {

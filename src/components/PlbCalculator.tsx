@@ -1,0 +1,261 @@
+"use client";
+import { useMemo, useState } from "react";
+import type { Sex } from "@/calc/types";
+import { PAY_MODE_LABEL } from "@/calc/types";
+import { formatBaht } from "@/calc/money";
+import { PER, displayPremium, perDay } from "@/lib/legacy-cta";
+import type { PlbTable } from "@/lib/plb-table";
+import { coverEndsAt, perMillion, plbModes, termAt, totalPaid } from "@/lib/plb-quote";
+import { plbMessage, plbQuoteText, type PlbAge } from "@/lib/plb-cta";
+import { cardPath } from "@/lib/card-link";
+import { ContactButtons } from "@/components/sales/ContactButtons";
+
+/** How each instalment reads on the card, where it labels a figure rather than follows it. */
+const PER_LABEL = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" } as const;
+
+/**
+ * The sums the slider offers: every hundred thousand from the plan's floor to a million,
+ * then every half million to five. The finer steps sit under a million, which is where the
+ * rate discount changes and where most of this plan is sold.
+ */
+const SUMS = [
+  ...Array.from({ length: 8 }, (_, i) => 300_000 + 100_000 * i),
+  ...Array.from({ length: 8 }, (_, i) => 1_500_000 + 500_000 * i),
+];
+const SUM_START_INDEX = SUMS.indexOf(1_000_000);
+/** The term the page opens on: twelve years is the one the company's own proposal illustrates. */
+const TERM_START = "PLB12";
+/** The age the page opens on — a real price before a visitor touches anything. */
+const AGE_START = 35;
+
+export interface PlbCalculatorProps {
+  /** the rates and factors the browser prices from; the engine never leaves the server */
+  table: PlbTable;
+  /** pin a copy of the contact buttons to the bottom of a phone screen */
+  sticky?: boolean;
+}
+
+/**
+ * The customer's calculator for the base plan on its own. Four choices — sum, term, age, sex.
+ *
+ * Simpler than the other three pages, because the contract is: every term is sold at every
+ * age the plan takes, there is no surrender table to draw, and the whole of what the policy
+ * pays is one figure on one day. What the panel spends its room on instead is what the cover
+ * costs — the day rate, the total over the term, and the price per million, which is the only
+ * way the sum-assured discount is visible.
+ */
+export function PlbCalculator({ table, sticky = false }: PlbCalculatorProps) {
+  const AGES = useMemo(
+    () => Array.from({ length: table.ageMax - table.ageMin + 1 }, (_, i) => table.ageMin + i),
+    [table.ageMin, table.ageMax],
+  );
+  const [sumIndex, setSumIndex] = useState(SUM_START_INDEX);
+  const sumAssured = SUMS[sumIndex];
+  const [variant, setVariant] = useState(TERM_START);
+  const [age, setAge] = useState<PlbAge>(AGE_START);
+  const [sex, setSex] = useState<Sex>("M");
+
+  const term = termAt(table, variant);
+  const ageNum = typeof age === "number" ? age : undefined;
+  const who = ageNum !== undefined ? { sex, age: ageNum, sumAssured } : undefined;
+
+  const modes = who ? plbModes(table, term, who) : undefined;
+  const headline = displayPremium(modes, table.expired);
+  const annual = modes?.find((m) => m.mode === "annual");
+  // smallest instalment upward, so the block under the headline reads day, half-year, year
+  const others = (modes ?? [])
+    .filter((m) => m.mode !== headline?.mode && !m.belowMinimum)
+    .sort((a, b) => a.total - b.total);
+
+  const message = plbMessage({ sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline });
+  // the same figures the card is showing, or nothing: a copied quote must never say more than the page
+  const card = who && headline
+    ? cardPath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured, mode: headline.mode })
+    : undefined;
+  const quoteText = who && headline && annual
+    ? plbQuoteText({
+        sumAssured, termLabel: term.label, age: who.age, sex, years: term.years,
+        endsAtAge: coverEndsAt(term, who.age), modes: [headline, ...others],
+        total: totalPaid(annual.total, term),
+      })
+    : undefined;
+
+  /** The figure on a term button: that term's yearly premium, once there is an age. */
+  const buttonPrice = (code: string): string | undefined => {
+    if (!who || table.expired) return undefined;
+    const yearly = plbModes(table, termAt(table, code), who)?.find((m) => m.mode === "annual");
+    return yearly ? `${formatBaht(yearly.total)}${PER.annual}` : undefined;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-6 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] p-5">
+        <div>
+          <label htmlFor="plb-sum" className="block text-sm text-[var(--lg-mute)]">ทุนประกัน</label>
+          <div className="lg-figure mt-1.5 text-3xl tabular-nums">
+            <span className="lg-metal-text">{sumAssured.toLocaleString("en-US")}</span>{" "}
+            <span className="text-lg text-[var(--lg-mute)]">บาท</span>
+          </div>
+          <input
+            id="plb-sum" type="range" min={0} max={SUMS.length - 1} step={1} value={sumIndex}
+            onChange={(e) => setSumIndex(Number(e.target.value))}
+            className="mt-4 w-full accent-[var(--lg-gold)]"
+          />
+          <div className="mt-1 flex justify-between text-xs text-[var(--lg-mute)] opacity-70">
+            <span>3 แสน</span>
+            <span>5 ล้าน</span>
+          </div>
+          {/* what the family receives sits under the sum being chosen, because for this plan
+              the two are the same number — and saying so here is the whole contract */}
+          <p className="mt-4 text-sm leading-relaxed text-[var(--lg-mute)]">
+            เสียชีวิตระหว่างสัญญา ครอบครัวรับ{" "}
+            <span className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">
+              {sumAssured.toLocaleString("en-US")}
+            </span>{" "}
+            บาท <span className="opacity-70">· ทุกสาเหตุ ตามเงื่อนไขกรมธรรม์</span>
+          </p>
+        </div>
+
+        <div>
+          <span className="block text-sm text-[var(--lg-mute)]">คุ้มครองและชำระเบี้ยกี่ปี</span>
+          <div className="mt-1.5 grid grid-cols-4 gap-2">
+            {table.terms.map((t) => {
+              const on = t.variant === term.variant;
+              const price = buttonPrice(t.variant);
+              return (
+                <button
+                  key={t.variant} type="button" aria-pressed={on}
+                  onClick={() => setVariant(t.variant)}
+                  className={`rounded-sm border px-1 py-2.5 text-center transition-colors ${
+                    on ? "lg-metal-face border-[var(--lg-gold)] font-medium"
+                      : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
+                  }`}
+                >
+                  <span className="block text-sm">{t.short}</span>
+                  {price && <span className="mt-0.5 block text-[11px] tabular-nums opacity-80">{price}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="plb-age" className="block text-sm text-[var(--lg-mute)]">อายุ</label>
+            <select
+              id="plb-age" value={age}
+              onChange={(e) => setAge(e.target.value === "over" ? "over" : Number(e.target.value))}
+              className="mt-1.5 w-full appearance-none rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-lg tabular-nums text-[var(--lg-white)]"
+            >
+              {AGES.map((a) => <option key={a} value={a}>{a} ปี</option>)}
+              <option value="over">{table.ageMax + 1} ปีขึ้นไป</option>
+            </select>
+          </div>
+          <div>
+            <span className="block text-sm text-[var(--lg-mute)]">เพศ</span>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              {(["M", "F"] as Sex[]).map((s) => (
+                <button
+                  key={s} type="button" onClick={() => setSex(s)} aria-pressed={sex === s}
+                  className={`rounded-sm border py-2.5 text-sm transition-colors ${
+                    sex === s ? "lg-metal-face border-[var(--lg-gold)] font-medium" : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
+                  }`}
+                >
+                  {s === "M" ? "ชาย" : "หญิง"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {!who || !modes ? (
+        <div className="rounded-sm border border-[var(--lg-gold)] bg-[var(--lg-panel)] px-5 py-7 text-center text-sm leading-relaxed text-[var(--lg-white)]">
+          แบบนี้รับอายุ {table.ageMin}–{table.ageMax} ปี ทักมาให้เราช่วยหาแบบที่เหมาะกับคุณ
+        </div>
+      ) : (
+        <div className="space-y-5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5">
+          {headline && annual ? (
+            <div>
+              <div className="text-sm text-[var(--lg-mute)]">เบี้ยประกัน · {term.label}</div>
+              <div className="lg-figure mt-1 text-[2.6rem] leading-none tabular-nums">
+                <span className="lg-metal-text">{formatBaht(headline.total)}</span>
+                <span className="ml-2 text-base text-[var(--lg-mute)]">บาท {PER_LABEL[headline.mode]}</span>
+              </div>
+              {/* What the headline did not take, one instalment a line and smallest first.
+                  Muted labels with the figures in white on the display face: an agent
+                  reading a yearly premium off the screen should not have to lean in. */}
+              <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
+                <div>
+                  ตกวันละ{" "}
+                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDay(annual.total)}</span> บาท
+                </div>
+                {others.map((m) => (
+                  <div key={m.mode}>
+                    {PAY_MODE_LABEL[m.mode]}{" "}
+                    <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm font-medium text-[var(--lg-gold)]">ขอราคาปัจจุบันได้ทางแชทด้านล่าง</div>
+          )}
+
+          <div className="pt-1">
+            <hr className="lg-rule" />
+            <div className="pt-4 text-sm text-[var(--lg-mute)]">สัญญานี้จ่ายอะไร</div>
+            <dl className="mt-2 space-y-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-sm text-[var(--lg-mute)]">เสียชีวิตภายใน {term.years} ปี</dt>
+                <dd className="lg-figure shrink-0 whitespace-nowrap text-lg tabular-nums text-[var(--lg-white)]">
+                  {sumAssured.toLocaleString("en-US")} บาท
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-sm text-[var(--lg-mute)]">อยู่ครบสัญญา (อายุ {coverEndsAt(term, who.age)})</dt>
+                <dd className="shrink-0 text-sm text-[var(--lg-mute)]">ไม่มีเงินคืน</dd>
+              </div>
+            </dl>
+          </div>
+
+          {annual && !table.expired && (
+            <div className="pt-1">
+              <hr className="lg-rule" />
+              <div className="pt-4 text-sm text-[var(--lg-mute)]">ราคาของความคุ้มครองนี้</div>
+              <dl className="mt-2 space-y-2">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-sm text-[var(--lg-mute)]">เบี้ยรวมตลอด {term.years} ปี</dt>
+                  <dd className="lg-figure shrink-0 whitespace-nowrap text-lg tabular-nums text-[var(--lg-white)]">
+                    {formatBaht(totalPaid(annual.total, term))} บาท
+                  </dd>
+                </div>
+                {/* the only place the sum-assured discount is visible: the same cover costs
+                    less per million once the sum clears a threshold */}
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-sm text-[var(--lg-mute)]">คิดเป็นทุน 1 ล้าน ปีละ</dt>
+                  <dd className="lg-figure shrink-0 whitespace-nowrap text-lg tabular-nums text-[var(--lg-white)]">
+                    {perMillion(annual.total, sumAssured).toLocaleString("en-US")} บาท
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
+
+          <p className="border-t border-[var(--lg-panel-line)] pt-4 text-xs leading-[1.8] text-[var(--lg-mute)] opacity-80">
+            เบี้ยคงที่ตลอดสัญญา · ทุนยิ่งสูง เบี้ยต่อพันยิ่งลด ลองเลื่อนทุนดูราคาต่อล้าน ·
+            เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน
+          </p>
+        </div>
+      )}
+
+      <ContactButtons message={message} copyText={quoteText} cardPath={card} />
+
+      {sticky && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
+          <ContactButtons message={message} copyText={quoteText} cardPath={card} compact />
+        </div>
+      )}
+    </div>
+  );
+}
