@@ -12,7 +12,7 @@ import benefits from "../../data/riders/ihealthy-ultra.json";
  * alone are 416 kB of it. A customer reading this page picks a base plan and a health plan
  * and nothing else, so only those rates travel: three columns of base rate and the 28 keyed
  * tables of the rider. The engine, and every other rider, stays on the server behind the
- * action in `src/app/ihealthy/actions.ts`.
+ * action in `src/app/ihealthy-ultra/actions.ts`.
  */
 export interface IHealthyBase {
   variant: string;

@@ -3,8 +3,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { MoneyInput } from "@/components/MoneyInput";
-import { priceWithRiders } from "@/app/ihealthy/actions";
-import type { RiderChoice, RiderQuoteInput, RiderQuoteResult } from "@/app/ihealthy/actions";
+import { priceWithRiders } from "@/app/ihealthy-ultra/actions";
+import type { RiderChoice, RiderQuoteInput, RiderQuoteResult } from "@/app/ihealthy-ultra/actions";
 import { arrangementKey, attachedRiders, type RiderPick } from "@/components/ihealthy/rider-request";
 
 export interface RiderPanelProps {

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build `/ihealthy`, one page that prices the ไอเฮลท์ตี้ อัลตร้า health rider on three ไลฟ์ โพรเทค+ bases and shows all 28 benefit categories across the six plans.
+**Goal:** Build `/ihealthy-ultra`, one page that prices the ไอเฮลท์ตี้ อัลตร้า health rider on three ไลฟ์ โพรเทค+ bases and shows all 28 benefit categories across the six plans.
 
 **Architecture:** Two layers, as decided in the spec. The customer layer (base plan + health rider + benefit table) is priced in the browser from a slim table the server prepares, the way `/lifeprotect` already works. The agent layer (other riders) is folded away and, when opened, calls one server action that runs the real `quote()`. A 200-case parity test keeps the two arithmetics equal.
 
@@ -17,18 +17,18 @@
 | File | Responsibility |
 | --- | --- |
 | `scripts/extract_ihu_benefits.py` | Reads two sheets of the company workbook, writes the benefit JSON. Run by `npm run extract ihealthy-ultra`. |
-| `data/riders/ihealthy-ultra.json` | 28 benefit rows × 6 plans, the child columns, per-plan annual maximum and deductible, and the contract terms. Generated, never hand-edited. |
-| `src/lib/ihealthy-table.ts` | Server-built slim table: base rates for three variants, rider rates for 28 keys, plan/territory/coverage options. |
-| `src/lib/ihealthy-quote.ts` | Browser-side arithmetic and the option filters (which plans at this age, which territories for this plan). No engine imports. |
-| `src/lib/ihealthy-facts.ts` | Benefit rows and terms read out of the JSON, shaped for the page. Only the rows and the plan list cross into the browser. |
-| `src/lib/ihealthy-cta.ts` | The chat message and the copy-to-clipboard summary. |
-| `src/app/ihealthy/actions.ts` | One server action: price a full arrangement with `quote()`, return rows. |
-| `src/app/ihealthy/page.tsx` | Server component: builds table + facts, reads the query string, renders the page. |
-| `src/app/ihealthy/layout.tsx` | Wraps the route in `SalesTheme`. |
+| `data/riders/ihealthy-ultra-ultra.json` | 28 benefit rows × 6 plans, the child columns, per-plan annual maximum and deductible, and the contract terms. Generated, never hand-edited. |
+| `src/lib/ihealthy-ultra-table.ts` | Server-built slim table: base rates for three variants, rider rates for 28 keys, plan/territory/coverage options. |
+| `src/lib/ihealthy-ultra-quote.ts` | Browser-side arithmetic and the option filters (which plans at this age, which territories for this plan). No engine imports. |
+| `src/lib/ihealthy-ultra-facts.ts` | Benefit rows and terms read out of the JSON, shaped for the page. Only the rows and the plan list cross into the browser. |
+| `src/lib/ihealthy-ultra-cta.ts` | The chat message and the copy-to-clipboard summary. |
+| `src/app/ihealthy-ultra/actions.ts` | One server action: price a full arrangement with `quote()`, return rows. |
+| `src/app/ihealthy-ultra/page.tsx` | Server component: builds table + facts, reads the query string, renders the page. |
+| `src/app/ihealthy-ultra/layout.tsx` | Wraps the route in `SalesTheme`. |
 | `src/components/IHealthyCalculator.tsx` | Client island: the form, the premium panel, the rider fold. |
-| `src/components/ihealthy/BenefitTable.tsx` | The 28-row × 6-plan table with the chosen column highlighted. |
-| `src/components/ihealthy/RiderPanel.tsx` | The folded rider list; calls the server action. |
-| `src/components/ihealthy/Sections.tsx` | Hero, the terms block, the disclaimer. |
+| `src/components/ihealthy-ultra/BenefitTable.tsx` | The 28-row × 6-plan table with the chosen column highlighted. |
+| `src/components/ihealthy-ultra/RiderPanel.tsx` | The folded rider list; calls the server action. |
+| `src/components/ihealthy-ultra/Sections.tsx` | Hero, the terms block, the disclaimer. |
 
 ---
 
@@ -37,18 +37,18 @@
 **Files:**
 - Create: `scripts/extract_ihu_benefits.py`
 - Modify: `scripts/extract_rates.py` (register the extractor)
-- Create: `data/riders/ihealthy-ultra.json` (generated)
-- Test: `tests/calc/ihealthy-benefits.test.ts`
+- Create: `data/riders/ihealthy-ultra-ultra.json` (generated)
+- Test: `tests/calc/ihealthy-ultra-benefits.test.ts`
 
 The sheet merges its "ผลประโยชน์สูงสุด" columns down whole blocks (`Q8:Q32`, `AF39:AF53`) and merges rows 43–44 together, so หมวด 18 and หมวด 19 share one OPD limit. Every read must resolve merges or those rows come back empty.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/calc/ihealthy-benefits.test.ts`:
+Create `tests/calc/ihealthy-ultra-benefits.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import benefits from "../../data/riders/ihealthy-ultra.json";
+import benefits from "../../data/riders/ihealthy-ultra-ultra.json";
 
 const plan = (code: string) => benefits.plans.find((p) => p.code === code)!;
 const row = (no: number) => benefits.rows.find((r) => "no" in r && r.no === no)!;
@@ -119,8 +119,8 @@ describe("ไอเฮลท์ตี้ อัลตร้า benefit data", ()
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `npx vitest run tests/calc/ihealthy-benefits.test.ts`
-Expected: FAIL — `Cannot find module '../../data/riders/ihealthy-ultra.json'`
+Run: `npx vitest run tests/calc/ihealthy-ultra-benefits.test.ts`
+Expected: FAIL — `Cannot find module '../../data/riders/ihealthy-ultra-ultra.json'`
 
 - [ ] **Step 3: Write the extraction script**
 
@@ -128,7 +128,7 @@ Create `scripts/extract_ihu_benefits.py`:
 
 ```python
 #!/usr/bin/env python3
-"""Extract the ไอเฮลท์ตี้ อัลตร้า benefit table into data/riders/ihealthy-ultra.json.
+"""Extract the ไอเฮลท์ตี้ อัลตร้า benefit table into data/riders/ihealthy-ultra-ultra.json.
 
 The rate tables come from extract_rates.py; this reads what the rates cannot say — what
 each of the six plans actually pays, and the contract terms that go on the page.
@@ -295,11 +295,11 @@ and add the entry to the `EXTRACTORS` dict, after `"dci-diseases": extract_dci_d
 - [ ] **Step 5: Run the extraction**
 
 Run: `python3 scripts/extract_ihu_benefits.py`
-Expected: `wrote .../data/riders/ihealthy-ultra.json (NNNNN bytes)`
+Expected: `wrote .../data/riders/ihealthy-ultra-ultra.json (NNNNN bytes)`
 
 - [ ] **Step 6: Run the test to verify it passes**
 
-Run: `npx vitest run tests/calc/ihealthy-benefits.test.ts`
+Run: `npx vitest run tests/calc/ihealthy-ultra-benefits.test.ts`
 Expected: PASS, 8 tests.
 
 If `row(18).adult.SILVER` comes back empty, the merge lookup is not being applied — check that `merged_lookup` covers `U43:U44`.
@@ -307,7 +307,7 @@ If `row(18).adult.SILVER` comes back empty, the merge lookup is not being applie
 - [ ] **Step 7: Commit**
 
 ```bash
-git add scripts/extract_ihu_benefits.py scripts/extract_rates.py data/riders/ihealthy-ultra.json tests/calc/ihealthy-benefits.test.ts
+git add scripts/extract_ihu_benefits.py scripts/extract_rates.py data/riders/ihealthy-ultra-ultra.json tests/calc/ihealthy-ultra-benefits.test.ts
 git commit -m "feat(data): extract the ไอเฮลท์ตี้ อัลตร้า benefit table"
 ```
 
@@ -316,16 +316,16 @@ git commit -m "feat(data): extract the ไอเฮลท์ตี้ อัล�
 ## Task 2: The slim rate table
 
 **Files:**
-- Create: `src/lib/ihealthy-table.ts`
-- Test: `tests/calc/ihealthy-table.test.ts`
+- Create: `src/lib/ihealthy-ultra-table.ts`
+- Test: `tests/calc/ihealthy-ultra-table.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/calc/ihealthy-table.test.ts`:
+Create `tests/calc/ihealthy-ultra-table.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { iHealthyTable } from "@/lib/ihealthy-table";
+import { iHealthyTable } from "@/lib/ihealthy-ultra-table";
 
 const WHILE_CURRENT = new Date("2026-09-12");
 const table = iHealthyTable(WHILE_CURRENT);
@@ -375,18 +375,18 @@ describe("iHealthyTable", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `npx vitest run tests/calc/ihealthy-table.test.ts`
-Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-table"`
+Run: `npx vitest run tests/calc/ihealthy-ultra-table.test.ts`
+Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-ultra-table"`
 
 - [ ] **Step 3: Write the table builder**
 
-Create `src/lib/ihealthy-table.ts`:
+Create `src/lib/ihealthy-ultra-table.ts`:
 
 ```ts
 import { getPlan } from "@/calc/plans/registry";
 import { baseRate } from "@/calc/lookup";
 import type { PayMode, Sex } from "@/calc/types";
-import benefits from "../../data/riders/ihealthy-ultra.json";
+import benefits from "../../data/riders/ihealthy-ultra-ultra.json";
 
 /**
  * Everything the health page needs to price itself in the browser.
@@ -395,7 +395,7 @@ import benefits from "../../data/riders/ihealthy-ultra.json";
  * alone are 416 kB of it. A customer reading this page picks a base plan and a health plan
  * and nothing else, so only those rates travel: three columns of base rate and the 28 keyed
  * tables of the rider. The engine, and every other rider, stays on the server behind the
- * action in `src/app/ihealthy/actions.ts`.
+ * action in `src/app/ihealthy-ultra/actions.ts`.
  */
 export interface IHealthyBase {
   variant: string;
@@ -524,13 +524,13 @@ export function iHealthyTable(today: Date = new Date()): IHealthyTable {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `npx vitest run tests/calc/ihealthy-table.test.ts`
+Run: `npx vitest run tests/calc/ihealthy-ultra-table.test.ts`
 Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/ihealthy-table.ts tests/calc/ihealthy-table.test.ts
+git add src/lib/ihealthy-ultra-table.ts tests/calc/ihealthy-ultra-table.test.ts
 git commit -m "feat(ihealthy): build the slim rate table the browser prices from"
 ```
 
@@ -539,21 +539,21 @@ git commit -m "feat(ihealthy): build the slim rate table the browser prices from
 ## Task 3: Browser-side pricing, and the parity test
 
 **Files:**
-- Create: `src/lib/ihealthy-quote.ts`
-- Test: `tests/calc/ihealthy-quote.test.ts`
+- Create: `src/lib/ihealthy-ultra-quote.ts`
+- Test: `tests/calc/ihealthy-ultra-quote.test.ts`
 
 This is the task that keeps the page honest. The 200-case test prices random arrangements
 both in the browser's arithmetic and through `quote()`, and they must agree to the satang.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/calc/ihealthy-quote.test.ts`:
+Create `tests/calc/ihealthy-ultra-quote.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { quote } from "@/calc/quote";
-import { iHealthyTable } from "@/lib/ihealthy-table";
-import { coveragesFor, iHealthyPricing, ihuKey, plansFor, territoriesFor } from "@/lib/ihealthy-quote";
+import { iHealthyTable } from "@/lib/ihealthy-ultra-table";
+import { coveragesFor, iHealthyPricing, ihuKey, plansFor, territoriesFor } from "@/lib/ihealthy-ultra-quote";
 import type { Sex } from "@/calc/types";
 
 const WHILE_CURRENT = new Date("2026-09-12");
@@ -663,18 +663,18 @@ describe("iHealthyPricing", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `npx vitest run tests/calc/ihealthy-quote.test.ts`
-Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-quote"`
+Run: `npx vitest run tests/calc/ihealthy-ultra-quote.test.ts`
+Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-ultra-quote"`
 
 - [ ] **Step 3: Write the pricing module**
 
-Create `src/lib/ihealthy-quote.ts`:
+Create `src/lib/ihealthy-ultra-quote.ts`:
 
 ```ts
 import type { ModePremium } from "@/calc/mode-premiums";
 import { applyModeFactor, applyModeFactorToFixed, toHundredths } from "@/calc/money";
 import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
-import type { IHealthyPlanOption, IHealthyTable } from "@/lib/ihealthy-table";
+import type { IHealthyPlanOption, IHealthyTable } from "@/lib/ihealthy-ultra-table";
 
 /** Same order as calc/mode-premiums; repeated here so the browser does not import the engine. */
 const MODES: PayMode[] = ["annual", "semi", "monthly"];
@@ -802,7 +802,7 @@ export function deathBenefitOf(table: IHealthyTable, base: string, age: number, 
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `npx vitest run tests/calc/ihealthy-quote.test.ts`
+Run: `npx vitest run tests/calc/ihealthy-ultra-quote.test.ts`
 Expected: PASS, 8 tests. The parity test reports no failures.
 
 If a case fails on `belowMinimum`, the floor is being judged per component instead of on the total — only `total` carries it.
@@ -810,7 +810,7 @@ If a case fails on `belowMinimum`, the floor is being judged per component inste
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/ihealthy-quote.ts tests/calc/ihealthy-quote.test.ts
+git add src/lib/ihealthy-ultra-quote.ts tests/calc/ihealthy-ultra-quote.test.ts
 git commit -m "feat(ihealthy): price the base and the health rider in the browser"
 ```
 
@@ -819,19 +819,19 @@ git commit -m "feat(ihealthy): price the base and the health rider in the browse
 ## Task 4: Shape the benefit data for the page
 
 **Files:**
-- Create: `src/lib/ihealthy-facts.ts`
-- Test: `tests/calc/ihealthy-facts.test.ts`
+- Create: `src/lib/ihealthy-ultra-facts.ts`
+- Test: `tests/calc/ihealthy-ultra-facts.test.ts`
 
 The JSON is a faithful copy of the sheet. This module gives it types and answers the one
 question the table component keeps asking: what does this plan pay for this row, at this age.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/calc/ihealthy-facts.test.ts`:
+Create `tests/calc/ihealthy-ultra-facts.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { benefitValue, iHealthyFacts, isHeading } from "@/lib/ihealthy-facts";
+import { benefitValue, iHealthyFacts, isHeading } from "@/lib/ihealthy-ultra-facts";
 
 const facts = iHealthyFacts();
 const row = (no: number) => facts.rows.find((r) => !isHeading(r) && r.no === no)!;
@@ -874,16 +874,16 @@ describe("benefitValue", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `npx vitest run tests/calc/ihealthy-facts.test.ts`
-Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-facts"`
+Run: `npx vitest run tests/calc/ihealthy-ultra-facts.test.ts`
+Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-ultra-facts"`
 
 - [ ] **Step 3: Write the module**
 
-Create `src/lib/ihealthy-facts.ts`:
+Create `src/lib/ihealthy-ultra-facts.ts`:
 
 ```ts
 import { JUVENILE_BELOW_AGE } from "@/calc/riders/fixed-by-key-age";
-import raw from "../../data/riders/ihealthy-ultra.json";
+import raw from "../../data/riders/ihealthy-ultra-ultra.json";
 
 /** A row that names a part of the contract and has no figures of its own. */
 export interface BenefitHeading {
@@ -956,7 +956,7 @@ export function iHealthyFacts(): IHealthyFacts {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `npx vitest run tests/calc/ihealthy-facts.test.ts`
+Run: `npx vitest run tests/calc/ihealthy-ultra-facts.test.ts`
 Expected: PASS, 6 tests.
 
 If the โกลด์ case returns a string instead of undefined, `JUVENILE_PLANS` is not being
@@ -966,7 +966,7 @@ caller gets the same answer.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/ihealthy-facts.ts tests/calc/ihealthy-facts.test.ts
+git add src/lib/ihealthy-ultra-facts.ts tests/calc/ihealthy-ultra-facts.test.ts
 git commit -m "feat(ihealthy): shape the benefit rows for the page"
 ```
 
@@ -975,17 +975,17 @@ git commit -m "feat(ihealthy): shape the benefit rows for the page"
 ## Task 5: The benefit table
 
 **Files:**
-- Create: `src/components/ihealthy/BenefitTable.tsx`
+- Create: `src/components/ihealthy-ultra/BenefitTable.tsx`
 
 Six plan columns of Thai text will not fit a phone, so the table scrolls inside its own box
 with the row titles pinned to the left edge. The chosen plan's column is tinted gold.
 
 - [ ] **Step 1: Write the component**
 
-Create `src/components/ihealthy/BenefitTable.tsx`:
+Create `src/components/ihealthy-ultra/BenefitTable.tsx`:
 
 ```tsx
-import { benefitValue, isHeading, type BenefitEntry, type IHealthyFacts } from "@/lib/ihealthy-facts";
+import { benefitValue, isHeading, type BenefitEntry, type IHealthyFacts } from "@/lib/ihealthy-ultra-facts";
 
 /**
  * The half of the benefit data the browser needs. `terms` and `disclaimer` are three of the
@@ -1100,7 +1100,7 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
 - [ ] **Step 2: Commit**
 
 ```bash
-git add src/components/ihealthy/BenefitTable.tsx
+git add src/components/ihealthy-ultra/BenefitTable.tsx
 git commit -m "feat(ihealthy): the 28-category benefit table across six plans"
 ```
 
@@ -1110,19 +1110,19 @@ git commit -m "feat(ihealthy): the 28-category benefit table across six plans"
 
 **Files:**
 - Create: `src/components/IHealthyCalculator.tsx`
-- Create: `src/app/ihealthy/page.tsx`
-- Create: `src/app/ihealthy/layout.tsx`
-- Create: `src/components/ihealthy/Sections.tsx`
+- Create: `src/app/ihealthy-ultra/page.tsx`
+- Create: `src/app/ihealthy-ultra/layout.tsx`
+- Create: `src/components/ihealthy-ultra/Sections.tsx`
 
 At the end of this task the page exists and prices itself. Riders come in Task 7.
 
 - [ ] **Step 1: Write the sections**
 
-Create `src/components/ihealthy/Sections.tsx`:
+Create `src/components/ihealthy-ultra/Sections.tsx`:
 
 ```tsx
 import { Fold, H2, Rule } from "@/components/sales/Blocks";
-import type { IHealthyFacts } from "@/lib/ihealthy-facts";
+import type { IHealthyFacts } from "@/lib/ihealthy-ultra-facts";
 
 export function Hero({ facts }: { facts: IHealthyFacts }) {
   const top = facts.plans[facts.plans.length - 1];
@@ -1198,7 +1198,7 @@ export function Disclaimer({ facts, rateVersion }: { facts: IHealthyFacts; rateV
 The form's state is also what a shared link carries, and Task 9's link module and this
 component both need the type. It lives on its own so neither imports the other.
 
-Create `src/lib/ihealthy-choice.ts`:
+Create `src/lib/ihealthy-ultra-choice.ts`:
 
 ```ts
 import type { PayMode, Sex } from "@/calc/types";
@@ -1226,13 +1226,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
-import type { IHealthyTable } from "@/lib/ihealthy-table";
-import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
+import type { IHealthyTable } from "@/lib/ihealthy-ultra-table";
+import type { BenefitTableData } from "@/components/ihealthy-ultra/BenefitTable";
 import {
   coveragesFor, deathBenefitOf, iHealthyPricing, plansFor, territoriesFor,
-} from "@/lib/ihealthy-quote";
-import type { IHealthyInitial } from "@/lib/ihealthy-choice";
-import { BenefitTable } from "@/components/ihealthy/BenefitTable";
+} from "@/lib/ihealthy-ultra-quote";
+import type { IHealthyInitial } from "@/lib/ihealthy-ultra-choice";
+import { BenefitTable } from "@/components/ihealthy-ultra/BenefitTable";
 
 const MODES: PayMode[] = ["annual", "semi", "monthly"];
 const COVERAGE_LABEL: Record<string, string> = {
@@ -1478,7 +1478,7 @@ export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealt
 
 - [ ] **Step 4: Write the route**
 
-Create `src/app/ihealthy/layout.tsx`:
+Create `src/app/ihealthy-ultra/layout.tsx`:
 
 ```tsx
 import { SalesTheme } from "@/components/sales/SalesTheme";
@@ -1488,13 +1488,13 @@ export default function IHealthyLayout({ children }: { children: React.ReactNode
 }
 ```
 
-Create `src/app/ihealthy/page.tsx`:
+Create `src/app/ihealthy-ultra/page.tsx`:
 
 ```tsx
 import { IHealthyCalculator } from "@/components/IHealthyCalculator";
-import { iHealthyTable } from "@/lib/ihealthy-table";
-import { iHealthyFacts } from "@/lib/ihealthy-facts";
-import { Disclaimer, Hero, TermsSection } from "@/components/ihealthy/Sections";
+import { iHealthyTable } from "@/lib/ihealthy-ultra-table";
+import { iHealthyFacts } from "@/lib/ihealthy-ultra-facts";
+import { Disclaimer, Hero, TermsSection } from "@/components/ihealthy-ultra/Sections";
 import { ExpiryBanner } from "@/components/ExpiryBanner";
 
 export const metadata = {
@@ -1541,14 +1541,14 @@ Run: `npx tsc --noEmit`
 Expected: no errors.
 
 Start the dev server through the Browser pane (`preview_start`, never `npm run dev` in Bash),
-open `/ihealthy`, and confirm: the premium panel shows three lines, switching to อายุ 8 leaves
+open `/ihealthy-ultra`, and confirm: the premium panel shows three lines, switching to อายุ 8 leaves
 two plan buttons, switching to แพลทินั่ม opens three territories, switching to เอเชีย leaves
 one coverage option, and switching to แพ็กเกจสุขภาพ locks the sum at 50,000.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/ihealthy-choice.ts src/components/IHealthyCalculator.tsx src/components/ihealthy/Sections.tsx src/app/ihealthy
+git add src/lib/ihealthy-ultra-choice.ts src/components/IHealthyCalculator.tsx src/components/ihealthy-ultra/Sections.tsx src/app/ihealthy-ultra
 git commit -m "feat(ihealthy): the page, the form and the premium panel"
 ```
 
@@ -1557,18 +1557,18 @@ git commit -m "feat(ihealthy): the page, the form and the premium panel"
 ## Task 7: The rider fold and its server action
 
 **Files:**
-- Create: `src/app/ihealthy/actions.ts`
-- Create: `src/components/ihealthy/RiderPanel.tsx`
+- Create: `src/app/ihealthy-ultra/actions.ts`
+- Create: `src/components/ihealthy-ultra/RiderPanel.tsx`
 - Modify: `src/components/IHealthyCalculator.tsx`
-- Test: `tests/calc/ihealthy-riders.test.ts`
+- Test: `tests/calc/ihealthy-ultra-riders.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/calc/ihealthy-riders.test.ts`:
+Create `tests/calc/ihealthy-ultra-riders.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { priceWithRiders } from "@/app/ihealthy/actions";
+import { priceWithRiders } from "@/app/ihealthy-ultra/actions";
 
 describe("priceWithRiders", () => {
   it("lists what an adult may attach to the x 2 base", async () => {
@@ -1617,12 +1617,12 @@ describe("priceWithRiders", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `npx vitest run tests/calc/ihealthy-riders.test.ts`
-Expected: FAIL — `Failed to resolve import "@/app/ihealthy/actions"`
+Run: `npx vitest run tests/calc/ihealthy-ultra-riders.test.ts`
+Expected: FAIL — `Failed to resolve import "@/app/ihealthy-ultra/actions"`
 
 - [ ] **Step 3: Write the action**
 
-Create `src/app/ihealthy/actions.ts`:
+Create `src/app/ihealthy-ultra/actions.ts`:
 
 ```ts
 "use server";
@@ -1721,18 +1721,18 @@ export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuot
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `npx vitest run tests/calc/ihealthy-riders.test.ts`
+Run: `npx vitest run tests/calc/ihealthy-ultra-riders.test.ts`
 Expected: PASS, 4 tests.
 
 - [ ] **Step 5: Write the fold**
 
-Create `src/components/ihealthy/RiderPanel.tsx`:
+Create `src/components/ihealthy-ultra/RiderPanel.tsx`:
 
 ```tsx
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { formatBaht } from "@/calc/money";
-import { priceWithRiders, type RiderChoice, type RiderQuoteInput, type RiderQuoteResult } from "@/app/ihealthy/actions";
+import { priceWithRiders, type RiderChoice, type RiderQuoteInput, type RiderQuoteResult } from "@/app/ihealthy-ultra/actions";
 
 export interface RiderPanelProps {
   /** everything the action needs except the attached riders themselves */
@@ -1835,7 +1835,7 @@ export function RiderPanel({ request }: RiderPanelProps) {
 In `src/components/IHealthyCalculator.tsx`, add the import beside the others:
 
 ```tsx
-import { RiderPanel } from "@/components/ihealthy/RiderPanel";
+import { RiderPanel } from "@/components/ihealthy-ultra/RiderPanel";
 ```
 
 and place the panel between the premium card and the benefit table, replacing the line
@@ -1852,14 +1852,14 @@ the `<BenefitTable …>` block with:
 
 - [ ] **Step 7: Check it works in the browser**
 
-Open `/ihealthy` in the Browser pane, open the fold, tick อุบัติเหตุ, and confirm the total
+Open `/ihealthy-ultra` in the Browser pane, open the fold, tick อุบัติเหตุ, and confirm the total
 grows and the row appears. With แพ็กเกจสุขภาพ selected the list is five rows; at อายุ 8 it is
 four.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/app/ihealthy/actions.ts src/components/ihealthy/RiderPanel.tsx src/components/IHealthyCalculator.tsx tests/calc/ihealthy-riders.test.ts
+git add src/app/ihealthy-ultra/actions.ts src/components/ihealthy-ultra/RiderPanel.tsx src/components/IHealthyCalculator.tsx tests/calc/ihealthy-ultra-riders.test.ts
 git commit -m "feat(ihealthy): attach other riders through the real engine"
 ```
 
@@ -1868,17 +1868,17 @@ git commit -m "feat(ihealthy): attach other riders through the real engine"
 ## Task 8: The chat message and the copy-to-clipboard summary
 
 **Files:**
-- Create: `src/lib/ihealthy-cta.ts`
+- Create: `src/lib/ihealthy-ultra-cta.ts`
 - Modify: `src/components/IHealthyCalculator.tsx`
-- Test: `tests/calc/ihealthy-cta.test.ts`
+- Test: `tests/calc/ihealthy-ultra-cta.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/calc/ihealthy-cta.test.ts`:
+Create `tests/calc/ihealthy-ultra-cta.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { iHealthyMessage, iHealthyQuoteText } from "@/lib/ihealthy-cta";
+import { iHealthyMessage, iHealthyQuoteText } from "@/lib/ihealthy-ultra-cta";
 
 const facts = {
   planName: "โกลด์", annualMax: 25_000_000, baseLabel: "ไลฟ์ โพรเทค+ x 2",
@@ -1916,12 +1916,12 @@ describe("iHealthyQuoteText", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `npx vitest run tests/calc/ihealthy-cta.test.ts`
-Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-cta"`
+Run: `npx vitest run tests/calc/ihealthy-ultra-cta.test.ts`
+Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-ultra-cta"`
 
 - [ ] **Step 3: Write the module**
 
-Create `src/lib/ihealthy-cta.ts`:
+Create `src/lib/ihealthy-ultra-cta.ts`:
 
 ```ts
 import { formatBaht } from "@/calc/money";
@@ -1985,7 +1985,7 @@ export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `npx vitest run tests/calc/ihealthy-cta.test.ts`
+Run: `npx vitest run tests/calc/ihealthy-ultra-cta.test.ts`
 Expected: PASS, 3 tests.
 
 - [ ] **Step 5: Wire the buttons into the calculator**
@@ -1994,7 +1994,7 @@ In `src/components/IHealthyCalculator.tsx`, add the imports:
 
 ```tsx
 import { ContactButtons } from "@/components/sales/ContactButtons";
-import { iHealthyMessage, iHealthyQuoteText } from "@/lib/ihealthy-cta";
+import { iHealthyMessage, iHealthyQuoteText } from "@/lib/ihealthy-ultra-cta";
 ```
 
 Build the facts just after `const planOption = ...`:
@@ -2022,7 +2022,7 @@ and put the buttons after the benefit table, as the last child of the outer `div
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/ihealthy-cta.ts src/components/IHealthyCalculator.tsx tests/calc/ihealthy-cta.test.ts
+git add src/lib/ihealthy-ultra-cta.ts src/components/IHealthyCalculator.tsx tests/calc/ihealthy-ultra-cta.test.ts
 git commit -m "feat(ihealthy): hand the quote to the customer as chat text"
 ```
 
@@ -2031,19 +2031,19 @@ git commit -m "feat(ihealthy): hand the quote to the customer as chat text"
 ## Task 9: A link that carries the whole arrangement
 
 **Files:**
-- Create: `src/lib/ihealthy-link.ts`
-- Modify: `src/app/ihealthy/page.tsx`
+- Create: `src/lib/ihealthy-ultra-link.ts`
+- Modify: `src/app/ihealthy-ultra/page.tsx`
 - Modify: `src/components/IHealthyCalculator.tsx`
-- Test: `tests/calc/ihealthy-link.test.ts`
+- Test: `tests/calc/ihealthy-ultra-link.test.ts`
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/calc/ihealthy-link.test.ts`:
+Create `tests/calc/ihealthy-ultra-link.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { iHealthyTable } from "@/lib/ihealthy-table";
-import { initialFrom, queryFrom } from "@/lib/ihealthy-link";
+import { iHealthyTable } from "@/lib/ihealthy-ultra-table";
+import { initialFrom, queryFrom } from "@/lib/ihealthy-ultra-link";
 
 const table = iHealthyTable(new Date("2026-09-12"));
 
@@ -2088,18 +2088,18 @@ describe("queryFrom", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `npx vitest run tests/calc/ihealthy-link.test.ts`
-Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-link"`
+Run: `npx vitest run tests/calc/ihealthy-ultra-link.test.ts`
+Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-ultra-link"`
 
 - [ ] **Step 3: Write the module**
 
-Create `src/lib/ihealthy-link.ts`:
+Create `src/lib/ihealthy-ultra-link.ts`:
 
 ```ts
 import type { PayMode, Sex } from "@/calc/types";
-import type { IHealthyTable } from "@/lib/ihealthy-table";
-import { coveragesFor, plansFor, territoriesFor } from "@/lib/ihealthy-quote";
-import type { IHealthyInitial } from "@/lib/ihealthy-choice";
+import type { IHealthyTable } from "@/lib/ihealthy-ultra-table";
+import { coveragesFor, plansFor, territoriesFor } from "@/lib/ihealthy-ultra-quote";
+import type { IHealthyInitial } from "@/lib/ihealthy-ultra-choice";
 
 /**
  * The arrangement the page opens on when the link says nothing: a woman of 35 on โกลด์, the
@@ -2173,12 +2173,12 @@ export function queryFrom(v: IHealthyInitial): string {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `npx vitest run tests/calc/ihealthy-link.test.ts`
+Run: `npx vitest run tests/calc/ihealthy-ultra-link.test.ts`
 Expected: PASS, 5 tests.
 
 - [ ] **Step 5: Read the query string on the server**
 
-In `src/app/ihealthy/page.tsx`, replace the hard-coded `initial` with the parsed one. The
+In `src/app/ihealthy-ultra/page.tsx`, replace the hard-coded `initial` with the parsed one. The
 whole component becomes:
 
 ```tsx
@@ -2209,7 +2209,7 @@ export default async function IHealthyPage(
 and add the import:
 
 ```tsx
-import { initialFrom } from "@/lib/ihealthy-link";
+import { initialFrom } from "@/lib/ihealthy-ultra-link";
 ```
 
 - [ ] **Step 6: Keep the address bar in step**
@@ -2217,7 +2217,7 @@ import { initialFrom } from "@/lib/ihealthy-link";
 In `src/components/IHealthyCalculator.tsx`, add the import:
 
 ```tsx
-import { queryFrom } from "@/lib/ihealthy-link";
+import { queryFrom } from "@/lib/ihealthy-ultra-link";
 ```
 
 and, after the fallback effects, add:
@@ -2236,13 +2236,13 @@ and, after the fallback effects, add:
 
 - [ ] **Step 7: Check a shared link opens the same page**
 
-Open `/ihealthy` in the Browser pane, change the plan and the age, copy the address, open it
+Open `/ihealthy-ultra` in the Browser pane, change the plan and the age, copy the address, open it
 in a new tab, and confirm the card comes back identical.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/lib/ihealthy-link.ts src/app/ihealthy/page.tsx src/components/IHealthyCalculator.tsx tests/calc/ihealthy-link.test.ts
+git add src/lib/ihealthy-ultra-link.ts src/app/ihealthy-ultra/page.tsx src/components/IHealthyCalculator.tsx tests/calc/ihealthy-ultra-link.test.ts
 git commit -m "feat(ihealthy): carry the whole arrangement in the link"
 ```
 
@@ -2322,7 +2322,7 @@ and, as the first child of the outer `div`, a heading that only paper sees:
 
 - [ ] **Step 3: Check the print preview**
 
-In the Browser pane open `/ihealthy` and print to PDF. Confirm: white background, no form
+In the Browser pane open `/ihealthy-ultra` and print to PDF. Confirm: white background, no form
 controls, no rider fold, the premium summary and the full benefit table present.
 
 - [ ] **Step 4: Commit**
@@ -2344,7 +2344,7 @@ git commit -m "feat(ihealthy): print the quote and the benefit table on paper"
 In `src/app/page.tsx`, add to the `SALES_PAGES` array:
 
 ```tsx
-  { href: "/ihealthy", label: "ไอเฮลท์ตี้ อัลตร้า" },
+  { href: "/ihealthy-ultra", label: "ไอเฮลท์ตี้ อัลตร้า" },
 ```
 
 - [ ] **Step 2: Run the whole verification**
@@ -2355,7 +2355,7 @@ Expected: `tsc --noEmit` clean, lint clean, every test passing (the five new fil
 
 - [ ] **Step 3: Check the page one last time in the browser**
 
-Open `/ihealthy` and walk the four cases the spec names:
+Open `/ihealthy-ultra` and walk the four cases the spec names:
 
 1. หญิง 35 · x 2 · โกลด์ · ประเทศไทย · เต็มจำนวน → base 2,130 + rider 43,800 = 45,930 a year
 2. หญิง 45 · บรอนซ์ → the rider line reads 26,700, the workbook's own example
@@ -2392,4 +2392,4 @@ Checked against `docs/superpowers/specs/2026-09-12-ihealthy-ultra-page-design.md
 Names used consistently across tasks: `iHealthyTable`, `iHealthyFacts`, `iHealthyPricing`,
 `ihuKey`, `plansFor`, `territoriesFor`, `coveragesFor`, `benefitValue`, `isHeading`,
 `priceWithRiders`, `initialFrom`, `queryFrom`, and `IHealthyInitial` from
-`src/lib/ihealthy-choice.ts`, which both the component and the link module import.
+`src/lib/ihealthy-ultra-choice.ts`, which both the component and the link module import.

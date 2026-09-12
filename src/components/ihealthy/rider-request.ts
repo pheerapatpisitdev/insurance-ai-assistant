@@ -1,4 +1,4 @@
-import type { AttachedRider, RiderQuoteInput } from "@/app/ihealthy/actions";
+import type { AttachedRider, RiderQuoteInput } from "@/app/ihealthy-ultra/actions";
 
 /**
  * The two things the rider fold works out before it can ask the server anything: which

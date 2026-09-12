@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { priceWithRiders, type RiderQuoteInput } from "@/app/ihealthy/actions";
+import { priceWithRiders, type RiderQuoteInput } from "@/app/ihealthy-ultra/actions";
 import { arrangementKey, attachedRiders } from "@/components/ihealthy/rider-request";
 
 const ADULT: Omit<RiderQuoteInput, "riders"> = {
