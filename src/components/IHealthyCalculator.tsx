@@ -6,6 +6,7 @@ import { formatBaht } from "@/calc/money";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
 import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
 import { BenefitTable } from "@/components/ihealthy/BenefitTable";
+import { RiderPanel } from "@/components/ihealthy/RiderPanel";
 import { deathBenefitOf, iHealthyPricing, type IHealthyPricing } from "@/lib/ihealthy-quote";
 import {
   baseFor, resolveArrangement, sumFor, sumsFor, type IHealthyInitial,
@@ -316,6 +317,18 @@ export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealt
           </>
         )}
       </div>
+
+      {/* The agent's own half, under the customer's. It is offered only for an arrangement
+          the company sells, on the same condition the card above prices one: there is no
+          base to attach anything to otherwise. */}
+      {plan && territory && coverage && (
+        <RiderPanel
+          request={{
+            base: base.variant, age, sex, sumAssured, mode,
+            plan: plan.code, territory, coverage,
+          }}
+        />
+      )}
 
       <BenefitTable
         data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
