@@ -120,6 +120,16 @@ def section_no(title):
     return int(m.group(1)) if m else None
 
 
+def states(prose, phrase):
+    """True when the prose states this phrase with its number intact.
+
+    A bare `in` accepts a truncated constant: "20 วัน" sits inside "120 วัน" and
+    "ร้อยละ 1" inside "ร้อยละ 10", so a lost digit would pass the guard and ship a
+    figure that contradicts the paragraph printed beside it.
+    """
+    return re.search(rf"(?<!\d){re.escape(phrase)}(?!\d)", prose) is not None
+
+
 def extract():
     wb = openpyxl.load_workbook(XLSX, data_only=True)
     benefit = reader(wb[BENEFIT_SHEET])
@@ -200,17 +210,18 @@ def extract():
     }
     empty = sorted(k for k, v in out_terms.items() if not v)
     assert not empty, f"nothing read for terms {empty} — check the row numbers at the top of this script"
-    # Each figure is looked for in the words that carry it, not on its own: "9" sits inside
-    # "98 ปี", so a digit lost off a constant would still be found in the prose it contradicts.
+    # Each figure is looked for in the words that carry it rather than on its own, because
+    # renewalCopay alone states 1, 15, 2, 200, 3, 30, 400, 50 and 98, and a bare number would
+    # find one of those whatever the constant said.
     for phrase, prose_name in (
         (f"ถึงอายุ {RENEWAL_TO_AGE} ปี", "renewalCopay"),
         (f"ร้อยละ {NO_CLAIM_DISCOUNT_PERCENT}", "noClaimDiscount"),
         (f"{OUT_OF_TERRITORY_DAYS} วัน", "outOfTerritory"),
     ):
-        assert phrase in out_terms[prose_name], f"{phrase!r} is no longer stated in {prose_name}"
-    assert f"{WAITING_DAYS} วัน" in waiting_prose, \
+        assert states(out_terms[prose_name], phrase), f"{phrase!r} is no longer stated in {prose_name}"
+    assert states(waiting_prose, f"{WAITING_DAYS} วัน"), \
         f"'{WAITING_DAYS} วัน' is no longer stated in {TERMS_SHEET}!A{WAITING_ROW}"
-    assert f"{SPECIAL_WAITING_DAYS} วัน" in special_waiting_prose, \
+    assert states(special_waiting_prose, f"{SPECIAL_WAITING_DAYS} วัน"), \
         f"'{SPECIAL_WAITING_DAYS} วัน' is no longer stated in {TERMS_SHEET}!A{SPECIAL_WAITING_ROW}"
 
     disclaimer = benefit("A", DISCLAIMER_ROW)
