@@ -1,3 +1,4 @@
+import { formatBaht } from "@/calc/money";
 import { benefitValue, isHeading, type BenefitEntry, type IHealthyFacts } from "@/lib/ihealthy-facts";
 
 /**
@@ -17,6 +18,16 @@ export interface BenefitTableProps {
   sellable: string[];
   /** the company's note that the rider and its endorsement share one annual ceiling */
   sharedLimit: string;
+  /**
+   * The whole yearly premium under each plan, in satang, for the arrangement on screen —
+   * null where that plan has no price at this age, and undefined for every plan when no
+   * price may be shown at all.
+   *
+   * A table of what six plans pay, with the price of only one of them on the card above it,
+   * is half a comparison: the figure a reader is weighing every row against is the one it
+   * does not carry. It is also what a printed sheet has instead of a card.
+   */
+  premiums?: Record<string, number | null>;
 }
 
 const DASH = "-";
@@ -82,7 +93,9 @@ const HEAD =
  */
 const COLUMN_RULE = "border-r border-[var(--lg-panel-line)] last:border-r-0";
 
-export function BenefitTable({ data, selected, age, sellable, sharedLimit }: BenefitTableProps) {
+export function BenefitTable(
+  { data, selected, age, sellable, sharedLimit, premiums }: BenefitTableProps,
+) {
   const plans = data.plans;
   return (
     <div>
@@ -144,6 +157,31 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
             </tr>
           </thead>
           <tbody>
+            {premiums && (
+              <tr className="border-t border-[var(--lg-panel-line)]">
+                <th
+                  scope="row"
+                  className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
+                >
+                  เบี้ยรวมต่อปี
+                </th>
+                {plans.map((p) => {
+                  const premium = premiums[p.code];
+                  return (
+                    <td
+                      key={p.code}
+                      className={`${COLUMN_RULE} px-3 py-2.5 text-center font-medium tabular-nums ${
+                        p.code === selected
+                          ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold)]"
+                          : "text-[var(--lg-white)]"
+                      }`}
+                    >
+                      {premium === null || premium === undefined ? DASH : formatBaht(premium)}
+                    </td>
+                  );
+                })}
+              </tr>
+            )}
             {/* keyed by the wording rather than by `no`, which a sub-row like หมวดย่อยที่ 2.1
                 does not have; the sheet's 41 titles and headings are all distinct */}
             {data.rows.map((entry) =>

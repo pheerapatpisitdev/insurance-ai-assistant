@@ -199,6 +199,14 @@ body:has(.theme-legacy) {
    dashes both say the same thing in words elsewhere on the page: the heading
    names the plan being quoted, and a column the company will not sell at this age
    carries `ไม่ขายที่อายุนี้` under its own name. */
+/* A4 with a 12 mm margin, so the benefit table is laid out against a page of a known width
+   rather than against whatever the browser's default happens to be. The sheet is the
+   deliverable here: an agent prints this and hands it over. */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
 @media print {
   .theme-legacy {
     color-scheme: light;
@@ -253,6 +261,20 @@ body:has(.theme-legacy) {
   .theme-legacy th,
   .theme-legacy td {
     min-width: 0;
+  }
+
+  /* The row titles hold a third of the sheet at their screen width, which leaves the six
+     plans squeezed into the rest. On paper they take a quarter and wrap instead. */
+  .theme-legacy tbody th,
+  .theme-legacy thead th:first-child,
+  .theme-legacy tbody th > span {
+    width: 25%;
+    max-width: none;
+  }
+
+  /* A row split across two sheets is a row whose figures have lost their title. */
+  .theme-legacy tbody tr {
+    break-inside: avoid;
   }
 
   /* A folded block prints as a heading with nothing under it, so the conditions and the

@@ -100,6 +100,28 @@ export function IHealthyCalculator(
   );
 
   /**
+   * What the whole arrangement costs a year under each of the six plans, so the benefit
+   * table carries the figure every one of its rows is being weighed against. Everything but
+   * the health plan is held still, which is what makes the six comparable: the same person,
+   * the same base plan and sum, the same kind of cover.
+   *
+   * Undefined, not a row of dashes, when no price may be shown — a lapsed rate table has
+   * nothing to say about price and the table still has plenty to say about cover.
+   */
+  const premiums = table.expired
+    ? undefined
+    : Object.fromEntries(
+        table.plans.map((p) => {
+          const priced = territory && coverage
+            ? iHealthyPricing(table, {
+                base: base.variant, sex, age, sumAssured, plan: p.code, territory, coverage,
+              })
+            : undefined;
+          return [p.code, priced?.total.find((m) => m.mode === "annual")?.total ?? null];
+        }),
+      );
+
+  /**
    * The address bar follows the card, so the link an agent copies opens on the arrangement
    * the agent is looking at. It is written from what was resolved and not from what was
    * asked for — ask for ซิลเวอร์ at eight and the address ends up saying สมาร์ท, which is the
@@ -412,7 +434,7 @@ export function IHealthyCalculator(
       <div className="sm:mx-[calc(50%-50vw)] sm:w-screen sm:px-6">
         <BenefitTable
           data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
-          sellable={plans.map((p) => p.code)}
+          sellable={plans.map((p) => p.code)} premiums={premiums}
         />
       </div>
 
