@@ -318,10 +318,12 @@ export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealt
         )}
       </div>
 
-      {/* The agent's own half, under the customer's. It is offered only for an arrangement
-          the company sells, on the same condition the card above prices one: there is no
-          base to attach anything to otherwise. */}
-      {plan && territory && coverage && (
+      {/* The agent's own half, under the customer's, and on exactly the condition the card
+          above prices one: `shown` is the whole test — a current rate table, and a price for
+          all three of base, rider and instalment. Anything weaker and the fold would go on
+          quoting from a table the card has just called lapsed, or offer riders to attach to
+          a base the company does not cover at this age. */}
+      {shown && plan && territory && coverage && (
         <RiderPanel
           request={{
             base: base.variant, age, sex, sumAssured, mode,

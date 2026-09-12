@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { priceWithRiders, type RiderQuoteInput } from "@/app/ihealthy/actions";
+import { arrangementKey, attachedRiders } from "@/components/ihealthy/rider-request";
 
 const ADULT: Omit<RiderQuoteInput, "riders"> = {
   base: "WLF99H", age: 35, sex: "F", sumAssured: 1_000_000, mode: "annual",
@@ -10,10 +11,13 @@ const PACKAGE: Omit<RiderQuoteInput, "riders"> = {
   plan: "BRONZE", territory: "ประเทศไทย", coverage: "Full Coverage",
 };
 
+const offered = (r: { available: { code: string; eligible: boolean }[] }) =>
+  r.available.filter((a) => a.eligible).map((a) => a.code);
+
 describe("priceWithRiders", () => {
   it("lists what an adult may attach to the x 2 base", async () => {
     const r = await priceWithRiders({ ...ADULT, riders: [] });
-    const codes = r.available.map((a) => a.code);
+    const codes = offered(r);
     expect(codes).toContain("AP");
     expect(codes).toContain("DCI");
     expect(codes).not.toContain("IHU");
@@ -21,13 +25,26 @@ describe("priceWithRiders", () => {
 
   it("drops the riders the health package refuses", async () => {
     const r = await priceWithRiders({ ...PACKAGE, riders: [] });
-    const codes = r.available.map((a) => a.code);
-    expect(codes).toEqual(["AP", "MEX", "MEB", "DCI", "RRSS"]);
+    expect(r.available.map((a) => a.code)).toEqual(["AP", "MEX", "MEB", "DCI", "RRSS"]);
   });
 
   it("greys the four riders a child is too young for", async () => {
+    const r = await priceWithRiders({ ...ADULT, age: 8, sex: "M", riders: [] });
+    const greyed = r.available.filter((a) => !a.eligible);
+    expect(greyed.map((a) => a.code)).toEqual(["WP", "ECARE", "DCI", "PLS"]);
+    // greyed, not gone: the agent asked whether the rider can be added, and "20 - 65 ปี"
+    // beside the reason is the answer
+    for (const a of greyed) {
+      expect(a.reason).toBeTruthy();
+      expect(a.ageRange).toMatch(/\d+ - \d+ ปี/);
+    }
+    expect(offered(r)).toEqual(["PB", "AP", "MEX", "MEB", "CPR", "HIC", "RRSS", "CI123"]);
+  });
+
+  it("keeps the package's five at age 8, with the one he is too young for greyed", async () => {
     const r = await priceWithRiders({ ...PACKAGE, age: 8, sex: "M", riders: [] });
-    expect(r.available.map((a) => a.code)).toEqual(["AP", "MEX", "MEB", "RRSS"]);
+    expect(r.available.map((a) => a.code)).toEqual(["AP", "MEX", "MEB", "DCI", "RRSS"]);
+    expect(offered(r)).toEqual(["AP", "MEX", "MEB", "RRSS"]);
   });
 
   it("prices an attached rider on top of the base and the health plan", async () => {
@@ -46,17 +63,26 @@ describe("priceWithRiders", () => {
     expect(r.totalModal).toBe(r.items.reduce((sum, i) => sum + i.modal, 0));
   });
 
-  it("leaves out a rider the package refuses, and says why", async () => {
-    const r = await priceWithRiders({ ...PACKAGE, riders: [{ code: "ECARE", sumAssured: 500_000 }] });
-    expect(r.items.some((i) => i.code === "ECARE")).toBe(false);
-    expect(r.warnings.some((w) => w.includes("ECARE"))).toBe(true);
-    expect(r.totalModal).toBe(r.items.reduce((sum, i) => sum + i.modal, 0));
+  it("says which of the two reasons left a ticked rider out", async () => {
+    const byPackage = await priceWithRiders({ ...PACKAGE, riders: [{ code: "ECARE", sumAssured: 500_000 }] });
+    expect(byPackage.items.some((i) => i.code === "ECARE")).toBe(false);
+    expect(byPackage.warnings).toContain("สัญญาเพิ่มเติมอุบัติเหตุ (ECARE) ไม่ขายกับ package นี้ จึงไม่ได้คิดเบี้ยให้");
+    expect(byPackage.totalModal).toBe(byPackage.items.reduce((sum, i) => sum + i.modal, 0));
+
+    const byAge = await priceWithRiders({
+      ...PACKAGE, age: 8, sex: "M", riders: [{ code: "DCI", sumAssured: 200_000 }],
+    });
+    expect(byAge.items.some((i) => i.code === "DCI")).toBe(false);
+    expect(byAge.warnings).toContain("สัญญาเพิ่มเติมโรคร้ายแรง (DCI) ไม่สามารถซื้อได้ จึงไม่ได้คิดเบี้ยให้");
   });
 
   it("prices DCI at the sum the package pins it to, whatever it is asked for", async () => {
     const pinned = await priceWithRiders({ ...PACKAGE, riders: [{ code: "DCI", sumAssured: 200_000 }] });
     const greedy = await priceWithRiders({ ...PACKAGE, riders: [{ code: "DCI", sumAssured: 5_000_000 }] });
-    expect(pinned.available.find((a) => a.code === "DCI")!.exactSumAssured).toBe(200_000);
+    const choice = pinned.available.find((a) => a.code === "DCI")!;
+    expect(choice.exactSumAssured).toBe(200_000);
+    // the sentence the fold prints is the company's own, from the rules
+    expect(choice.exactMessage).toBe("ต้องระบุทุน DCI 2 แสนบาทเท่านั้น");
     expect(greedy.items.find((i) => i.code === "DCI")!.eligible).toBe(true);
     expect(greedy.totalModal).toBe(pinned.totalModal);
   });
@@ -82,5 +108,52 @@ describe("priceWithRiders", () => {
       const r = await priceWithRiders(input as RiderQuoteInput);
       expect(r).toEqual({ available: [], items: [], totalModal: 0, warnings: ["คำขอไม่ถูกต้อง"] });
     }
+  });
+});
+
+describe("arrangementKey", () => {
+  it("changes when anything the engine would price on changes", () => {
+    const changes: Partial<RiderQuoteInput>[] = [
+      { base: "WLF99L" }, { age: 36 }, { sex: "M" }, { sumAssured: 2_000_000 },
+      { mode: "monthly" }, { plan: "SILVER" }, { territory: "เอเชีย" }, { coverage: "Deductible" },
+    ];
+    for (const change of changes) {
+      expect(arrangementKey({ ...ADULT, ...change })).not.toBe(arrangementKey(ADULT));
+    }
+  });
+
+  it("is the same key for the same arrangement asked twice", () => {
+    expect(arrangementKey({ ...ADULT })).toBe(arrangementKey(ADULT));
+  });
+
+  it("does not change when only the attached riders do", () => {
+    // The answer stays on screen while another is priced, so a tick must not read as a
+    // different arrangement; an age change must.
+    const ticked: RiderQuoteInput = { ...ADULT, riders: [{ code: "AP", sumAssured: 100_000 }] };
+    expect(arrangementKey(ticked)).toBe(arrangementKey(ADULT));
+  });
+});
+
+describe("attachedRiders", () => {
+  it("sends a rider's sum, plan and option as they were picked", () => {
+    expect(attachedRiders({
+      AP: { sumAssured: 750_000 },
+      MEB: { plan: 500 },
+      PLS: { option: "PLS10", sumAssured: 300_000 },
+    })).toEqual([
+      { code: "AP", sumAssured: 750_000 },
+      { code: "MEB", plan: 500 },
+      { code: "PLS", option: "PLS10", sumAssured: 300_000 },
+    ]);
+  });
+
+  it("sends no sum at all for a field the agent has emptied", () => {
+    const [ap] = attachedRiders({ AP: { sumAssured: "" } });
+    expect(ap).toEqual({ code: "AP" });
+    expect("sumAssured" in ap).toBe(false);
+  });
+
+  it("sends nothing when nothing is ticked", () => {
+    expect(attachedRiders({})).toEqual([]);
   });
 });

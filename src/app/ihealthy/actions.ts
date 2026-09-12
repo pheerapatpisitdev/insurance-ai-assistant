@@ -2,7 +2,7 @@
 import { quote } from "@/calc/quote";
 import { getPlan, type PlanBundle } from "@/calc/plans/registry";
 import {
-  disabledRiders, packageExactSumAssured, packageSeq, requiredRiders, riderAvailability,
+  CANNOT_BUY, disabledRiders, packageExactSumAssured, packageSeq, requiredRiders, riderAvailability,
 } from "@/calc/rules";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import type { PayMode, Sex } from "@/calc/types";
@@ -34,14 +34,19 @@ export interface RiderChoice {
   code: string;
   name: string;
   ageRange: string;
+  /** false for a rider this age cannot buy: shown, greyed, and not attachable */
+  eligible: boolean;
+  /** why not, in the company's own words */
+  reason?: string;
   saMin?: number;
   saMax?: number;
   /** the fixed plan amounts this rider sells, when it sells plans rather than sums */
   plans?: number[];
   /** the named variants this rider sells */
   options?: { code: string; name: string }[];
-  /** the package pins this rider's sum assured here */
+  /** the package pins this rider's sum assured here, and says so in these words */
   exactSumAssured?: number;
+  exactMessage?: string;
 }
 
 /**
@@ -158,15 +163,19 @@ export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuot
   const required = new Set(requiredRiders(plan.rules, seq));
   const ctx = { age: asked.age, baseSumAssured: asked.sumAssured };
 
+  // A rider this age cannot buy stays on the list, greyed, carrying its reason. Taking it
+  // away answers the agent's question — "can we add the critical-illness cover for him?" —
+  // by making the question unaskable, which is the fault this whole page was built to fix.
+  // A rider the package does not sell is a different matter: it is not on offer here at all.
   const available: RiderChoice[] = [];
   for (const code of plan.riderOrder) {
     if (code === THE_HEALTH_RIDER || required.has(code) || off.has(code)) continue;
     const a = riderAvailability(plan.rules, plan.rates, code, ctx);
-    if (!a.eligible) continue;
+    const exact = packageExactSumAssured(plan.rules, seq, code);
     available.push({
-      code, name: a.name, ageRange: a.ageRange, saMin: a.saMin, saMax: a.saMax,
-      plans: a.plans, options: a.options,
-      exactSumAssured: packageExactSumAssured(plan.rules, seq, code)?.amount,
+      code, name: a.name, ageRange: a.ageRange, eligible: a.eligible, reason: a.reason,
+      saMin: a.saMin, saMax: a.saMax, plans: a.plans, options: a.options,
+      exactSumAssured: exact?.amount, exactMessage: exact?.message,
     });
   }
 
@@ -180,8 +189,8 @@ export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuot
   const dropped: string[] = [];
   for (const rider of asked.riders) {
     const choice = offered.get(rider.code);
-    if (choice === undefined) {
-      dropped.push(plan.rules.riders[rider.code]?.name ?? rider.code);
+    if (choice === undefined || !choice.eligible) {
+      dropped.push(rider.code);
       continue;
     }
     attached.push(
@@ -205,6 +214,10 @@ export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuot
     ],
   });
 
+  // Why a tick was left out is the engine's to say, and it says two different things: a
+  // package does not sell this rider at all, an eight-year-old is too young for that one.
+  // Both would otherwise come out as the same shrug.
+  const why = new Map(result.availability.map((a) => [a.code, a]));
   return {
     available,
     items: result.items.map((i) => ({
@@ -212,7 +225,10 @@ export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuot
     })),
     totalModal: result.totalModal,
     warnings: [
-      ...dropped.map((name) => `${name} ไม่มีในแบบที่เลือกไว้ จึงไม่ได้คิดเบี้ยให้`),
+      ...dropped.map((code) => {
+        const a = why.get(code);
+        return `${a?.name ?? code} ${a?.reason ?? CANNOT_BUY} จึงไม่ได้คิดเบี้ยให้`;
+      }),
       ...result.warnings.map((w) => w.message),
     ],
   };
