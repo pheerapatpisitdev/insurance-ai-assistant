@@ -68,7 +68,7 @@ describe("quoteCard, for a bundle", () => {
     const card = quoteCard(MAN40, WHILE_CURRENT)!;
     expect(card.premium).toEqual({ amount: "7,752", per: "ต่อปี" });
     expect(card.perDay).toBe("ตกวันละ 22 บาท");
-    expect(card.others).toBe("ราย 6 เดือน 4,031 บาท");
+    expect(card.others).toEqual(["ราย 6 เดือน 4,031 บาท"]);
   });
 
   it("says what the arrangement is made of", () => {
@@ -148,7 +148,7 @@ describe("quoteCard, for a bundle", () => {
     const card = quoteCard(MAN40, new Date("2027-04-01"))!;
     expect(card.premium).toBeNull();
     expect(card.perDay).toBeNull();
-    expect(card.others).toBeNull();
+    expect(card.others).toEqual([]);
     expect(card.notes[0]).toContain("หมดอายุ");
     expect(section(card, DEATH)!.rows[0].amount).toBe("1,150,000");
   });

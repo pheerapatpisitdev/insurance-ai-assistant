@@ -74,7 +74,10 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
   const modes = who ? lifeProtectModes(table, term, who) : undefined;
   const headline = displayPremium(modes, table.expired);
   const annual = modes?.find((m) => m.mode === "annual");
-  const others = (modes ?? []).filter((m) => m.mode !== headline?.mode && !m.belowMinimum);
+  // smallest instalment upward, so the block under the headline reads day, half-year, year
+  const others = (modes ?? [])
+    .filter((m) => m.mode !== headline?.mode && !m.belowMinimum)
+    .sort((a, b) => a.total - b.total);
   const death = who ? deathBenefitOf(table, who.age, sumAssured) : undefined;
   const cash = who ? cashAt(term, sex, who.age, sumAssured, table.ageMin) : [];
   /**
@@ -218,21 +221,21 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
                 <span className="lg-metal-text">{formatBaht(headline.total)}</span>
                 <span className="ml-2 text-base text-[var(--lg-mute)]">บาท {PER_LABEL[headline.mode]}</span>
               </div>
-              <div className="mt-2.5 text-sm text-[var(--lg-mute)]">ตกวันละ {perDay(annual.total)} บาท</div>
-              {/* the instalments the headline did not take. Muted labels, but the figures
-                  themselves in white on the display face: an agent reading a yearly premium
-                  off the screen should not have to lean in for it. */}
-              {others.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--lg-mute)]">
-                  {others.map((m) => (
-                    <span key={m.mode}>
-                      {PAY_MODE_LABEL[m.mode]}{" "}
-                      <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span>{" "}
-                      บาท
-                    </span>
-                  ))}
+              {/* What the headline did not take, one instalment a line and smallest first.
+                  Muted labels with the figures in white on the display face: an agent
+                  reading a yearly premium off the screen should not have to lean in. */}
+              <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
+                <div>
+                  ตกวันละ{" "}
+                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDay(annual.total)}</span> บาท
                 </div>
-              )}
+                {others.map((m) => (
+                  <div key={m.mode}>
+                    {PAY_MODE_LABEL[m.mode]}{" "}
+                    <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="text-sm font-medium text-[var(--lg-gold)]">ขอราคาปัจจุบันได้ทางแชทด้านล่าง</div>

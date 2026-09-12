@@ -65,7 +65,7 @@ function heightOf(card: QuoteCard): number {
     + H.plan + H.insured
     + (card.premium ? H.premium : H.noPrice)
     + (card.perDay ? H.perDay : 0)
-    + (card.others ? H.others : 0)
+    + card.others.length * H.others
     + card.sections.reduce((h, s) => h + sectionHeight(s.rows), 0)
     + chartHeight(card.chart)
     + H.gap + H.hairline + H.afterHairline + card.notes.length * H.note;
@@ -235,7 +235,9 @@ export async function GET(req: NextRequest) {
           </div>
         )}
         {card.perDay && <div style={{ ...band(H.perDay), fontSize: 26, color: MUTE }}>{card.perDay}</div>}
-        {card.others && <div style={{ ...band(H.others), fontSize: 25, color: MUTE }}>{card.others}</div>}
+        {card.others.map((line) => (
+          <div key={line} style={{ ...band(H.others), fontSize: 25, color: MUTE }}>{line}</div>
+        ))}
 
         {card.sections.map((s) => <Rows key={s.title} title={s.title} rows={s.rows} />)}
         {card.chart && <Chart chart={card.chart} />}

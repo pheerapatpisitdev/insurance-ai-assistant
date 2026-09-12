@@ -72,8 +72,8 @@ export interface QuoteCard {
   premium: { amount: string; per: string } | null;
   /** "ตกวันละ 48 บาท" */
   perDay: string | null;
-  /** the instalments the headline did not take */
-  others: string | null;
+  /** the instalments the headline did not take, smallest first, one to a line */
+  others: string[];
   /** the titled blocks of figures, in the order they are read */
   sections: CardSection[];
   /** the small print, one line per entry */
@@ -197,18 +197,20 @@ function cashRowsFor(
 function premiumLines(modes: ModePremium[] | undefined, expired: boolean): {
   premium: QuoteCard["premium"];
   perDay: string | null;
-  others: string | null;
+  others: string[];
 } {
   const headline = displayPremium(modes, expired);
   const annual = modes?.find((m) => m.mode === "annual");
-  // a lapsed table has no price to show, and the other instalments are prices too
+  // a lapsed table has no price to show, and the other instalments are prices too.
+  // Smallest first, so with the day rate above them the block reads day, half-year, year.
   const others = expired ? [] : (modes ?? [])
     .filter((m) => m.mode !== headline?.mode && !m.belowMinimum)
+    .sort((a, b) => a.total - b.total)
     .map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`);
   return {
     premium: headline ? { amount: formatBaht(headline.total), per: PER_LABEL[headline.mode] } : null,
     perDay: headline && annual && !expired ? `ตกวันละ ${perDay(annual.total)} บาท` : null,
-    others: others.length ? others.join(" · ") : null,
+    others,
   };
 }
 

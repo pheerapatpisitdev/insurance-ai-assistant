@@ -66,7 +66,8 @@ describe("quoteCard", () => {
     expect(card.insuredLine).toBe("ชาย 35 ปี · ทุน 1,000,000 บาท");
     expect(card.premium).toEqual({ amount: "2,583", per: "ต่อเดือน" });
     expect(card.perDay).toBe("ตกวันละ 79 บาท");
-    expect(card.others).toBe("รายปี 28,700 บาท · ราย 6 เดือน 14,924 บาท");
+    // smallest instalment first, one to a line
+    expect(card.others).toEqual(["ราย 6 เดือน 14,924 บาท", "รายปี 28,700 บาท"]);
   });
 
   it("bands the death benefit the way every other surface does", () => {
@@ -107,7 +108,7 @@ describe("quoteCard", () => {
     const card = quoteCard(MAN35, new Date("2027-04-01"))!;
     expect(card.premium).toBeNull();
     expect(card.perDay).toBeNull();
-    expect(card.others).toBeNull();
+    expect(card.others).toEqual([]);
     expect(card.notes[0]).toContain("หมดอายุ");
     // the benefits do not come from the rate table, so they are still true and still drawn
     expect(section(card, DEATH)!.rows[0].amount).toBe("2,000,000");

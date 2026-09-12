@@ -87,7 +87,10 @@ export function LegacyCalculator({ table, sticky = false }: LegacyCalculatorProp
   const headline = displayPremium(modes, table.expired);
   const annual = modes?.find((m) => m.mode === "annual");
   // the instalments the headline did not take, minus any the company will not accept
-  const others = (modes ?? []).filter((m) => m.mode !== headline?.mode && !m.belowMinimum);
+  // smallest instalment upward, so the block under the headline reads day, half-year, year
+  const others = (modes ?? [])
+    .filter((m) => m.mode !== headline?.mode && !m.belowMinimum)
+    .sort((a, b) => a.total - b.total);
 
   const message = legacyMessage({ millions, age, sex, range: RANGE, premium: headline });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
@@ -176,12 +179,21 @@ export function LegacyCalculator({ table, sticky = false }: LegacyCalculatorProp
                   บาท {PER_LABEL[headline.mode]}
                 </span>
               </div>
-              <div className="mt-2.5 text-sm text-[var(--lg-mute)]">ตกวันละ {perDay(annual.total)} บาท</div>
-              {others.length > 0 && (
-                <div className="mt-1 text-sm text-[var(--lg-mute)] opacity-80">
-                  {others.map((m) => `${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`).join(" · ")}
+              {/* What the headline did not take, one instalment a line and smallest first.
+                  Muted labels with the figures in white on the display face: an agent
+                  reading a yearly premium off the screen should not have to lean in. */}
+              <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
+                <div>
+                  ตกวันละ{" "}
+                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDay(annual.total)}</span> บาท
                 </div>
-              )}
+                {others.map((m) => (
+                  <div key={m.mode}>
+                    {PAY_MODE_LABEL[m.mode]}{" "}
+                    <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="text-sm font-medium text-[var(--lg-gold)]">ขอราคาปัจจุบันได้ทางแชทด้านล่าง</div>
