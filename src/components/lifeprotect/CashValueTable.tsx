@@ -1,5 +1,3 @@
-"use client";
-import { useState } from "react";
 import { formatBaht } from "@/calc/money";
 import type { Projection } from "@/lib/cash-projection";
 
@@ -16,27 +14,20 @@ const RULE = "border-l border-l-white/10";
 const CELL = "whitespace-nowrap border-b border-white/5 px-[5px] py-1.5";
 
 /**
- * Every year of the contract, folded away until asked for — sixty-four rows left open on a
- * phone would push the chat buttons off the screen.
+ * Every year of the contract, open on arrival — the rows scroll inside their own box, so a
+ * sixty-four-year contract still leaves the chat buttons where they were.
  *
  * The years that are worth nothing are shown rather than filtered out, with a note under the
  * table that counts them. A customer should meet that fact before signing, not on the day
  * they try to surrender.
  */
 export function CashValueTable({ projection, caption }: CashValueTableProps) {
-  const [open, setOpen] = useState(false);
   const { rows, breakEven, zeroYears, maturityAge } = projection;
   if (!rows.length) return null;
 
   return (
-    <details
-      open={open}
-      onToggle={(e) => setOpen(e.currentTarget.open)}
-      className="mt-3.5 border-t border-[var(--lg-panel-line)] pt-3"
-    >
-      <summary className="cursor-pointer list-none text-sm text-[var(--lg-gold)] [&::-webkit-details-marker]:hidden">
-        {open ? "▾" : "▸"} ดูมูลค่าทุกปี
-      </summary>
+    <section className="mt-3.5 border-t border-[var(--lg-panel-line)] pt-3">
+      <h4 className="text-sm font-normal text-[var(--lg-gold)]">มูลค่าทุกปี</h4>
 
       <p className="mt-2.5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-gold-glow)] px-3 py-2.5 text-xs leading-[1.75] tabular-nums text-[var(--lg-gold-lit)]">
         {caption}
@@ -100,6 +91,6 @@ export function CashValueTable({ projection, caption }: CashValueTableProps) {
       <p className="mt-2 px-0.5 text-[11.5px] leading-[1.7] text-[var(--lg-mute)] opacity-80">
         แถวสุดท้าย (ปีที่ {rows.length}) คือเงินที่ได้รับเมื่อครบสัญญาอายุ {maturityAge} ปี
       </p>
-    </details>
+    </section>
   );
 }
