@@ -865,8 +865,8 @@ describe("benefitValue", () => {
     expect(benefitValue(roomRate, "SMART", 8, facts.juvenileBelowAge)).toBe("1,500 ต่อวัน");
   });
 
-  it("gives a child nothing for a plan a child cannot buy", () => {
-    expect(benefitValue(doctorFee, "PLATINUM", 8, facts.juvenileBelowAge)).toBeUndefined();
+  it("does not decide who may buy what — that is the rate table's answer", () => {
+    expect(benefitValue(doctorFee, "PLATINUM", 8, facts.juvenileBelowAge)).toBe("ตามที่จ่ายจริง");
   });
 });
 ```
@@ -881,6 +881,7 @@ Expected: FAIL — `Failed to resolve import "@/lib/ihealthy-facts"`
 Create `src/lib/ihealthy-facts.ts`:
 
 ```ts
+import { JUVENILE_BELOW_AGE } from "@/calc/riders/fixed-by-key-age";
 import raw from "../../data/riders/ihealthy-ultra.json";
 
 /** A row that names a part of the contract and has no figures of its own. */
@@ -930,30 +931,28 @@ export interface IHealthyFacts {
   juvenileBelowAge: number;
 }
 
-const JUVENILE_BELOW_AGE = 11;
-/** สมาร์ท and บรอนซ์ are the only plans a child under 11 can buy. */
-const JUVENILE_PLANS = ["SMART", "BRONZE"];
-
 export function isHeading(entry: BenefitEntry): entry is BenefitHeading {
   return "heading" in entry;
 }
 
 /**
- * What this plan pays on this row for someone of this age. Undefined where the plan has no
- * column for a child at all, which is every plan above บรอนซ์.
+ * What this plan pays on this row for someone of this age. Only the wording changes here —
+ * whether the company sells that plan at that age is the rate table's answer, and the table
+ * component asks `plansFor` for it rather than keeping a second list of who may buy what.
  */
 export function benefitValue(
   row: BenefitRow, plan: string, age: number, juvenileBelowAge: number,
 ): string | undefined {
-  if (age >= juvenileBelowAge) return row.adult[plan];
-  if (!JUVENILE_PLANS.includes(plan)) return undefined;
-  if (row.child && plan in row.child) return row.child[plan];
+  if (age < juvenileBelowAge && row.child && plan in row.child) return row.child[plan];
   return row.adult[plan];
 }
 
 export function iHealthyFacts(): IHealthyFacts {
   return { ...(raw as unknown as Omit<IHealthyFacts, "juvenileBelowAge">), juvenileBelowAge: JUVENILE_BELOW_AGE };
 }
+
+// JUVENILE_BELOW_AGE is imported from the engine's key builder, which is the one place the
+// boundary is defined; see src/calc/riders/fixed-by-key-age.ts.
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
@@ -995,6 +994,8 @@ export interface BenefitTableProps {
   selected: string;
   /** the age the columns are read at; under 11 swaps in the child wording */
   age: number;
+  /** the plan codes the company sells at this age, from `plansFor` */
+  sellable: string[];
 }
 
 const DASH = "-";
@@ -1250,7 +1251,7 @@ export function IHealthyCalculator({ table, facts, initial }: IHealthyCalculator
   const baseOption = table.bases.find((b) => b.variant === base)!;
   const planOptions = plansFor(table, age);
   const territoryOptions = territoriesFor(table, plan, age);
-  const coverageOptions = coveragesFor(table, territory);
+  const coverageOptions = coveragesFor(table, territory, age);
 
   /**
    * A choice that was legal a moment ago can stop being legal when the age or the plan
@@ -2105,7 +2106,7 @@ export function initialFrom(table: IHealthyTable, query: Query): IHealthyInitial
   const wantedArea = one(query, "area");
   const territory = wantedArea && territories.includes(wantedArea) ? wantedArea : territories[0];
 
-  const coverages = coveragesFor(table, territory);
+  const coverages = coveragesFor(table, territory, age);
   const wantedCover = one(query, "cover");
   const coverage = wantedCover && coverages.includes(wantedCover) ? wantedCover : coverages[0];
 
@@ -2327,7 +2328,9 @@ Checked against `docs/superpowers/specs/2026-09-12-ihealthy-ultra-page-design.md
 - Three bases, WLF99HX#7 absent — Task 2 (`BASES`), enforced by its test.
 - 28 categories across six plans, child columns — Tasks 1, 4, 5.
 - Territory and coverage filtered rather than refused — Task 3 (`territoriesFor`,
-  `coveragesFor`), used by the form in Task 6.
+  `coveragesFor`), used by the form in Task 6. `coveragesFor` takes `(table, territory,
+  age)`: code review moved it off a hardcoded Thai label onto the rate table, the way its
+  two neighbours already read it.
 - Other riders through the real engine — Task 7.
 - Link, print, copy — Tasks 8, 9, 10.
 - Occupation class 1 note, rate version, disclaimer — Task 6 (`Disclaimer`).
