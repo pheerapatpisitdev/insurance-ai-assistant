@@ -188,3 +188,59 @@ body:has(.theme-legacy) {
 @media (prefers-reduced-motion: reduce) {
   .lg-rise { animation: none; }
 }
+
+/* ---------------------------------------------------------------- printing
+   The sales theme is a dark one, and a browser drops backgrounds when it prints:
+   left alone, this page comes out as pale grey text on white paper. So the whole
+   palette is re-pointed at ink on paper for print, rather than each rule being
+   restated — every component already reads these variables.
+
+   Nothing here relies on colour surviving. The tinted column and the dimmed
+   dashes both say the same thing in words elsewhere on the page: the heading
+   names the plan being quoted, and a column the company will not sell at this age
+   carries `ไม่ขายที่อายุนี้` under its own name. */
+@media print {
+  .theme-legacy {
+    color-scheme: light;
+    background: #fff;
+    --lg-ground: #fff;
+    --lg-ground-deep: #fff;
+    --lg-ground-lit: #fff;
+    --lg-raise: #fff;
+    --lg-panel: #fff;
+    --lg-ink: #111;
+    --lg-white: #111;
+    --lg-mute: #3a3a3a;
+    --lg-gold: #6b5320;
+    --lg-gold-deep: #6b5320;
+    --lg-gold-lit: #6b5320;
+    --lg-gold-glow: transparent;
+    --lg-hair: #999;
+    --lg-panel-line: #c4c4c4;
+  }
+
+  body:has(.theme-legacy) {
+    background: #fff;
+  }
+
+  /* the reading measure is the phone's; paper is wider and the benefit table wants it */
+  .theme-legacy main {
+    max-width: none;
+    padding: 0;
+  }
+
+  /* Twenty-eight rows of Thai will not fit one sheet, so the table is allowed to run
+     its whole height and break across pages, with its own header reprinted on each —
+     a continuation sheet of figures under no column names is unreadable. */
+  .theme-legacy thead {
+    display: table-header-group;
+  }
+
+  .theme-legacy tr {
+    break-inside: avoid;
+  }
+
+  .theme-legacy table {
+    font-size: 9px;
+  }
+}

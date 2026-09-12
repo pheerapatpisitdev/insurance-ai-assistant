@@ -13,6 +13,7 @@ import {
 } from "@/lib/ihealthy-choice";
 import { queryFrom } from "@/lib/ihealthy-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
+import { LinkButton } from "@/components/sales/LinkButton";
 import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
 
 const MODES: PayMode[] = ["annual", "semi", "monthly"];
@@ -157,6 +158,8 @@ export function IHealthyCalculator(
   const field =
     "mt-1.5 w-full appearance-none rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-base text-[var(--lg-white)]";
   const hint = "mt-1 text-xs leading-relaxed text-[var(--lg-mute)]";
+  const tool =
+    "rounded-sm border border-[var(--lg-panel-line)] px-3 py-3 text-center text-sm text-[var(--lg-mute)]";
   const chip = (on: boolean) =>
     `rounded-sm border px-2 py-2.5 text-center text-sm transition-colors ${
       on ? "lg-metal-face border-[var(--lg-gold)] font-medium" : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
@@ -164,6 +167,19 @@ export function IHealthyCalculator(
 
   return (
     <div className="space-y-6">
+      {/* On paper the form is gone, so what it held has to be said in words: a premium and
+          a benefit table with nothing naming who they are for is not a quote. */}
+      <div className="hidden print:block">
+        <h2 className="text-lg font-medium">
+          ไอเฮลท์ตี้ อัลตร้า แผน{plan?.name ?? "—"} · {territory ?? "—"}
+          {coverage && coverage !== "Full Coverage" ? ` · ${COVERAGE_LABEL[coverage]}` : ""}
+        </h2>
+        <p className="mt-1 text-sm">
+          {sex === "M" ? "ชาย" : "หญิง"} {age} ปี · {base.label} ทุน{" "}
+          {sumAssured.toLocaleString("en-US")} บาท · {PAY_MODE_LABEL[mode]}
+        </p>
+      </div>
+
       <div className="space-y-5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] p-5 print:hidden">
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -397,6 +413,16 @@ export function IHealthyCalculator(
       {/* The way out of the page, and last of the three things on it: a health rider is
           bought on the twenty-eight rows above, so the buttons sit where a reader arrives
           having read them rather than above the table they came for. */}
+      {/* The agent's two ways of handing this over, kept apart from the customer's own
+          button below: one puts the arrangement on paper, the other puts its address on the
+          clipboard. Both are the agent working, not the customer deciding. */}
+      <div className="grid grid-cols-2 gap-2 print:hidden">
+        <button type="button" onClick={() => window.print()} className={tool}>
+          พิมพ์ หรือบันทึก PDF
+        </button>
+        <LinkButton className={tool} />
+      </div>
+
       <div className="print:hidden">
         <ContactButtons message={message} copyText={quoteText} />
       </div>

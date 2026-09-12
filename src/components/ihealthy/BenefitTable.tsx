@@ -61,7 +61,7 @@ export function benefitCell(
 /** One width for the row titles, the heading labels above them, and the corner cell. */
 const TITLE_W = "w-56 min-w-56 max-w-56";
 /** The pinned row-title column. Opaque, or the rows scroll visibly through their own titles. */
-const PIN = `sticky left-0 ${TITLE_W} border-r border-[var(--lg-panel-line)] bg-[var(--lg-ground-deep)] px-3 text-left`;
+const PIN = `sticky left-0 print:static ${TITLE_W} border-r border-[var(--lg-panel-line)] bg-[var(--lg-ground-deep)] px-3 text-left`;
 /**
  * The plan names, and with them the one statement of why four columns are dashes at a child
  * age, stay on screen: the table is three and a half phone screens tall, and a header that
@@ -72,7 +72,7 @@ const PIN = `sticky left-0 ${TITLE_W} border-r border-[var(--lg-panel-line)] bg-
  * fraction it leaves behind is a sliver of the next row showing through the header's edge.
  */
 const HEAD =
-  "sticky top-0 bg-[var(--lg-ground-deep)] py-2.5 shadow-[0_1px_0_var(--lg-ground-deep),inset_0_-1px_0_var(--lg-panel-line)]";
+  "sticky top-0 print:static bg-[var(--lg-ground-deep)] py-2.5 shadow-[0_1px_0_var(--lg-ground-deep),inset_0_-1px_0_var(--lg-panel-line)]";
 
 export function BenefitTable({ data, selected, age, sellable, sharedLimit }: BenefitTableProps) {
   const plans = data.plans;
@@ -82,7 +82,7 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
           other five plans from a keyboard, and what it needs to hear when it lands there is
           what the box does. What the table is, its caption already says. */}
       <div
-        className="max-h-[70vh] overflow-auto focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--lg-gold)]"
+        className="max-h-[70vh] overflow-auto print:max-h-none print:overflow-visible focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--lg-gold)]"
         tabIndex={0}
         role="region"
         aria-label="เลื่อนตารางเพื่อดูแผนอื่น"
@@ -143,7 +143,7 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
                     scope="colgroup" colSpan={plans.length + 1}
                     className="bg-[var(--lg-ground-deep)] py-2 text-left text-[0.7rem] font-medium leading-relaxed text-[var(--lg-gold)]"
                   >
-                    <span className={`sticky left-0 inline-block ${TITLE_W} px-3`}>{entry.heading}</span>
+                    <span className={`sticky left-0 print:static inline-block ${TITLE_W} px-3`}>{entry.heading}</span>
                   </th>
                 </tr>
               ) : (
