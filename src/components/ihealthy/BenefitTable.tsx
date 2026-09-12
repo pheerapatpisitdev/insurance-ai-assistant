@@ -73,6 +73,14 @@ const PIN = `sticky left-0 print:static ${TITLE_W} border-r border-[var(--lg-pan
  */
 const HEAD =
   "bg-[var(--lg-ground-deep)] py-2.5 shadow-[0_1px_0_var(--lg-ground-deep),inset_0_-1px_0_var(--lg-panel-line)]";
+/**
+ * The rule between one plan's column and the next.
+ *
+ * Forty-one rows of Thai across seven columns is a lot of text to hold a line through: the
+ * row rules alone leave the eye to guess which figure belongs to which plan halfway down.
+ * Not on the last column, which would draw an edge the table does not have.
+ */
+const COLUMN_RULE = "border-r border-[var(--lg-panel-line)] last:border-r-0";
 
 export function BenefitTable({ data, selected, age, sellable, sharedLimit }: BenefitTableProps) {
   const plans = data.plans;
@@ -112,7 +120,7 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
                     /* The tint is laid over the ground rather than instead of it: a sticky
                        cell carrying only the translucent wash would let the rows it is
                        covering read through it. */
-                    className={`${HEAD} z-20 min-w-28 px-3 text-center align-top font-medium ${
+                    className={`${HEAD} ${COLUMN_RULE} z-20 min-w-28 px-3 text-center align-top font-medium ${
                       p.code === selected
                         ? "bg-[linear-gradient(var(--lg-gold-glow),var(--lg-gold-glow))] text-[var(--lg-gold-lit)]"
                         : "text-[var(--lg-mute)]"
@@ -166,7 +174,7 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
                     return (
                       <td
                         key={p.code}
-                        className={`px-3 py-2 text-center leading-relaxed ${
+                        className={`${COLUMN_RULE} px-3 py-2 text-center leading-relaxed ${
                           p.code === selected
                             ? "bg-[var(--lg-gold-glow)] text-[var(--lg-white)]"
                             : "text-[var(--lg-mute)]"
