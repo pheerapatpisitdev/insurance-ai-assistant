@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { formatBaht } from "@/calc/money";
-import { PAY_MODE_LABEL } from "@/calc/types";
+import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
 import { MoneyInput } from "@/components/MoneyInput";
 import { priceWithRiders } from "@/app/ihealthy-ultra/actions";
 import type { RiderChoice, RiderQuoteInput, RiderQuoteResult } from "@/app/ihealthy-ultra/actions";
@@ -16,6 +16,14 @@ export interface RiderPanelProps {
    * contract. Absent at an age the company does not write it at.
    */
   standard?: { code: string; plan: number };
+  /**
+   * Told, each time the server answers, what the attached riders come to in every instalment
+   * and which they are. The card and the benefit table above are priced in the browser and
+   * have no other way of knowing: their own arithmetic covers the base plan and the health
+   * cover, and this is the rest of the bill. Naming the line is the card's business, since
+   * the card is where the standard rider already has a name.
+   */
+  onAttached?: (attached: { premiums: { mode: PayMode; total: number }[]; codes: string[] }) => void;
 }
 
 /**
@@ -61,7 +69,7 @@ function range(c: RiderChoice): string {
  * never touches it never pays for the round trip — and never downloads the rate tables the
  * payor riders would need to price in the browser.
  */
-export function RiderPanel({ request, standard }: RiderPanelProps) {
+export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
   // Taken apart at the door. The calculator builds `request` inline, so a fresh object
   // arrives on every render; an effect that listed it as a dependency would ask the server
   // for the same arrangement again, set state, render, and ask again — for ever.
@@ -73,6 +81,11 @@ export function RiderPanel({ request, standard }: RiderPanelProps) {
   const [answer, setAnswer] = useState<Answer>();
   const [pending, start] = useTransition();
   const newest = useRef(0);
+  // Held in a ref rather than listed as a dependency: the calculator builds the callback
+  // inline, so a fresh one arrives on every render and the effect below would ask the server
+  // again on each of them.
+  const told = useRef(onAttached);
+  told.current = onAttached;
 
   const at = arrangementKey(request);
 
@@ -91,7 +104,10 @@ export function RiderPanel({ request, standard }: RiderPanelProps) {
           const result = await priceWithRiders({
             base, age, sex, sumAssured, mode, plan, territory, coverage, riders,
           });
-          if (newest.current === generation) setAnswer({ at, result });
+          if (newest.current === generation) {
+            setAnswer({ at, result });
+            told.current?.({ premiums: result.extras, codes: result.extraCodes });
+          }
         } catch {
           // The engine is at the other end of a wire now. A quote that never arrives leaves
           // this arrangement with no figures at all rather than the last one's.

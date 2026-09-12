@@ -8,7 +8,9 @@ import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
 import { planLabel } from "@/lib/ihealthy-facts";
 import { BenefitTable, PHONE_PLANS } from "@/components/ihealthy/BenefitTable";
 import { RiderPanel } from "@/components/ihealthy/RiderPanel";
-import { MODES, deathBenefitOf, iHealthyPricing, type IHealthyPricing } from "@/lib/ihealthy-quote";
+import {
+  MODES, deathBenefitOf, iHealthyPricing, type ComponentPremium, type IHealthyPricing,
+} from "@/lib/ihealthy-quote";
 import {
   baseFor, resolveArrangement, sumFor, sumsFor, type IHealthyInitial,
 } from "@/lib/ihealthy-choice";
@@ -107,6 +109,23 @@ export function IHealthyCalculator(
   );
 
   /**
+   * What the agent has attached in the fold, once the fold has said. Until then the card and
+   * the table price the standard rider on their own, which is what the fold will open with —
+   * so the two never disagree, and a customer who never opens it is quoted the same
+   * arrangement either way.
+   */
+  const [attached, setAttached] = useState<{ premiums: ComponentPremium[]; codes: string[] }>();
+  const standardName = table.standard.label[age - table.ageMin];
+  const extras = attached && {
+    // One rider gets its own name, as the daily cash always had; more than one is a count,
+    // because a card that listed them would be the fold written out twice.
+    label: attached.codes.length === 1 && attached.codes[0] === table.standard.code && standardName
+      ? standardName
+      : `สัญญาเพิ่มเติม ${attached.codes.length} รายการ`,
+    premiums: attached.premiums,
+  };
+
+  /**
    * What the whole arrangement costs a year under each of the six plans, so the benefit
    * table carries the figure every one of its rows is being weighed against. Everything but
    * the health plan is held still, which is what makes the six comparable: the same person,
@@ -123,7 +142,7 @@ export function IHealthyCalculator(
           territory && coverage
             ? iHealthyPricing(table, {
                 base: base.variant, sex, age, sumAssured, plan: p.code, territory, coverage,
-              })
+              }, extras)
             : undefined,
         ]));
         return MODES.map((m) => ({
@@ -134,6 +153,7 @@ export function IHealthyCalculator(
           ])),
         }));
       })();
+
 
   /** The rider the fold opens with ticked, so its total agrees with the card above it. */
   const standardPlan = table.standard.plan[age - table.ageMin];
@@ -168,7 +188,7 @@ export function IHealthyCalculator(
   const priced = plan && territory && coverage
     ? iHealthyPricing(table, {
         base: base.variant, sex, age, sumAssured, plan: plan.code, territory, coverage,
-      })
+      }, extras)
     : undefined;
   /** An expired rate set prices, but not at a figure anyone may be quoted. */
   const shown = table.expired ? undefined : shownAt(priced, mode);
@@ -367,7 +387,7 @@ export function IHealthyCalculator(
                   {/* The agency sells the daily cash with the health cover rather than beside
                       it, so it is priced into the figure the customer is quoted instead of
                       being added on afterwards. The fold below opens with it ticked. */}
-                  {shown.standard && (
+                  {shown.standard && shown.standard.total > 0 && (
                     <div className="flex items-baseline justify-between gap-3">
                       <dt className="text-[var(--lg-mute)]">{shown.standard.label}</dt>
                       <dd className="lg-figure tabular-nums text-[var(--lg-white)]">
@@ -459,6 +479,7 @@ export function IHealthyCalculator(
             plan: plan.code, territory, coverage,
           }}
           standard={standardPick}
+          onAttached={setAttached}
         />
       )}
 

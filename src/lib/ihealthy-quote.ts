@@ -17,7 +17,7 @@ export interface IHealthyChoice {
 }
 
 /** A component premium. The company's floor is judged on the total, so only the total carries it. */
-type ComponentPremium = Omit<ModePremium, "belowMinimum">;
+export type ComponentPremium = Omit<ModePremium, "belowMinimum">;
 
 export interface IHealthyPricing {
   /** the base plan on its own, per mode */
@@ -150,11 +150,19 @@ function riderModes(table: IHealthyTable, choice: IHealthyChoice): ComponentPrem
  *
  * Undefined when the arrangement has no price, which the pickers already prevent.
  */
-export function iHealthyPricing(table: IHealthyTable, choice: IHealthyChoice): IHealthyPricing | undefined {
+export function iHealthyPricing(
+  table: IHealthyTable,
+  choice: IHealthyChoice,
+  attached?: IHealthyPricing["standard"],
+): IHealthyPricing | undefined {
   const base = baseModes(table, choice);
   const rider = riderModes(table, choice);
   if (!base || !rider) return undefined;
-  const standard = standardModes(table, choice.age);
+  // What the agent has actually attached, once the fold has said — it replaces the standard
+  // rider rather than joining it, because the standard is one of the things it counts. None
+  // of those riders is priced on the health plan, so the same subtotal is right under every
+  // one of the six.
+  const standard = attached ?? standardModes(table, choice.age);
   const total = MODES.map((mode, i) => {
     const sum = base[i].total + rider[i].total + (standard ? standard.premiums[i].total : 0);
     return { mode, total: sum, belowMinimum: mode === "monthly" && sum < table.minMonthly * 100 };

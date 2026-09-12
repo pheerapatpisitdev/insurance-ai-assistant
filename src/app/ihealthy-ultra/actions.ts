@@ -83,6 +83,18 @@ export interface RiderQuoteResult {
   items: RiderQuoteRow[];
   /** the whole arrangement in this mode, in satang */
   totalModal: number;
+  /**
+   * What the attached riders cost on their own, in every instalment — everything the engine
+   * priced except the base plan and the health cover itself.
+   *
+   * The page's own arithmetic already knows what the base and the health cover come to under
+   * each of the six plans; none of these riders is priced on the health plan, so their
+   * subtotal is the one figure the browser is missing and adding it to each column is exact.
+   * Sent for all three instalments because the table prints all three.
+   */
+  extras: { mode: PayMode; total: number }[];
+  /** which they are, for a card that names one of them or counts them all in a line */
+  extraCodes: string[];
   warnings: string[];
 }
 
@@ -163,7 +175,13 @@ export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuot
   const asked = parseRequest(input, plan, iHealthyTable().bases.map((b) => b.variant));
   // Nothing this page can do produces an unparsable request, so the empty quote is for
   // whoever is posting by hand: a harmless answer rather than a stack trace in the log.
-  if (asked === undefined) return { available: [], items: [], totalModal: 0, warnings: [BAD_REQUEST] };
+  if (asked === undefined) {
+    return {
+      available: [], items: [], totalModal: 0, extraCodes: [],
+      extras: MODES.map((mode) => ({ mode, total: 0 })),
+      warnings: [BAD_REQUEST],
+    };
+  }
 
   const seq = packageSeq(asked.base, plan.rates);
   const off = disabledRiders(plan.rules, seq);
@@ -224,6 +242,32 @@ export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuot
     ],
   });
 
+  // The same arrangement in the other two instalments, for the subtotal below. The engine
+  // rounds each instalment down on its own, so twelve months do not add up to a year and
+  // one cannot be scaled from another.
+  const byMode = new Map(MODES.map((mode) => [
+    mode,
+    mode === asked.mode ? result : quote({
+      planCode: PLAN_CODE, variant: asked.base, age: asked.age, sex: asked.sex, mode,
+      basis: "sumAssured", sumAssured: asked.sumAssured,
+      payer: { age: asked.age, sex: asked.sex },
+      riders: [
+        { code: THE_HEALTH_RIDER, option: asked.plan, territory: asked.territory, coverage: asked.coverage },
+        ...[...required].filter((c) => c !== THE_HEALTH_RIDER).map((code) => ({
+          code, sumAssured: packageExactSumAssured(plan.rules, seq, code)?.amount,
+        })),
+        ...attached,
+      ],
+    }),
+  ]));
+  /** The base row carries the variant's own code; the health cover carries IHU. */
+  const isExtra = (code: string) => code !== asked.base && !code.startsWith(THE_HEALTH_RIDER);
+  const extras = MODES.map((mode) => ({
+    mode,
+    total: byMode.get(mode)!.items.filter((i) => i.eligible && isExtra(i.code))
+      .reduce((sum, i) => sum + i.modal, 0),
+  }));
+
   // Why a tick was left out is the engine's to say, and it says two different things: a
   // package does not sell this rider at all, an eight-year-old is too young for that one.
   // Both would otherwise come out as the same shrug.
@@ -234,6 +278,8 @@ export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuot
       code: i.code, name: i.name, modal: i.modal, eligible: i.eligible, message: i.message,
     })),
     totalModal: result.totalModal,
+    extras,
+    extraCodes: result.items.filter((i) => i.eligible && isExtra(i.code)).map((i) => i.code),
     warnings: [
       ...dropped.map((code) => {
         const a = why.get(code);

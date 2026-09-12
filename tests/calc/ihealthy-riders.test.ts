@@ -113,7 +113,13 @@ describe("priceWithRiders", () => {
     ];
     for (const input of bad) {
       const r = await priceWithRiders(input as RiderQuoteInput);
-      expect(r).toEqual({ available: [], items: [], totalModal: 0, warnings: ["คำขอไม่ถูกต้อง"] });
+      expect(r).toEqual({
+        available: [], items: [], totalModal: 0, extraCodes: [],
+        extras: [
+          { mode: "annual", total: 0 }, { mode: "semi", total: 0 }, { mode: "monthly", total: 0 },
+        ],
+        warnings: ["คำขอไม่ถูกต้อง"],
+      });
     }
   });
 });
