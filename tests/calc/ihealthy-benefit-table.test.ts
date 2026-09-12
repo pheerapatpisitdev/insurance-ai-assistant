@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { benefitCell, NOT_SOLD } from "@/components/ihealthy/BenefitTable";
+import { benefitCell } from "@/components/ihealthy/BenefitTable";
 import { iHealthyFacts, isHeading, type BenefitRow } from "@/lib/ihealthy-facts";
 
 const facts = iHealthyFacts();
@@ -26,15 +26,19 @@ describe("benefitCell", () => {
   it("withholds the figure for a plan this age cannot buy, whatever the sheet holds", () => {
     // ซิลเวอร์ pays on หมวดที่ 1 at every age; at eight it is simply not on offer
     expect(row(1).adult.SILVER).toBeTruthy();
-    const cell = benefitCell(row(1), "SILVER", 8, CHILD_PLANS);
-    expect(cell.unavailable).toBe(true);
-    expect(cell.text).not.toBe(row(1).adult.SILVER);
     // the reason is the column header's to say, so the cell itself is only a placeholder
-    expect(NOT_SOLD).toBe("ไม่ขายที่อายุนี้");
+    expect(benefitCell(row(1), "SILVER", 8, CHILD_PLANS)).toEqual({ text: "-", unavailable: true });
   });
 
   it("says so for a plan code the rate table has never heard of", () => {
-    expect(benefitCell(row(1), "TITANIUM", 35, ALL).unavailable).toBe(true);
+    expect(benefitCell(row(1), "TITANIUM", 35, ALL)).toEqual({ text: "-", unavailable: true });
+  });
+
+  it("gives every row and heading a key of its own", () => {
+    // the table keys its rows on this wording; a re-run of the extract script that repeated
+    // one would have React reconcile two rows as one, and say nothing about it
+    const keys = facts.rows.map((e) => (isHeading(e) ? e.heading : e.title));
+    expect(new Set(keys).size).toBe(keys.length);
   });
 
   it("reads a blank cell as a dash rather than as an empty gap", () => {

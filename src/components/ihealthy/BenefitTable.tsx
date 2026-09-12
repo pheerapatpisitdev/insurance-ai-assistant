@@ -21,7 +21,7 @@ export interface BenefitTableProps {
 
 const DASH = "-";
 /** What a column says, once in its header, when the company does not sell it at this age. */
-export const NOT_SOLD = "ไม่ขายที่อายุนี้";
+const NOT_SOLD = "ไม่ขายที่อายุนี้";
 
 export interface BenefitCell {
   /** what the cell prints */
@@ -61,25 +61,40 @@ export function benefitCell(
 /** One width for the row titles, the heading labels above them, and the corner cell. */
 const TITLE_W = "w-56 min-w-56 max-w-56";
 /** The pinned row-title column. Opaque, or the rows scroll visibly through their own titles. */
-const PIN = `sticky left-0 z-10 ${TITLE_W} border-r border-[var(--lg-panel-line)] bg-[var(--lg-ground-deep)] px-3 text-left`;
+const PIN = `sticky left-0 ${TITLE_W} border-r border-[var(--lg-panel-line)] bg-[var(--lg-ground-deep)] px-3 text-left`;
+/**
+ * The plan names, and with them the one statement of why four columns are dashes at a child
+ * age, stay on screen: the table is three and a half phone screens tall, and a header that
+ * scrolls away takes the only thing that says what a column is.
+ *
+ * Its rule and the ground under it are a shadow rather than a border because the rows are
+ * half-pixel tall: a collapsed border belongs to the table and scrolls away with it, and the
+ * fraction it leaves behind is a sliver of the next row showing through the header's edge.
+ */
+const HEAD =
+  "sticky top-0 bg-[var(--lg-ground-deep)] py-2.5 shadow-[0_1px_0_var(--lg-ground-deep),inset_0_-1px_0_var(--lg-panel-line)]";
 
 export function BenefitTable({ data, selected, age, sellable, sharedLimit }: BenefitTableProps) {
   const plans = data.plans;
   return (
     <div className="overflow-hidden rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)]">
       {/* A box that scrolls is a control: without a tabindex there is no way to reach the
-          other five plans from a keyboard. */}
+          other five plans from a keyboard, and what it needs to hear when it lands there is
+          what the box does. What the table is, its caption already says. */}
       <div
-        className="overflow-x-auto focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--lg-gold)]"
+        className="max-h-[70vh] overflow-auto focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--lg-gold)]"
         tabIndex={0}
         role="region"
-        aria-label="ตารางผลประโยชน์"
+        aria-label="เลื่อนตารางเพื่อดูแผนอื่น"
       >
         <table className="w-max min-w-full border-collapse text-xs">
-          <caption className="sr-only">ตารางผลประโยชน์ ไอเฮลท์ตี้ อัลตร้า ทั้ง 6 แผน</caption>
+          <caption className="sr-only">
+            ตารางผลประโยชน์ ไอเฮลท์ตี้ อัลตร้า ทั้ง {plans.length} แผน
+          </caption>
           <thead>
             <tr>
-              <th scope="col" className={`${PIN} py-2.5 font-medium text-[var(--lg-mute)]`}>
+              {/* the corner is pinned in both directions at once, so it outranks both */}
+              <th scope="col" className={`${PIN} ${HEAD} z-30 font-medium text-[var(--lg-mute)]`}>
                 ผลประโยชน์
               </th>
               {plans.map((p) => {
@@ -87,23 +102,27 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
                 return (
                   <th
                     key={p.code} scope="col"
-                    className={`min-w-28 px-3 py-2.5 text-center align-top font-medium ${
+                    /* The tint is laid over the ground rather than instead of it: a sticky
+                       cell carrying only the translucent wash would let the rows it is
+                       covering read through it. */
+                    className={`${HEAD} z-20 min-w-28 px-3 text-center align-top font-medium ${
                       p.code === selected
-                        ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold-lit)]"
+                        ? "bg-[linear-gradient(var(--lg-gold-glow),var(--lg-gold-glow))] text-[var(--lg-gold-lit)]"
                         : "text-[var(--lg-mute)]"
                     }`}
                   >
                     {p.name}
-                    {/* The column that is out of play is dimmed in its cells, not here: this
-                        line is the only place the reader is told why, and a note faded to
-                        match the dashes below it would sit at 3:1 on the ground.
-                        The six ceilings are read across the row against one another, which
+                    {/* The ceiling stays even where the plan is not for sale — it is what the
+                        whole table is organised around, and four columns of six lose it at a
+                        child age. The six are read across the row against one another, which
                         is the one place in the table where the digits line up. */}
-                    <span
-                      className={`mt-0.5 block text-[0.65rem] font-normal ${sold ? "tabular-nums opacity-80" : ""}`}
-                    >
-                      {sold ? `${(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน` : NOT_SOLD}
+                    <span className="mt-0.5 block text-[0.65rem] font-normal tabular-nums opacity-80">
+                      {(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน
                     </span>
+                    {/* The column out of play is dimmed in its cells, not here: this line is
+                        the only place the reader is told why, and faded to match the dashes
+                        below it, it would sit at 3:1 on the ground. */}
+                    {!sold && <span className="block text-[0.65rem] font-normal">{NOT_SOLD}</span>}
                   </th>
                 );
               })}
@@ -131,7 +150,7 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
                 <tr key={entry.title} className="border-t border-[var(--lg-panel-line)] align-top">
                   <th
                     scope="row"
-                    className={`${PIN} py-2 text-[0.7rem] font-normal leading-relaxed text-[var(--lg-mute)]`}
+                    className={`${PIN} z-10 py-2 text-[0.7rem] font-normal leading-relaxed text-[var(--lg-mute)]`}
                   >
                     {entry.title}
                   </th>
@@ -144,7 +163,7 @@ export function BenefitTable({ data, selected, age, sellable, sharedLimit }: Ben
                           p.code === selected
                             ? "bg-[var(--lg-gold-glow)] text-[var(--lg-white)]"
                             : "text-[var(--lg-mute)]"
-                        } ${cell.unavailable ? "opacity-60" : ""}`}
+                        } ${cell.unavailable ? "opacity-75" : ""}`}
                       >
                         {cell.text}
                       </td>
