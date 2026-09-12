@@ -59,6 +59,7 @@ function toQuoteInput(s: FormState, eligibleCodes: Set<string>): QuoteInput | nu
 const SALES_PAGES = [
   { href: "/legacy", label: "มรดกเพื่อครอบครัว" },
   { href: "/lifeprotect", label: "Life Protect x 2" },
+  { href: "/ishield", label: "iShield" },
 ];
 
 export default function Home() {
