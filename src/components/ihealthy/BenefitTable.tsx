@@ -30,6 +30,25 @@ export interface BenefitTableProps {
   premiums?: Record<string, number | null>;
 }
 
+/**
+ * What a phone shows of a table built for a sheet of paper.
+ *
+ * Three plans and three figures, chosen by the user. Six columns of Thai do not fit a phone
+ * at a size worth reading, and forty-one rows of them is a document rather than a
+ * comparison — so a phone gets the middle three plans and the three figures that separate
+ * them, and the whole table waits on a wider screen.
+ *
+ * The plan being quoted is always kept, whichever it is: a link can arrive carrying
+ * แพลทินั่ม and a child is sold สมาร์ท, and the column the card is pricing must not be the
+ * one column missing from the table under it.
+ */
+export const PHONE_PLANS = ["BRONZE", "SILVER", "GOLD"];
+/** หมวด 1 is the room rate, หมวด 18 the outpatient allowance; the ceiling has its own row. */
+const PHONE_ROWS = [1, 18];
+/** Hidden at every width, restored from the tablet breakpoint up. */
+const WIDE_ONLY_CELL = "hidden sm:table-cell";
+const WIDE_ONLY_ROW = "hidden sm:table-row";
+
 const DASH = "-";
 /** What a column says, once in its header, when the company does not sell it at this age. */
 const NOT_SOLD = "ไม่ขายที่อายุนี้";
@@ -69,8 +88,14 @@ export function benefitCell(
   return { text: v === undefined || v.trim() === "" ? DASH : v, unavailable: false };
 }
 
-/** One width for the row titles, the heading labels above them, and the corner cell. */
-const TITLE_W = "w-56 min-w-56 max-w-56";
+/**
+ * One width for the row titles, the heading labels above them, and the corner cell.
+ *
+ * Narrower on a phone, where three plans and a title have to share 375 points: at the wide
+ * width the table would be 561 and would scroll sideways, which is the thing the phone
+ * table exists to avoid.
+ */
+const TITLE_W = "w-28 min-w-28 max-w-28 sm:w-56 sm:min-w-56 sm:max-w-56";
 /** The pinned row-title column. Opaque, or the rows scroll visibly through their own titles. */
 const PIN = `sticky left-0 print:static ${TITLE_W} border-r border-[var(--lg-panel-line)] bg-[var(--lg-ground-deep)] px-3 text-left`;
 /**
@@ -97,6 +122,8 @@ export function BenefitTable(
   { data, selected, age, sellable, sharedLimit, premiums }: BenefitTableProps,
 ) {
   const plans = data.plans;
+  /** A column a phone keeps: one of the three, or the one the card is pricing. */
+  const onPhone = (code: string) => PHONE_PLANS.includes(code) || code === selected;
   return (
     <div>
       {/* No height of its own: the table runs its full length down the page, so a reader
@@ -115,7 +142,9 @@ export function BenefitTable(
         role="region"
         aria-label="เลื่อนตารางเพื่อดูแผนอื่น"
       >
-        <table className="w-max min-w-full border-collapse text-xs">
+        {/* A phone gets a table sized to its box, so three plans and their titles share the
+              width and the Thai wraps; a wide screen gets one sized to its content. */}
+          <table className="w-full border-collapse text-xs sm:w-max sm:min-w-full">
           <caption className="sr-only">
             ตารางผลประโยชน์ ไอเฮลท์ตี้ อัลตร้า ทั้ง {plans.length} แผน
           </caption>
@@ -133,7 +162,7 @@ export function BenefitTable(
                     /* The tint is laid over the ground rather than instead of it: a sticky
                        cell carrying only the translucent wash would let the rows it is
                        covering read through it. */
-                    className={`${HEAD} ${COLUMN_RULE} z-20 min-w-28 px-3 text-center align-top font-medium ${
+                    className={`${HEAD} ${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} z-20 min-w-0 px-1.5 text-center align-top font-medium sm:min-w-28 sm:px-3 ${
                       p.code === selected
                         ? "bg-[linear-gradient(var(--lg-gold-glow),var(--lg-gold-glow))] text-[var(--lg-gold-lit)]"
                         : "text-[var(--lg-mute)]"
@@ -144,7 +173,7 @@ export function BenefitTable(
                         whole table is organised around, and four columns of six lose it at a
                         child age. The six are read across the row against one another, which
                         is the one place in the table where the digits line up. */}
-                    <span className="mt-0.5 block text-[0.65rem] font-normal tabular-nums opacity-80">
+                    <span className="mt-0.5 hidden text-[0.65rem] font-normal tabular-nums opacity-80 sm:block">
                       {(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน
                     </span>
                     {/* The column out of play is dimmed in its cells, not here: this line is
@@ -157,6 +186,28 @@ export function BenefitTable(
             </tr>
           </thead>
           <tbody>
+            {/* On a wide screen the ceiling rides in the column header, where the six read
+                across against one another. A phone has no room for a two-line header and
+                only three columns to read across, so it takes a row of its own — the first
+                thing under the price, which is the pair a reader weighs. */}
+            <tr className="border-t border-[var(--lg-panel-line)] sm:hidden">
+              <th
+                scope="row"
+                className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
+              >
+                วงเงินค่ารักษาต่อปี
+              </th>
+              {plans.map((p) => (
+                <td
+                  key={p.code}
+                  className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2.5 text-center tabular-nums sm:px-3 ${
+                    p.code === selected ? "bg-[var(--lg-gold-glow)] text-[var(--lg-white)]" : "text-[var(--lg-mute)]"
+                  }`}
+                >
+                  {(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน
+                </td>
+              ))}
+            </tr>
             {premiums && (
               <tr className="border-t border-[var(--lg-panel-line)]">
                 <th
@@ -170,7 +221,7 @@ export function BenefitTable(
                   return (
                     <td
                       key={p.code}
-                      className={`${COLUMN_RULE} px-3 py-2.5 text-center font-medium tabular-nums ${
+                      className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2.5 text-center font-medium tabular-nums sm:px-3 ${
                         p.code === selected
                           ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold)]"
                           : "text-[var(--lg-white)]"
@@ -191,7 +242,7 @@ export function BenefitTable(
                 // at that width runs off a phone. The label is pinned instead, and to the
                 // width of the row titles it names, so it wraps where they wrap and stays
                 // where they stay while the plans scroll past underneath.
-                <tr key={entry.heading}>
+                <tr key={entry.heading} className={WIDE_ONLY_ROW}>
                   <th
                     scope="colgroup" colSpan={plans.length + 1}
                     className="bg-[var(--lg-ground-deep)] py-2 text-left text-[0.7rem] font-medium leading-relaxed text-[var(--lg-gold)]"
@@ -200,7 +251,12 @@ export function BenefitTable(
                   </th>
                 </tr>
               ) : (
-                <tr key={entry.title} className="border-t border-[var(--lg-panel-line)] align-top">
+                <tr
+                  key={entry.title}
+                  className={`border-t border-[var(--lg-panel-line)] align-top ${
+                    entry.no !== null && PHONE_ROWS.includes(entry.no) ? "" : WIDE_ONLY_ROW
+                  }`}
+                >
                   <th
                     scope="row"
                     className={`${PIN} z-10 py-2 text-[0.7rem] font-normal leading-relaxed text-[var(--lg-mute)]`}
@@ -212,7 +268,7 @@ export function BenefitTable(
                     return (
                       <td
                         key={p.code}
-                        className={`${COLUMN_RULE} px-3 py-2 text-center leading-relaxed ${
+                        className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2 text-center leading-relaxed sm:px-3 ${
                           p.code === selected
                             ? "bg-[var(--lg-gold-glow)] text-[var(--lg-white)]"
                             : "text-[var(--lg-mute)]"
@@ -229,8 +285,13 @@ export function BenefitTable(
         </table>
       </div>
       <p className="border-t border-[var(--lg-panel-line)] py-2.5 text-[0.7rem] leading-relaxed text-[var(--lg-mute)] opacity-80">
+        {/* A phone is shown three rows of the twenty-eight, so it is told what the other
+            twenty-five do rather than left to read the table as the whole contract. */}
+        <span className="sm:hidden">
+          อีก 25 หมวดจ่ายตามจริงเท่ากันทุกแผน รวมผ่าตัด อุบัติเหตุ และมะเร็ง · ดูตารางเต็มได้บนจอคอมพิวเตอร์ ·{" "}
+        </span>
         {/* on paper there is nothing to scroll to, and the whole table is already there */}
-        <span className="print:hidden">เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · </span>
+        <span className="hidden print:hidden sm:inline">เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · </span>
         {sharedLimit}
       </p>
     </div>

@@ -5,7 +5,7 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
 import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
-import { BenefitTable } from "@/components/ihealthy/BenefitTable";
+import { BenefitTable, PHONE_PLANS } from "@/components/ihealthy/BenefitTable";
 import { RiderPanel } from "@/components/ihealthy/RiderPanel";
 import { deathBenefitOf, iHealthyPricing, type IHealthyPricing } from "@/lib/ihealthy-quote";
 import {
@@ -281,7 +281,10 @@ export function IHealthyCalculator(
             {plans.map((p) => (
               <button
                 key={p.code} type="button" aria-pressed={p.code === plan?.code}
-                onClick={() => setWantPlan(p.code)} className={chip(p.code === plan?.code)}
+                onClick={() => setWantPlan(p.code)}
+                className={`${chip(p.code === plan?.code)} ${
+                  PHONE_PLANS.includes(p.code) || p.code === plan?.code ? "" : "hidden sm:block"
+                }`}
               >
                 <span className="block">{p.name}</span>
                 <span className="mt-0.5 block text-xs tabular-nums opacity-80">
