@@ -20,7 +20,7 @@
 | `data/riders/ihealthy-ultra.json` | 28 benefit rows × 6 plans, the child columns, per-plan annual maximum and deductible, and the contract terms. Generated, never hand-edited. |
 | `src/lib/ihealthy-table.ts` | Server-built slim table: base rates for three variants, rider rates for 28 keys, plan/territory/coverage options. |
 | `src/lib/ihealthy-quote.ts` | Browser-side arithmetic and the option filters (which plans at this age, which territories for this plan). No engine imports. |
-| `src/lib/ihealthy-facts.ts` | Benefit rows and terms read out of the JSON, shaped for the page. |
+| `src/lib/ihealthy-facts.ts` | Benefit rows and terms read out of the JSON, shaped for the page. Only the rows and the plan list cross into the browser. |
 | `src/lib/ihealthy-cta.ts` | The chat message and the copy-to-clipboard summary. |
 | `src/app/ihealthy/actions.ts` | One server action: price a full arrangement with `quote()`, return rows. |
 | `src/app/ihealthy/page.tsx` | Server component: builds table + facts, reads the query string, renders the page. |
@@ -839,7 +839,8 @@ const row = (no: number) => facts.rows.find((r) => !isHeading(r) && r.no === no)
 describe("iHealthyFacts", () => {
   it("keeps the sheet's order, headings and all", () => {
     expect(isHeading(facts.rows[0])).toBe(true);
-    expect(facts.rows.filter(isHeading).length).toBeGreaterThan(2);
+    expect(facts.rows).toHaveLength(41);
+    expect(facts.rows.filter(isHeading)).toHaveLength(5);
   });
 
   it("splits the contract from the endorsement", () => {
@@ -853,20 +854,20 @@ describe("benefitValue", () => {
   const roomRate = row(1);
 
   it("reads the adult column from age 11", () => {
-    expect(benefitValue(doctorFee, "SMART", 11, facts.juvenileBelowAge)).toBe("ตามที่จ่ายจริง");
+    expect(benefitValue(doctorFee, "SMART", 11)).toBe("ตามที่จ่ายจริง");
   });
 
   it("swaps to the child column below 11 where the sheet has one", () => {
-    expect(benefitValue(doctorFee, "SMART", 10, facts.juvenileBelowAge)).toBe("1,000 ต่อวัน*/ ตามที่จ่ายจริง");
-    expect(benefitValue(doctorFee, "BRONZE", 6, facts.juvenileBelowAge)).toBe("3,000 ต่อวัน*/ ตามที่จ่ายจริง");
+    expect(benefitValue(doctorFee, "SMART", 10)).toBe("1,000 ต่อวัน*/ ตามที่จ่ายจริง");
+    expect(benefitValue(doctorFee, "BRONZE", 6)).toBe("3,000 ต่อวัน*/ ตามที่จ่ายจริง");
   });
 
   it("falls back to the adult column for rows with no child variant", () => {
-    expect(benefitValue(roomRate, "SMART", 8, facts.juvenileBelowAge)).toBe("1,500 ต่อวัน");
+    expect(benefitValue(roomRate, "SMART", 8)).toBe("1,500 ต่อวัน");
   });
 
   it("does not decide who may buy what — that is the rate table's answer", () => {
-    expect(benefitValue(doctorFee, "PLATINUM", 8, facts.juvenileBelowAge)).toBe("ตามที่จ่ายจริง");
+    expect(benefitValue(doctorFee, "PLATINUM", 8)).toBe("ตามที่จ่ายจริง");
   });
 });
 ```
@@ -940,10 +941,8 @@ export function isHeading(entry: BenefitEntry): entry is BenefitHeading {
  * whether the company sells that plan at that age is the rate table's answer, and the table
  * component asks `plansFor` for it rather than keeping a second list of who may buy what.
  */
-export function benefitValue(
-  row: BenefitRow, plan: string, age: number, juvenileBelowAge: number,
-): string | undefined {
-  if (age < juvenileBelowAge && row.child && plan in row.child) return row.child[plan];
+export function benefitValue(row: BenefitRow, plan: string, age: number): string | undefined {
+  if (age < JUVENILE_BELOW_AGE && row.child && plan in row.child) return row.child[plan];
   return row.adult[plan];
 }
 
@@ -988,27 +987,43 @@ Create `src/components/ihealthy/BenefitTable.tsx`:
 ```tsx
 import { benefitValue, isHeading, type BenefitEntry, type IHealthyFacts } from "@/lib/ihealthy-facts";
 
+/**
+ * The half of the benefit data the browser needs. `terms` and `disclaimer` are three of the
+ * five kilobytes that would otherwise cross the wire, and only server components render
+ * them, so the page passes this subset rather than the whole object.
+ */
+export type BenefitTableData = Pick<IHealthyFacts, "rows" | "plans" | "copayPercent">;
+
 export interface BenefitTableProps {
-  facts: IHealthyFacts;
+  data: BenefitTableData;
   /** the plan whose column is highlighted */
   selected: string;
   /** the age the columns are read at; under 11 swaps in the child wording */
   age: number;
   /** the plan codes the company sells at this age, from `plansFor` */
   sellable: string[];
+  /** the company's note that the rider and its endorsement share one annual ceiling */
+  sharedLimit: string;
 }
 
 const DASH = "-";
+/** What a column says when the company does not sell that plan at the age on screen. */
+const NOT_SOLD = "ไม่ขายที่อายุนี้";
 
-/** A cell the company left blank reads as a dash, not as an empty gap. */
-function cellText(entry: BenefitEntry, plan: string, age: number, juvenileBelowAge: number): string {
+/**
+ * A cell the company left blank reads as a dash, not as an empty gap. `undefined` can only
+ * mean the sheet has no column for that plan, which is an extraction bug rather than an
+ * answer, so it reads as a dash too rather than being hidden.
+ */
+function cellText(entry: BenefitEntry, plan: string, age: number, sellable: string[]): string {
   if (isHeading(entry)) return "";
-  const v = benefitValue(entry, plan, age, juvenileBelowAge);
+  if (!sellable.includes(plan)) return NOT_SOLD;
+  const v = benefitValue(entry, plan, age);
   return v === undefined || v === "" ? DASH : v;
 }
 
-export function BenefitTable({ facts, selected, age }: BenefitTableProps) {
-  const plans = facts.plans;
+export function BenefitTable({ data, selected, age, sellable, sharedLimit }: BenefitTableProps) {
+  const plans = data.plans;
   return (
     <div className="rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)]">
       <div className="overflow-x-auto">
@@ -1038,7 +1053,7 @@ export function BenefitTable({ facts, selected, age }: BenefitTableProps) {
             </tr>
           </thead>
           <tbody>
-            {facts.rows.map((entry, i) =>
+            {data.rows.map((entry, i) =>
               isHeading(entry) ? (
                 <tr key={`h${i}`}>
                   <th
@@ -1065,7 +1080,7 @@ export function BenefitTable({ facts, selected, age }: BenefitTableProps) {
                           : "text-[var(--lg-mute)]"
                       }`}
                     >
-                      {cellText(entry, p.code, age, facts.juvenileBelowAge)}
+                      {cellText(entry, p.code, age, sellable)}
                     </td>
                   ))}
                 </tr>
@@ -1075,7 +1090,7 @@ export function BenefitTable({ facts, selected, age }: BenefitTableProps) {
         </table>
       </div>
       <p className="border-t border-[var(--lg-panel-line)] px-3 py-2.5 text-[0.7rem] leading-relaxed text-[var(--lg-mute)] opacity-80">
-        เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · {facts.terms.sharedLimit}
+        เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · {sharedLimit}
       </p>
     </div>
   );
@@ -1212,7 +1227,7 @@ import type { PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
-import type { IHealthyFacts } from "@/lib/ihealthy-facts";
+import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
 import {
   coveragesFor, deathBenefitOf, iHealthyPricing, plansFor, territoriesFor,
 } from "@/lib/ihealthy-quote";
@@ -1230,11 +1245,14 @@ const SUMS = [150_000, 300_000, 500_000, 1_000_000, 2_000_000, 3_000_000, 5_000_
 
 export interface IHealthyCalculatorProps {
   table: IHealthyTable;
-  facts: IHealthyFacts;
+  /** only the benefit rows the browser draws; the contract's prose stays on the server */
+  data: BenefitTableData;
+  /** the one sentence from `terms` the table itself prints under its own scroll hint */
+  sharedLimit: string;
   initial: IHealthyInitial;
 }
 
-export function IHealthyCalculator({ table, facts, initial }: IHealthyCalculatorProps) {
+export function IHealthyCalculator({ table, data, sharedLimit, initial }: IHealthyCalculatorProps) {
   const AGES = useMemo(
     () => Array.from({ length: table.ageMax - table.ageMin + 1 }, (_, i) => table.ageMin + i),
     [table.ageMin, table.ageMax],
@@ -1258,22 +1276,31 @@ export function IHealthyCalculator({ table, facts, initial }: IHealthyCalculator
    * changes — โกลด์ in เอเชีย, or ซิลเวอร์ for an eight-year-old. Falling back to the first
    * option the company does sell keeps the card priced instead of blank.
    */
+  // One pass, not three. Each effect reads its siblings' values from the render it was
+  // queued in, so three separate effects walk to a legal arrangement over several renders
+  // and pass through states where a list is empty and `[0]` is undefined.
   useEffect(() => {
-    if (!planOptions.some((p) => p.code === plan)) setPlan(planOptions[0].code);
-  }, [planOptions, plan]);
-  useEffect(() => {
-    if (!territoryOptions.includes(territory)) setTerritory(territoryOptions[0]);
-  }, [territoryOptions, territory]);
-  useEffect(() => {
-    if (!coverageOptions.includes(coverage)) setCoverage(coverageOptions[0]);
-  }, [coverageOptions, coverage]);
+    const plans = plansFor(table, age);
+    const nextPlan = plans.some((p) => p.code === plan) ? plan : plans[0]?.code;
+    if (nextPlan === undefined) return;
+    const areas = territoriesFor(table, nextPlan, age);
+    const nextArea = areas.includes(territory) ? territory : areas[0];
+    if (nextArea === undefined) return;
+    const covers = coveragesFor(table, nextArea, age);
+    const nextCover = covers.includes(coverage) ? coverage : covers[0];
+    if (nextCover === undefined) return;
+    if (nextPlan !== plan) setPlan(nextPlan);
+    if (nextArea !== territory) setTerritory(nextArea);
+    if (nextCover !== coverage) setCoverage(nextCover);
+  }, [table, age, plan, territory, coverage]);
   useEffect(() => {
     if (baseOption.fixedSum !== undefined) setSumAssured(baseOption.fixedSum);
   }, [baseOption]);
 
   const choice = { base, sex, age, sumAssured, plan, territory, coverage };
   const priced = iHealthyPricing(table, choice);
-  const at = (ms: { mode: PayMode; total: number }[] | undefined) => ms?.find((m) => m.mode === mode);
+  // generic, because `base` and `rider` carry no `belowMinimum` while `total` does
+  const at = <T extends { mode: PayMode }>(ms: T[] | undefined) => ms?.find((m) => m.mode === mode);
   const death = deathBenefitOf(table, base, age, sumAssured);
   const planOption = table.plans.find((p) => p.code === plan)!;
 
@@ -1313,7 +1340,11 @@ export function IHealthyCalculator({ table, facts, initial }: IHealthyCalculator
             {table.bases.map((b) => (
               <button key={b.variant} type="button" aria-pressed={b.variant === base} onClick={() => setBase(b.variant)} className={chip(b.variant === base)}>
                 <span className="block">{b.short}</span>
-                <span className="mt-0.5 block text-xs opacity-80">{b.note}</span>
+                {/* the package carries no note: its subtitle is its pinned sum, read from
+                    the field itself so the two can never disagree */}
+                <span className="mt-0.5 block text-xs opacity-80">
+                  {b.note ?? `ทุน ${b.fixedSum?.toLocaleString("en-US")}`}
+                </span>
               </button>
             ))}
           </div>
@@ -1419,7 +1450,7 @@ export function IHealthyCalculator({ table, facts, initial }: IHealthyCalculator
                 </span>{" "}
                 บาท
                 {coverage === "Deductible" && ` · รับผิดส่วนแรก ${planOption.deductible.toLocaleString("en-US")} บาทต่อปี`}
-                {coverage === "Co-Payment" && ` · ร่วมจ่าย ${facts.copayPercent} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง`}
+                {coverage === "Co-Payment" && ` · ร่วมจ่าย ${data.copayPercent} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง`}
               </p>
               <p className="mt-1">
                 เสียชีวิตก่อนอายุ {death.beforeAge} ครอบครัวได้{" "}
@@ -1436,7 +1467,10 @@ export function IHealthyCalculator({ table, facts, initial }: IHealthyCalculator
         )}
       </div>
 
-      <BenefitTable facts={facts} selected={plan} age={age} />
+      <BenefitTable
+        data={data} selected={plan} age={age} sharedLimit={sharedLimit}
+        sellable={planOptions.map((p) => p.code)}
+      />
     </div>
   );
 }
@@ -1461,6 +1495,7 @@ import { IHealthyCalculator } from "@/components/IHealthyCalculator";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import { iHealthyFacts } from "@/lib/ihealthy-facts";
 import { Disclaimer, Hero, TermsSection } from "@/components/ihealthy/Sections";
+import { ExpiryBanner } from "@/components/ExpiryBanner";
 
 export const metadata = {
   title: "ไอเฮลท์ตี้ อัลตร้า — ค่ารักษาพยาบาลเหมาจ่ายถึง 100 ล้านต่อปี",
@@ -1479,11 +1514,19 @@ export default async function IHealthyPage() {
     age: 35, sex: "F" as const, base: "WLF99H", sumAssured: 1_000_000,
     plan: "GOLD", territory: "ประเทศไทย", coverage: "Full Coverage", mode: "annual" as const,
   };
+  // Only the rows and the plan list cross into the browser. The eight long paragraphs of
+  // `terms` are three of the five kilobytes of this JSON and only server components render
+  // them, so they never enter the client module graph.
+  const { rows, plans, copayPercent } = facts;
   return (
     <main className="mx-auto max-w-lg px-4 pb-28 sm:max-w-2xl sm:pb-10">
       <Hero facts={facts} />
+      <ExpiryBanner expired={table.expired} expiresOn={table.expiresOn} />
       <section id="calc" className="scroll-mt-4">
-        <IHealthyCalculator table={table} facts={facts} initial={initial} />
+        <IHealthyCalculator
+          table={table} data={{ rows, plans, copayPercent }}
+          sharedLimit={facts.terms.sharedLimit} initial={initial}
+        />
       </section>
       <TermsSection facts={facts} />
       <Disclaimer facts={facts} rateVersion={table.rateVersion} />
@@ -1796,12 +1839,15 @@ import { RiderPanel } from "@/components/ihealthy/RiderPanel";
 ```
 
 and place the panel between the premium card and the benefit table, replacing the line
-`      <BenefitTable facts={facts} selected={plan} age={age} />` with:
+the `<BenefitTable …>` block with:
 
 ```tsx
       <RiderPanel request={{ base, age, sex, sumAssured, mode, plan, territory, coverage }} />
 
-      <BenefitTable facts={facts} selected={plan} age={age} />
+      <BenefitTable
+        data={data} selected={plan} age={age} sharedLimit={sharedLimit}
+        sellable={planOptions.map((p) => p.code)}
+      />
 ```
 
 - [ ] **Step 7: Check it works in the browser**
@@ -2142,11 +2188,16 @@ export default async function IHealthyPage(
   const table = iHealthyTable();
   const facts = iHealthyFacts();
   const initial = initialFrom(table, await searchParams);
+  const { rows, plans, copayPercent } = facts;
   return (
     <main className="mx-auto max-w-lg px-4 pb-28 sm:max-w-2xl sm:pb-10">
       <Hero facts={facts} />
+      <ExpiryBanner expired={table.expired} expiresOn={table.expiresOn} />
       <section id="calc" className="scroll-mt-4">
-        <IHealthyCalculator table={table} facts={facts} initial={initial} />
+        <IHealthyCalculator
+          table={table} data={{ rows, plans, copayPercent }}
+          sharedLimit={facts.terms.sharedLimit} initial={initial}
+        />
       </section>
       <TermsSection facts={facts} />
       <Disclaimer facts={facts} rateVersion={table.rateVersion} />
