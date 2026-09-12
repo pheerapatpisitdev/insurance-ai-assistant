@@ -5,6 +5,8 @@ The rate tables come from extract_rates.py; this reads what the rates cannot say
 each of the six plans actually pays, and the contract terms that go on the page.
 
 Deterministic: running twice on the same workbook yields byte-identical JSON.
+Never edit data/riders/ihealthy-ultra.json by hand; edit this script and re-run
+`npm run extract ihealthy-ultra`.
 """
 import json
 import re
@@ -27,34 +29,84 @@ PLAN_NAMES = {
     "SMART": "สมาร์ท", "BRONZE": "บรอนซ์", "SILVER": "ซิลเวอร์",
     "GOLD": "โกลด์", "DIAMOND": "ไดมอนด์", "PLATINUM": "แพลทินั่ม",
 }
+# extract_rates.py imports this to key the IHU rate table, so the plan numbers the two JSON
+# files join on have one definition, here, rather than a copy in each script.
 PLAN_NO = {"SMART": 1, "BRONZE": 2, "SILVER": 3, "GOLD": 4, "DIAMOND": 5, "PLATINUM": 6}
-# The benefit sheet's own I4 ties the deductible to the plan number it reads from กรอกข้อมูล!R33:
-# 1-2 → 30,000, 3-4 → 50,000, 5-6 → 100,000 — and the co-payment alternative is 20%.
+# The benefit sheet's own I4 ties the customer's participation to the plan number it reads from
+# กรอกข้อมูล!R33: 1-2 → 30,000, 3-4 → 50,000, 5-6 → 100,000, or a co-payment of 20% instead.
 DEDUCTIBLE = {1: 30_000, 2: 30_000, 3: 50_000, 4: 50_000, 5: 100_000, 6: 100_000}
+COPAY_PERCENT = 20
+
+# --- benefit sheet rows -----------------------------------------------------------------
+FIRST_ROW, LAST_ROW = 7, 53
+# Rows 39..53 are the บันทึกสลักหลัง (endorsement) block — benefits that ride on top of the
+# rider itself, which ซิลเวอร์ and up buy and สมาร์ท/บรอนซ์ do not.
+ENDORSEMENT_FROM = 39
 # Rows that describe the customer's own choice rather than the plan, and the table headers.
 SKIP_ROWS = {33, 34, 35, 36, 37, 38}
-FIRST_ROW, LAST_ROW, ENDORSEMENT_FROM = 7, 53, 39
+ANNUAL_MAX_ROW = 8
+# The paragraphs printed under the table, and the disclaimer that closes the sheet.
+BENEFIT_NOTE_ROWS = {
+    "participationNote": 58,
+    "noClaimDiscount": 62,
+    "outOfTerritory": 63,
+    "sharedLimit": 64,
+    "premiumChanges": 67,
+}
+DISCLAIMER_ROW = 68
+
+# --- terms sheet rows -------------------------------------------------------------------
+TERMS_NOTE_ROWS = {"renewalCopay": 6, "exclusions": 25}
+# The 120-day list runs down two newspaper columns, four rows deep.
+DISEASE_ROWS, DISEASE_COLS = range(12, 16), ("A", "B")
+PRE_EXISTING_ROWS = range(17, 23)
+# The prose each hardcoded figure below was read from, asserted against it.
+WAITING_ROW, SPECIAL_WAITING_ROW = 8, 10
+
+# These five figures are the contract's own numbers. The workbook states them inside
+# paragraphs rather than in cells of their own, so they are typed in here for the page to use
+# as numbers — and each one is asserted to still appear in the paragraph it came from, so a
+# re-worded workbook cannot leave the figure and its prose contradicting each other.
+RENEWAL_TO_AGE = 98
+WAITING_DAYS = 30
+SPECIAL_WAITING_DAYS = 120
+NO_CLAIM_DISCOUNT_PERCENT = 10
+OUT_OF_TERRITORY_DAYS = 90
+
+# What a correct read of this workbook produces; a re-shipped file that shifts a row or
+# renames a sheet trips these rather than shipping a quietly shorter table.
+EXPECTED_PLANS = 6
+EXPECTED_ROWS = 41
+EXPECTED_HEADINGS = 5
+EXPECTED_DISEASES = 8
+FIRST_SECTION_TITLE = "หมวดที่ 1"
 
 
-def merged_lookup(ws):
-    """Map every covered cell to the coordinate that actually holds the value."""
-    out = {}
+def reader(ws):
+    """Return text(col, row) for one sheet, with that sheet's own merged cells resolved.
+
+    A read that does not resolve merges returns "" for every cell a merge covers — row 44 and
+    all six annual maximums here — so the map is built once, with the sheet it belongs to, and
+    no caller can hand it the wrong one.
+    """
+    merged = {}
     for rng in ws.merged_cells.ranges:
         anchor = ws.cell(rng.min_row, rng.min_col).coordinate
         for row in ws[rng.coord]:
             for c in row:
-                out[c.coordinate] = anchor
-    return out
+                merged[c.coordinate] = anchor
 
+    def text(col, row):
+        v = ws[merged.get(f"{col}{row}", f"{col}{row}")].value
+        if v is None:
+            return ""
+        # Excel hands a whole number back as a float: cell U43 is 6000.0, and the page prints
+        # what it is given, so it becomes 6000 before it becomes a string.
+        if isinstance(v, float) and v == int(v):
+            v = int(v)
+        return re.sub(r"\s+", " ", str(v)).strip()
 
-def text(ws, merged, col, row):
-    coord = merged.get(f"{col}{row}", f"{col}{row}")
-    v = ws[coord].value
-    if v is None:
-        return ""
-    if isinstance(v, float) and v == int(v):
-        v = int(v)
-    return re.sub(r"\s+", " ", str(v)).strip()
+    return text
 
 
 def leading_number(s):
@@ -70,32 +122,36 @@ def section_no(title):
 
 def extract():
     wb = openpyxl.load_workbook(XLSX, data_only=True)
-    ws = wb[BENEFIT_SHEET]
-    merged = merged_lookup(ws)
+    benefit = reader(wb[BENEFIT_SHEET])
+    terms = reader(wb[TERMS_SHEET])
 
     plans = []
     for code, col in MAX_COLS.items():
+        annual_max = benefit(col, ANNUAL_MAX_ROW)
         plans.append({
             "code": code,
             "name": PLAN_NAMES[code],
             "planNo": PLAN_NO[code],
-            "annualMax": leading_number(text(ws, merged, col, 8)),
-            "annualMaxNote": text(ws, merged, col, 8),
+            "annualMax": leading_number(annual_max),
+            "annualMaxNote": annual_max,
             "deductible": DEDUCTIBLE[PLAN_NO[code]],
         })
+    assert len(plans) == EXPECTED_PLANS, f"expected {EXPECTED_PLANS} plans, got {len(plans)}"
+    no_max = [p["code"] for p in plans if not p["annualMax"]]
+    assert not no_max, f"{BENEFIT_SHEET} row {ANNUAL_MAX_ROW}: no annual maximum for {no_max}"
 
     rows = []
     for r in range(FIRST_ROW, LAST_ROW + 1):
         if r in SKIP_ROWS:
             continue
-        title = text(ws, merged, "A", r)
+        title = benefit("A", r)
         if not title:
             continue
-        adult = {code: text(ws, merged, col, r) for code, col in ADULT_COLS.items()}
+        adult = {code: benefit(col, r) for code, col in ADULT_COLS.items()}
         if not any(adult.values()):
             rows.append({"heading": title})
             continue
-        child = {code: text(ws, merged, col, r) for code, col in CHILD_COLS.items()}
+        child = {code: benefit(col, r) for code, col in CHILD_COLS.items()}
         entry = {
             "no": section_no(title),
             "title": title,
@@ -108,38 +164,64 @@ def extract():
             entry["child"] = child
         rows.append(entry)
 
-    tw = wb[TERMS_SHEET]
+    headings = [r for r in rows if "heading" in r]
+    benefit_rows = [r for r in rows if "adult" in r]
+    assert len(rows) == EXPECTED_ROWS, f"expected {EXPECTED_ROWS} rows, got {len(rows)}"
+    assert len(headings) == EXPECTED_HEADINGS, f"expected {EXPECTED_HEADINGS} headings, got {len(headings)}"
+    assert benefit_rows[0]["title"].startswith(FIRST_SECTION_TITLE), \
+        f"the table no longer starts at {FIRST_SECTION_TITLE}: {benefit_rows[0]['title'][:40]!r}"
+
     diseases = []
-    for r in range(12, 16):
-        for c in ("A", "B"):
-            v = text(tw, {}, c, r).lstrip("- ").strip()
+    for r in DISEASE_ROWS:
+        for c in DISEASE_COLS:
+            v = terms(c, r).lstrip("- ").strip()
             if v:
                 diseases.append(v)
+    assert len(diseases) == EXPECTED_DISEASES, f"expected {EXPECTED_DISEASES} illnesses, got {len(diseases)}"
+
+    waiting_prose = terms("A", WAITING_ROW)
+    special_waiting_prose = terms("A", SPECIAL_WAITING_ROW)
+    notes = {key: benefit("A", r) for key, r in BENEFIT_NOTE_ROWS.items()}
+    out_terms = {
+        "renewalToAge": RENEWAL_TO_AGE,
+        "waitingDays": WAITING_DAYS,
+        "specialWaitingDays": SPECIAL_WAITING_DAYS,
+        "specialWaitingDiseases": diseases,
+        "noClaimDiscountPercent": NO_CLAIM_DISCOUNT_PERCENT,
+        "outOfTerritoryDays": OUT_OF_TERRITORY_DAYS,
+        "renewalCopay": terms("A", TERMS_NOTE_ROWS["renewalCopay"]),
+        "preExisting": " ".join(t for t in (terms("A", r) for r in PRE_EXISTING_ROWS) if t),
+        "exclusions": terms("A", TERMS_NOTE_ROWS["exclusions"]),
+        "premiumChanges": notes["premiumChanges"],
+        "outOfTerritory": notes["outOfTerritory"],
+        "noClaimDiscount": notes["noClaimDiscount"],
+        "sharedLimit": notes["sharedLimit"],
+        "participationNote": notes["participationNote"],
+    }
+    empty = sorted(k for k, v in out_terms.items() if not v)
+    assert not empty, f"nothing read for terms {empty} — check the row numbers at the top of this script"
+    for figure, prose_name in (
+        (RENEWAL_TO_AGE, "renewalCopay"),
+        (NO_CLAIM_DISCOUNT_PERCENT, "noClaimDiscount"),
+        (OUT_OF_TERRITORY_DAYS, "outOfTerritory"),
+    ):
+        assert str(figure) in out_terms[prose_name], f"{figure} is no longer stated in {prose_name}"
+    assert str(WAITING_DAYS) in waiting_prose, f"{WAITING_DAYS} is no longer stated in {TERMS_SHEET}!A{WAITING_ROW}"
+    assert str(SPECIAL_WAITING_DAYS) in special_waiting_prose, \
+        f"{SPECIAL_WAITING_DAYS} is no longer stated in {TERMS_SHEET}!A{SPECIAL_WAITING_ROW}"
+
+    disclaimer = benefit("A", DISCLAIMER_ROW)
+    assert disclaimer, f"{BENEFIT_SHEET}!A{DISCLAIMER_ROW}: no disclaimer"
 
     data = {
         "name": "ไอเฮลท์ตี้ อัลตร้า",
         "code": "IHU",
         "source": XLSX.name,
         "plans": plans,
-        "copayPercent": 20,
+        "copayPercent": COPAY_PERCENT,
         "rows": rows,
-        "terms": {
-            "renewalToAge": 98,
-            "waitingDays": 30,
-            "specialWaitingDays": 120,
-            "specialWaitingDiseases": diseases,
-            "noClaimDiscountPercent": 10,
-            "outOfTerritoryDays": 90,
-            "renewalCopay": text(tw, {}, "A", 6),
-            "preExisting": " ".join(text(tw, {}, "A", r) for r in range(17, 23) if text(tw, {}, "A", r)),
-            "exclusions": text(tw, {}, "A", 25),
-            "premiumChanges": text(ws, merged, "A", 67),
-            "outOfTerritory": text(ws, merged, "A", 63),
-            "noClaimDiscount": text(ws, merged, "A", 62),
-            "sharedLimit": text(ws, merged, "A", 64),
-            "participationNote": text(ws, merged, "A", 58),
-        },
-        "disclaimer": text(ws, merged, "A", 68),
+        "terms": out_terms,
+        "disclaimer": disclaimer,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

@@ -11,6 +11,9 @@ from pathlib import Path
 
 import openpyxl
 
+# The IHU plan numbers live with the benefit table that also ships them, so the rate JSON
+# and the benefit JSON the page joins cannot drift apart.
+from extract_ihu_benefits import PLAN_NO as IHU_PLAN_NO
 from extract_ihu_benefits import extract as extract_ihu_benefits
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -224,7 +227,6 @@ W_FAMILY = {
     "LIFETREASURE": "ไลฟ์เทรเชอร์_A2026-1.xlsx",
     "LIFEPROTECT": "Sales proposal_Life Protect Plus 9 19 99_2026821_update benefit graph.xlsx",
 }
-IHU_PLAN_NO = {"SMART": 1, "BRONZE": 2, "SILVER": 3, "GOLD": 4, "DIAMOND": 5, "PLATINUM": 6}
 IHU_TERRITORY = {"ประเทศไทย": "", "เอเชีย": "A", "ทั่วโลก": "W"}
 IHU_COVERAGE = {"Full Coverage": "", "Deductible": "D", "Co-Payment": "C"}
 RRSS_PLAN_NO = {"แผน S": 1, "แผน M": 2, "แผน L": 3, "แผน XL": 4}

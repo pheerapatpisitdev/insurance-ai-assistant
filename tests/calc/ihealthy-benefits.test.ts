@@ -11,6 +11,7 @@ type BenefitRow = {
   adult: Record<string, string>;
   child?: Record<string, string>;
 };
+const rows = benefits.rows as unknown as Array<Partial<BenefitRow> & { heading?: string }>;
 const row = (no: number) => benefits.rows.find((r) => "no" in r && r.no === no)! as unknown as BenefitRow;
 
 describe("ไอเฮลท์ตี้ อัลตร้า benefit data", () => {
@@ -46,7 +47,10 @@ describe("ไอเฮลท์ตี้ อัลตร้า benefit data", ()
   });
 
   it("resolves the merged OPD cell that หมวด 18 and 19 share", () => {
-    expect(row(18).adult).toMatchObject({ SILVER: "6000", GOLD: "12000", DIAMOND: "60000", PLATINUM: "ตามที่จ่ายจริง" });
+    expect(row(18).adult).toEqual({
+      SMART: "-", BRONZE: "-", SILVER: "6000",
+      GOLD: "12000", DIAMOND: "60000", PLATINUM: "ตามที่จ่ายจริง",
+    });
     expect(row(19).adult).toEqual(row(18).adult);
   });
 
@@ -65,13 +69,57 @@ describe("ไอเฮลท์ตี้ อัลตร้า benefit data", ()
       .toEqual([14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]);
   });
 
+  it("keeps every row of the table, headings and sub-rows alike", () => {
+    // A drifting LAST_ROW or SKIP_ROWS would drop a whole section without failing anything
+    // else here, so the inventory is pinned: 5 group headings (หมวด 2, 4 and 6 carry no
+    // figures of their own, and the two ผู้ป่วยใน/ผู้ป่วยนอก banners), 36 benefit rows, of
+    // which 11 are the หมวดย่อย sub-rows that have no section number.
+    expect(rows).toHaveLength(41);
+    expect(rows.filter((r) => r.heading)).toHaveLength(5);
+    expect(rows.filter((r) => r.adult)).toHaveLength(36);
+    expect(rows.filter((r) => r.adult && r.no === null)).toHaveLength(11);
+    expect(rows.filter((r) => r.adult && r.no !== null)).toHaveLength(25);
+    // the two words each heading opens with: the banners in full, the หมวด rows by number
+    expect(rows.filter((r) => r.heading).map((r) => r.heading!.split(" ").slice(0, 2).join(" "))).toEqual([
+      "1. ผลประโยชน์กรณีผู้ป่วยใน",
+      "หมวดที่ 2",
+      "หมวดที่ 4",
+      "2. ผลประโยชน์กรณีไม่ต้องเข้าพักรักษาตัวเป็นผู้ป่วยใน",
+      "หมวดที่ 6",
+    ]);
+  });
+
   it("carries the waiting periods and the renewal rules as text", () => {
     expect(benefits.terms.renewalToAge).toBe(98);
     expect(benefits.terms.waitingDays).toBe(30);
     expect(benefits.terms.specialWaitingDays).toBe(120);
-    expect(benefits.terms.specialWaitingDiseases).toHaveLength(8);
+    expect(benefits.terms.specialWaitingDiseases).toEqual([
+      "เนื้องอก ถุงน้ำ หรือมะเร็งทุกชนิด",
+      "ริดสีดวงทวาร",
+      "ไส้เลื่อนทุกชนิด",
+      "ต้อเนื้อ หรือต้อกระจก",
+      "การตัดทอนซิล หรืออดีนอยด์",
+      "นิ่วทุกชนิด",
+      "เส้นเลือดขอดที่ขา",
+      "เยื่อบุโพรงมดลูกเจริญผิดที่",
+    ]);
     expect(benefits.terms.noClaimDiscountPercent).toBe(10);
     expect(benefits.terms.outOfTerritoryDays).toBe(90);
     expect(benefits.disclaimer).toContain("เอกสารประกอบการเสนอขาย");
+  });
+
+  it("carries every contract paragraph the page prints", () => {
+    const paragraphs = [
+      "renewalCopay", "preExisting", "exclusions", "premiumChanges",
+      "outOfTerritory", "noClaimDiscount", "sharedLimit", "participationNote",
+    ] as const;
+    for (const key of paragraphs) {
+      expect(benefits.terms[key].length, `${key} is empty`).toBeGreaterThan(40);
+    }
+    // the figures the JSON states as numbers have to still be the ones the prose states
+    expect(benefits.terms.renewalCopay).toContain("ต่ออายุได้ถึงอายุ 98 ปี");
+    expect(benefits.terms.outOfTerritory).toContain("90 วัน");
+    expect(benefits.terms.noClaimDiscount).toContain("ร้อยละ 10");
+    expect(benefits.terms.exclusions).toContain("21 ข้อ");
   });
 });
