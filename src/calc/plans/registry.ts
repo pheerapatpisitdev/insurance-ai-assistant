@@ -95,7 +95,10 @@ const PLANS: Record<string, PlanBundle> = {
     },
   },
   ...wFamily("ISMART", ismartRates, ismartRules, "iSmart 80/6"),
-  ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules, "Life Treasure"),
+  // ตารางแสดงผลประโยชน์ หมายเหตุ 3: จำนวนเงินเอาประกันภัย หรือมูลค่าเวนคืนกรมธรรม์
+  // หรือ 101% ของเบี้ยที่ชำระมาแล้ว แล้วแต่จำนวนใดจะมากกว่า
+  ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules, "Life Treasure", undefined,
+    { premiumPercent: 101, includeCashValue: true }),
   // Life Protect x 2 paid to age 99 is the one agents quote most, so it is the default here too.
   // ตารางแสดงผลประโยชน์ H: MAX(multiple × sumAssured, 101% × premiums paid, surrender value)
   ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect x 1.5 / x 2", "WLF99H",

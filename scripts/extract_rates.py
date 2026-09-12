@@ -524,6 +524,7 @@ def extract_w_family(plan_code, filename):
 # a row holds exactly (lastCoveredAge + 1 - age) values; anything past that is filler.
 LP_CV_SHEETS = {"M": "TABCV(Male) (as of 220626", "F": "TABCV(Female) (as of 220626)"}
 ISHIELD_CV_SHEETS = {"M": "TABCV(Male)", "F": "TABCV(Female)"}
+LT_CV_SHEETS = {"M": "TABCV(Male)", "F": "TABCV(Female)"}
 
 
 def cash_values(filename, sheets, header, first_value_column, last_covered_age):
@@ -567,6 +568,35 @@ def extract_lifeprotect_cash_values():
 
     write_json(OUT_DIR.parent / "cash-values" / "lifeprotect.json", {
         "planCode": "LIFEPROTECT",
+        "source": filename,
+        "lastCoveredAge": last_covered_age,
+        "note": "surrender value = round(factor * sumAssured / 1000); factor per policy year, from year 1",
+        "factors": factors,
+    })
+
+
+def extract_lifetreasure_cash_values():
+    """
+    ไลฟ์เทรเชอร์'s table is laid out exactly like Life Protect's — same header, same first
+    value column, same age 98 last covered — and its sheets are simply named without the
+    "as of" date. Cover runs to 99, so the row for an issue age holds 99 - age factors.
+    """
+    filename = W_FAMILY["LIFETREASURE"]
+    last_covered_age = 98
+    factors = cash_values(filename, LT_CV_SHEETS, ["Key", "CVPLAN", "CVSEX", "CVAGE"], 4, last_covered_age)
+
+    assert sorted(factors) == ["H99F06A", "H99F12A", "H99F18A"], sorted(factors)
+    for variant, by_sex in factors.items():
+        assert sorted(by_sex) == ["F", "M"], variant
+        for sex, by_age in by_sex.items():
+            assert sorted(by_age) == list(range(0, 71)), f"{variant} {sex} ages"
+    # the company's own benefit table for ชาย 30 · ชำระเบี้ย 18 ปี prints 16,140,000 at 80
+    # and 20,000,000 at 98 on a sum of 20,000,000
+    m30 = factors["H99F18A"]["M"][30]
+    assert (m30[50], m30[-1]) == (807, 1000), (m30[50], m30[-1])
+
+    write_json(OUT_DIR.parent / "cash-values" / "lifetreasure.json", {
+        "planCode": "LIFETREASURE",
         "source": filename,
         "lastCoveredAge": last_covered_age,
         "note": "surrender value = round(factor * sumAssured / 1000); factor per policy year, from year 1",
@@ -695,6 +725,7 @@ EXTRACTORS = {
     "lifetreasure": lambda: extract_w_family("LIFETREASURE", W_FAMILY["LIFETREASURE"]),
     "lifeprotect": lambda: extract_w_family("LIFEPROTECT", W_FAMILY["LIFEPROTECT"]),
     "lifeprotect-cv": extract_lifeprotect_cash_values,
+    "lifetreasure-cv": extract_lifetreasure_cash_values,
     "ishield-cv": extract_ishield_cash_values,
     "ishield-diseases": extract_ishield_diseases,
     "dci-diseases": extract_dci_diseases,
