@@ -15,12 +15,12 @@ const offered = (r: { available: { code: string; eligible: boolean }[] }) =>
   r.available.filter((a) => a.eligible).map((a) => a.code);
 
 describe("priceWithRiders", () => {
-  it("offers the four riders the agency sells here, and no others", async () => {
+  it("offers the two riders the agency sells here, and no others", async () => {
     const r = await priceWithRiders({ ...ADULT, riders: [] });
-    // The company sells thirteen with this base. Four are the agency's choice for this page;
+    // The company sells thirteen with this base. Two are the agency's choice for this page;
     // the back-office calculator still offers the rest.
-    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI", "RRSS", "CI123"]);
-    expect(offered(r)).toEqual(["MEB", "DCI", "RRSS", "CI123"]);
+    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI"]);
+    expect(offered(r)).toEqual(["MEB", "DCI"]);
   });
 
   it("will not price a rider this page does not offer, however it is asked for", async () => {
@@ -29,10 +29,9 @@ describe("priceWithRiders", () => {
     expect(r.totalModal).toBe(r.items.reduce((sum, i) => sum + i.modal, 0));
   });
 
-  it("drops the riders the health package refuses", async () => {
+  it("offers the package the same two", async () => {
     const r = await priceWithRiders({ ...PACKAGE, riders: [] });
-    // CI 123 is one of the four, but the package will not sell it
-    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI", "RRSS"]);
+    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI"]);
   });
 
   it("greys the rider a child is too young for", async () => {
@@ -45,13 +44,13 @@ describe("priceWithRiders", () => {
       expect(a.reason).toBeTruthy();
       expect(a.ageRange).toMatch(/\d+ - \d+ ปี/);
     }
-    expect(offered(r)).toEqual(["MEB", "RRSS", "CI123"]);
+    expect(offered(r)).toEqual(["MEB"]);
   });
 
-  it("keeps the package's three at age 8, with the one he is too young for greyed", async () => {
+  it("keeps both at age 8, with the one he is too young for greyed", async () => {
     const r = await priceWithRiders({ ...PACKAGE, age: 8, sex: "M", riders: [] });
-    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI", "RRSS"]);
-    expect(offered(r)).toEqual(["MEB", "RRSS"]);
+    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI"]);
+    expect(offered(r)).toEqual(["MEB"]);
   });
 
   it("prices an attached rider on top of the base and the health plan", async () => {

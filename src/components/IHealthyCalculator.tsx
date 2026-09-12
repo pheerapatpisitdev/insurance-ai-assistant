@@ -14,7 +14,8 @@ import {
 import {
   baseFor, resolveArrangement, sumFor, sumsFor, type IHealthyInitial,
 } from "@/lib/ihealthy-choice";
-import { queryFrom } from "@/lib/ihealthy-link";
+import { cardPath, queryFrom } from "@/lib/ihealthy-link";
+import type { AttachedRider } from "@/app/ihealthy-ultra/actions";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { LinkButton } from "@/components/sales/LinkButton";
 import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
@@ -115,7 +116,7 @@ export function IHealthyCalculator(
    * arrangement either way.
    */
   const [attached, setAttached] = useState<{
-    premiums: ComponentPremium[]; codes: string[]; dailyCash: number | null;
+    premiums: ComponentPremium[]; codes: string[]; dailyCash: number | null; riders: AttachedRider[];
   }>();
   const standardName = table.standard.label[age - table.ageMin];
   const extras = attached && {
@@ -195,6 +196,27 @@ export function IHealthyCalculator(
   /** An expired rate set prices, but not at a figure anyone may be quoted. */
   const shown = table.expired ? undefined : shownAt(priced, mode);
   const death = deathBenefitOf(table, base.variant, age, sumAssured);
+
+  /**
+   * Where the same arrangement is drawn as one picture — the card and the benefit table in a
+   * file a customer can keep, and forward to whoever else in the house has to agree to it.
+   *
+   * The riders travel as the fold's own codes and only once the fold has answered: silence
+   * there means the page is quoting the agency's standard daily cash, which is what the
+   * route prices when no rider is named. An empty answer is not silence, and the link says
+   * so — otherwise the picture would put back the rider the agent had just taken off.
+   *
+   * Held back with the price, on the same test the card is: nothing is drawn from a lapsed
+   * rate table or an age the company sells nothing at.
+   */
+  const picture = shown && plan
+    ? cardPath(table, {
+        age, sex, base: base.variant, sumAssured, mode,
+        plan: plan.code,
+        territory: territory ?? wantTerritory,
+        coverage: coverage ?? wantCoverage,
+      }, attached?.riders)
+    : undefined;
 
   /**
    * The quote the page hands over is the arrangement the card shows — the base plan and the
@@ -521,12 +543,12 @@ export function IHealthyCalculator(
       </div>
 
       <div className="print:hidden">
-        <ContactButtons message={message} copyText={quoteText} />
+        <ContactButtons message={message} copyText={quoteText} cardPath={picture} />
       </div>
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden print:hidden">
-          <ContactButtons message={message} copyText={quoteText} compact />
+          <ContactButtons message={message} copyText={quoteText} cardPath={picture} compact />
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { priceWithRiders } from "@/app/ihealthy-ultra/actions";
 import type { RiderChoice, RiderQuoteInput, RiderQuoteResult } from "@/app/ihealthy-ultra/actions";
 import { arrangementKey, attachedRiders, type RiderPick } from "@/components/ihealthy/rider-request";
+import type { AttachedRider } from "@/app/ihealthy-ultra/actions";
 
 export interface RiderPanelProps {
   /** everything the action needs except the attached riders themselves */
@@ -28,6 +29,8 @@ export interface RiderPanelProps {
     codes: string[];
     /** the plan of the standard rider as priced, or null when it is not attached at all */
     dailyCash: number | null;
+    /** the ticks the engine actually priced, for the card link to name them again */
+    riders: AttachedRider[];
   }) => void;
 }
 
@@ -41,6 +44,17 @@ interface Answer {
   at: string;
   result?: RiderQuoteResult;
 }
+
+/**
+ * What this page calls the health rider, wherever the engine would name it.
+ *
+ * The engine's name is the company's own Thai, which every other calculator in the building
+ * prints and should go on printing. This page says iHealthy Ultra in its heading, its card,
+ * its table and its link, and one Thai spelling of it in the priced rows below would read as
+ * a second contract.
+ */
+const HEALTH_RIDER = "IHU";
+const HEALTH_RIDER_NAME = "iHealthy Ultra";
 
 /**
  * How long a change is left alone before the server is asked.
@@ -82,7 +96,11 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
   // arrives on every render; an effect that listed it as a dependency would ask the server
   // for the same arrangement again, set state, render, and ask again — for ever.
   const { base, age, sex, sumAssured, mode, plan, territory, coverage } = request;
-  const [open, setOpen] = useState(false);
+  // Open from the start. The fold was a fold because a customer reading the page has no use
+  // for it; the agents who use this page most have to open it every single time, and a
+  // closed panel is also the one thing that can leave the card quoting the agency's standard
+  // rider while the panel below it has never said whether that is what is attached.
+  const [open, setOpen] = useState(true);
   const [chosen, setChosen] = useState<Record<string, RiderPick>>(
     standard ? { [standard.code]: { plan: standard.plan } } : {},
   );
@@ -122,6 +140,9 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
             told.current?.({
               premiums: result.extras,
               codes: result.extraCodes,
+              // What was priced, not what was ticked: a rider this age cannot buy is still
+              // ticked in the fold and is not part of the arrangement anybody may be shown.
+              riders: riders.filter((r) => result.extraCodes.includes(r.code)),
               dailyCash: standardCode !== undefined && result.extraCodes.includes(standardCode)
                 ? chosen[standardCode]?.plan ?? standardPlan ?? null
                 : null,
@@ -161,6 +182,7 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
 
   return (
     <details
+      open
       className="group rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] print:hidden"
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
@@ -248,7 +270,9 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
             >
               {result.items.map((i) => (
                 <div key={i.code} className="flex items-baseline justify-between gap-3">
-                  <dt className="text-[var(--lg-mute)]">{i.name}</dt>
+                  <dt className="text-[var(--lg-mute)]">
+                    {i.code.startsWith(HEALTH_RIDER) ? HEALTH_RIDER_NAME : i.name}
+                  </dt>
                   <dd
                     className={`lg-figure tabular-nums ${i.eligible ? "text-[var(--lg-white)]" : "text-[var(--lg-gold)]"}`}
                   >

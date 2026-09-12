@@ -1,4 +1,5 @@
 import type { PayMode } from "@/calc/types";
+import type { AttachedRider } from "@/lib/ihealthy-rider-quote";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
 import {
   IHEALTHY_OPENING, baseFor, resolveArrangement, sumFor, type IHealthyInitial,
@@ -147,4 +148,76 @@ export function queryFrom(table: IHealthyTable, v: IHealthyInitial): string {
     cover: letterFor(table.coverages, v.coverage) ?? "",
     mode: v.mode,
   }).toString();
+}
+
+/**
+ * The riders the agent has attached, written into the same address the arrangement is.
+ *
+ * One `r` per rider, its fields separated by colons in the order the engine takes them:
+ * `r=MEB:1000`, `r=DCI::500000`, and a rider sold in named variants as `r=CODE:::แผน S`.
+ * Positional and not named because the card
+ * link already carries eight keys and these are three more apiece; an empty field is a field
+ * this rider does not have, and trailing ones are simply not written.
+ *
+ * What it never carries is a premium. The picture is drawn from the engine's answer to these
+ * codes, so a link edited by hand can ask for a different arrangement — which the engine
+ * will refuse or re-price — and cannot make the agency advertise a figure it never quoted.
+ */
+export function riderParams(riders: AttachedRider[]): string[] {
+  return riders.map((r) => {
+    const fields = [r.code, r.plan ?? "", r.sumAssured ?? "", r.option ?? ""].map(String);
+    while (fields.length > 1 && fields[fields.length - 1] === "") fields.pop();
+    return fields.join(":");
+  });
+}
+
+/** A whole number a link asked for, or nothing — an empty field and a word both say nothing. */
+function countFrom(raw: string | undefined): number | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : undefined;
+}
+
+/**
+ * The riders a link asks for. Nothing here decides whether they may be bought: the engine
+ * measures each against this age and this base and drops the ones it will not write, which
+ * is the same pass the fold's own ticks go through.
+ *
+ * A colon inside a variant's own code is kept rather than treated as another separator —
+ * the option is the last field, so everything after the third colon belongs to it.
+ */
+export function ridersFrom(raw: string[]): AttachedRider[] {
+  const riders: AttachedRider[] = [];
+  for (const one of raw) {
+    const [code, plan, sum, ...rest] = one.split(":");
+    if (code === undefined || code === "") continue;
+    const option = rest.join(":");
+    riders.push({
+      code,
+      ...(countFrom(plan) === undefined ? {} : { plan: countFrom(plan)! }),
+      ...(countFrom(sum) === undefined ? {} : { sumAssured: countFrom(sum)! }),
+      ...(option === "" ? {} : { option }),
+    });
+  }
+  return riders;
+}
+
+/**
+ * Where the same quote is drawn as a picture: the arrangement on screen, and the riders
+ * attached to it, in one address the route can price from scratch.
+ */
+export function cardPath(
+  table: IHealthyTable, v: IHealthyInitial, riders?: AttachedRider[],
+): string {
+  const q = new URLSearchParams(queryFrom(table, v));
+  if (riders !== undefined) {
+    const params = riderParams(riders);
+    // An agent who has emptied the fold has said something, and it is not the same thing as
+    // never having opened it: a card that read the two alike would put the agency's standard
+    // daily cash back into a price the agent had just taken it out of. So an answered fold
+    // always writes an `r`, empty when there is nothing in it.
+    if (params.length === 0) q.append("r", "");
+    else for (const r of params) q.append("r", r);
+  }
+  return `/api/ihealthy-card?${q.toString()}`;
 }

@@ -59,7 +59,7 @@ export const PHONE_PLANS = ["BRONZE", "SILVER", "GOLD"];
  *
  * One map rather than a list and a lookup, so a row cannot be shown without a name for it.
  */
-const PHONE_ROW_LABEL: Record<number, { icon: string; label: string }> = {
+export const PHONE_ROW_LABEL: Record<number, { icon: string; label: string }> = {
   1: { icon: "🛏️", label: "ค่าห้องและค่าอาหาร" },
   5: { icon: "🏥", label: "Day Surgery" },
   7: { icon: "🚑", label: "อุบัติเหตุ OPD 24 ชม" },

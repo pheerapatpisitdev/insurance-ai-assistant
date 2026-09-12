@@ -1,0 +1,264 @@
+import { formatBaht } from "@/calc/money";
+import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
+import { benefitCell, PHONE_ROW_LABEL } from "@/components/ihealthy/BenefitTable";
+import { iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
+import { initialFrom, ridersFrom } from "@/lib/ihealthy-link";
+import { iHealthyTable } from "@/lib/ihealthy-table";
+import { MODES, deathBenefitOf, iHealthyPricing, plansFor } from "@/lib/ihealthy-quote";
+import { priceRiders } from "@/lib/ihealthy-rider-quote";
+
+/**
+ * The health quote as a picture: the card a customer is looking at, and the table under it,
+ * in one file they can keep.
+ *
+ * The page already hands its quote over three ways — an address, a printed sheet, and the
+ * figures as text — and every one of them needs the reader to still have the page, a printer
+ * or a chat that keeps formatting. A picture needs none of those, which is what makes it the
+ * thing that actually reaches the person the customer has to talk it over with.
+ *
+ * Described here and drawn in the route, so that every figure on it is the engine's and can
+ * be tested without rendering anything. And priced here from the arrangement the link names,
+ * never from figures carried in the link: an address that could set a premium would be an
+ * address that could make the agency advertise one it never quoted.
+ */
+
+/** A plan's column: what it is called, what it pays in a year, and whether it is on offer. */
+export interface CardColumn {
+  name: string;
+  /** the annual ceiling in the company's own round millions, e.g. "10 ล้าน" */
+  ceiling: string;
+  /** the plan the card above is pricing */
+  selected: boolean;
+  /** the company does not write this plan at the age on the card */
+  sold: boolean;
+}
+
+export interface CardCell {
+  text: string;
+  /** a column the company will not sell at this age; the figure is withheld, not the row */
+  dim: boolean;
+}
+
+export interface CardTableRow {
+  label: string;
+  /** one per column, or empty where `span` says the same thing across all of them */
+  cells: CardCell[];
+  /** one answer for every plan, because it is the same cover whichever is bought */
+  span?: string;
+}
+
+export interface IHealthyCard {
+  /** "iHealthy Ultra Gold" */
+  planLine: string;
+  /** who it is for and what it rides on */
+  insuredLine: string;
+  /**
+   * The instalment the card headlines; absent where no price may be quoted. The other two
+   * are not here: the table below prices all three under every plan, and a card that listed
+   * them again would be saying the same thing twice on the same picture.
+   */
+  premium?: { amount: string; per: string };
+  /** what the headline is made of: the base plan, the health cover, the riders attached */
+  lines: { label: string; amount: string }[];
+  /** the company will not take the monthly instalment this arrangement comes to */
+  belowMinimum?: string;
+  /** the one thing the base plan is for, in the card's own words */
+  death: string;
+  columns: CardColumn[];
+  rows: CardTableRow[];
+  /** what the whole arrangement costs under each plan, one instalment to a row */
+  premiumRows: { label: string; cells: CardCell[] }[];
+  notes: string[];
+}
+
+const SEX_WORD: Record<string, string> = { M: "ชาย", F: "หญิง" };
+/** As the calculator's printed heading names them; Full Coverage is the ordinary one. */
+const COVERAGE_WORD: Record<string, string> = {
+  "Full Coverage": "",
+  Deductible: "มีความรับผิดส่วนแรก",
+  "Co-Payment": "ร่วมจ่าย",
+};
+const DASH = "-";
+/**
+ * How an instalment reads after a figure. The page's own `PER` is written for the middle of a
+ * sentence — "47,230 บาท/ปี" — and a card sets the figure large with the unit beside it,
+ * where a slash reads as part of the number.
+ */
+const PER_WORD: Record<PayMode, string> = {
+  annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน",
+};
+const MILLIONS = (baht: number) => `${(baht / 1_000_000).toLocaleString("en-US")} ล้าน`;
+
+/**
+ * What the attached riders are called on one line.
+ *
+ * The same rule the card on the page follows: one rider gets its own name, more than one is
+ * a count — a card that listed them would be the agent's fold written out twice, on a
+ * picture the customer is meant to be able to read at a glance.
+ */
+function extrasLabel(codes: string[], standardCode: string, standardName: string | null): string {
+  if (codes.length === 1 && codes[0] === standardCode && standardName) return standardName;
+  return `สัญญาเพิ่มเติม ${codes.length} รายการ`;
+}
+
+/**
+ * The quote a link asks for, drawn from the rate tables as they stand today.
+ *
+ * Nothing is refused: `initialFrom` walks any query at all — including none — to an
+ * arrangement the company sells, so a card is always an answer about something real. The one
+ * thing it may not have is a price, which a lapsed rate table takes away and the picture
+ * says so in place of.
+ */
+export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): IHealthyCard {
+  const table = iHealthyTable(today);
+  const facts = iHealthyFacts();
+  const v = initialFrom(table, Object.fromEntries(query));
+  const asked = ridersFrom(query.getAll("r"));
+
+  const sellable = plansFor(table, v.age).map((p) => p.code);
+  const arrangement = {
+    base: v.base, age: v.age, sex: v.sex, sumAssured: v.sumAssured,
+    plan: v.plan, territory: v.territory, coverage: v.coverage,
+  };
+
+  // The riders go to the engine rather than to the slim table: their eligibility rules and
+  // their rate tables are the reason the page asks a server for them at all, and a picture
+  // drawn from a link is exactly the case where the codes were not typed by the fold.
+  const priced = priceRiders({ ...arrangement, mode: v.mode, riders: asked });
+  const standardName = table.standard.label[v.age - table.ageMin];
+  /**
+   * Whether the agent's fold has spoken at all. A link with no `r` in it comes from a page
+   * whose fold was never opened, and is priced the way that page prices itself: with the
+   * agency's standard daily cash on. A link carrying an empty `r` is a fold that was opened
+   * and emptied, which is a different answer and gets a different price.
+   */
+  const extras = query.has("r")
+    ? {
+        label: extrasLabel(priced.extraCodes, table.standard.code, standardName),
+        premiums: priced.extras,
+      }
+    : undefined;
+
+  const byPlan = new Map(facts.plans.map((p) => [
+    p.code,
+    table.expired ? undefined : iHealthyPricing(table, { ...arrangement, plan: p.code }, extras),
+  ]));
+  const here = byPlan.get(v.plan);
+  const at = (mode: PayMode) => here?.total.find((m) => m.mode === mode);
+  const headline = at(v.mode);
+
+  const columns: CardColumn[] = facts.plans.map((p) => ({
+    name: planLabel(p.code),
+    ceiling: MILLIONS(p.annualMax),
+    selected: p.code === v.plan,
+    sold: sellable.includes(p.code),
+  }));
+  const cellsOf = (get: (code: string) => string): CardCell[] =>
+    facts.plans.map((p) => ({ text: get(p.code), dim: !sellable.includes(p.code) }));
+
+  /**
+   * The ceiling first and the company's categories under it, in the sheet's own order.
+   *
+   * The same handful of rows a phone shows, from the same map, so the picture and the page
+   * are condensed to the same thing rather than to two different opinions of what matters.
+   * Only the phone's marks are left behind: an emoji is a font the drawing library would have
+   * to fetch at render time, and these rows have the width here to be read by their names.
+   */
+  const rows: CardTableRow[] = [
+    { label: "วงเงินค่ารักษาต่อปี", cells: cellsOf((code) => {
+      const plan = facts.plans.find((p) => p.code === code)!;
+      return MILLIONS(plan.annualMax);
+    }) },
+  ];
+  for (const entry of facts.rows) {
+    if (isHeading(entry) || entry.no === null) continue;
+    const short = PHONE_ROW_LABEL[entry.no];
+    if (short === undefined) continue;
+    rows.push({
+      label: short.label,
+      cells: cellsOf((code) => benefitCell(entry, code, v.age, sellable).text),
+    });
+  }
+  // Last, and outside the company's own categories: a second contract the agency sells
+  // alongside this one, which the premium rows below already count.
+  const standardPlan = table.standard.plan[v.age - table.ageMin];
+  if (standardPlan !== null) {
+    // What is actually attached: the agent's own plan where the fold has spoken, and the
+    // agency's standard where it has not — which is the plan the price above was worked out
+    // on either way.
+    const attached = extras === undefined
+      ? standardPlan
+      : priced.extraCodes.includes(table.standard.code)
+        ? asked.find((r) => r.code === table.standard.code)?.plan ?? null
+        : null;
+    rows.push({
+      label: "ค่าชดเชยรายวัน",
+      cells: [],
+      span: attached === null ? DASH : `${attached.toLocaleString("en-US")} ต่อวัน · ทุกแผนเท่ากัน`,
+    });
+  }
+
+  const premiumRows = table.expired ? [] : MODES.map((mode) => ({
+    label: PAY_MODE_LABEL[mode],
+    cells: cellsOf((code) => {
+      const total = byPlan.get(code)?.total.find((m) => m.mode === mode);
+      return total === undefined ? DASH : formatBaht(total.total);
+    }),
+  }));
+
+  const plan = facts.plans.find((p) => p.code === v.plan);
+  const death = deathBenefitOf(table, v.base, v.age, v.sumAssured);
+  const cover = COVERAGE_WORD[v.coverage] ?? "";
+  /** The company's numbered categories this picture leaves out, counted from the sheet. */
+  const hidden = facts.rows
+    .filter((r) => !isHeading(r) && r.no !== null && !(r.no in PHONE_ROW_LABEL)).length;
+
+  return {
+    planLine: `iHealthy Ultra ${planLabel(v.plan)}`,
+    insuredLine: `${SEX_WORD[v.sex]} ${v.age} ปี · ${table.bases.find((b) => b.variant === v.base)?.label ?? v.base}`
+      + ` ทุน ${v.sumAssured.toLocaleString("en-US")} บาท · ${v.territory}${cover ? ` · ${cover}` : ""}`,
+    ...(headline ? { premium: { amount: formatBaht(headline.total), per: PER_WORD[v.mode] } } : {}),
+    lines: here === undefined ? [] : [
+      {
+        label: `${table.bases.find((b) => b.variant === v.base)?.label ?? v.base} ทุน ${v.sumAssured.toLocaleString("en-US")}`,
+        amount: formatBaht(here.base.find((m) => m.mode === v.mode)?.total ?? 0),
+      },
+      {
+        label: `iHealthy Ultra ${planLabel(v.plan)}`,
+        amount: formatBaht(here.rider.find((m) => m.mode === v.mode)?.total ?? 0),
+      },
+      // An emptied fold still carries a subtotal, of nothing. The page's own card hides that
+      // line on the same test rather than printing "0" under a name.
+      ...(here.standard && (here.standard.premiums.find((m) => m.mode === v.mode)?.total ?? 0) > 0
+        ? [{
+            label: here.standard.label,
+            amount: formatBaht(here.standard.premiums.find((m) => m.mode === v.mode)!.total),
+          }]
+        : []),
+    ],
+    ...(headline?.belowMinimum
+      ? { belowMinimum: `ต่ำกว่าเบี้ยรายเดือนขั้นต่ำ ${table.minMonthly.toLocaleString("en-US")} บาท ที่บริษัทรับชำระ` }
+      : {}),
+    // The rider covers the illness; this is what the base plan under it is for, and the one
+    // figure on the card that the table below has no column for.
+    death: death.alreadyPastAge
+      ? `ครอบครัวได้รับ ${death.sumFrom.toLocaleString("en-US")} บาท`
+        + ` · ตั้งแต่อายุ ${death.beforeAge} คุ้มครองเท่าทุน`
+      : `เสียชีวิตก่อนอายุ ${death.beforeAge} ครอบครัวได้ ${death.sumBefore.toLocaleString("en-US")} บาท`,
+    columns,
+    rows,
+    premiumRows,
+    notes: [
+      // The annual ceiling is the first row of the table and is not said again; what is said
+      // here is the part of the bill the customer keeps, which no column carries.
+      (v.coverage === "Deductible" && plan
+        ? `รับผิดส่วนแรก ${plan.deductible.toLocaleString("en-US")} บาทต่อปี · `
+        : v.coverage === "Co-Payment"
+          ? `ร่วมจ่าย ${facts.copayPercent} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง · `
+          : "")
+        + `ยังคุ้มครองอีก ${hidden} หมวด ดูตารางเต็มได้ในหน้าเว็บ`,
+      "เบี้ยปีแรกของอาชีพชั้น 1 · เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
+      "ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกันและที่ระบุในกรมธรรม์",
+    ],
+  };
+}
