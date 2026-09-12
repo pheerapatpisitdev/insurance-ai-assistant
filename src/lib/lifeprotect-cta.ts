@@ -2,7 +2,7 @@ import type { ModePremium } from "@/calc/mode-premiums";
 import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
-import { PER, perDay } from "@/lib/legacy-cta";
+import { PER, perDayText } from "@/lib/legacy-cta";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import type { CashRow } from "@/lib/lifeprotect-quote";
 
@@ -71,7 +71,7 @@ export function lifeProtectQuoteText(f: LifeProtectQuoteFacts): string {
     sum,
     "",
     `${SEX_WORD[f.sex]} อายุ ${ageWord(f.age)} · ${f.termLabel}`,
-    `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
+    `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDayText(annual.total)} บาท)` : ""),
     "",
     // one instalment a line, smallest first, whichever the card headlines
     ...INSTALMENT_ORDER.flatMap((mode) => {

@@ -6,19 +6,19 @@ import { PER, perDayText } from "@/lib/legacy-cta";
 import { ageWord } from "@/lib/lifeprotect-cta";
 import type { CashRow } from "@/lib/lifeprotect-quote";
 
-/** The age picker's value: an age some term still takes, or "over" for everyone past the last. */
-export type IShieldAge = number | "over";
+/** The age picker's value: an age the plan takes, or "over" for everyone past the last. */
+export type LifeTreasureAge = number | "over";
 
 const SEX_WORD: Record<Sex, string> = { M: "ชาย", F: "หญิง" };
 const INSTALMENT_ORDER: PayMode[] = ["monthly", "semi", "annual"];
 
-export interface IShieldCtaFacts {
+export interface LifeTreasureCtaFacts {
   sumAssured: number;
-  /** the term as the button words it, e.g. "ชำระเบี้ย 10 ปี" */
+  /** the term as the button words it, e.g. "ชำระเบี้ย 12 ปี" */
   termLabel: string;
-  age: IShieldAge;
+  age: LifeTreasureAge;
   sex: Sex;
-  /** the last age any term issues at, named in the message an older customer sends */
+  /** the oldest age the plan issues at, named in the message an older customer sends */
   ageMax: number;
   /** the instalment on the card, or undefined when no price is being shown */
   premium: ModePremium | undefined;
@@ -28,43 +28,50 @@ export interface IShieldCtaFacts {
  * What the customer's chat opens with, so whoever answers starts from the figures already
  * on screen.
  */
-export function iShieldMessage(f: IShieldCtaFacts): string {
-  const head = `สนใจ iShield ทุน ${f.sumAssured.toLocaleString("en-US")}`;
+export function lifeTreasureMessage(f: LifeTreasureCtaFacts): string {
+  const head = `สนใจไลฟ์เทรเชอร์ ทุน ${f.sumAssured.toLocaleString("en-US")}`;
   if (f.age === "over") return `${head} อายุเกิน ${f.ageMax} ปี ขอแบบที่เหมาะกับอายุนี้`;
   const who = `${head} ${f.termLabel} อายุ${f.age === 0 ? "" : " "}${ageWord(f.age)} ${SEX_WORD[f.sex]}`;
   if (!f.premium) return `${who} ขอราคาปัจจุบัน`;
   return `${who} เบี้ยประมาณ ${formatBaht(f.premium.total)} บาท${PER[f.premium.mode]}`;
 }
 
-export interface IShieldQuoteFacts {
+export interface LifeTreasureQuoteFacts {
   sumAssured: number;
   termLabel: string;
   age: number;
   sex: Sex;
+  /** how many years the premium is paid */
+  years: number;
+  /** the age cover runs to */
+  coverToAge: number;
   /** every instalment the company will take, headline first */
   modes: ModePremium[];
-  /** what a diagnosis pays, in baht */
-  illness: { early: number; major: number };
-  /** how many illnesses each stage names, and the days before either is covered */
-  counts: { earlyCount: number; majorCount: number; waitingDays: number };
-  maturityAge: number;
+  /** every premium over the paying term, in satang */
+  total: number;
+  /** the sum as a multiple of the premiums paid, or null when it is not more than one */
+  leverage: number | null;
   cash: CashRow[];
+  /** the share of premiums paid the death benefit never falls below */
+  premiumFloorPercent: number;
 }
 
 /**
- * The quote as the agent pastes it into a chat. iShield's order is not Life Protect's: what
- * a diagnosis pays comes before what death pays, because that is the half of the contract a
- * customer is deciding about.
+ * The quote as the agent pastes it into a chat.
+ *
+ * The order is the one an estate buyer asks in: what the family receives, what the policy is
+ * worth if it is ever cashed in, and only then what the whole thing costs — which is the
+ * line this plan is bought or refused on, so it carries the multiple beside it.
  */
-export function iShieldQuoteText(f: IShieldQuoteFacts): string {
+export function lifeTreasureQuoteText(f: LifeTreasureQuoteFacts): string {
   const [headline] = f.modes;
   const annual = f.modes.find((m) => m.mode === "annual");
   const baht = (n: number) => n.toLocaleString("en-US");
   const lines = [
     // an emoji a heading, no more: the text is pasted into a customer's chat, where a wall
     // of them reads as a broadcast rather than as an agent answering
-    "🛡️ iShield — ชีวิตและโรคร้ายแรง",
-    `ทุน ${baht(f.sumAssured)} บาท · คุ้มครองถึงอายุ ${f.maturityAge}`,
+    "🏛️ ไลฟ์เทรเชอร์ — มรดกที่ระบุจำนวนได้",
+    `ทุน ${baht(f.sumAssured)} บาท · คุ้มครองถึงอายุ ${f.coverToAge}`,
     "",
     `${SEX_WORD[f.sex]} อายุ ${ageWord(f.age)} · ${f.termLabel}`,
     `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}`
@@ -75,22 +82,17 @@ export function iShieldQuoteText(f: IShieldQuoteFacts): string {
       return m ? [`${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`] : [];
     }),
     "",
-    "🩺 ตรวจพบโรคร้ายแรง",
-    `- ระยะเริ่มต้น ${f.counts.earlyCount} โรค ${baht(f.illness.early)} บาทต่อโรค`,
-    `- ระยะรุนแรง ${f.counts.majorCount} โรค สูงสุด ${baht(f.illness.major)} บาท`,
-    "",
-    "👪 เสียชีวิต",
-    `- ${baht(f.sumAssured)} บาท`,
-    "",
-    `🎁 อยู่ครบสัญญาอายุ ${f.maturityAge}`,
-    `- รับคืน ${baht(f.sumAssured)} บาท`,
+    "👪 ครอบครัวได้รับเมื่อเสียชีวิต",
+    `- ${baht(f.sumAssured)} บาท ทุกช่วงอายุ`,
+    `- และไม่น้อยกว่า ${f.premiumFloorPercent}% ของเบี้ยที่ชำระมาแล้ว หรือมูลค่าเวนคืน แล้วแต่จำนวนใดมากกว่า`,
   ];
   if (f.cash.length > 0) {
     lines.push("", "🏦 มูลค่าเงินสดสะสม (หากเวนคืน)", ...f.cash.map((r) => `- อายุ ${r.age} ปี ${baht(r.amount)} บาท`));
   }
   lines.push(
     "",
-    `📌 โรคร้ายแรงคุ้มครองหลังกรมธรรม์มีผล ${f.counts.waitingDays} วัน`,
+    `📌 เบี้ยรวมตลอด ${f.years} ปี ${formatBaht(f.total)} บาท`
+      + (f.leverage ? ` (ส่งต่อ ${f.leverage.toFixed(1)} เท่าของเบี้ยที่จ่าย)` : ""),
     "เบี้ยคงที่ตลอดระยะเวลาชำระ · เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน",
   );
   return lines.join("\n");

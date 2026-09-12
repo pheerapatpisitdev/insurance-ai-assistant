@@ -2,7 +2,7 @@ import type { ModePremium } from "@/calc/mode-premiums";
 import type { PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
-import { PER, perDay } from "@/lib/legacy-cta";
+import { PER, perDayText } from "@/lib/legacy-cta";
 
 /** The age picker's value: an age the plan takes, or "over" for everyone past the last. */
 export type PlbAge = number | "over";
@@ -68,7 +68,7 @@ export function plbQuoteText(f: PlbQuoteFacts): string {
     "",
     `${SEX_WORD[f.sex]} อายุ ${f.age} · ${f.termLabel}`,
     `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}`
-      + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
+      + (annual ? ` (ตกวันละ ${perDayText(annual.total)} บาท)` : ""),
     "",
     ...INSTALMENT_ORDER.flatMap((mode) => {
       const m = f.modes.find((x) => x.mode === mode);

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
-import { PER, displayPremium, perDay } from "@/lib/legacy-cta";
+import { PER, displayPremium, perDayText } from "@/lib/legacy-cta";
 import type { LifeProtectTable } from "@/lib/lifeprotect-table";
 import { cashAt, deathBenefitOf, lifeProtectModes, payYears, termAt } from "@/lib/lifeprotect-quote";
 import { cashProjection } from "@/lib/cash-projection";
@@ -227,7 +227,7 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
               <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
                 <div>
                   ตกวันละ{" "}
-                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDay(annual.total)}</span> บาท
+                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDayText(annual.total)}</span> บาท
                 </div>
                 {others.map((m) => (
                   <div key={m.mode}>

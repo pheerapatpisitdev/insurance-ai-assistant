@@ -5,7 +5,7 @@ import type { PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import type { LegacyAge } from "@/lib/legacy-cta";
-import { displayPremium, legacyMessage, legacyQuoteText, perDay } from "@/lib/legacy-cta";
+import { displayPremium, legacyMessage, legacyQuoteText, perDayText } from "@/lib/legacy-cta";
 import { cardPath } from "@/lib/card-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import type { LegacyTable } from "@/lib/legacy-table";
@@ -185,7 +185,7 @@ export function LegacyCalculator({ table, sticky = false }: LegacyCalculatorProp
               <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
                 <div>
                   ตกวันละ{" "}
-                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDay(annual.total)}</span> บาท
+                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDayText(annual.total)}</span> บาท
                 </div>
                 {others.map((m) => (
                   <div key={m.mode}>

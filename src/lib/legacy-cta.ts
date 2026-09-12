@@ -31,6 +31,15 @@ export function perDay(annualSatang: number): number {
   return Math.ceil(annualSatang / 100 / 365);
 }
 
+/**
+ * The same figure grouped for reading. A premium big enough to cost four figures a day is
+ * rare but real — ten million of ไลฟ์เทรเชอร์ is over a thousand baht a day — and "1014"
+ * printed beside grouped numbers everywhere else reads as a typo.
+ */
+export function perDayText(annualSatang: number): string {
+  return perDay(annualSatang).toLocaleString("en-US");
+}
+
 /** How each instalment reads after a figure, where the customer says it out loud. */
 export const PER: Record<PayMode, string> = { annual: "/ปี", semi: "/6 เดือน", monthly: "/เดือน" };
 
@@ -114,7 +123,7 @@ export function legacyQuoteText(f: LegacyQuoteFacts): string {
     // of them reads as a broadcast rather than as an agent answering
     `🛡️ มรดกเพื่อครอบครัว ${f.millions} ล้าน`,
     `${SEX_WORD[f.sex]} อายุ ${f.age}`,
-    `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDay(annual.total)} บาท)` : ""),
+    `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDayText(annual.total)} บาท)` : ""),
     // one instalment a line, smallest first. An instalment the company refuses is still
     // named, with the reason: an agent asked for it by name should not have to guess why
     // the quote left it out.
