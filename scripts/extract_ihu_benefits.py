@@ -200,18 +200,22 @@ def extract():
     }
     empty = sorted(k for k, v in out_terms.items() if not v)
     assert not empty, f"nothing read for terms {empty} — check the row numbers at the top of this script"
-    for figure, prose_name in (
-        (RENEWAL_TO_AGE, "renewalCopay"),
-        (NO_CLAIM_DISCOUNT_PERCENT, "noClaimDiscount"),
-        (OUT_OF_TERRITORY_DAYS, "outOfTerritory"),
+    # Each figure is looked for in the words that carry it, not on its own: "9" sits inside
+    # "98 ปี", so a digit lost off a constant would still be found in the prose it contradicts.
+    for phrase, prose_name in (
+        (f"ถึงอายุ {RENEWAL_TO_AGE} ปี", "renewalCopay"),
+        (f"ร้อยละ {NO_CLAIM_DISCOUNT_PERCENT}", "noClaimDiscount"),
+        (f"{OUT_OF_TERRITORY_DAYS} วัน", "outOfTerritory"),
     ):
-        assert str(figure) in out_terms[prose_name], f"{figure} is no longer stated in {prose_name}"
-    assert str(WAITING_DAYS) in waiting_prose, f"{WAITING_DAYS} is no longer stated in {TERMS_SHEET}!A{WAITING_ROW}"
-    assert str(SPECIAL_WAITING_DAYS) in special_waiting_prose, \
-        f"{SPECIAL_WAITING_DAYS} is no longer stated in {TERMS_SHEET}!A{SPECIAL_WAITING_ROW}"
+        assert phrase in out_terms[prose_name], f"{phrase!r} is no longer stated in {prose_name}"
+    assert f"{WAITING_DAYS} วัน" in waiting_prose, \
+        f"'{WAITING_DAYS} วัน' is no longer stated in {TERMS_SHEET}!A{WAITING_ROW}"
+    assert f"{SPECIAL_WAITING_DAYS} วัน" in special_waiting_prose, \
+        f"'{SPECIAL_WAITING_DAYS} วัน' is no longer stated in {TERMS_SHEET}!A{SPECIAL_WAITING_ROW}"
 
     disclaimer = benefit("A", DISCLAIMER_ROW)
-    assert disclaimer, f"{BENEFIT_SHEET}!A{DISCLAIMER_ROW}: no disclaimer"
+    assert "เอกสารประกอบการเสนอขาย" in disclaimer, \
+        f"{BENEFIT_SHEET}!A{DISCLAIMER_ROW} is no longer the disclaimer: {disclaimer[:40]!r}"
 
     data = {
         "name": "ไอเฮลท์ตี้ อัลตร้า",
