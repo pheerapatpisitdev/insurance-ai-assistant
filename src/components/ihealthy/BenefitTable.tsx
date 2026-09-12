@@ -19,6 +19,12 @@ export interface BenefitTableProps {
   /** the company's note that the rider and its endorsement share one annual ceiling */
   sharedLimit: string;
   /**
+   * The daily cash the agency attaches as standard, in baht a day — absent above the age the
+   * company writes it at. It does not vary with the health plan, so it is one cell across
+   * them rather than the same figure printed six times.
+   */
+  dailyCash?: number;
+  /**
    * The whole yearly premium under each plan, in satang, for the arrangement on screen —
    * null where that plan has no price at this age, and undefined for every plan when no
    * price may be shown at all.
@@ -119,7 +125,7 @@ const HEAD =
 const COLUMN_RULE = "border-r border-[var(--lg-panel-line)] last:border-r-0";
 
 export function BenefitTable(
-  { data, selected, age, sellable, sharedLimit, premiums }: BenefitTableProps,
+  { data, selected, age, sellable, sharedLimit, premiums, dailyCash }: BenefitTableProps,
 ) {
   const plans = data.plans;
   /** A column a phone keeps: one of the three, or the one the card is pricing. */
@@ -208,6 +214,27 @@ export function BenefitTable(
                 </td>
               ))}
             </tr>
+            {/* Not one of the company's twenty-eight categories: a second contract the
+                agency sells alongside this one, whose figure the premium row above already
+                counts. Spanning the plans rather than repeating in each says what is true —
+                it is the same cover whichever health plan is bought. */}
+            {dailyCash !== undefined && (
+              <tr className="border-t border-[var(--lg-panel-line)]">
+                <th
+                  scope="row"
+                  className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
+                >
+                  ค่าชดเชยรายวัน
+                </th>
+                <td
+                  colSpan={plans.length}
+                  className="px-1.5 py-2.5 text-center text-[var(--lg-white)] sm:px-3"
+                >
+                  <span className="tabular-nums">{dailyCash.toLocaleString("en-US")}</span> ต่อวัน
+                  <span className="ml-2 text-[0.65rem] text-[var(--lg-mute)]">ทุกแผนเท่ากัน</span>
+                </td>
+              </tr>
+            )}
             {premiums && (
               <tr className="border-t border-[var(--lg-panel-line)]">
                 <th

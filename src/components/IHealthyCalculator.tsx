@@ -461,7 +461,7 @@ export function IHealthyCalculator(
       <div className="sm:mx-[calc(50%-50vw)] sm:w-screen sm:px-6">
         <BenefitTable
           data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
-          sellable={plans.map((p) => p.code)} premiums={premiums}
+          sellable={plans.map((p) => p.code)} premiums={premiums} dailyCash={standardPick?.plan}
         />
       </div>
 
