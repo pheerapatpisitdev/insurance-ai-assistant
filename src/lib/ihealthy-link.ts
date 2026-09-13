@@ -37,6 +37,13 @@ function one(query: IHealthyQuery, key: string): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** Every value of a repeated key. Riders are the one field a link may carry several of. */
+function listOf(query: IHealthyQuery, key: string): string[] {
+  const value = query[key];
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 /** A number the link asked for. An empty value says as little as a missing key does. */
 function numberFrom(raw: string | undefined): number | undefined {
   if (raw === undefined || raw.trim() === "") return undefined;
@@ -112,11 +119,16 @@ export function initialFrom(table: IHealthyTable, query: IHealthyQuery): IHealth
     ? (wantedMode as PayMode)
     : IHEALTHY_OPENING.mode;
 
+  // `has` and not the parsed list: an `r` that spells no rider at all is still the fold
+  // saying it is empty, which is a different answer from a link that never mentions riders.
+  const riders = Object.hasOwn(query, "r") ? ridersFrom(listOf(query, "r")) : undefined;
+
   return {
     age,
     sex,
     base: base.variant,
     sumAssured,
+    riders,
     // `resolveArrangement` answers with nothing only where the rate table sells nothing at
     // all at this age, which no age inside the rider's own range is. The calculator draws an
     // empty card for that; a link has to hand the form three strings either way, and the
@@ -136,7 +148,7 @@ export function initialFrom(table: IHealthyTable, query: IHealthyQuery): IHealth
  * link asking for ซิลเวอร์ at eight is written back out as สมาร์ท.
  */
 export function queryFrom(table: IHealthyTable, v: IHealthyInitial): string {
-  return new URLSearchParams({
+  const q = new URLSearchParams({
     age: String(v.age),
     sex: v.sex,
     base: v.base,
@@ -147,7 +159,24 @@ export function queryFrom(table: IHealthyTable, v: IHealthyInitial): string {
     area: letterFor(table.territories, v.territory) ?? "",
     cover: letterFor(table.coverages, v.coverage) ?? "",
     mode: v.mode,
-  }).toString();
+  });
+  appendRiders(q, v.riders);
+  return q.toString();
+}
+
+/**
+ * The fold's answer, written into the address beside the arrangement.
+ *
+ * An agent who has emptied the fold has said something, and it is not the same thing as never
+ * having opened it: a link that read the two alike would put the agency's standard daily cash
+ * back into a quote the agent had just taken it out of. So an answered fold always writes an
+ * `r`, empty when there is nothing in it, and an unanswered one writes none.
+ */
+function appendRiders(q: URLSearchParams, riders: AttachedRider[] | undefined): void {
+  if (riders === undefined) return;
+  const params = riderParams(riders);
+  if (params.length === 0) q.append("r", "");
+  else for (const r of params) q.append("r", r);
 }
 
 /**
@@ -206,18 +235,6 @@ export function ridersFrom(raw: string[]): AttachedRider[] {
  * Where the same quote is drawn as a picture: the arrangement on screen, and the riders
  * attached to it, in one address the route can price from scratch.
  */
-export function cardPath(
-  table: IHealthyTable, v: IHealthyInitial, riders?: AttachedRider[],
-): string {
-  const q = new URLSearchParams(queryFrom(table, v));
-  if (riders !== undefined) {
-    const params = riderParams(riders);
-    // An agent who has emptied the fold has said something, and it is not the same thing as
-    // never having opened it: a card that read the two alike would put the agency's standard
-    // daily cash back into a price the agent had just taken it out of. So an answered fold
-    // always writes an `r`, empty when there is nothing in it.
-    if (params.length === 0) q.append("r", "");
-    else for (const r of params) q.append("r", r);
-  }
-  return `/api/ihealthy-card?${q.toString()}`;
+export function cardPath(table: IHealthyTable, v: IHealthyInitial): string {
+  return `/api/ihealthy-card?${queryFrom(table, v)}`;
 }

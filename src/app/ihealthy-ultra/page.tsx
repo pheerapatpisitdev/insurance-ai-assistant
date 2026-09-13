@@ -3,7 +3,6 @@ import { iHealthyTable } from "@/lib/ihealthy-table";
 import { iHealthyFacts } from "@/lib/ihealthy-facts";
 import { initialFrom, type IHealthyQuery } from "@/lib/ihealthy-link";
 import { Disclaimer, Hero, TermsSection } from "@/components/ihealthy/Sections";
-import { ExpiryBanner } from "@/components/ExpiryBanner";
 
 export const metadata = {
   title: "iHealthy Ultra — ค่ารักษาพยาบาลเหมาจ่ายถึง 100 ล้านต่อปี",
@@ -41,18 +40,28 @@ export default async function IHealthyPage(
     if (!(thrown instanceof TypeError) || !Object.hasOwn(searchParams, "constructor")) throw thrown;
   }
   const initial = initialFrom(table, query);
-  // Only the rows and the plan list cross into the browser. The eight long paragraphs of
-  // `terms` are three of the five kilobytes of this JSON and only server components render
-  // them, so they never enter the client module graph.
+  // Only the rows and the plan list are handed to the island, and the two sentences the
+  // table itself has to print. The rest of `terms` is rendered by the server components
+  // below. That is a smaller prop, not a smaller bundle: `ihealthy-facts.ts` imports the
+  // whole sheet at module scope and a client component imports `planLabel` from it, so the
+  // paragraphs are in the route chunk either way — a comment here once claimed otherwise.
   const { rows, plans, copayPercent } = facts;
   return (
     <main className="mx-auto max-w-lg px-4 pb-28 sm:max-w-2xl sm:pb-10">
       <Hero facts={facts} />
-      <ExpiryBanner expired={table.expired} expiresOn={table.expiresOn} />
+      {/* The customer's version of the same fact. `ExpiryBanner` tells the agency's own
+          operator to go and fetch a new rate file, which is not a sentence to put at the top
+          of a page a customer arrived at from an advert. */}
+      {table.expired && (
+        <p className="mb-4 rounded-sm border border-[var(--lg-gold)] px-4 py-3 text-sm text-[var(--lg-gold)]">
+          ตารางเบี้ยชุดนี้หมดอายุตั้งแต่ {table.expiresOn} ขอเบี้ยปัจจุบันได้จากตัวแทน
+        </p>
+      )}
       <section id="calc" className="scroll-mt-4">
         <IHealthyCalculator
           table={table} data={{ rows, plans, copayPercent }}
-          sharedLimit={facts.terms.sharedLimit} initial={initial} sticky
+          sharedLimit={facts.terms.sharedLimit} participationNote={facts.terms.participationNote}
+          initial={initial} sticky
         />
       </section>
       <TermsSection facts={facts} />

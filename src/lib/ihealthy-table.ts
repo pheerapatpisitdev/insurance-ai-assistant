@@ -1,3 +1,5 @@
+import { hasExpired } from "@/calc/calendar";
+import { dailyCashLabel } from "@/lib/ihealthy-quote";
 import { getPlan } from "@/calc/plans/registry";
 import { baseRate } from "@/calc/lookup";
 import { riderAvailability } from "@/calc/rules";
@@ -99,6 +101,7 @@ const RIDER = "IHU";
 const STANDARD_RIDER = "MEB";
 const STANDARD_PLAN = 1_000;
 
+
 const BASES: { variant: string; short: string; label: string; note?: string }[] = [
   { variant: "WLF99H", short: "x 2", label: "ไลฟ์ โพรเทค+ x 2", note: "ตั้งทุนเอง" },
   { variant: "WLF99HX", short: "แพ็กเกจสุขภาพ", label: "Health Ultra Package" },
@@ -109,7 +112,7 @@ let cached: Omit<IHealthyTable, "expired"> | undefined;
 
 export function iHealthyTable(today: Date = new Date()): IHealthyTable {
   const plan = getPlan(PLAN_CODE)!;
-  const expired = today.toISOString().slice(0, 10) > plan.rates.expiresOn;
+  const expired = hasExpired(today, plan.rates.expiresOn);
   if (cached) return { ...cached, expired };
 
   const { rates, rules } = plan;
@@ -170,7 +173,7 @@ export function iHealthyTable(today: Date = new Date()): IHealthyTable {
       : fixedPlanRiderPremium(rates, STANDARD_RIDER, { age, plan, mode: "annual" });
     standard.plan.push(priced ? plan : null);
     standard.annual.push(priced?.annual ?? null);
-    standard.label.push(priced ? `ค่าชดเชยรายวัน ${plan!.toLocaleString("en-US")} บาท` : null);
+    standard.label.push(priced ? dailyCashLabel(plan!) : null);
   }
 
   cached = {

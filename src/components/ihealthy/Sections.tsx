@@ -40,7 +40,10 @@ export function TermsSection({ facts }: { facts: IHealthyFacts }) {
         <Fold summary="สภาพที่เป็นมาก่อนทำประกัน">
           <p>{t.preExisting}</p>
         </Fold>
-        <Fold summary={`ไม่เคลมทั้งปี ลดเบี้ย ${t.noClaimDiscountPercent} เปอร์เซ็นต์`}>
+        {/* Three years, which is what the paragraph inside says. "ทั้งปี" appears nowhere in
+            the contract: it was a compression that changed the condition, on the one line a
+            reader sees without opening anything. */}
+        <Fold summary={`ไม่เคลม 3 ปีติดต่อกัน ลดเบี้ย ${t.noClaimDiscountPercent} เปอร์เซ็นต์`}>
           <p>{t.noClaimDiscount}</p>
         </Fold>
         <Fold summary="บริษัทขอให้ร่วมจ่ายตอนต่ออายุได้">

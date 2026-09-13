@@ -2,13 +2,24 @@ import { describe, expect, it } from "vitest";
 import type { IHealthyShown } from "@/components/IHealthyCalculator";
 import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
 
-/** หญิง 35 · ไลฟ์ โพรเทค+ x 2 ทุน 150,000 · โกลด์ · ประเทศไทย — what the page opens on. */
+/**
+ * หญิง 35 · ไลฟ์ โพรเทค+ x 2 ทุน 150,000 · โกลด์ · ประเทศไทย, with the agent's fold emptied —
+ * which is why it carries no daily cash. The page's own opening does carry one; that is the
+ * fixture below.
+ */
 const SHOWN: IHealthyShown = {
   base: 213_000,
   rider: 4_380_000,
   total: 4_593_000,
   belowMinimum: false,
   others: [{ mode: "semi", total: 2_388_300 }, { mode: "monthly", total: 413_300 }],
+};
+
+/** The same arrangement as the page actually opens on it: the agency's daily cash attached. */
+const WITH_DAILY_CASH: IHealthyShown = {
+  ...SHOWN,
+  standard: { label: "ค่าชดเชยรายวัน 1,000 บาท", total: 130_000 },
+  total: 4_723_000,
 };
 
 const GOLD = {
@@ -138,5 +149,27 @@ describe("iHealthyQuoteText", () => {
 
   it("has nothing to copy when no price may be shown", () => {
     expect(iHealthyQuoteText({ ...facts, shown: undefined })).toBeUndefined();
+  });
+});
+
+describe("the fold's own line in the copied quote", () => {
+  it("names the rider and what it costs", () => {
+    const text = iHealthyQuoteText({ ...facts, shown: WITH_DAILY_CASH })!;
+    expect(text).toContain("- ค่าชดเชยรายวัน 1,000 บาท · 1,300 บาท");
+    expect(text).toContain("เบี้ยรวมประมาณ 47,230 บาท/ปี");
+  });
+
+  /**
+   * An emptied fold still carries a subtotal, of nothing. Both cards hide that line on this
+   * test; the copied text did not, and pasted "สัญญาเพิ่มเติม 0 รายการ · 0 บาท" into a
+   * customer's chat.
+   */
+  it("is not printed when it costs nothing", () => {
+    const text = iHealthyQuoteText({
+      ...facts,
+      shown: { ...SHOWN, standard: { label: "สัญญาเพิ่มเติม 0 รายการ", total: 0 } },
+    })!;
+    expect(text).not.toContain("0 รายการ");
+    expect(text).not.toContain("· 0 บาท");
   });
 });

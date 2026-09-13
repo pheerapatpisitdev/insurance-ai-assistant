@@ -169,3 +169,40 @@ describe("attachedRiders", () => {
     expect(attachedRiders({})).toEqual([]);
   });
 });
+
+describe("a tick the engine will not price", () => {
+  /**
+   * The company caps the daily cash at five hundred a day up to ten. A tick left over from an
+   * older age is a rider that is on offer, at a plan that is not — neither of the two cases
+   * the dropped-rider warning was written for, so it used to vanish out of the quote in
+   * silence: no premium, no line on the card, and nothing said anywhere.
+   */
+  it("says so, rather than dropping it without a word", async () => {
+    const r = await priceWithRiders({
+      ...ADULT, age: 8, sex: "M", plan: "BRONZE", riders: [{ code: "MEB", plan: 1_000 }],
+    });
+    expect(r.extraCodes).toEqual([]);
+    expect(r.extras.every((e) => e.total === 0)).toBe(true);
+    expect(r.warnings.some((w) => w.includes("MEB"))).toBe(true);
+  });
+
+  it("prices the plan that age may have", async () => {
+    const r = await priceWithRiders({
+      ...ADULT, age: 8, sex: "M", plan: "BRONZE", riders: [{ code: "MEB", plan: 500 }],
+    });
+    expect(r.extraCodes).toEqual(["MEB"]);
+    expect(r.warnings).toEqual([]);
+  });
+});
+
+describe("what the family receives", () => {
+  it("comes back with the quote, so a rider that pays on death can reach the card", async () => {
+    const bare = await priceWithRiders({ ...ADULT, riders: [{ code: "MEB", plan: 1_000 }] });
+    const withDci = await priceWithRiders({
+      ...ADULT, riders: [{ code: "MEB", plan: 1_000 }, { code: "DCI", sumAssured: 1_000_000 }],
+    });
+    // ADULT is written for a million, which the base pays double of before 60
+    expect(bare.deathBenefit?.sumBefore).toBe(2_000_000);
+    expect(withDci.deathBenefit?.sumBefore).toBe(3_000_000);
+  });
+});

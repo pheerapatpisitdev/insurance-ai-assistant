@@ -1,5 +1,6 @@
 import type { Availability, BasePackage, DeathBenefit, MaturityBenefit, PlanRates, QuoteInput, QuoteItem, PlanRules, QuoteResult, RiderInput, Warning } from "./types";
 import { getPlan, productLabel } from "./plans/registry";
+import { hasExpired } from "./calendar";
 import { basePremium, type BasePremiumResult } from "./base-premium";
 import { sumAssuredFromPremium } from "./sa-from-premium";
 import { ratePerThousandRiderPremium } from "./riders/rate-per-thousand";
@@ -224,7 +225,7 @@ export function quote(input: QuoteInput, today: Date = new Date()): QuoteResult 
     const msg = (rules.packages ?? []).find((p) => seq !== undefined && p.seq.includes(seq) && (p.disable ?? []).includes(code))?.disabledMessage;
     return { ...a, eligible: false, reason: msg ?? CANNOT_BUY };
   });
-  const expired = today.toISOString().slice(0, 10) > rates.expiresOn;
+  const expired = hasExpired(today, rates.expiresOn);
 
   // Riders that pay out on death add their sum assured to what the family receives.
   const riderDeathCover = items

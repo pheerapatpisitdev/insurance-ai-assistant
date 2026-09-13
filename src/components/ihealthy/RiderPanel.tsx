@@ -24,14 +24,34 @@ export interface RiderPanelProps {
    * cover, and this is the rest of the bill. Naming the line is the card's business, since
    * the card is where the standard rider already has a name.
    */
-  onAttached?: (attached: {
-    premiums: { mode: PayMode; total: number }[];
-    codes: string[];
-    /** the plan of the standard rider as priced, or null when it is not attached at all */
-    dailyCash: number | null;
-    /** the ticks the engine actually priced, for the card link to name them again */
-    riders: AttachedRider[];
-  }) => void;
+  onAttached?: (attached: Attached | undefined) => void;
+  /**
+   * The riders a link arrived carrying, which replace the standard tick when there are any —
+   * including when there are none, which is a link saying the fold was emptied.
+   */
+  initialRiders?: AttachedRider[];
+}
+
+/**
+ * What the fold has attached, and which arrangement it was priced for.
+ *
+ * The tag is the whole point. The card above prices the base plan and the health cover itself
+ * and takes the rest of the bill from here, so an answer left lying around after the age has
+ * moved is a rider charged for at an age the company would not write it at. The card compares
+ * the tag with the arrangement it is drawing and falls back to the agency's standard when
+ * they differ — exactly as it does before the fold has said anything at all.
+ */
+export interface Attached {
+  /** `arrangementKey` of the request this was priced for */
+  at: string;
+  premiums: { mode: PayMode; total: number }[];
+  codes: string[];
+  /** the plan of the standard rider as priced, or null when it is not attached at all */
+  dailyCash: number | null;
+  /** the ticks the engine actually priced, for the card link to name them again */
+  riders: AttachedRider[];
+  /** what the family receives with these riders on the contract, from the engine */
+  deathBenefit?: RiderQuoteResult["deathBenefit"];
 }
 
 /**
@@ -79,6 +99,22 @@ function opening(c: RiderChoice, standard?: { code: string; plan: number }): Rid
   };
 }
 
+/**
+ * What the fold starts with: the riders a link arrived carrying, or the agency's standard
+ * tick when the link said nothing about riders. An empty list is an answer, not silence — a
+ * link written by an agent who cleared the fold opens it cleared.
+ */
+function seed(
+  standard: { code: string; plan: number } | undefined, fromLink: AttachedRider[] | undefined,
+): Record<string, RiderPick> {
+  if (fromLink === undefined) return standard ? { [standard.code]: { plan: standard.plan } } : {};
+  return Object.fromEntries(fromLink.map((r) => [r.code, {
+    ...(r.plan === undefined ? {} : { plan: r.plan }),
+    ...(r.sumAssured === undefined ? {} : { sumAssured: r.sumAssured }),
+    ...(r.option === undefined ? {} : { option: r.option }),
+  }]));
+}
+
 /** The bounds the rider is written between, where it has them. */
 function range(c: RiderChoice): string {
   if (c.saMin === undefined) return "";
@@ -87,11 +123,15 @@ function range(c: RiderChoice): string {
 }
 
 /**
- * The agent's fold. It asks the server for nothing until it is opened, so a customer who
- * never touches it never pays for the round trip — and never downloads the rate tables the
- * payor riders would need to price in the browser.
+ * The agent's fold.
+ *
+ * It quotes whether or not it is open. It used to wait to be opened, on the grounds that a
+ * customer who never touched it should not pay for the round trip — but it now opens by
+ * default, and more importantly the card above takes its rider subtotal from here: a fold
+ * that stopped answering when it was collapsed left that subtotal frozen on the last
+ * arrangement it saw, and the card went on charging for it.
  */
-export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
+export function RiderPanel({ request, standard, onAttached, initialRiders }: RiderPanelProps) {
   // Taken apart at the door. The calculator builds `request` inline, so a fresh object
   // arrives on every render; an effect that listed it as a dependency would ask the server
   // for the same arrangement again, set state, render, and ask again — for ever.
@@ -100,10 +140,7 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
   // for it; the agents who use this page most have to open it every single time, and a
   // closed panel is also the one thing that can leave the card quoting the agency's standard
   // rider while the panel below it has never said whether that is what is attached.
-  const [open, setOpen] = useState(true);
-  const [chosen, setChosen] = useState<Record<string, RiderPick>>(
-    standard ? { [standard.code]: { plan: standard.plan } } : {},
-  );
+  const [chosen, setChosen] = useState<Record<string, RiderPick>>(() => seed(standard, initialRiders));
   const [answer, setAnswer] = useState<Answer>();
   const [pending, start] = useTransition();
   const newest = useRef(0);
@@ -120,8 +157,26 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
 
   const at = arrangementKey(request);
 
+  /**
+   * The agency's own rider follows the age it is written for.
+   *
+   * The company caps the daily cash by age — five hundred a day up to ten, a thousand above —
+   * and the tick was seeded once at mount. Moving the age picker therefore went on sending
+   * the mount-time plan, which the engine refuses, and the agency's standard rider dropped
+   * out of the quote without a word. Only when the cap actually moves, and only while the
+   * rider is still ticked, so an agent who deliberately picked another plan keeps it.
+   */
+  const lastStandardPlan = useRef(standardPlan);
   useEffect(() => {
-    if (!open) return;
+    const previous = lastStandardPlan.current;
+    lastStandardPlan.current = standardPlan;
+    if (previous === standardPlan || standardPlan === undefined || standardCode === undefined) return;
+    setChosen((prev) => (standardCode in prev
+      ? { ...prev, [standardCode]: { ...prev[standardCode], plan: standardPlan } }
+      : prev));
+  }, [standardCode, standardPlan]);
+
+  useEffect(() => {
     const riders = attachedRiders(chosen);
     // Nothing is asked until the typing settles; only the first question skips the wait,
     // because an empty fold is what the agent is staring at. The generation is what makes a
@@ -138,6 +193,7 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
           if (newest.current === generation) {
             setAnswer({ at, result });
             told.current?.({
+              at,
               premiums: result.extras,
               codes: result.extraCodes,
               // What was priced, not what was ticked: a rider this age cannot buy is still
@@ -146,17 +202,23 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
               dailyCash: standardCode !== undefined && result.extraCodes.includes(standardCode)
                 ? chosen[standardCode]?.plan ?? standardPlan ?? null
                 : null,
+              deathBenefit: result.deathBenefit,
             });
           }
         } catch {
           // The engine is at the other end of a wire now. A quote that never arrives leaves
-          // this arrangement with no figures at all rather than the last one's.
-          if (newest.current === generation) setAnswer({ at });
+          // this arrangement with no figures at all rather than the last one's — said upward
+          // as well, or the card would go on charging for the previous arrangement's riders
+          // while the fold underneath it says the asking failed.
+          if (newest.current === generation) {
+            setAnswer({ at });
+            told.current?.(undefined);
+          }
         }
       });
     }, wait);
     return () => clearTimeout(timer);
-  }, [open, chosen, at, base, age, sex, sumAssured, mode, plan, territory, coverage, start,
+  }, [chosen, at, base, age, sex, sumAssured, mode, plan, territory, coverage, start,
       standardCode, standardPlan]);
 
   // The ticks are the agent's and survive the arrangement changing under them — switch to the
@@ -181,11 +243,7 @@ export function RiderPanel({ request, standard, onAttached }: RiderPanelProps) {
     "rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-2 py-1.5 text-sm tabular-nums text-[var(--lg-white)]";
 
   return (
-    <details
-      open
-      className="group rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] print:hidden"
-      onToggle={(e) => setOpen(e.currentTarget.open)}
-    >
+    <details open className="group rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] print:hidden">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-medium text-[var(--lg-white)] marker:hidden">
         แนบสัญญาเพิ่มเติมอื่น
         <span

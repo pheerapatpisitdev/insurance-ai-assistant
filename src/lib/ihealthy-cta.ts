@@ -25,10 +25,9 @@ const COVERAGE_WORD: Record<string, string> = {
  * Everything the two texts below are written from — which is everything the card prints, and
  * nothing else.
  *
- * The riders from the agent's fold are deliberately not here. They live in that panel's own
- * state, and lifting them up would make the panel controlled for the sake of a line of text;
- * the quote an agent copies is the arrangement the customer is looking at, and the fold's
- * own total stays inside the fold.
+ * That includes the agent's fold: `shown` is derived from a pricing the fold's riders are
+ * part of, so its total and its own named line are both in here. What is not here is the
+ * fold itemised — a summary that listed every tick would be the panel written out twice.
  */
 export interface IHealthyCtaFacts {
   /**
@@ -61,7 +60,8 @@ export interface IHealthyCtaFacts {
   /**
    * The three figures on the card, or nothing at all — the page's single "may a price be
    * quoted" gate. An expired rate set and an arrangement with no rate both arrive here as
-   * undefined, so neither text below has a second question to ask.
+   * undefined, so neither text below has a second question to ask. Its `others` already
+   * exclude any instalment the company refuses, so nothing below has to ask that either.
    */
   shown: IHealthyShown | undefined;
 }
@@ -126,7 +126,11 @@ export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
     `- ค่ารักษาพยาบาล · ${formatBaht(shown.rider)} บาท`,
     // the daily cash the agency attaches as standard; above the age it is written at there
     // is no line rather than a line of nothing
-    ...(shown.standard ? [`- ${shown.standard.label} · ${formatBaht(shown.standard.total)} บาท`] : []),
+    // An emptied fold still carries a subtotal, of nothing. Both cards hide that line on the
+    // same test rather than pasting "0 บาท" under a name into a customer's chat.
+    ...(shown.standard && shown.standard.total > 0
+      ? [`- ${shown.standard.label} · ${formatBaht(shown.standard.total)} บาท`]
+      : []),
     "",
     // one instalment a line, smallest first, whichever the card is showing
     ...INSTALMENT_ORDER.flatMap((mode) => {

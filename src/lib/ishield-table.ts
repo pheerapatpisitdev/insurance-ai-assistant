@@ -1,3 +1,4 @@
+import { hasExpired } from "@/calc/calendar";
 import { getPlan } from "@/calc/plans/registry";
 import { baseRate } from "@/calc/lookup";
 import { baseAgeRange } from "@/calc/rules";
@@ -70,7 +71,7 @@ let cached: Omit<IShieldTable, "expired"> | undefined;
 
 export function iShieldTable(today: Date = new Date()): IShieldTable {
   const plan = getPlan(PLAN_CODE)!;
-  const expired = today.toISOString().slice(0, 10) > plan.rates.expiresOn;
+  const expired = hasExpired(today, plan.rates.expiresOn);
   if (cached) return { ...cached, expired };
 
   const { rates, rules } = plan;

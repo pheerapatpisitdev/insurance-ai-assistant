@@ -24,6 +24,13 @@ export interface BenefitRow {
   title: string;
   /** true for the rows that live on the endorsement rather than the rider itself */
   endorsement: boolean;
+  /**
+   * How many days or times this row may be claimed, where the contract caps it — the second
+   * column of each plan's triple on the sheet, identical across all six where it says
+   * anything at all. Two of the thirty-six rows have one, and without it they read as cover
+   * with no limit on it.
+   */
+  limit?: string;
   /** plan code → what the sheet says, verbatim */
   adult: Record<string, string>;
   /** the สมาร์ท and บรอนซ์ wording for a child, only where it differs */
@@ -113,6 +120,30 @@ export function planLabel(code: string): string {
 
 export function isHeading(entry: BenefitEntry): entry is BenefitHeading {
   return "heading" in entry;
+}
+
+/** The company's own numbering, as it appears at the head of a row or a heading. */
+const CATEGORY_NO = /^หมวดที่ (\d+)/;
+
+/**
+ * Every หมวด the contract has, in order.
+ *
+ * Three of the twenty-eight — 2, 4 and 6 — are not rows at all: the sheet gives each a
+ * heading and hangs its figures on sub-rows underneath, which carry no number of their own.
+ * Counting rows with a number therefore missed those three, and the page told a phone reader
+ * there were twenty more categories when there were twenty-three.
+ */
+export function categoryNumbers(rows: readonly BenefitEntry[]): number[] {
+  const found = new Set<number>();
+  for (const entry of rows) {
+    if (isHeading(entry)) {
+      const match = CATEGORY_NO.exec(entry.heading);
+      if (match) found.add(Number(match[1]));
+    } else if (entry.no !== null) {
+      found.add(entry.no);
+    }
+  }
+  return [...found].sort((a, b) => a - b);
 }
 
 /**

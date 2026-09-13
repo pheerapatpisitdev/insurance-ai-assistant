@@ -1,5 +1,7 @@
 import { formatBaht } from "@/calc/money";
-import { benefitValue, isHeading, planLabel, type BenefitEntry, type IHealthyFacts } from "@/lib/ihealthy-facts";
+import {
+  benefitValue, categoryNumbers, isHeading, planLabel, type BenefitEntry, type IHealthyFacts,
+} from "@/lib/ihealthy-facts";
 
 /**
  * The half of the benefit data the browser needs. `terms` and `disclaimer` are three of the
@@ -18,6 +20,12 @@ export interface BenefitTableProps {
   sellable: string[];
   /** the company's note that the rider and its endorsement share one annual ceiling */
   sharedLimit: string;
+  /**
+   * The company's own explanation of the "*" that several cells carry. The table prints the
+   * mark, so it has to print what the mark means — a reference to a note that is nowhere on
+   * the page is worse than no mark at all.
+   */
+  participationNote: string;
   /**
    * The daily cash as it stands: the plan attached, null when the agent has taken it off,
    * and undefined above the age the company writes it at — where the row itself has no
@@ -161,14 +169,13 @@ const HEAD =
 const COLUMN_RULE = "border-r border-[var(--lg-panel-line)] last:border-r-0";
 
 export function BenefitTable(
-  { data, selected, age, sellable, sharedLimit, premiums, dailyCash }: BenefitTableProps,
+  { data, selected, age, sellable, sharedLimit, participationNote, premiums, dailyCash }: BenefitTableProps,
 ) {
   const plans = data.plans;
   /** A column a phone keeps: one of the three, or the one the card is pricing. */
   const onPhone = (code: string) => PHONE_PLANS.includes(code) || code === selected;
-  /** The company's numbered categories a phone does not show, counted from the sheet. */
-  const hidden = data.rows
-    .filter((r) => !isHeading(r) && r.no !== null && !(r.no in PHONE_ROW_LABEL)).length;
+  /** The company's categories a phone does not show, counted from the sheet. */
+  const hidden = categoryNumbers(data.rows).filter((no) => !(no in PHONE_ROW_LABEL)).length;
   return (
     <div>
       {/* No height of its own: the table runs its full length down the page, so a reader
@@ -289,6 +296,16 @@ export function BenefitTable(
                       ) : entry.title}
                     </span>
                     <span className="hidden sm:inline">{entry.title}</span>
+                    {/* The company caps two of these rows by count rather than by money, in a
+                        column of its own on the sheet. Under the title rather than in a
+                        column here, because thirty-four of the thirty-six rows would have
+                        nothing to put in it — and "ตามที่จ่ายจริง" with its limit left off is
+                        an offer the contract does not make. */}
+                    {entry.limit && (
+                      <span className="mt-0.5 hidden text-[0.65rem] text-[var(--lg-gold)] sm:block">
+                        ไม่เกิน {entry.limit}
+                      </span>
+                    )}
                   </th>
                   {plans.map((p) => {
                     const cell = benefitCell(entry, p.code, age, sellable);
@@ -385,12 +402,18 @@ export function BenefitTable(
         {/* A phone is shown a handful of the company's categories, so it is told how many it
             is not being shown rather than left to read those few as the whole contract. The
             count is taken from the sheet so it cannot drift from what is on screen. */}
+        {/* What the full table holds, not what it pays: หมวด 8 is ไม่คุ้มครอง in all six
+            plans, so a sentence promising cover in every category the phone hides would be
+            promising one the contract refuses. */}
         <span className="sm:hidden">
-          ยังคุ้มครองอีก {hidden} หมวด · ดูตารางเต็มได้บนจอคอมพิวเตอร์ ·{" "}
+          ตารางเต็มมีอีก {hidden} หมวด ดูได้บนจอคอมพิวเตอร์ ·{" "}
         </span>
         {/* on paper there is nothing to scroll to, and the whole table is already there */}
         <span className="hidden print:hidden sm:inline">เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · </span>
         {sharedLimit}
+      </p>
+      <p className="pb-2.5 text-[0.7rem] leading-relaxed text-[var(--lg-mute)] opacity-80">
+        {participationNote}
       </p>
     </div>
   );

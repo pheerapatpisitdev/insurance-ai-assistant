@@ -2,10 +2,10 @@
  * What the agent's fold costs, worked out by the engine.
  *
  * Everything the customer sees on the page is priced in the browser from the slim table in
- * ihealthy-table.ts. This is the rest of the bill: the four riders the agency offers
- * alongside the health cover, which it will not send rate tables for — the two payor riders
- * alone are 416 kB — and which carry eligibility rules the browser has no business keeping a
- * second copy of.
+ * ihealthy-table.ts. This is the rest of the bill: the riders the agency offers alongside the
+ * health cover, which carry eligibility rules — age bands, plan caps, sums the package pins —
+ * that the browser has no business keeping a second copy of, and whose rate tables it would
+ * have to download to price.
  */
 import { quote } from "@/calc/quote";
 import { getPlan, type PlanBundle } from "@/calc/plans/registry";
@@ -13,7 +13,7 @@ import {
   CANNOT_BUY, disabledRiders, packageExactSumAssured, packageSeq, requiredRiders, riderAvailability,
 } from "@/calc/rules";
 import { iHealthyTable } from "@/lib/ihealthy-table";
-import type { PayMode, Sex } from "@/calc/types";
+import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
 
 const PLAN_CODE = "LIFEPROTECT";
 /** The health rider is the page's whole subject; it is never one of the extras. */
@@ -104,6 +104,14 @@ export interface RiderQuoteResult {
   extras: { mode: PayMode; total: number }[];
   /** which they are, for a card that names one of them or counts them all in a line */
   extraCodes: string[];
+  /**
+   * What the family receives once these riders are on the contract.
+   *
+   * The page works its own out from the base plan alone, which is right until a rider that
+   * pays on death is attached — and then the card was charging for cover it did not mention.
+   * The engine already adds those sums up, so it is asked rather than repeated.
+   */
+  deathBenefit?: DeathBenefit;
   warnings: string[];
 }
 
@@ -218,8 +226,8 @@ export function priceRiders(input: RiderQuoteInput): RiderQuoteResult {
     });
   }
 
-  // The arrangement can change under an open fold — a package that refuses seven riders, an
-  // age that puts four out of range — so what was ticked earlier is filtered against what
+  // The arrangement can change under an open fold — a package that refuses a rider, an age
+  // that puts one out of range — so what was ticked earlier is filtered against what
   // this arrangement offers instead of being sent on to be priced. The fold keeps the tick
   // in case the agent goes back; the total here counts only what is still on offer, and the
   // pinned sums are the package's to set, not the caller's.
@@ -291,11 +299,19 @@ export function priceRiders(input: RiderQuoteInput): RiderQuoteResult {
     totalModal: result.totalModal,
     extras,
     extraCodes: result.items.filter((i) => i.eligible && isExtra(i.code)).map((i) => i.code),
+    deathBenefit: result.deathBenefit,
     warnings: [
       ...dropped.map((code) => {
         const a = why.get(code);
         return `${a?.name ?? code} ${a?.reason ?? CANNOT_BUY} จึงไม่ได้คิดเบี้ยให้`;
       }),
+      // A rider the age may buy, at a plan the age may not, is neither of the two cases
+      // above: it is on offer, it was attached, and the engine priced it at nothing. Said
+      // here because it was said nowhere — a ticked daily-cash rider left over from an older
+      // age simply vanished out of the quote, and the card went quiet about it too.
+      ...result.items
+        .filter((i) => !i.eligible && isExtra(i.code) && attached.some((r) => r.code === i.code))
+        .map((i) => `${i.name} ${i.message ?? CANNOT_BUY} จึงไม่ได้คิดเบี้ยให้`),
       ...result.warnings.map((w) => w.message),
     ],
   };

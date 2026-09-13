@@ -123,3 +123,32 @@ describe("iHealthy Ultra benefit data", () => {
     expect(benefits.terms.exclusions).toContain("21 ข้อ");
   });
 });
+
+describe("the limits the sheet keeps in a column of its own", () => {
+  const capped = rows.filter((r) => "limit" in r) as Array<BenefitRow & { limit: string }>;
+
+  /**
+   * Two rows say "ตามที่จ่ายจริง" and are capped by count rather than by money. The extract
+   * read only the first column of each plan's triple, so both were published as cover with no
+   * limit on them — on the wide table and on the printed sheet a customer is handed.
+   */
+  it("keeps the per-admission caps the contract sets", () => {
+    expect(capped).toHaveLength(2);
+    expect(capped[0].title).toContain("หมวดย่อยที่ 2.4");
+    expect(capped[0].limit).toBe("15 วัน ต่อการเข้าพักรักษาตัวเป็นผู้ป่วยในแต่ละครั้ง");
+    expect(capped[1].title).toContain("หมวดย่อยที่ 6.2");
+    expect(capped[1].limit).toBe("2 ครั้ง ต่อการเข้าพักรักษาตัวเป็นผู้ป่วยในแต่ละครั้ง");
+    // both pay as charged, which is exactly why the cap has to travel with them
+    for (const one of capped) expect(one.adult.PLATINUM).toBe("ตามที่จ่ายจริง");
+  });
+
+  /**
+   * The sheet marks three titles with "**" or "***" and defines neither anywhere on it; only
+   * "*" has a note. A reference to a note that does not exist points at nothing on a page a
+   * customer reads, so the extract drops those marks.
+   */
+  it("carries no reference mark the sheet has no note for", () => {
+    for (const one of rows) expect(one.title ?? one.heading ?? "").not.toMatch(/\*{2,}/);
+    expect(benefits.terms.participationNote.startsWith("*")).toBe(true);
+  });
+});

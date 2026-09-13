@@ -1,10 +1,12 @@
 import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
 import { benefitCell, PHONE_ROW_LABEL } from "@/components/ihealthy/BenefitTable";
-import { iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
+import { categoryNumbers, iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
 import { initialFrom, ridersFrom } from "@/lib/ihealthy-link";
 import { iHealthyTable } from "@/lib/ihealthy-table";
-import { MODES, deathBenefitOf, iHealthyPricing, plansFor } from "@/lib/ihealthy-quote";
+import {
+  MODES, dailyCashLabel, deathBenefitOf, iHealthyPricing, plansFor,
+} from "@/lib/ihealthy-quote";
 import { priceRiders } from "@/lib/ihealthy-rider-quote";
 
 /**
@@ -95,9 +97,15 @@ const MILLIONS = (baht: number) => `${(baht / 1_000_000).toLocaleString("en-US")
  * The same rule the card on the page follows: one rider gets its own name, more than one is
  * a count — a card that listed them would be the agent's fold written out twice, on a
  * picture the customer is meant to be able to read at a glance.
+ *
+ * The name is built from the plan actually attached. Reading it off the agency's standard
+ * instead is how this came to promise a thousand baht a day over a five-thousand premium,
+ * two inches above its own table row saying five thousand.
  */
-function extrasLabel(codes: string[], standardCode: string, standardName: string | null): string {
-  if (codes.length === 1 && codes[0] === standardCode && standardName) return standardName;
+function extrasLabel(codes: string[], standardCode: string, attachedPlan: number | null): string {
+  if (codes.length === 1 && codes[0] === standardCode && attachedPlan !== null) {
+    return dailyCashLabel(attachedPlan);
+  }
   return `สัญญาเพิ่มเติม ${codes.length} รายการ`;
 }
 
@@ -125,7 +133,10 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
   // their rate tables are the reason the page asks a server for them at all, and a picture
   // drawn from a link is exactly the case where the codes were not typed by the fold.
   const priced = priceRiders({ ...arrangement, mode: v.mode, riders: asked });
-  const standardName = table.standard.label[v.age - table.ageMin];
+  /** The daily-cash plan the engine actually priced, or nothing where it priced none. */
+  const attachedDailyCash = priced.extraCodes.includes(table.standard.code)
+    ? asked.find((r) => r.code === table.standard.code)?.plan ?? null
+    : null;
   /**
    * Whether the agent's fold has spoken at all. A link with no `r` in it comes from a page
    * whose fold was never opened, and is priced the way that page prices itself: with the
@@ -134,7 +145,7 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
    */
   const extras = query.has("r")
     ? {
-        label: extrasLabel(priced.extraCodes, table.standard.code, standardName),
+        label: extrasLabel(priced.extraCodes, table.standard.code, attachedDailyCash),
         premiums: priced.extras,
       }
     : undefined;
@@ -186,11 +197,7 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
     // What is actually attached: the agent's own plan where the fold has spoken, and the
     // agency's standard where it has not — which is the plan the price above was worked out
     // on either way.
-    const attached = extras === undefined
-      ? standardPlan
-      : priced.extraCodes.includes(table.standard.code)
-        ? asked.find((r) => r.code === table.standard.code)?.plan ?? null
-        : null;
+    const attached = extras === undefined ? standardPlan : attachedDailyCash;
     rows.push({
       label: "ค่าชดเชยรายวัน",
       cells: [],
@@ -201,17 +208,22 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
   const premiumRows = table.expired ? [] : MODES.map((mode) => ({
     label: PAY_MODE_LABEL[mode],
     cells: cellsOf((code) => {
+      // A dash where the company refuses the instalment: its monthly floor is judged on the
+      // total, and a picture that printed the figure anyway would be offering a way of
+      // paying that cannot be bought.
       const total = byPlan.get(code)?.total.find((m) => m.mode === mode);
-      return total === undefined ? DASH : formatBaht(total.total);
+      return total === undefined || total.belowMinimum ? DASH : formatBaht(total.total);
     }),
   }));
 
   const plan = facts.plans.find((p) => p.code === v.plan);
-  const death = deathBenefitOf(table, v.base, v.age, v.sumAssured);
+  // The engine's answer where it has one: a rider that pays on death adds its sum to what
+  // the family receives, which `deathBenefitOf` knows nothing about — its own comment says
+  // it answers for a contract with no such rider attached.
+  const death = priced.deathBenefit ?? deathBenefitOf(table, v.base, v.age, v.sumAssured);
   const cover = COVERAGE_WORD[v.coverage] ?? "";
-  /** The company's numbered categories this picture leaves out, counted from the sheet. */
-  const hidden = facts.rows
-    .filter((r) => !isHeading(r) && r.no !== null && !(r.no in PHONE_ROW_LABEL)).length;
+  /** The company's categories this picture leaves out, counted from the sheet. */
+  const hidden = categoryNumbers(facts.rows).filter((no) => !(no in PHONE_ROW_LABEL)).length;
 
   return {
     planLine: `iHealthy Ultra ${planLabel(v.plan)}`,
@@ -256,7 +268,7 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
         : v.coverage === "Co-Payment"
           ? `ร่วมจ่าย ${facts.copayPercent} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง · `
           : "")
-        + `ยังคุ้มครองอีก ${hidden} หมวด ดูตารางเต็มได้ในหน้าเว็บ`,
+        + `ตารางเต็มมีอีก ${hidden} หมวด ดูได้ในหน้าเว็บ`,
       "เบี้ยปีแรกของอาชีพชั้น 1 · เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
       "ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกันและที่ระบุในกรมธรรม์",
     ],

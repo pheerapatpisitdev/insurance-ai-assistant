@@ -224,6 +224,26 @@ describe("shownAt", () => {
     expect(shownAt(iHealthyPricing(table, { ...IHEALTHY_OPENING, base: "WLF99H" }), "monthly")!.belowMinimum)
       .toBe(false);
   });
+
+  /**
+   * An instalment the company refuses is not an instalment to print.
+   *
+   * The flag only ever rode on the instalment the card headlines, and the card headlines the
+   * yearly one — so a monthly figure under the floor went out unflagged on the card, in the
+   * benefit table, on the picture and in the text an agent pastes to a customer. Every other
+   * calculator in the building drops those instalments instead, and so does this one now.
+   */
+  it("does not offer an instalment the company will not take", () => {
+    const priced = iHealthyPricing(table, {
+      base: "WLF99H", sex: "F", age: 35, sumAssured: 150_000, plan: "GOLD", territory: THAI, coverage: FULL,
+    })!;
+    // the real floor is out of reach, so the rule is exercised against a raised one, the way
+    // ihealthy-quote.test.ts exercises the arithmetic behind it
+    const strict = { ...priced, total: priced.total.map((m) => ({ ...m, belowMinimum: m.mode === "monthly" })) };
+    const shown = shownAt(strict, "annual")!;
+    expect(shown.others.map((o) => o.mode)).toEqual(["semi"]);
+    expect(shown.others.some((o) => o.mode === "monthly")).toBe(false);
+  });
 });
 
 /**

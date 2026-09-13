@@ -114,7 +114,10 @@ function Cell(
         borderRight: `1px solid ${GRID}`,
         background: tint ? TINT : "transparent",
         fontSize: size, fontWeight: weight, color,
-        ...(dim ? { opacity: 0.6 } : {}),
+        // Faded, not illegible. The screen table refuses to fade this text for the same
+        // reason: the ceiling row carries real figures in a column the age cannot buy, and
+        // 0.6 took them under 4:1 on this ground — in an image a reader cannot zoom out of.
+        ...(dim ? { opacity: 0.85 } : {}),
       }}
     >
       {children}

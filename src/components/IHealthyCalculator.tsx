@@ -9,13 +9,14 @@ import { planLabel } from "@/lib/ihealthy-facts";
 import { BenefitTable, PHONE_PLANS } from "@/components/ihealthy/BenefitTable";
 import { RiderPanel } from "@/components/ihealthy/RiderPanel";
 import {
-  MODES, deathBenefitOf, iHealthyPricing, type ComponentPremium, type IHealthyPricing,
+  MODES, dailyCashLabel, deathBenefitOf, iHealthyPricing, type IHealthyPricing,
 } from "@/lib/ihealthy-quote";
 import {
   baseFor, resolveArrangement, sumFor, sumsFor, type IHealthyInitial,
 } from "@/lib/ihealthy-choice";
 import { cardPath, queryFrom } from "@/lib/ihealthy-link";
-import type { AttachedRider } from "@/app/ihealthy-ultra/actions";
+import { arrangementKey } from "@/components/ihealthy/rider-request";
+import type { Attached } from "@/components/ihealthy/RiderPanel";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { LinkButton } from "@/components/sales/LinkButton";
 import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
@@ -34,7 +35,11 @@ export interface IHealthyShown {
   standard?: { label: string; total: number };
   total: number;
   belowMinimum: boolean;
-  /** the two instalments the card is not showing, in the order the table prices them */
+  /**
+   * The instalments the card is not headlining, in the order the table prices them — less any
+   * the company will not accept. Every sibling calculator drops those the same way: a figure
+   * printed under a heading that says how to pay is an offer to be paid that way.
+   */
   others: { mode: PayMode; total: number }[];
 }
 
@@ -59,7 +64,9 @@ export function shownAt(priced: IHealthyPricing | undefined, mode: PayMode): IHe
       : {}),
     total: total.total,
     belowMinimum: total.belowMinimum,
-    others: priced.total.filter((m) => m.mode !== mode).map((m) => ({ mode: m.mode, total: m.total })),
+    others: priced.total
+      .filter((m) => m.mode !== mode && !m.belowMinimum)
+      .map((m) => ({ mode: m.mode, total: m.total })),
   };
 }
 
@@ -69,6 +76,8 @@ export interface IHealthyCalculatorProps {
   data: BenefitTableData;
   /** the one sentence from `terms` the table itself prints under its own scroll hint */
   sharedLimit: string;
+  /** the company's explanation of the "*" the table's own cells carry */
+  participationNote: string;
   initial: IHealthyInitial;
   /** pin a copy of the contact buttons to the bottom of a phone screen */
   sticky?: boolean;
@@ -82,7 +91,7 @@ export interface IHealthyCalculatorProps {
  * pickers show another.
  */
 export function IHealthyCalculator(
-  { table, data, sharedLimit, initial, sticky = false }: IHealthyCalculatorProps,
+  { table, data, sharedLimit, participationNote, initial, sticky = false }: IHealthyCalculatorProps,
 ) {
   const AGES = useMemo(
     () => Array.from({ length: table.ageMax - table.ageMin + 1 }, (_, i) => table.ageMin + i),
@@ -115,17 +124,29 @@ export function IHealthyCalculator(
    * so the two never disagree, and a customer who never opens it is quoted the same
    * arrangement either way.
    */
-  const [attached, setAttached] = useState<{
-    premiums: ComponentPremium[]; codes: string[]; dailyCash: number | null; riders: AttachedRider[];
-  }>();
-  const standardName = table.standard.label[age - table.ageMin];
-  const extras = attached && {
+  const [attached, setAttached] = useState<Attached>();
+  /**
+   * The fold's answer is used only while it is still an answer about what is on screen.
+   *
+   * It is priced across a wire, so there is always a moment — the settle, the round trip, a
+   * request that fails — when the arrangement has moved on and the answer has not. Untagged,
+   * that moment charged the customer for a rider at an age the company would not write it
+   * at, and a failed request left the wrong total up for as long as the page was open.
+   */
+  const foldRequest = plan && territory && coverage
+    ? { base: base.variant, age, sex, sumAssured, mode, plan: plan.code, territory, coverage }
+    : undefined;
+  const answered = foldRequest && attached?.at === arrangementKey(foldRequest) ? attached : undefined;
+  const extras = answered && {
     // One rider gets its own name, as the daily cash always had; more than one is a count,
-    // because a card that listed them would be the fold written out twice.
-    label: attached.codes.length === 1 && attached.codes[0] === table.standard.code && standardName
-      ? standardName
-      : `สัญญาเพิ่มเติม ${attached.codes.length} รายการ`,
-    premiums: attached.premiums,
+    // because a card that listed them would be the fold written out twice. The name is built
+    // from the plan actually attached and never from the agency's own: the agent may pick
+    // five thousand a day, and the card used to charge for that under the word "1,000".
+    label: answered.codes.length === 1 && answered.codes[0] === table.standard.code
+      && answered.dailyCash !== null
+      ? dailyCashLabel(answered.dailyCash)
+      : `สัญญาเพิ่มเติม ${answered.codes.length} รายการ`,
+    premiums: answered.premiums,
   };
 
   /**
@@ -151,9 +172,13 @@ export function IHealthyCalculator(
         return MODES.map((m) => ({
           mode: m,
           label: PAY_MODE_LABEL[m],
-          byPlan: Object.fromEntries(table.plans.map((p) => [
-            p.code, priced.get(p.code)?.total.find((x) => x.mode === m)?.total ?? null,
-          ])),
+          byPlan: Object.fromEntries(table.plans.map((p) => {
+            // Null, which the table prints as a dash: the company refuses a monthly
+            // instalment under its own floor, and a column that printed the figure anyway
+            // would be quoting a way of paying that cannot be bought.
+            const total = priced.get(p.code)?.total.find((x) => x.mode === m);
+            return [p.code, total === undefined || total.belowMinimum ? null : total.total];
+          })),
         }));
       })();
 
@@ -176,6 +201,10 @@ export function IHealthyCalculator(
     plan: plan?.code ?? wantPlan,
     territory: territory ?? wantTerritory,
     coverage: coverage ?? wantCoverage,
+    // The fold travels with the arrangement, or the link an agent copies would reopen on a
+    // different quote from the one they are looking at — putting back the agency's standard
+    // rider they had taken off, or dropping the cover they had added.
+    riders: answered?.riders,
   });
   useEffect(() => {
     // `replaceState` rather than `push`: a Back button that had to walk out through every
@@ -195,7 +224,10 @@ export function IHealthyCalculator(
     : undefined;
   /** An expired rate set prices, but not at a figure anyone may be quoted. */
   const shown = table.expired ? undefined : shownAt(priced, mode);
-  const death = deathBenefitOf(table, base.variant, age, sumAssured);
+  // The base plan's own answer until the fold has one: a rider that pays on death adds its
+  // sum to what the family receives, and the card was charging for DCI while printing a
+  // figure worked out as though nothing were attached.
+  const death = answered?.deathBenefit ?? deathBenefitOf(table, base.variant, age, sumAssured);
 
   /**
    * Where the same arrangement is drawn as one picture — the card and the benefit table in a
@@ -215,14 +247,15 @@ export function IHealthyCalculator(
         plan: plan.code,
         territory: territory ?? wantTerritory,
         coverage: coverage ?? wantCoverage,
-      }, attached?.riders)
+        riders: answered?.riders,
+      })
     : undefined;
 
   /**
-   * The quote the page hands over is the arrangement the card shows — the base plan and the
-   * health rider, and nothing from the agent's fold below it. Those riders live in the
-   * panel's own state, and lifting them up here would make the panel controlled for the sake
-   * of a line of text; the fold's total stays inside the fold on purpose.
+   * The quote the page hands over is the whole arrangement on screen: the base plan, the
+   * health rider, and whatever the fold has attached — the same three the card totals. The
+   * fold's own riders are named as one line rather than listed, because a summary that
+   * itemised them would be the panel written out twice.
    */
   const cta: IHealthyCtaFacts = {
     arrangement: plan && territory && coverage
@@ -506,6 +539,7 @@ export function IHealthyCalculator(
             plan: plan.code, territory, coverage,
           }}
           standard={standardPick}
+          initialRiders={initial.riders}
           onAttached={setAttached}
         />
       )}
@@ -517,14 +551,16 @@ export function IHealthyCalculator(
       <div className="sm:mx-[calc(50%-50vw)] sm:w-screen sm:px-6">
         <BenefitTable
           data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
+          participationNote={participationNote}
           sellable={plans.map((p) => p.code)} premiums={premiums}
           dailyCash={
             // `??` would be wrong here: null is the fold saying the agent took it off, not
             // the fold saying nothing yet, and falling through to the standard would put a
-            // figure back in a row the agent has just emptied.
+            // figure back in a row the agent has just emptied. An answer about another
+            // arrangement is silence, which is why this reads `answered` and not `attached`.
             standardPick === undefined ? undefined
-              : attached === undefined ? standardPick.plan
-              : attached.dailyCash
+              : answered === undefined ? standardPick.plan
+              : answered.dailyCash
           }
         />
       </div>

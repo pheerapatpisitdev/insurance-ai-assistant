@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { JUVENILE_BELOW_AGE } from "@/calc/riders/fixed-by-key-age";
-import { benefitValue, iHealthyFacts, isHeading, type BenefitRow } from "@/lib/ihealthy-facts";
+import {
+  benefitValue, categoryNumbers, iHealthyFacts, isHeading, type BenefitRow,
+} from "@/lib/ihealthy-facts";
 import sheet from "../../data/riders/ihealthy-ultra.json";
 
 const facts = iHealthyFacts();
@@ -64,5 +66,21 @@ describe("benefitValue", () => {
 
   it("does not decide who may buy what — that is the rate table's answer", () => {
     expect(benefitValue(doctorFee, "PLATINUM", 8)).toBe("ตามที่จ่ายจริง");
+  });
+});
+
+describe("categoryNumbers", () => {
+  /**
+   * The page tells a phone reader how many categories it is not showing. Counting rows with a
+   * number missed หมวด 2, 4 and 6 — the sheet gives each of those a heading and hangs its
+   * figures on sub-rows that carry no number — so the sentence understated the contract by
+   * three.
+   */
+  it("finds all twenty-eight, including the three the sheet stores as headings", () => {
+    const numbers = categoryNumbers(iHealthyFacts().rows);
+    expect(numbers).toHaveLength(28);
+    expect(numbers[0]).toBe(1);
+    expect(numbers[27]).toBe(28);
+    for (const missed of [2, 4, 6]) expect(numbers).toContain(missed);
   });
 });

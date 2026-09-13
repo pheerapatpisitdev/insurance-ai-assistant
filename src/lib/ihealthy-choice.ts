@@ -1,4 +1,5 @@
 import type { PayMode, Sex } from "@/calc/types";
+import type { AttachedRider } from "@/lib/ihealthy-rider-quote";
 import { coveragesFor, ihuKey, plansFor, territoriesFor } from "@/lib/ihealthy-quote";
 import type { IHealthyBase, IHealthyPlanOption, IHealthyTable } from "@/lib/ihealthy-table";
 
@@ -24,6 +25,15 @@ export interface IHealthyInitial {
   territory: string;
   coverage: string;
   mode: PayMode;
+  /**
+   * The riders the agent's fold has attached, or nothing where it has not spoken.
+   *
+   * Three states, not two: a link with no rider in it comes from a page whose fold never
+   * answered and is quoted with the agency's standard daily cash, while a link carrying an
+   * empty list is a fold that was opened and emptied. Conflating them puts back a rider the
+   * agent has just taken off.
+   */
+  riders?: AttachedRider[];
 }
 
 /**

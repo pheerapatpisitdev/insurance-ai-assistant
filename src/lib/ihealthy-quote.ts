@@ -6,6 +6,23 @@ import type { IHealthyBase, IHealthyPlanOption, IHealthyTable } from "@/lib/ihea
 /** Same order as calc/mode-premiums; repeated here so the browser does not import the engine. */
 export const MODES: PayMode[] = ["annual", "semi", "monthly"];
 
+/**
+ * What a daily-cash plan is called to a customer.
+ *
+ * One spelling, because four surfaces print it — the standard label the slim table builds,
+ * the card, the copied text and the picture — and the agent may attach a plan other than the
+ * agency's own. Naming the plan from the label rather than the label from the plan is how the
+ * card came to promise a thousand a day over a five-thousand premium.
+ *
+ * Here rather than beside the table that first builds it: this module is the browser's half
+ * of the pricing and reaches nothing but money and types, while ihealthy-table.ts reaches the
+ * plan registry and the 2.7 MB of rate tables behind it. One value imported from there by the
+ * client island puts all of it in the bundle.
+ */
+export function dailyCashLabel(plan: number): string {
+  return `ค่าชดเชยรายวัน ${plan.toLocaleString("en-US")} บาท`;
+}
+
 export interface IHealthyChoice {
   base: string;
   sex: Sex;

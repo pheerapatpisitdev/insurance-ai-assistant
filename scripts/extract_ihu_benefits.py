@@ -23,6 +23,23 @@ TERMS_SHEET = "เงื่อนไขที่สำคัญ ข้อยก�
 # Benefit columns: the first of each plan's three (ผลประโยชน์ / จำนวนสูงสุด / ผลประโยชน์สูงสุด).
 ADULT_COLS = {"SMART": "O", "BRONZE": "R", "SILVER": "U", "GOLD": "X", "DIAMOND": "AA", "PLATINUM": "AD"}
 CHILD_COLS = {"SMART": "I", "BRONZE": "L"}
+# The second of each triple: how many days or times the benefit beside it may be claimed.
+# Blank on all but two rows, and identical across every plan on those two — but a row that
+# says "ตามที่จ่ายจริง" with its "15 วัน ต่อการเข้าพักรักษาตัวแต่ละครั้ง" left behind reads as
+# cover without a limit, which is not what the contract says. Asserted identical below, so a
+# revision that made a plan's limit its own fails the extract rather than publishing one of them.
+LIMIT_COLS = {"SMART": "P", "BRONZE": "S", "SILVER": "V", "GOLD": "Y", "DIAMOND": "AB", "PLATINUM": "AE"}
+CHILD_LIMIT_COLS = {"SMART": "J", "BRONZE": "M"}
+
+# The sheet marks three titles with "**" and "***" and defines neither anywhere on it — only
+# "*" has a note (row 58, `participationNote`). A reference to a note that does not exist is
+# worse on a customer's page than no mark, so the dangling ones are dropped here rather than
+# printed and left to point at nothing.
+DANGLING_MARK = re.compile(r"\*{2,}")
+
+
+def marked(title: str) -> str:
+    return DANGLING_MARK.sub("", title).strip()
 # The third column of each triple holds the annual maximum, merged down the whole block.
 MAX_COLS = {"SMART": "Q", "BRONZE": "T", "SILVER": "W", "GOLD": "Z", "DIAMOND": "AC", "PLATINUM": "AF"}
 PLAN_NAMES = {
@@ -150,6 +167,14 @@ def extract():
     no_max = [p["code"] for p in plans if not p["annualMax"]]
     assert not no_max, f"{BENEFIT_SHEET} row {ANNUAL_MAX_ROW}: no annual maximum for {no_max}"
 
+    def limit_of(read, r):
+        """How many days or times this row may be claimed, where the sheet says so at all."""
+        said = {read(col, r) for col in LIMIT_COLS.values()} | {read(col, r) for col in CHILD_LIMIT_COLS.values()}
+        said = {s for s in said if s and s != "-"}
+        assert len(said) <= 1, f"{BENEFIT_SHEET} row {r}: plans no longer share one limit: {said}"
+        # The sheet types these by hand and double-spaces some of them
+        return " ".join(said.pop().split()) if said else None
+
     rows = []
     for r in range(FIRST_ROW, LAST_ROW + 1):
         if r in SKIP_ROWS:
@@ -164,10 +189,13 @@ def extract():
         child = {code: benefit(col, r) for code, col in CHILD_COLS.items()}
         entry = {
             "no": section_no(title),
-            "title": title,
+            "title": marked(title),
             "endorsement": r >= ENDORSEMENT_FROM,
             "adult": adult,
         }
+        limit = limit_of(benefit, r)
+        if limit:
+            entry["limit"] = limit
         # Only สมาร์ท and บรอนซ์ sell to a child, and only where the wording differs is the
         # child column worth carrying: everything else is the adult row.
         if any(child[c] != adult[c] for c in CHILD_COLS):

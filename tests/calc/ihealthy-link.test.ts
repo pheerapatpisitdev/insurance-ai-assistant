@@ -173,4 +173,29 @@ describe("a link written by hand", () => {
     initialFrom(table, queryOf("__proto__=polluted&constructor=polluted"));
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
+
+  /**
+   * The fold travels with the arrangement. Without it the link an agent copied reopened on a
+   * different quote from the one on their screen: the agency's standard daily cash back on
+   * where they had taken it off, or their added cover gone.
+   */
+  it("carries the fold's riders, and tells silence from an empty answer", () => {
+    const silent = initialFrom(table, queryOf("age=35"));
+    expect(silent.riders).toBeUndefined();
+    expect(queryFrom(table, silent)).not.toMatch(/[?&]r=/);
+
+    const emptied = initialFrom(table, queryOf("age=35&r="));
+    expect(emptied.riders).toEqual([]);
+    expect(queryFrom(table, emptied)).toMatch(/&r=(&|$)/);
+
+    const attached = initialFrom(table, queryOf("age=35&r=MEB%3A1000&r=DCI%3A%3A500000"));
+    expect(attached.riders).toEqual([{ code: "MEB", plan: 1_000 }, { code: "DCI", sumAssured: 500_000 }]);
+  });
+
+  it("writes the fold back out unchanged, so copying twice copies the same quote", () => {
+    for (const search of ["age=35", "age=35&r=", "age=35&r=MEB%3A1000", "age=8&r=MEB%3A500&r=DCI%3A%3A200000"]) {
+      const once = initialFrom(table, queryOf(search));
+      expect(initialFrom(table, queryOf(queryFrom(table, once)))).toEqual(once);
+    }
+  });
 });
