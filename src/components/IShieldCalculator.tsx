@@ -99,8 +99,9 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
   const card = who && headline
     ? cardPath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured, mode: headline.mode })
     : undefined;
-  // the value table drawn the same way, from the same arrangement
-  const tableCard = who
+  // the value table drawn the same way, from the same arrangement — and offered only where
+  // there is a table to draw, so a button never points at a picture the engine would refuse
+  const tableCard = who && projection
     ? valueTablePath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured })
     : undefined;
   const quoteText = who && headline
@@ -290,11 +291,11 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
         </div>
       )}
 
-      <ContactButtons message={message} copyText={quoteText} cardPath={card} />
+      <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={card} compact />
+          <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} compact />
         </div>
       )}
     </div>
