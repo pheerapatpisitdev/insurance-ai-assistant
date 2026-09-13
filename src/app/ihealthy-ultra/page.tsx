@@ -2,13 +2,48 @@ import { IHealthyCalculator } from "@/components/IHealthyCalculator";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import { iHealthyFacts } from "@/lib/ihealthy-facts";
 import { initialFrom, type IHealthyQuery } from "@/lib/ihealthy-link";
+import type { IHealthyInitial } from "@/lib/ihealthy-choice";
 import { Disclaimer, Hero, TermsSection } from "@/components/ihealthy/Sections";
+import { arrangementKey } from "@/components/ihealthy/rider-request";
+import { priceRiders } from "@/lib/ihealthy-rider-quote";
+import type { Attached } from "@/components/ihealthy/RiderPanel";
 
 export const metadata = {
   title: "iHealthy Ultra — ค่ารักษาพยาบาลเหมาจ่ายถึง 100 ล้านต่อปี",
   description:
     "ประกันสุขภาพเหมาจ่าย 6 แผน วงเงิน 3 ถึง 100 ล้านบาทต่อปี ต่ออายุได้ถึงอายุ 98 ปี เทียบผลประโยชน์ครบ 28 หมวด และคำนวณเบี้ยของคุณเองได้ทันที",
 };
+
+/**
+ * A link's own riders, priced here so that the first thing a reader sees is already right.
+ *
+ * The fold prices itself over the wire, which cannot happen until a browser has the page — so
+ * a shared link carrying riders used to render with the agency's standard one instead, for
+ * the half-second until its own answer landed, and for ever if that request never did. This
+ * is the same engine call the fold will make, made once while the HTML is still being built.
+ *
+ * Undefined where the link says nothing about riders, which is the page's other opening: the
+ * agency's standard daily cash, quoted in the browser from the slim table.
+ */
+function foldQuote(standardCode: string, initial: IHealthyInitial): Attached | undefined {
+  if (initial.riders === undefined) return undefined;
+  const request = {
+    base: initial.base, age: initial.age, sex: initial.sex, sumAssured: initial.sumAssured,
+    mode: initial.mode, plan: initial.plan, territory: initial.territory, coverage: initial.coverage,
+  };
+  const priced = priceRiders({ ...request, riders: initial.riders });
+  const attached = priced.extraCodes.includes(standardCode)
+    ? initial.riders.find((r) => r.code === standardCode)?.plan ?? null
+    : null;
+  return {
+    at: arrangementKey(request),
+    premiums: priced.extras,
+    codes: priced.extraCodes,
+    riders: initial.riders.filter((r) => priced.extraCodes.includes(r.code)),
+    dailyCash: attached,
+    deathBenefit: priced.deathBenefit,
+  };
+}
 
 /**
  * What it pays, what it costs, and what the contract will not do — in that order, because a
@@ -46,6 +81,7 @@ export default async function IHealthyPage(
   // whole sheet at module scope and a client component imports `planLabel` from it, so the
   // paragraphs are in the route chunk either way — a comment here once claimed otherwise.
   const { rows, plans, copayPercent } = facts;
+  const initialAttached = foldQuote(table.standard.code, initial);
   return (
     <main className="mx-auto max-w-lg px-4 pb-28 sm:max-w-2xl sm:pb-10">
       <Hero facts={facts} />
@@ -61,7 +97,7 @@ export default async function IHealthyPage(
         <IHealthyCalculator
           table={table} data={{ rows, plans, copayPercent }}
           sharedLimit={facts.terms.sharedLimit} participationNote={facts.terms.participationNote}
-          initial={initial} sticky
+          initial={initial} initialAttached={initialAttached} sticky
         />
       </section>
       <TermsSection facts={facts} />

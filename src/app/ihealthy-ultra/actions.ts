@@ -9,10 +9,11 @@ export type {
 /**
  * The agent's half of the page, across the wire.
  *
- * A server action and not more browser arithmetic because of what pricing these riders
- * needs: the two payor riders' rate tables are 416 kB on their own, and a customer who never
- * opens the fold never downloads them. The quoting itself is next door, where the card route
- * can reach it without going through an action.
+ * A server action and not more browser arithmetic because of what pricing these riders needs:
+ * their own rate tables, and the eligibility rules behind them — age bands, plan caps, the
+ * sums a package pins — none of which a customer's browser has any business downloading. The
+ * quoting itself is next door, where the card route can reach it without going through an
+ * action.
  */
 export async function priceWithRiders(input: RiderQuoteInput): Promise<RiderQuoteResult> {
   return priceRiders(input);

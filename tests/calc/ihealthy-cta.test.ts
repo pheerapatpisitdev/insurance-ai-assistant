@@ -13,6 +13,7 @@ const SHOWN: IHealthyShown = {
   total: 4_593_000,
   belowMinimum: false,
   others: [{ mode: "semi", total: 2_388_300 }, { mode: "monthly", total: 413_300 }],
+  refused: [],
 };
 
 /** The same arrangement as the page actually opens on it: the agency's daily cash attached. */

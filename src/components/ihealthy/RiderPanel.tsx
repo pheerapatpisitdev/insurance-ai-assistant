@@ -5,7 +5,9 @@ import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
 import { MoneyInput } from "@/components/MoneyInput";
 import { priceWithRiders } from "@/app/ihealthy-ultra/actions";
 import type { RiderChoice, RiderQuoteInput, RiderQuoteResult } from "@/app/ihealthy-ultra/actions";
-import { arrangementKey, attachedRiders, type RiderPick } from "@/components/ihealthy/rider-request";
+import {
+  arrangementKey, attachedRiders, withinOffer, type RiderPick,
+} from "@/components/ihealthy/rider-request";
 import type { AttachedRider } from "@/app/ihealthy-ultra/actions";
 
 export interface RiderPanelProps {
@@ -25,6 +27,15 @@ export interface RiderPanelProps {
    * the card is where the standard rider already has a name.
    */
   onAttached?: (attached: Attached | undefined) => void;
+  /**
+   * The ticks as they stand, told at once rather than when the server answers.
+   *
+   * The address the page writes carries the fold, and the priced answer is a round trip
+   * behind every change — so without this the link spent that round trip saying the fold had
+   * never spoken, and an agent who copied it in that window got the agency's standard rider
+   * instead of what was on their screen.
+   */
+  onPicked?: (riders: AttachedRider[]) => void;
   /**
    * The riders a link arrived carrying, which replace the standard tick when there are any —
    * including when there are none, which is a link saying the fold was emptied.
@@ -131,7 +142,9 @@ function range(c: RiderChoice): string {
  * that stopped answering when it was collapsed left that subtotal frozen on the last
  * arrangement it saw, and the card went on charging for it.
  */
-export function RiderPanel({ request, standard, onAttached, initialRiders }: RiderPanelProps) {
+export function RiderPanel(
+  { request, standard, onAttached, onPicked, initialRiders }: RiderPanelProps,
+) {
   // Taken apart at the door. The calculator builds `request` inline, so a fresh object
   // arrives on every render; an effect that listed it as a dependency would ask the server
   // for the same arrangement again, set state, render, and ask again — for ever.
@@ -149,6 +162,10 @@ export function RiderPanel({ request, standard, onAttached, initialRiders }: Rid
   // again on each of them.
   const told = useRef(onAttached);
   told.current = onAttached;
+  const picked = useRef(onPicked);
+  picked.current = onPicked;
+  /** Bumped to ask again after a quote that never arrived. */
+  const [attempt, setAttempt] = useState(0);
   // Taken apart for the same reason `request` is: the calculator builds it inline, so the
   // object is new on every render and the effect below would list a dependency that always
   // changed.
@@ -157,24 +174,11 @@ export function RiderPanel({ request, standard, onAttached, initialRiders }: Rid
 
   const at = arrangementKey(request);
 
-  /**
-   * The agency's own rider follows the age it is written for.
-   *
-   * The company caps the daily cash by age — five hundred a day up to ten, a thousand above —
-   * and the tick was seeded once at mount. Moving the age picker therefore went on sending
-   * the mount-time plan, which the engine refuses, and the agency's standard rider dropped
-   * out of the quote without a word. Only when the cap actually moves, and only while the
-   * rider is still ticked, so an agent who deliberately picked another plan keeps it.
-   */
-  const lastStandardPlan = useRef(standardPlan);
+  // The ticks are the agent's; the link is written from them, so it says what is on screen
+  // rather than what the server last confirmed.
   useEffect(() => {
-    const previous = lastStandardPlan.current;
-    lastStandardPlan.current = standardPlan;
-    if (previous === standardPlan || standardPlan === undefined || standardCode === undefined) return;
-    setChosen((prev) => (standardCode in prev
-      ? { ...prev, [standardCode]: { ...prev[standardCode], plan: standardPlan } }
-      : prev));
-  }, [standardCode, standardPlan]);
+    picked.current?.(attachedRiders(chosen));
+  }, [chosen]);
 
   useEffect(() => {
     const riders = attachedRiders(chosen);
@@ -192,6 +196,12 @@ export function RiderPanel({ request, standard, onAttached, initialRiders }: Rid
           });
           if (newest.current === generation) {
             setAnswer({ at, result });
+            // What this age may actually buy. The company caps the daily cash by age — five
+            // hundred a day up to ten, a thousand up to fifteen — and a tick carried across
+            // an age change used to be sent at the old plan, refused, and quietly left out
+            // of the quote. Clamping converges in one pass: the next answer offers the plan
+            // that is now ticked.
+            setChosen((prev) => withinOffer(prev, result.available));
             told.current?.({
               at,
               premiums: result.extras,
@@ -218,7 +228,7 @@ export function RiderPanel({ request, standard, onAttached, initialRiders }: Rid
       });
     }, wait);
     return () => clearTimeout(timer);
-  }, [chosen, at, base, age, sex, sumAssured, mode, plan, territory, coverage, start,
+  }, [chosen, at, attempt, base, age, sex, sumAssured, mode, plan, territory, coverage, start,
       standardCode, standardPlan]);
 
   // The ticks are the agent's and survive the arrangement changing under them — switch to the
@@ -258,7 +268,17 @@ export function RiderPanel({ request, standard, onAttached, initialRiders }: Rid
         className={`space-y-3 border-t border-[var(--lg-panel-line)] px-5 py-4 ${pending ? "opacity-60" : ""}`}
       >
         {lost ? (
-          <p className="text-sm text-[var(--lg-gold)]">คิดเบี้ยไม่สำเร็จ ปิดแล้วเปิดใหม่เพื่อลองอีกครั้ง</p>
+          // A button, because the fold no longer stops and starts with the disclosure arrow:
+          // it was told to close and reopen to retry, and closing it does nothing any more.
+          <p className="flex flex-wrap items-center gap-3 text-sm text-[var(--lg-gold)]">
+            คิดเบี้ยไม่สำเร็จ
+            <button
+              type="button" onClick={() => setAttempt((n) => n + 1)}
+              className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-[var(--lg-gold)]"
+            >
+              ลองอีกครั้ง
+            </button>
+          </p>
         ) : result === undefined ? (
           <p className="text-sm text-[var(--lg-mute)]">กำลังคิดเบี้ย</p>
         ) : (

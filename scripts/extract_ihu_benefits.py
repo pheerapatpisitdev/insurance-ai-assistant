@@ -168,12 +168,18 @@ def extract():
     assert not no_max, f"{BENEFIT_SHEET} row {ANNUAL_MAX_ROW}: no annual maximum for {no_max}"
 
     def limit_of(read, r):
-        """How many days or times this row may be claimed, where the sheet says so at all."""
-        said = {read(col, r) for col in LIMIT_COLS.values()} | {read(col, r) for col in CHILD_LIMIT_COLS.values()}
-        said = {s for s in said if s and s != "-"}
-        assert len(said) <= 1, f"{BENEFIT_SHEET} row {r}: plans no longer share one limit: {said}"
-        # The sheet types these by hand and double-spaces some of them
-        return " ".join(said.pop().split()) if said else None
+        """How many days or times this row may be claimed, where the sheet says so at all.
+
+        Every plan must agree, and agree about having one at all: a revision that capped five
+        plans and left the sixth uncapped would otherwise publish the five plans' limit under
+        all six. Absence counts as an answer, so the assertion sees it.
+        """
+        cols = list(LIMIT_COLS.values()) + list(CHILD_LIMIT_COLS.values())
+        said = {(read(col, r) or "-").strip() or "-" for col in cols}
+        said = {" ".join(s.split()) for s in said}
+        assert len(said) == 1, f"{BENEFIT_SHEET} row {r}: plans no longer share one limit: {said}"
+        only = said.pop()
+        return None if only == "-" else only
 
     rows = []
     for r in range(FIRST_ROW, LAST_ROW + 1):

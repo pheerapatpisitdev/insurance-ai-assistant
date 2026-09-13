@@ -267,7 +267,10 @@ body:has(.theme-legacy) {
      plans squeezed into the rest. On paper they take a quarter and wrap instead. */
   .theme-legacy tbody th,
   .theme-legacy thead th:first-child,
-  .theme-legacy tbody th > span {
+  /* Only the pinned spans — the section headings, which are as wide as the column they name.
+     A plain span in a row title is content (the per-claim limit under one), and a quarter of
+     the column turns it into a nine-line vertical ribbon. */
+  .theme-legacy tbody th > span.sticky {
     width: 25%;
     max-width: none;
   }

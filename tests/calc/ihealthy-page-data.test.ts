@@ -4,7 +4,7 @@ import { baseSumAssuredLimits } from "@/calc/rules";
 import { formatBaht } from "@/calc/money";
 import type { PayMode, Sex } from "@/calc/types";
 import { iHealthyTable } from "@/lib/ihealthy-table";
-import { coveragesFor, iHealthyPricing, plansFor } from "@/lib/ihealthy-quote";
+import { MODES, coveragesFor, iHealthyPricing, plansFor } from "@/lib/ihealthy-quote";
 import {
   IHEALTHY_OPENING, baseFor, resolveArrangement, sumFor, sumsFor,
 } from "@/lib/ihealthy-choice";
@@ -199,10 +199,10 @@ describe("shownAt", () => {
   });
 
   /**
-   * The company's monthly floor is out of reach now that the daily cash is attached as
-   * standard — the cheapest the pickers reach is 1,062 a month against a floor of 1,000 —
-   * so what is pinned here is that nothing the page can sell falls under it. The floor's own
-   * arithmetic is exercised in ihealthy-quote.test.ts against a raised floor.
+   * With the agency's daily cash attached the floor is out of reach: the cheapest the pickers
+   * reach is 1,062 a month against a floor of 1,000. It is one un-tick away, though — an
+   * agent who empties the fold can reach 945 — so the second half of this checks that the
+   * page refuses to offer that instalment rather than that it cannot happen.
    */
   it("sells nothing the company would refuse an instalment of", () => {
     const pkg = table.bases.find((b) => b.fixedSum !== undefined)!;
@@ -223,6 +223,16 @@ describe("shownAt", () => {
     // and the arrangement the page opens on is nowhere near it
     expect(shownAt(iHealthyPricing(table, { ...IHEALTHY_OPENING, base: "WLF99H" }), "monthly")!.belowMinimum)
       .toBe(false);
+
+    // Empty the fold on that same cheapest arrangement and the floor is reachable. The page
+    // must then not offer the instalment, and must say which one it is withholding.
+    const emptied = { label: "", premiums: MODES.map((mode) => ({ mode, total: 0 })) };
+    const under = shownAt(iHealthyPricing(table, {
+      base: pkg.variant, sex: "M", age: 18, sumAssured: pkg.fixedSum!,
+      plan: "SMART", territory: THAI, coverage: "Deductible",
+    }, emptied), "annual")!;
+    expect(under.others.map((o) => o.mode)).toEqual(["semi"]);
+    expect(under.refused).toEqual(["monthly"]);
   });
 
   /**

@@ -16,6 +16,8 @@ import {
 } from "@/lib/ihealthy-choice";
 import { cardPath, queryFrom } from "@/lib/ihealthy-link";
 import { arrangementKey } from "@/components/ihealthy/rider-request";
+import { deathBenefitRows } from "@/lib/death-benefit";
+import type { AttachedRider } from "@/lib/ihealthy-rider-quote";
 import type { Attached } from "@/components/ihealthy/RiderPanel";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { LinkButton } from "@/components/sales/LinkButton";
@@ -41,6 +43,13 @@ export interface IHealthyShown {
    * printed under a heading that says how to pay is an offer to be paid that way.
    */
   others: { mode: PayMode; total: number }[];
+  /**
+   * The instalments the company will not accept, named rather than merely absent. Dropping
+   * them was right — a figure under a heading that says how to pay is an offer to be paid
+   * that way — but dropping them silently left a reader wondering where the monthly line
+   * went, and this page has no instalment picker to ask again with.
+   */
+  refused: PayMode[];
 }
 
 /**
@@ -67,6 +76,7 @@ export function shownAt(priced: IHealthyPricing | undefined, mode: PayMode): IHe
     others: priced.total
       .filter((m) => m.mode !== mode && !m.belowMinimum)
       .map((m) => ({ mode: m.mode, total: m.total })),
+    refused: priced.total.filter((m) => m.mode !== mode && m.belowMinimum).map((m) => m.mode),
   };
 }
 
@@ -79,6 +89,15 @@ export interface IHealthyCalculatorProps {
   /** the company's explanation of the "*" the table's own cells carry */
   participationNote: string;
   initial: IHealthyInitial;
+  /**
+   * The fold's riders already priced on the server, for a link that arrived carrying some.
+   *
+   * Without it the first paint of such a link quotes the agency's standard rider instead —
+   * the server renders the HTML before any browser has asked the fold anything — so a shared
+   * link showed one price for the half-second before its own riders landed, and showed it for
+   * ever if that request failed.
+   */
+  initialAttached?: Attached;
   /** pin a copy of the contact buttons to the bottom of a phone screen */
   sticky?: boolean;
 }
@@ -91,7 +110,9 @@ export interface IHealthyCalculatorProps {
  * pickers show another.
  */
 export function IHealthyCalculator(
-  { table, data, sharedLimit, participationNote, initial, sticky = false }: IHealthyCalculatorProps,
+  {
+    table, data, sharedLimit, participationNote, initial, initialAttached, sticky = false,
+  }: IHealthyCalculatorProps,
 ) {
   const AGES = useMemo(
     () => Array.from({ length: table.ageMax - table.ageMin + 1 }, (_, i) => table.ageMin + i),
@@ -124,7 +145,14 @@ export function IHealthyCalculator(
    * so the two never disagree, and a customer who never opens it is quoted the same
    * arrangement either way.
    */
-  const [attached, setAttached] = useState<Attached>();
+  const [attached, setAttached] = useState<Attached | undefined>(initialAttached);
+  /**
+   * What is ticked right now, which the fold reports without waiting for a price. The link is
+   * written from this where there is no priced answer yet for the arrangement on screen —
+   * otherwise the address spends every round trip saying the fold had never spoken, and an
+   * agent copying it in that window hands over a different quote from the one they can see.
+   */
+  const [picked, setPicked] = useState<AttachedRider[] | undefined>(initial.riders);
   /**
    * The fold's answer is used only while it is still an answer about what is on screen.
    *
@@ -203,8 +231,9 @@ export function IHealthyCalculator(
     coverage: coverage ?? wantCoverage,
     // The fold travels with the arrangement, or the link an agent copies would reopen on a
     // different quote from the one they are looking at — putting back the agency's standard
-    // rider they had taken off, or dropping the cover they had added.
-    riders: answered?.riders,
+    // rider they had taken off, or dropping the cover they had added. The priced answer where
+    // there is one for what is on screen, the bare ticks while it is still being priced.
+    riders: answered?.riders ?? picked,
   });
   useEffect(() => {
     // `replaceState` rather than `push`: a Back button that had to walk out through every
@@ -247,7 +276,7 @@ export function IHealthyCalculator(
         plan: plan.code,
         territory: territory ?? wantTerritory,
         coverage: coverage ?? wantCoverage,
-        riders: answered?.riders,
+        riders: answered?.riders ?? picked,
       })
     : undefined;
 
@@ -481,6 +510,12 @@ export function IHealthyCalculator(
                       </div>
                     ))}
                   </dl>
+                  {shown.refused.length > 0 && (
+                    <p className="mt-2 text-xs text-[var(--lg-gold)]">
+                      {shown.refused.map((m) => PAY_MODE_LABEL[m]).join(" และ ")}{" "}
+                      ต่ำกว่าขั้นต่ำ {table.minMonthly.toLocaleString("en-US")} บาท บริษัทไม่รับชำระ
+                    </p>
+                  )}
                 </div>
               </>
             ) : (
@@ -500,25 +535,21 @@ export function IHealthyCalculator(
                 {coverage === "Deductible" && ` · รับผิดส่วนแรก ${plan.deductible.toLocaleString("en-US")} บาทต่อปี`}
                 {coverage === "Co-Payment" && ` · ร่วมจ่าย ${data.copayPercent} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง`}
               </p>
-              {/* the rider covers the illness; this is the one thing the base plan is for,
-                  and past the booster age it stops doubling rather than stops paying */}
-              {death.alreadyPastAge ? (
-                <p className="mt-1">
-                  ครอบครัวได้รับ{" "}
+              {/* The rider covers the illness; this is the one thing the base plan is for.
+                  Read as bands rather than written out here, because a rider attached in the
+                  fold can pay on death too and can stop paying before the base does — the
+                  hand-written version said "ตั้งแต่อายุ 60 คุ้มครองเท่าทุน" over a figure
+                  half again the sum assured, and never mentioned the age it falls back at.
+                  The same helper writes the copied quote, so the two cannot drift. */}
+              {deathBenefitRows(death).map((row) => (
+                <p key={row.label} className="mt-1">
+                  {row.label}{" "}
                   <span className="lg-figure tabular-nums text-[var(--lg-white)]">
-                    {death.sumFrom.toLocaleString("en-US")}
-                  </span>{" "}
-                  บาท · ตั้งแต่อายุ {death.beforeAge} คุ้มครองเท่าทุน
-                </p>
-              ) : (
-                <p className="mt-1">
-                  เสียชีวิตก่อนอายุ {death.beforeAge} ครอบครัวได้{" "}
-                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">
-                    {death.sumBefore.toLocaleString("en-US")}
+                    {row.amount.toLocaleString("en-US")}
                   </span>{" "}
                   บาท
                 </p>
-              )}
+              ))}
               {shown && (
                 <p className="mt-1 opacity-80">เบี้ยปีแรก ปีต่อไปคิดตามอายุที่เพิ่มขึ้น</p>
               )}
@@ -541,6 +572,7 @@ export function IHealthyCalculator(
           standard={standardPick}
           initialRiders={initial.riders}
           onAttached={setAttached}
+          onPicked={setPicked}
         />
       )}
 

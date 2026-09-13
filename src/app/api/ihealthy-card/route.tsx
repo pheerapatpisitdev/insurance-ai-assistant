@@ -49,8 +49,10 @@ const H = {
   noPrice: 60,
   line: 40,
   warn: 36,
-  /** what the family receives, set apart from what the customer pays */
-  death: 58,
+  /** one band of what the family receives, set apart from what the customer pays */
+  death: 40,
+  /** the space above the first of them */
+  beforeDeath: 18,
   /** the space above a divided section */
   gap: 30,
   hairline: 1,
@@ -70,7 +72,7 @@ function heightOf(card: IHealthyCard): number {
     + (card.premium ? H.premium : H.noPrice)
     + card.lines.length * H.line
     + (card.belowMinimum ? H.warn : 0)
-    + H.death
+    + H.beforeDeath + card.death.length * H.death
     + H.gap + H.hairline + H.afterHairline + table
     + H.gap + H.hairline + H.afterHairline + card.notes.length * H.note;
 }
@@ -216,9 +218,16 @@ export async function GET(req: NextRequest) {
           <div style={{ ...band(H.warn), fontSize: 22, color: GOLD }}>{card.belowMinimum}</div>
         )}
         {/* the rider covers the illness; this is the one thing the base plan under it is for */}
-        <div style={{ ...band(H.death), fontSize: 24, color: GOLD, alignItems: "flex-end" }}>
-          {card.death}
-        </div>
+        <div style={spacer(H.beforeDeath)} />
+        {card.death.map((row) => (
+          <div
+            key={row.label}
+            style={{ ...band(H.death), fontSize: 23, color: GOLD, alignItems: "center", justifyContent: "space-between" }}
+          >
+            <div style={{ display: "flex" }}>{row.label}</div>
+            <div style={{ display: "flex" }}>{row.amount.toLocaleString("en-US")} บาท</div>
+          </div>
+        ))}
 
         <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={spacer(H.gap)} />

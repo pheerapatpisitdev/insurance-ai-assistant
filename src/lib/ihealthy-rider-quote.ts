@@ -49,6 +49,9 @@ export interface RiderQuoteInput {
   riders: AttachedRider[];
 }
 
+/** The request as it was read: the riders that could be read, and how many could not. */
+type ParsedRequest = RiderQuoteInput & { unreadable: number[] };
+
 export interface RiderChoice {
   code: string;
   name: string;
@@ -154,7 +157,7 @@ function parseRider(raw: unknown, plan: PlanBundle): AttachedRider | undefined {
  * engine would index a rate table with is checked here: an age of 500 or a base the table
  * never carried would otherwise reach `quote()` and come back as arithmetic on undefined.
  */
-function parseRequest(raw: unknown, plan: PlanBundle, bases: string[]): RiderQuoteInput | undefined {
+function parseRequest(raw: unknown, plan: PlanBundle, bases: string[]): ParsedRequest | undefined {
   if (typeof raw !== "object" || raw === null) return undefined;
   const r = raw as Record<string, unknown>;
   if (!isLabel(r.base) || !bases.includes(r.base)) return undefined;
@@ -167,15 +170,20 @@ function parseRequest(raw: unknown, plan: PlanBundle, bases: string[]): RiderQuo
   // not carry by pricing nothing and saying so — the same answer a withdrawn plan gets.
   if (!isLabel(r.plan) || !isLabel(r.territory) || !isLabel(r.coverage)) return undefined;
   if (!Array.isArray(r.riders) || r.riders.length > plan.riderOrder.length) return undefined;
+  // A rider that cannot be read is dropped, not fatal. The riders now travel in the address,
+  // so one mangled `r` — a chat client that truncated the link, a figure past the engine's
+  // ceiling — used to answer the whole request with nothing: no riders on offer, a total of
+  // zero, and a fold the agent could not recover without reloading the page.
   const riders: AttachedRider[] = [];
-  for (const one of r.riders) {
+  const unreadable: number[] = [];
+  for (const [i, one] of (r.riders as unknown[]).entries()) {
     const rider = parseRider(one, plan);
-    if (rider === undefined) return undefined;
-    riders.push(rider);
+    if (rider === undefined) unreadable.push(i);
+    else riders.push(rider);
   }
   return {
     base: r.base, age: r.age, sex: r.sex, sumAssured: r.sumAssured, mode: r.mode as PayMode,
-    plan: r.plan, territory: r.territory, coverage: r.coverage, riders,
+    plan: r.plan, territory: r.territory, coverage: r.coverage, riders, unreadable,
   };
 }
 
@@ -301,6 +309,7 @@ export function priceRiders(input: RiderQuoteInput): RiderQuoteResult {
     extraCodes: result.items.filter((i) => i.eligible && isExtra(i.code)).map((i) => i.code),
     deathBenefit: result.deathBenefit,
     warnings: [
+      ...(asked.unreadable.length > 0 ? [`มีสัญญาเพิ่มเติม ${asked.unreadable.length} รายการที่อ่านไม่ออก จึงไม่ได้คิดเบี้ยให้`] : []),
       ...dropped.map((code) => {
         const a = why.get(code);
         return `${a?.name ?? code} ${a?.reason ?? CANNOT_BUY} จึงไม่ได้คิดเบี้ยให้`;

@@ -82,6 +82,9 @@ export function iHealthyMessage(f: IHealthyCtaFacts): string {
   const cover = COVERAGE_WORD[a.coverage] ?? "";
   const who = `${head} ${a.planName} ${a.territory}${cover ? ` ${cover}` : ""} ${someone}`;
   if (!f.shown) return `${who} ขอราคาปัจจุบัน`;
+  // A total the company will not accept in this instalment is not a price to open a chat
+  // with: the pasted quote flags it, and this one would have advertised it bare.
+  if (f.shown.belowMinimum) return `${who} ขอราคาปัจจุบัน`;
   return `${who} เบี้ยรวมประมาณ ${formatBaht(f.shown.total)} บาท${PER[f.mode]}`;
 }
 
@@ -137,9 +140,9 @@ export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
       const m = instalments.find((x) => x.mode === mode);
       if (!m) return [];
       const line = `${PAY_MODE_LABEL[mode]} ${formatBaht(m.total)} บาท`;
-      // The flag belongs to the instalment the card is showing, and the floor it is measured
-      // against is a monthly one — so only the monthly line can ever carry the warning, and
-      // an instalment the company refuses is named with the reason rather than dropped.
+      // The flag belongs to the instalment the card is showing. Any other instalment the
+      // company refuses never reaches `others` at all — `shownAt` drops it, the way every
+      // sibling calculator does — and is named instead by the line below this list.
       return [mode === f.mode && shown.belowMinimum
         ? `${line} (ต่ำกว่าขั้นต่ำ ${baht(f.minMonthly)} บาท บริษัทไม่รับชำระรายเดือน)`
         : line];
@@ -148,6 +151,11 @@ export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
     "👪 ครอบครัวได้รับเมื่อเสียชีวิต",
     ...deathBenefitRows(f.death).map((r) => `- ${r.label} ${baht(r.amount)} บาท`),
     "",
+    // The instalments that are missing from the list above, and why. A reader who counted
+    // three ways to pay on the page and two here is owed the reason.
+    ...(shown.refused.length > 0
+      ? [`${shown.refused.map((m) => PAY_MODE_LABEL[m]).join(" และ ")} ต่ำกว่าขั้นต่ำ ${baht(f.minMonthly)} บาท บริษัทไม่รับชำระ`]
+      : []),
     "📌 เบี้ยปีแรก เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
     "เบี้ยของอาชีพชั้น 1 · ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกัน"
       + "และที่ระบุในกรมธรรม์",

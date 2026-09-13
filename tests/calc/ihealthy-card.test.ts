@@ -171,8 +171,29 @@ describe("iHealthyCard", () => {
     const bare = cardAt(`${OPENING}&sa=1000000&r=MEB%3A1000`);
     const withDci = cardAt(`${OPENING}&sa=1000000&r=MEB%3A1000&r=DCI%3A%3A1000000`);
     // the base pays double before 60; DCI's own million rides on top of that
-    expect(bare.death).toContain("2,000,000");
-    expect(withDci.death).toContain("3,000,000");
+    expect(bare.death[0].amount).toBe(2_000_000);
+    expect(withDci.death[0].amount).toBe(3_000_000);
+  });
+
+  /**
+   * A rider that pays on death can stop paying before the base does. The hand-written line
+   * said "ตั้งแต่อายุ 60 คุ้มครองเท่าทุน" over a figure half again the sum assured and never
+   * mentioned the age it falls back at.
+   */
+  it("says when the extra cover ends, not just what it is worth", () => {
+    const card = cardAt("age=62&sex=M&base=WLF99H&sa=1000000&plan=GOLD&r=DCI%3A%3A500000");
+    expect(card.death.map((r) => r.amount)).toEqual([1_500_000, 1_000_000]);
+    expect(card.death[0].label).toContain("74");
+    expect(card.death[1].label).toContain("75");
+    // and nothing on the picture claims the larger figure is the sum assured
+    expect(card.death.some((r) => r.label.includes("เท่าทุน"))).toBe(false);
+  });
+
+  it("reads a link whose riders one bad entry would once have voided", () => {
+    // a chat client that truncated the link, or a figure past the engine's ceiling
+    const card = cardAt(`${OPENING}&r=MEB%3A1000&r=DCI%3A%3A999999999999`);
+    expect(card.lines.some((l) => l.label.includes("ค่าชดเชยรายวัน 1,000"))).toBe(true);
+    expect(card.premium).toBeDefined();
   });
 
   it("dashes an instalment the company will not accept", () => {

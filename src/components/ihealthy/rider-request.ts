@@ -1,4 +1,4 @@
-import type { AttachedRider, RiderQuoteInput } from "@/app/ihealthy-ultra/actions";
+import type { AttachedRider, RiderChoice, RiderQuoteInput } from "@/app/ihealthy-ultra/actions";
 
 /**
  * The two things the rider fold works out before it can ask the server anything: which
@@ -40,4 +40,34 @@ export function attachedRiders(chosen: Record<string, RiderPick>): AttachedRider
     ...(pick.plan === undefined ? {} : { plan: pick.plan }),
     ...(pick.option === undefined ? {} : { option: pick.option }),
   }));
+}
+
+/**
+ * The ticks, brought inside what the company will actually sell at this age.
+ *
+ * A plan-based rider carries a list of the plans it is on offer at, and that list moves with
+ * the age: MEB sells only five hundred a day up to ten. A pick left over from another age is
+ * walked down to the largest plan still on offer — the same "the most the agency would ask
+ * for that this age may have" rule the slim table applies to the standard rider.
+ *
+ * Returns the same object when nothing moves, so this cannot re-trigger the quote it is
+ * called from; when something does move, the next answer offers the plan now ticked and the
+ * second pass is a no-op.
+ */
+export function withinOffer(
+  chosen: Record<string, RiderPick>, available: RiderChoice[],
+): Record<string, RiderPick> {
+  let moved = false;
+  const next = { ...chosen };
+  for (const c of available) {
+    const pick = next[c.code];
+    const plans = c.plans;
+    if (!pick || pick.plan === undefined || !plans || plans.length === 0) continue;
+    if (plans.includes(pick.plan)) continue;
+    const wanted = pick.plan;
+    const within = plans.filter((p) => p <= wanted);
+    next[c.code] = { ...pick, plan: within.length > 0 ? Math.max(...within) : Math.min(...plans) };
+    moved = true;
+  }
+  return moved ? next : chosen;
 }

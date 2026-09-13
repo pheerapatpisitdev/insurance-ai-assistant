@@ -2,6 +2,7 @@ import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
 import { benefitCell, PHONE_ROW_LABEL } from "@/components/ihealthy/BenefitTable";
 import { categoryNumbers, iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
+import { deathBenefitRows, type BenefitRow as DeathRow } from "@/lib/death-benefit";
 import { initialFrom, ridersFrom } from "@/lib/ihealthy-link";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import {
@@ -64,8 +65,13 @@ export interface IHealthyCard {
   lines: { label: string; amount: string }[];
   /** the company will not take the monthly instalment this arrangement comes to */
   belowMinimum?: string;
-  /** the one thing the base plan is for, in the card's own words */
-  death: string;
+  /**
+   * What the family receives, band by band. Bands rather than a sentence because a rider
+   * attached in the fold can pay on death too and can stop paying before the base does — a
+   * hand-written line said "ตั้งแต่อายุ 60 คุ้มครองเท่าทุน" over a figure half again the sum
+   * assured, and never mentioned the age it falls back at.
+   */
+  death: DeathRow[];
   columns: CardColumn[];
   rows: CardTableRow[];
   /** what the whole arrangement costs under each plan, one instalment to a row */
@@ -252,11 +258,9 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
       ? { belowMinimum: `ต่ำกว่าเบี้ยรายเดือนขั้นต่ำ ${table.minMonthly.toLocaleString("en-US")} บาท ที่บริษัทรับชำระ` }
       : {}),
     // The rider covers the illness; this is what the base plan under it is for, and the one
-    // figure on the card that the table below has no column for.
-    death: death.alreadyPastAge
-      ? `ครอบครัวได้รับ ${death.sumFrom.toLocaleString("en-US")} บาท`
-        + ` · ตั้งแต่อายุ ${death.beforeAge} คุ้มครองเท่าทุน`
-      : `เสียชีวิตก่อนอายุ ${death.beforeAge} ครอบครัวได้ ${death.sumBefore.toLocaleString("en-US")} บาท`,
+    // figure on the card that the table below has no column for. The same helper writes the
+    // page's card and the copied quote, so the three cannot drift apart.
+    death: deathBenefitRows(death),
     columns,
     rows,
     premiumRows,

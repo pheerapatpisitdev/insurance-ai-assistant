@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { priceWithRiders, type RiderQuoteInput } from "@/app/ihealthy-ultra/actions";
-import { arrangementKey, attachedRiders } from "@/components/ihealthy/rider-request";
+import { arrangementKey, attachedRiders, withinOffer } from "@/components/ihealthy/rider-request";
 
 const ADULT: Omit<RiderQuoteInput, "riders"> = {
   base: "WLF99H", age: 35, sex: "F", sumAssured: 1_000_000, mode: "annual",
@@ -102,11 +102,12 @@ describe("priceWithRiders", () => {
   });
 
   it("quotes nothing for a request this page could not have made", async () => {
+    // Everything here describes an arrangement rather than a rider: there is nothing to
+    // price and nothing to salvage.
     const bad = [
       { ...ADULT, age: 500, riders: [] },
       { ...ADULT, base: "WLCI05", riders: [] },
       { ...ADULT, sumAssured: -1, riders: [] },
-      { ...ADULT, riders: [{ code: "AP", sumAssured: Number.MAX_VALUE }] },
       { ...ADULT, riders: "AP" } as unknown as RiderQuoteInput,
       { ...ADULT, mode: "weekly" } as unknown as RiderQuoteInput,
     ];
@@ -120,6 +121,27 @@ describe("priceWithRiders", () => {
         warnings: ["คำขอไม่ถูกต้อง"],
       });
     }
+  });
+
+  /**
+   * The riders travel in the address now, so a mangled one is an ordinary thing to be handed:
+   * a chat client that truncated the link, a figure past the engine's ceiling. Voiding the
+   * whole quote for it left the fold with nothing on offer, a total of zero and no way back
+   * without a reload.
+   */
+  it("drops a rider it cannot read rather than voiding the whole quote", async () => {
+    const r = await priceWithRiders({
+      ...ADULT,
+      riders: [
+        { code: "MEB", plan: 1_000 },
+        { code: "AP", sumAssured: Number.MAX_VALUE },
+        { code: "นี่ไม่ใช่รหัส", sumAssured: 1 },
+      ],
+    });
+    expect(r.available.map((a) => a.code)).toEqual(["MEB", "DCI"]);
+    expect(r.extraCodes).toEqual(["MEB"]);
+    expect(r.totalModal).toBeGreaterThan(0);
+    expect(r.warnings.some((w) => w.includes("อ่านไม่ออก"))).toBe(true);
   });
 });
 
@@ -204,5 +226,50 @@ describe("what the family receives", () => {
     // ADULT is written for a million, which the base pays double of before 60
     expect(bare.deathBenefit?.sumBefore).toBe(2_000_000);
     expect(withDci.deathBenefit?.sumBefore).toBe(3_000_000);
+  });
+});
+
+describe("withinOffer", () => {
+  const meb = (plans: number[]) => [{
+    code: "MEB", name: "สัญญาเพิ่มเติมค่ารักษาพยาบาล (MEB)", ageRange: "6 - 65 ปี",
+    eligible: true, plans,
+  }];
+
+  /**
+   * The company caps the daily cash by age — five hundred a day up to ten, a thousand up to
+   * fifteen. A tick carried across an age change used to be sent at the old plan, refused by
+   * the engine, and left out of the quote: the card dropped its line, the benefit table
+   * printed a dash and the picture said nothing was attached.
+   */
+  it("walks a pick down to the most this age may have", () => {
+    expect(withinOffer({ MEB: { plan: 5_000 } }, meb([500]))).toEqual({ MEB: { plan: 500 } });
+    expect(withinOffer({ MEB: { plan: 5_000 } }, meb([500, 1_000]))).toEqual({ MEB: { plan: 1_000 } });
+  });
+
+  it("leaves a pick this age may have exactly where it is", () => {
+    const chosen = { MEB: { plan: 5_000 } };
+    expect(withinOffer(chosen, meb([500, 1_000, 2_000, 5_000]))).toBe(chosen);
+  });
+
+  it("takes the smallest on offer when every one of them is larger", () => {
+    expect(withinOffer({ MEB: { plan: 100 } }, meb([500, 1_000]))).toEqual({ MEB: { plan: 500 } });
+  });
+
+  /**
+   * The same object back when nothing moves, so this cannot re-trigger the quote it is called
+   * from. When something does move, the next answer offers the plan now ticked, and the
+   * second pass is one of these.
+   */
+  it("settles in a single pass", () => {
+    const once = withinOffer({ MEB: { plan: 5_000 } }, meb([500]));
+    expect(withinOffer(once, meb([500]))).toBe(once);
+  });
+
+  it("has nothing to say about a rider sold by sum assured", () => {
+    const chosen = { DCI: { sumAssured: 500_000 } };
+    expect(withinOffer(chosen, [{
+      code: "DCI", name: "สัญญาเพิ่มเติมโรคร้ายแรง (DCI)", ageRange: "20 - 65 ปี",
+      eligible: true, saMin: 100_000,
+    }])).toBe(chosen);
   });
 });
