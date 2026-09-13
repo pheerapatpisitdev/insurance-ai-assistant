@@ -2,8 +2,8 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { iHealthyCard, type IHealthyCard } from "@/lib/ihealthy-card";
 import {
-  band, Cell, CARD_HEADERS, COL_W, GOLD, GOLD_LIT, GRID, GROUND, GROUND_DEEP, H, Line, loadFonts,
-  MUTE, PAD, Row, RULE, spacer, TINT, TITLE_W, WHITE, widthOf,
+  band, CARD_HEADERS, GOLD, GOLD_LIT, GROUND, GROUND_DEEP, H, Line, loadFonts, MUTE, PAD, PlanTable, RULE,
+  spacer, WHITE, widthOf,
 } from "./draw";
 
 export const runtime = "nodejs";
@@ -98,63 +98,7 @@ export async function GET(req: NextRequest) {
           <div style={spacer(H.hairline, RULE)} />
           <div style={spacer(H.afterHairline)} />
 
-          {/* The plan names, and with them the one statement of why a column is dashes at a
-              child age — said once here rather than on every row under it. */}
-          <div style={{ display: "flex", height: H.head, flexShrink: 0 }}>
-            <Cell width={TITLE_W} height={H.head} align="flex-start" size={21} color={MUTE} weight={500}>
-              ผลประโยชน์
-            </Cell>
-            {card.columns.map((c, i) => (
-              <div
-                key={c.name}
-                style={{
-                  display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
-                  width: COL_W, minWidth: COL_W, maxWidth: COL_W, height: H.head,
-                  boxSizing: "border-box", flexShrink: 0, padding: "0 8px",
-                  borderRight: `1px solid ${GRID}`,
-                  background: i === selected ? TINT : "transparent",
-                }}
-              >
-                <div style={{ display: "flex", fontSize: 23, fontWeight: 600, color: i === selected ? GOLD_LIT : MUTE }}>
-                  {c.name}
-                </div>
-                {!c.sold && (
-                  <div style={{ display: "flex", fontSize: 15, color: MUTE, marginTop: 2 }}>ไม่ขายที่อายุนี้</div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {card.rows.map((r) =>
-            r.span === undefined ? (
-              <Row key={r.label} label={r.label} cells={r.cells} selected={selected} />
-            ) : (
-              // One answer across every plan, because it is the same cover whichever is bought
-              <div key={r.label} style={{ display: "flex", height: H.row, flexShrink: 0, borderTop: `1px solid ${GRID}` }}>
-                <Cell width={TITLE_W} height={H.row} align="flex-start" size={21} color={WHITE} weight={500}>
-                  {r.label}
-                </Cell>
-                <Cell width={COL_W * card.columns.length} height={H.row} size={20} color={WHITE}>{r.span}</Cell>
-              </div>
-            ),
-          )}
-
-          {card.premiumRows.length > 0 && (
-            <div
-              style={{
-                display: "flex", height: H.section, flexShrink: 0, alignItems: "center",
-                paddingLeft: 12, borderTop: `1px solid ${GRID}`, background: GROUND_DEEP,
-                fontSize: 21, fontWeight: 600, color: GOLD,
-              }}
-            >
-              เบี้ยประกัน
-            </div>
-          )}
-          {card.premiumRows.map((r) => (
-            <Row key={r.label} label={r.label} cells={r.cells} selected={selected} weight={600} color={WHITE} />
-          ))}
-          {/* the table's own bottom edge; every row above draws only its top */}
-          <div style={spacer(H.hairline, GRID)} />
+          <PlanTable card={card} selected={selected} />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>

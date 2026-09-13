@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { CardCell } from "@/lib/ihealthy-card";
+import type { CardCell, CardColumn, CardTableRow } from "@/lib/ihealthy-card";
 
 /**
  * The ink both health pictures are drawn with: the palette, the bands, and the three
@@ -178,3 +178,78 @@ export async function loadFonts() {
 export const CARD_HEADERS = {
   "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400",
 };
+
+
+/**
+ * The plans side by side: a header row, the cover rows, then what each plan costs.
+ *
+ * One component rather than the same fifty lines in two routes. The quote card lights the
+ * column it is pricing and the comparison table lights none — `selected` of -1 — and that is
+ * the whole of the difference between them, so it is the whole of what is passed in.
+ */
+export function PlanTable(
+  { card, selected }: {
+    card: { columns: CardColumn[]; rows: CardTableRow[]; premiumRows: { label: string; cells: CardCell[] }[] };
+    selected: number;
+  },
+) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
+      <div style={{ display: "flex", height: H.head, flexShrink: 0 }}>
+        <Cell width={TITLE_W} height={H.head} align="flex-start" size={21} color={MUTE} weight={500}>
+          ผลประโยชน์
+        </Cell>
+        {card.columns.map((c, i) => (
+          <div
+            key={c.name}
+            style={{
+              display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
+              width: COL_W, minWidth: COL_W, maxWidth: COL_W, height: H.head,
+              boxSizing: "border-box", flexShrink: 0, padding: "0 8px",
+              borderRight: `1px solid ${GRID}`,
+              background: i === selected ? TINT : "transparent",
+            }}
+          >
+            <div style={{ display: "flex", fontSize: 23, fontWeight: 600, color: i === selected ? GOLD_LIT : MUTE }}>
+              {c.name}
+            </div>
+            {!c.sold && (
+              <div style={{ display: "flex", fontSize: 15, color: MUTE, marginTop: 2 }}>ไม่ขายที่อายุนี้</div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {card.rows.map((r) =>
+        r.span === undefined ? (
+          <Row key={r.label} label={r.label} cells={r.cells} selected={selected} />
+        ) : (
+          // One answer across every plan, because it is the same cover whichever is bought
+          <div key={r.label} style={{ display: "flex", height: H.row, flexShrink: 0, borderTop: `1px solid ${GRID}` }}>
+            <Cell width={TITLE_W} height={H.row} align="flex-start" size={21} color={WHITE} weight={500}>
+              {r.label}
+            </Cell>
+            <Cell width={COL_W * card.columns.length} height={H.row} size={20} color={WHITE}>{r.span}</Cell>
+          </div>
+        ),
+      )}
+
+      {card.premiumRows.length > 0 && (
+        <div
+          style={{
+            display: "flex", height: H.section, flexShrink: 0, alignItems: "center",
+            paddingLeft: 12, borderTop: `1px solid ${GRID}`, background: GROUND_DEEP,
+            fontSize: 21, fontWeight: 600, color: GOLD,
+          }}
+        >
+          เบี้ยประกัน
+        </div>
+      )}
+      {card.premiumRows.map((r) => (
+        <Row key={r.label} label={r.label} cells={r.cells} selected={selected} weight={600} color={WHITE} />
+      ))}
+      {/* the table's own bottom edge; every row above draws only its top */}
+      <div style={spacer(H.hairline, GRID)} />
+    </div>
+  );
+}

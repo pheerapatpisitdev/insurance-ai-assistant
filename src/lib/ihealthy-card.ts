@@ -290,3 +290,42 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
     ],
   };
 }
+
+/**
+ * The comparison table with nothing over it.
+ *
+ * The quote card answers "what does this plan cost me"; this answers the question before it,
+ * "which of these am I buying" — so it carries no headline premium, no death benefit and no
+ * highlighted column, and its premium rows are the whole of its point rather than a footnote
+ * under one.
+ *
+ * Every figure is `iHealthyCard`'s, taken from the same call: two pictures sent one after the
+ * other that disagreed about a premium would be worse than sending neither.
+ */
+export interface IHealthyTableCard {
+  headLine: string;
+  /** who it is for and what it rides on */
+  insuredLine: string;
+  columns: CardColumn[];
+  rows: CardTableRow[];
+  premiumRows: { label: string; cells: CardCell[] }[];
+  notes: string[];
+}
+
+export function iHealthyTableCard(query: URLSearchParams, today: Date = new Date()): IHealthyTableCard {
+  const card = iHealthyCard(query, today);
+  // the card's first note counts the categories this picture leaves out, which is as true here
+  const hidden = card.notes[0];
+  return {
+    headLine: "iHealthy Ultra · เปรียบเทียบแผน",
+    insuredLine: card.insuredLine,
+    // nothing is chosen yet, so nothing is lit
+    columns: card.columns.map((c) => ({ ...c, selected: false })),
+    rows: card.rows,
+    premiumRows: card.premiumRows,
+    notes: [
+      "เบี้ยรวมสัญญาหลัก ค่ารักษา และค่าชดเชยรายวัน" + (hidden ? ` · ${hidden}` : ""),
+      ...card.notes.slice(1),
+    ],
+  };
+}
