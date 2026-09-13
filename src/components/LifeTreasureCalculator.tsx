@@ -10,7 +10,7 @@ import {
   cashAt, deathBenefitOf, leverage, lifeTreasureModes, payYears, termAt, totalPaid,
 } from "@/lib/lifetreasure-quote";
 import { lifeTreasureMessage, lifeTreasureQuoteText, type LifeTreasureAge } from "@/lib/lifetreasure-cta";
-import { cardPath } from "@/lib/card-link";
+import { cardPath, valueTablePath } from "@/lib/card-link";
 import { ageWord } from "@/lib/lifeprotect-cta";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
 import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
@@ -99,6 +99,10 @@ export function LifeTreasureCalculator({ table, sticky = false }: LifeTreasureCa
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
   const card = who && headline
     ? cardPath({ kind: "plan", planCode: table.planCode, variant, age: who.age, sex, sumAssured, mode: headline.mode })
+    : undefined;
+  // the value table drawn the same way, from the same arrangement
+  const tableCard = who
+    ? valueTablePath({ kind: "plan", planCode: table.planCode, variant: variant, age: who.age, sex, sumAssured })
     : undefined;
   const quoteText = who && headline && total !== null
     ? lifeTreasureQuoteText({
@@ -294,7 +298,7 @@ export function LifeTreasureCalculator({ table, sticky = false }: LifeTreasureCa
                   {/* a new term, age or sex is a different contract, so the readout goes back
                       to its break-even year; dragging the sum alone keeps the year in view */}
                   <CashValueChart key={`${variant}-${sex}-${who.age}`} projection={projection} age={who.age} />
-                  <CashValueTable projection={projection} caption={tableCaption} />
+                  <CashValueTable projection={projection} caption={tableCaption} cardPath={tableCard} />
                 </>
               )}
             </div>

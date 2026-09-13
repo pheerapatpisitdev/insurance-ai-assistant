@@ -1,10 +1,16 @@
 import { formatBaht } from "@/calc/money";
 import type { Projection } from "@/lib/cash-projection";
+import { CardButton } from "@/components/sales/CardButton";
 
 export interface CashValueTableProps {
   projection: Projection;
   /** the line above the table, e.g. "ทุนประกัน 1,000,000 บาท · ชาย 35 ปี · ถึงอายุ 99" */
   caption: string;
+  /**
+   * Where the same table is drawn as a picture. Given, the heading carries a button that
+   * hands it over — a table this long is the one thing on the page nobody can screenshot.
+   */
+  cardPath?: string;
 }
 
 const HEAD = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"];
@@ -21,13 +27,23 @@ const CELL = "whitespace-nowrap border-b border-white/5 px-[5px] py-1.5";
  * table that counts them. A customer should meet that fact before signing, not on the day
  * they try to surrender.
  */
-export function CashValueTable({ projection, caption }: CashValueTableProps) {
+export function CashValueTable({ projection, caption, cardPath }: CashValueTableProps) {
   const { rows, breakEven, zeroYears, maturityAge } = projection;
   if (!rows.length) return null;
 
   return (
     <section className="mt-3.5 border-t border-[var(--lg-panel-line)] pt-3">
-      <h4 className="text-sm font-normal text-[var(--lg-gold)]">มูลค่าทุกปี</h4>
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="text-sm font-normal text-[var(--lg-gold)]">มูลค่าทุกปี</h4>
+        {cardPath && (
+          <CardButton
+            path={cardPath}
+            filename="value-table.png"
+            label={{ full: "บันทึกตารางเป็นรูป", compact: "บันทึกตาราง" }}
+            className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-xs font-medium text-[var(--lg-gold)]"
+          />
+        )}
+      </div>
 
       <p className="mt-2.5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-gold-glow)] px-3 py-2.5 text-xs leading-[1.75] tabular-nums text-[var(--lg-gold-lit)]">
         {caption}

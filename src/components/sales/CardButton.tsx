@@ -14,7 +14,8 @@ import { useEffect, useState } from "react";
 type State = "idle" | "working" | "copied" | "failed";
 
 export function CardButton(
-  { path, className, compact = false }: { path: string; className: string; compact?: boolean },
+  { path, className, compact = false, label, filename = "quote.png" }:
+    { path: string; className: string; compact?: boolean; label?: { full: string; compact: string }; filename?: string },
 ) {
   const [state, setState] = useState<State>("idle");
 
@@ -30,7 +31,7 @@ export function CardButton(
       const res = await fetch(path);
       if (!res.ok) throw new Error(String(res.status));
       const blob = await res.blob();
-      const file = new File([blob], "quote.png", { type: "image/png" });
+      const file = new File([blob], filename, { type: "image/png" });
 
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file] }).catch(() => {});
@@ -46,14 +47,15 @@ export function CardButton(
     }
   };
 
-  const label = state === "working" ? "กำลังสร้าง…"
+  const idle = label ?? { full: "ส่งการ์ด", compact: "การ์ด" };
+  const text = state === "working" ? "กำลังสร้าง…"
     : state === "copied" ? "คัดลอกรูปแล้ว ✓"
       : state === "failed" ? "เปิดรูปในแท็บใหม่"
-        : compact ? "การ์ด" : "ส่งการ์ด";
+        : compact ? idle.compact : idle.full;
 
   return (
     <button type="button" onClick={send} disabled={state === "working"} className={className} aria-live="polite">
-      {label}
+      {text}
     </button>
   );
 }

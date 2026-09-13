@@ -10,7 +10,7 @@ import {
   cashAt, deathBenefitOf, iShieldModes, illnessBenefit, payYears, termAt, termTakes,
 } from "@/lib/ishield-quote";
 import { iShieldMessage, iShieldQuoteText, type IShieldAge } from "@/lib/ishield-cta";
-import { cardPath } from "@/lib/card-link";
+import { cardPath, valueTablePath } from "@/lib/card-link";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
 import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
 import { ContactButtons } from "@/components/sales/ContactButtons";
@@ -98,6 +98,10 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
   const card = who && headline
     ? cardPath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured, mode: headline.mode })
+    : undefined;
+  // the value table drawn the same way, from the same arrangement
+  const tableCard = who
+    ? valueTablePath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured })
     : undefined;
   const quoteText = who && headline
     ? iShieldQuoteText({
@@ -273,7 +277,7 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
                   {/* a new term, age or sex is a different contract, so the readout goes back
                       to its break-even year; dragging the sum alone keeps the year in view */}
                   <CashValueChart key={`${term.variant}-${sex}-${who!.age}`} projection={projection} age={who!.age} />
-                  <CashValueTable projection={projection} caption={tableCaption} />
+                  <CashValueTable projection={projection} caption={tableCaption} cardPath={tableCard} />
                 </>
               )}
             </div>
