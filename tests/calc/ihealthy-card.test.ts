@@ -189,6 +189,21 @@ describe("iHealthyCard", () => {
     expect(card.death.some((r) => r.label.includes("เท่าทุน"))).toBe(false);
   });
 
+  it("survives a link stuffed with riders", () => {
+    // The engine rejects a whole request carrying more riders than the plan sells, so a link
+    // like this used to answer with nothing on offer and a total of zero.
+    const stuffed = Array.from({ length: 400 }, (_, i) => `r=JUNK${i}`).join("&");
+    const card = cardAt(`${OPENING}&r=MEB%3A1000&${stuffed}`);
+    expect(card.lines.some((l) => l.label.includes("ค่าชดเชยรายวัน 1,000"))).toBe(true);
+    expect(card.premium).toBeDefined();
+  });
+
+  it("takes a rider named twice at the value the fold would hold", () => {
+    const twice = cardAt(`${OPENING}&r=MEB%3A1000&r=MEB%3A5000`);
+    expect(twice.lines.map((l) => l.label)).toContain("ค่าชดเชยรายวัน 1,000 บาท");
+    expect(spanOf(twice, "ค่าชดเชยรายวัน")).toContain("1,000 ต่อวัน");
+  });
+
   it("reads a link whose riders one bad entry would once have voided", () => {
     // a chat client that truncated the link, or a figure past the engine's ceiling
     const card = cardAt(`${OPENING}&r=MEB%3A1000&r=DCI%3A%3A999999999999`);

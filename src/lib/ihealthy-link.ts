@@ -208,27 +208,43 @@ function countFrom(raw: string | undefined): number | undefined {
 }
 
 /**
+ * The most riders a link may name.
+ *
+ * Well above the two this page offers, and well under the engine's own bound — which refuses
+ * the whole request rather than the surplus, so a link with four hundred `r` in it answered
+ * with no riders on offer, a total of zero, and a fold the agent could not recover without
+ * reloading. The bound is the base plan's rider list and is not this module's to know, so
+ * this stays comfortably underneath any of them.
+ */
+const MOST_RIDERS = 8;
+
+/**
  * The riders a link asks for. Nothing here decides whether they may be bought: the engine
  * measures each against this age and this base and drops the ones it will not write, which
  * is the same pass the fold's own ticks go through.
+ *
+ * One entry per code, the first of them, because that is what the fold itself holds — a
+ * record keyed by code — so a link naming a rider twice opens the fold the way the link that
+ * wrote it looked.
  *
  * A colon inside a variant's own code is kept rather than treated as another separator —
  * the option is the last field, so everything after the third colon belongs to it.
  */
 export function ridersFrom(raw: string[]): AttachedRider[] {
-  const riders: AttachedRider[] = [];
+  const byCode = new Map<string, AttachedRider>();
   for (const one of raw) {
+    if (byCode.size >= MOST_RIDERS) break;
     const [code, plan, sum, ...rest] = one.split(":");
-    if (code === undefined || code === "") continue;
+    if (code === undefined || code === "" || byCode.has(code)) continue;
     const option = rest.join(":");
-    riders.push({
+    byCode.set(code, {
       code,
       ...(countFrom(plan) === undefined ? {} : { plan: countFrom(plan)! }),
       ...(countFrom(sum) === undefined ? {} : { sumAssured: countFrom(sum)! }),
       ...(option === "" ? {} : { option }),
     });
   }
-  return riders;
+  return [...byCode.values()];
 }
 
 /**
