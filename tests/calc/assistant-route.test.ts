@@ -47,6 +47,18 @@ describe("reading what the customer wants", () => {
     expect((await routeMessage(said("ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้านจริงไหม"))).intent).toBe("plan_info");
   });
 
+  it("treats the advert's own button as a request for a price, whatever the model called it", async () => {
+    reply.text = JSON.stringify({ intent: "plan_info", sumAssured: 1000000 });
+    const routed = await routeMessage(said("สนใจประกันมรดก ทุน 1,000,000"));
+    expect(routed.intent).toBe("quote");
+    expect(routed.sumAssured).toBe(1000000);
+  });
+
+  it("leaves a question about what the family receives alone, sum or no sum", async () => {
+    reply.text = JSON.stringify({ intent: "plan_info", sumAssured: 1000000 });
+    expect((await routeMessage(said("ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้านจริงไหม"))).intent).toBe("plan_info");
+  });
+
   it("falls back to a plain conversation when the model answers with rubbish", async () => {
     reply.text = "ไม่ใช่ JSON";
     expect(await routeMessage(said("สวัสดี"))).toEqual({ intent: "other" });

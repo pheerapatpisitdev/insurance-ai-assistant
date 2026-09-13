@@ -107,6 +107,20 @@ export function asksAboutDeathBenefit(text: string): boolean {
   return DEATH_BENEFIT_QUESTION.test(text);
 }
 
+/**
+ * How someone asks for a price. It exists because the adverts ask for them on the
+ * customer's behalf: every click-to-Messenger ad opens with buttons reading
+ * "สนใจประกันมรดก ทุน 1,000,000", and the model called the identical phrasing plan_info on
+ * one button and quote on the next two. That is the first message of nearly every
+ * conversation the campaign pays for, so it is settled here rather than left to a coin flip.
+ */
+const ASKS_FOR_PRICE = /สนใจ|ขอ\s*เบี้ย|เบี้ย\s*เท่า|ราคา|คิดเบี้ย|เช็[กค]\s*เบี้ย|ทำทุน|อยากทำ/i;
+
+/** Whether a message asks for a premium on a sum it names. */
+export function asksForPrice(text: string): boolean {
+  return ASKS_FOR_PRICE.test(text) && !asksAboutDeathBenefit(text);
+}
+
 /** Anything the model returns is checked here, so an invented package never reaches the engine. */
 function clean(raw: Routed, history: ChatMessage[]): Routed {
   const out: Routed = { intent: ["quote", "plan_info", "other"].includes(raw.intent) ? raw.intent : "other" };
@@ -123,6 +137,8 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
   if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
   if (typeof raw.sumAssured === "number" && raw.sumAssured > 0) out.sumAssured = Math.trunc(raw.sumAssured);
   if (raw.mode === "annual" || raw.mode === "semi" || raw.mode === "monthly") out.mode = raw.mode;
+  // a sum the customer named, in a message asking for a price, is a request for a price
+  if (out.intent !== "quote" && out.sumAssured !== undefined && asksForPrice(last)) out.intent = "quote";
   out.question = typeof raw.question === "string" && raw.question.trim() ? raw.question.trim() : last;
   return out;
 }

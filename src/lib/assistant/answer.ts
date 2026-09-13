@@ -33,6 +33,30 @@ export interface Answer {
 const ASK_FOR_DETAILS =
   'รบกวนบอก อายุ / เพศ / ทุนประกันที่สนใจ ครับ แล้วผมคิดเบี้ยให้เลย (เช่น "ชาย 35 ทุน 1 ล้าน")';
 
+/**
+ * What is still needed, named one field at a time.
+ *
+ * The adverts open the conversation with a button that already says the sum — "สนใจประกันมรดก
+ * ทุน 1,000,000" — and a bot that answers it by asking for the sum again reads as one that did
+ * not listen, on the first message the campaign paid for. So what is known is repeated back and
+ * only the gaps are asked for.
+ */
+function askForMissing(slots: Routed, table: LifeProtectTable): string {
+  const known: string[] = [];
+  if (slots.sumAssured !== undefined) known.push(`ทุน ${slots.sumAssured.toLocaleString("en-US")} บาท`);
+  if (slots.variant) known.push(table.terms.find((t) => t.variant === slots.variant)?.label ?? "");
+
+  const missing: string[] = [];
+  const example: string[] = [];
+  if (slots.sex === undefined) { missing.push("เพศ"); example.push("ชาย"); }
+  if (slots.age === undefined) { missing.push("อายุ"); example.push("35"); }
+  if (slots.sumAssured === undefined) { missing.push("ทุนประกันที่สนใจ"); example.push("ทุน 1 ล้าน"); }
+  if (missing.length === 0) return ASK_FOR_DETAILS;
+
+  const ask = `รบกวนบอก${missing.join("กับ")}ด้วยครับ แล้วผมคิดเบี้ยให้เลย (เช่น "${example.join(" ")}")`;
+  return known.filter(Boolean).length ? `รับทราบครับ ${known.filter(Boolean).join(" · ")} 🙏\n${ask}` : ask;
+}
+
 const HAND_OVER = "เดี๋ยวตัวแทนมาตอบในแชทนี้ครับ ระหว่างนี้สอบถามเรื่อง Life Protect x 2 ได้เลย";
 
 export async function answerQuestion(history: ChatMessage[], previous: Routed | null): Promise<Answer> {
@@ -48,10 +72,12 @@ function answerQuote(slots: Routed): Omit<Answer, "slots"> {
     return { reply: `ในแชทนี้ผมคิดให้ได้เฉพาะแบบ Life Protect x 2 ครับ แบบอื่นขอให้ตัวแทนเสนอให้นะครับ ${HAND_OVER}` };
   }
 
-  const { age, sex, sumAssured } = slots;
-  if (age === undefined || sex === undefined || sumAssured === undefined) return { reply: ASK_FOR_DETAILS };
-
   const table = lifeProtectTable();
+  const { age, sex, sumAssured } = slots;
+  if (age === undefined || sex === undefined || sumAssured === undefined) {
+    return { reply: askForMissing(slots, table) };
+  }
+
   if (table.expired) {
     return { reply: `ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HAND_OVER}` };
   }

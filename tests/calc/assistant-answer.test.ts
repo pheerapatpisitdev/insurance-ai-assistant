@@ -86,6 +86,23 @@ describe("a quote", () => {
     expect(answer.priced).toBeFalsy();
   });
 
+  it("repeats the sum the advert's button named, and asks only for what is missing", async () => {
+    routed = { intent: "quote", sumAssured: 1_000_000 };
+    const answer = await answerQuestion(said("สนใจประกันมรดก ทุน 1,000,000"), null);
+    expect(answer.reply).toContain("1,000,000");
+    expect(answer.reply).toContain("เพศ");
+    expect(answer.reply).toContain("อายุ");
+    expect(answer.reply).not.toContain("ทุนประกันที่สนใจ");
+    expect(answer.card).toBeUndefined();
+  });
+
+  it("asks for the one field left when the rest is known", async () => {
+    routed = { intent: "quote" };
+    const answer = await answerQuestion(said("ชาย"), { intent: "quote", sex: "M", sumAssured: 1_000_000 });
+    expect(answer.reply).toContain("อายุ");
+    expect(answer.reply).not.toContain("เพศ");
+  });
+
   it("says no price at all for an age the plan does not issue to", async () => {
     routed = { intent: "quote", age: 95, sex: "M", sumAssured: 1_000_000 };
     const answer = await answerQuestion(said("อายุ 95 ทุนล้าน"), null);
