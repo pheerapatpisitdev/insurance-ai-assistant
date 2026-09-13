@@ -32,6 +32,14 @@ export interface Routed {
   mode?: "annual" | "semi" | "monthly";
   /** a stand-alone rewrite of the question, with pronouns from earlier turns filled in */
   question?: string;
+  /**
+   * A cheaper arrangement the bot has put on the table and not yet priced in full.
+   *
+   * Carried by sum assured as well as by cover, because the halved cover can land on the one
+   * figure that is read as a sum assured — a customer who then says "1 ล้าน" would otherwise
+   * be quoted the arrangement they just called too expensive.
+   */
+  offer?: { coverWanted: number; sumAssured: number; variant: string };
 }
 
 const SYSTEM = `คุณเป็นตัวช่วยของตัวแทนประกันชีวิต อ่านข้อความล่าสุดแล้วบอกว่าลูกค้าต้องการอะไร ตอบเป็น JSON เท่านั้น
@@ -171,6 +179,26 @@ export function asksPayTerm(text: string): boolean {
   return PAY_TERM_QUESTION.test(text) && lifeProtectVariantIn(text) === undefined;
 }
 
+/**
+ * The premium is too much. Answered by pointing at what is actually cheaper — the pay-to-99
+ * term, a smaller cover — rather than by the shorter terms the bot offered on its first
+ * attempt, which cost more a year, not less.
+ */
+const TOO_EXPENSIVE = /แพง|ถูกกว่า|ถูกลง|ลดได้|ลดหน่อย|ลดทุน|ส่วนลด|ต่อราคา|โปรโมชั่น|มีโปร|เกินงบ|งบไม่ถึง|ไม่มีตังค์|ไม่มีเงิน/;
+
+/** Whether a message is saying the price is too high. */
+export function asksCheaper(text: string): boolean {
+  return TOO_EXPENSIVE.test(text);
+}
+
+/** A short yes, with nothing else in it — taking whatever was last offered. */
+const AFFIRMS = /^\s*(?:เอา|ตกลง|โอเค|โอเช|ok|okay|ได้|สนใจ|ครับ|ค่ะ|คะ|ขอ)(?:เลย|ครับ|ค่ะ|คะ|แบบนี้|อันนี้|แบบลดทุน|แบบนั้น|นี้)*\s*(?:ครับ|ค่ะ|คะ)?\s*$/i;
+
+/** Whether a message is a bare acceptance of what the bot last put on the table. */
+export function affirms(text: string): boolean {
+  return text.length <= 30 && !/\d/.test(text) && AFFIRMS.test(text);
+}
+
 /** Whether a message is asking who stands behind the policy. */
 export function asksAboutCompany(text: string): boolean {
   return INSURER_QUESTION.test(text) || TRUST_QUESTION.test(text);
@@ -292,5 +320,6 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
   if (merged.age === undefined) merged.age = previous.age;
   if (merged.sex === undefined) merged.sex = previous.sex;
   if (merged.mode === undefined) merged.mode = previous.mode;
+  if (merged.offer === undefined) merged.offer = previous.offer;
   return merged;
 }

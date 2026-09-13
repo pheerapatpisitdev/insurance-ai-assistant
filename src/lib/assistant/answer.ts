@@ -9,7 +9,7 @@ import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprot
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
 import { faqAnswer } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
-import { asksAboutCompany, asksAboutTrust, asksPayTerm, mergeSlots, PLAN_CODE, recentTurns, routeMessage, type Routed } from "./route";
+import { affirms, asksAboutCompany, asksAboutTrust, asksCheaper, asksPayTerm, mergeSlots, PLAN_CODE, recentTurns, routeMessage, type Routed } from "./route";
 
 /** The package quoted when the customer has not named one: the cheapest instalment of the three. */
 const DEFAULT_TERM = "WLF99H";
@@ -147,6 +147,12 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
   const asked = lastAsked(history);
   if (asksAboutCompany(asked)) return { ...one(aboutCompany(asked)), slots };
   if (asksPayTerm(asked)) return { ...answerPayTerm(slots), slots };
+  if (asksCheaper(asked)) return answerCheaper(slots);
+  // a bare "เอา" takes the cheaper arrangement the bot last put on the table
+  if (affirms(asked) && slots.offer) {
+    const taken: Routed = { ...slots, intent: "quote", coverWanted: slots.offer.coverWanted, variant: slots.offer.variant };
+    return { ...answerQuote(taken), slots: taken };
+  }
 
   // one of the answers the agency writes out by hand every day. A message can both ask for a
   // price and ask one of these — "ญ 37 ลดหย่อนภาษีได้ไหม" — so it is added to the quote
@@ -202,13 +208,17 @@ function sumForCover(table: LifeProtectTable, age: number, cover: number): numbe
 /** One insured, priced — or a sentence saying why this one has no price. */
 function quoteFor(
   table: LifeProtectTable, variant: string, who: { age: number; sex: "M" | "F" }, coverWanted: number,
+  offer?: Routed["offer"],
 ): Said {
   const { age, sex } = who;
   if (age < table.ageMin || age > table.ageMax) {
     return { text: `อายุ ${age} ปี แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
   }
 
-  const sumAssured = sumForCover(table, age, coverWanted);
+  // the offer carries its own sum, because its cover may be the one figure read as a sum
+  const sumAssured = offer && offer.coverWanted === coverWanted && offer.variant === variant
+    ? offer.sumAssured
+    : sumForCover(table, age, coverWanted);
   // the floor is a rule of the plan, not a field of the page's slim table — and it is stated
   // back in the customer's own terms, which are what the family receives
   const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, variant).min;
@@ -256,7 +266,7 @@ function answerQuote(slots: Routed): Omit<Answer, "slots"> {
   }
 
   const variant = slots.variant ?? DEFAULT_TERM;
-  const messages = people.map((who) => quoteFor(table, variant, who, coverWanted));
+  const messages = people.map((who) => quoteFor(table, variant, who, coverWanted, slots.offer));
 
   // the offer of the other terms belongs once, under the last price on the screen
   const last = messages.map((m) => Boolean(m.card)).lastIndexOf(true);
@@ -290,6 +300,63 @@ function answerPayTerm(slots: Routed): Omit<Answer, "slots"> {
       + `แต่ยังคุ้มครองถึงอายุ ${table.coverToAge}\nถ้าอยากดูแบบ${rest} บอกได้เลยครับ`
     : `แบบที่คิดให้อยู่นี้ ${term.label} ครับ คือชำระเบี้ยไปจนถึงอายุ ${table.coverToAge}\n`
       + `ถ้าอยากให้จ่ายจบเร็วกว่านี้ มีแบบ${rest} บอกได้เลยครับ`);
+}
+
+/**
+ * "แพงไป" — answered with what is actually cheaper.
+ *
+ * The bot's first instinct was to offer the nine- and nineteen-year terms, which cost more a
+ * year, not less. Two things genuinely lower the premium on this plan: paying to ninety-nine,
+ * which is the cheapest term by the year, and a smaller cover, which lowers it in
+ * proportion. Both are stated with the engine's figures, and the smaller cover is left on the
+ * table so a bare "เอา" can take it.
+ */
+function answerCheaper(slots: Routed): Answer {
+  const table = lifeProtectTable();
+  const { age, sex, coverWanted } = slots;
+  if (age === undefined || sex === undefined || coverWanted === undefined) {
+    return { ...one(`บอกอายุ เพศ กับทุนที่สนใจมาก่อนครับ เดี๋ยวคิดให้ดูว่าแบบไหนเบาที่สุด`), slots };
+  }
+  if (table.expired || age < table.ageMin || age > table.ageMax) return { ...one(HAND_OVER), slots };
+
+  const baht = (satang: number) => Math.round(satang / 100).toLocaleString("en-US");
+  const monthly = (variant: string, sum: number) =>
+    lifeProtectModes(table, termAt(table, variant), { sex, age, sumAssured: sum })?.find((m) => m.mode === "monthly");
+  const variant = slots.variant ?? DEFAULT_TERM;
+  const sumNow = slots.offer && slots.offer.coverWanted === coverWanted ? slots.offer.sumAssured : sumForCover(table, age, coverWanted);
+  const lines: string[] = [];
+
+  // the term: to-99 is the cheapest by the year, and worth naming if they are not on it
+  if (variant !== DEFAULT_TERM) {
+    const m = monthly(DEFAULT_TERM, sumNow);
+    if (m) lines.push(`ถ้าเปลี่ยนเป็นแบบจ่ายถึงอายุ 99 ทุนเท่าเดิม เบี้ยจะเหลือประมาณ ${baht(m.total)} บาท/เดือนครับ (แบบนี้เบี้ยต่อปีถูกที่สุด)`);
+  } else {
+    lines.push("แบบจ่ายถึงอายุ 99 ที่คิดให้อยู่นี้ เป็นแบบที่เบี้ยต่อปีถูกที่สุดแล้วครับ");
+  }
+
+  // the cover: halve the sum, and keep the arrangement so "เอา" can take it
+  const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, DEFAULT_TERM).min;
+  const half = Math.round(sumNow / 2 / 1000) * 1000;
+  let offer = slots.offer;
+  if (half >= floor) {
+    const m = monthly(DEFAULT_TERM, half);
+    const coverHalf = half * coverMultiple(table, age);
+    if (m) {
+      lines.push(
+        `หรือถ้าลดทุนลงครึ่งหนึ่ง เป็นทุน ${half.toLocaleString("en-US")} บาท (ครอบครัวได้รับ ${coverHalf.toLocaleString("en-US")}) `
+        + `เบี้ยจะประมาณ ${baht(m.total)} บาท/เดือนครับ`,
+      );
+      offer = { coverWanted: coverHalf, sumAssured: half, variant: DEFAULT_TERM };
+    }
+  } else {
+    lines.push(`ทุนตอนนี้อยู่ที่ขั้นต่ำของแบบนี้แล้วครับ ลดลงกว่านี้ไม่ได้`);
+  }
+
+  lines.push(offer && offer !== slots.offer
+    ? 'สนใจแบบลดทุน พิมพ์ว่า "เอา" ได้เลยครับ เดี๋ยวส่งใบเสนอให้ หรือบอกทุนที่อยากได้มาใหม่ก็ได้'
+    : "บอกทุนที่อยากได้มาใหม่ได้เลยครับ เดี๋ยวคิดให้");
+
+  return { messages: [{ text: lines.join("\n") }], slots: { ...slots, offer } };
 }
 
 /** The terms this quote did not take, offered by name so the customer can ask for one. */

@@ -8,7 +8,7 @@ vi.mock("@/lib/ai/client", async () => {
   return { ...actual, chat };
 });
 
-const { ageFromBirthdate, mergeSlots, routeMessage } = await import("@/lib/assistant/route");
+const { affirms, ageFromBirthdate, asksCheaper, mergeSlots, routeMessage } = await import("@/lib/assistant/route");
 
 /** The age someone born on that date is today, counted the way a person counts it. */
 function ageOn(today: Date, day: number, month: number, year: number): number {
@@ -95,6 +95,40 @@ describe("an age given as a birthdate", () => {
 
   it("ignores a date that is not one", () => {
     expect(ageFromBirthdate("40/13/2523")).toBeUndefined();
+  });
+});
+
+describe("the price being too much", () => {
+  it("is heard in the words customers use for it", () => {
+    for (const t of ["แพงไปหน่อย มีถูกกว่านี้ไหม", "ขอส่วนลดได้ไหม", "ลดหน่อยได้ไหมคะ", "เกินงบไปนิด"]) {
+      expect(asksCheaper(t), t).toBe(true);
+    }
+  });
+
+  it("is not heard in a question about the term or a request for a price", () => {
+    for (const t of ["ต้องจ่ายถึงกี่ปี", "ชาย 35 ทุน 1 ล้าน", "จ่าย 19 ปีเท่าไหร่"]) {
+      expect(asksCheaper(t), t).toBe(false);
+    }
+  });
+});
+
+describe("a bare yes", () => {
+  it("is a short acceptance with nothing else in it", () => {
+    for (const t of ["เอา", "เอาเลยครับ", "ตกลงค่ะ", "โอเค", "สนใจครับ", "เอาแบบลดทุน"]) {
+      expect(affirms(t), t).toBe(true);
+    }
+  });
+
+  it("is not a message that names an amount or asks something", () => {
+    for (const t of ["เอา 3 ล้าน", "สนใจประกันมรดก ทุน 1,000,000", "ได้ไหม", "เอาแบบไหนดี"]) {
+      expect(affirms(t), t).toBe(false);
+    }
+  });
+
+  it("carries an offer across turns until something replaces it", () => {
+    const offer = { coverWanted: 1_000_000, sumAssured: 500_000, variant: "WLF99H" };
+    const merged = mergeSlots({ intent: "quote", age: 38, sex: "M", coverWanted: 2_000_000, offer }, { intent: "other" });
+    expect(merged.offer).toEqual(offer);
   });
 });
 

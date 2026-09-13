@@ -238,6 +238,71 @@ describe("asking how long the premium runs", () => {
   });
 });
 
+describe("the price being too much", () => {
+  const known = { intent: "quote" as const, age: 38, sex: "M" as const, coverWanted: 2_000_000 };
+  const monthlyFor = (variant: string, sum: number) => {
+    const table = lifeProtectTable();
+    const m = lifeProtectModes(table, termAt(table, variant), { sex: "M", age: 38, sumAssured: sum })!;
+    return Math.round(m.find((x) => x.mode === "monthly")!.total / 100).toLocaleString("en-US");
+  };
+
+  it("names the to-99 term as the cheapest by the year, and offers half the cover with a real figure", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("แพงไปหน่อย มีถูกกว่านี้ไหม"), known);
+    const text = answer.messages[0].text;
+    expect(text).toContain("ถูกที่สุดแล้ว");
+    expect(text).toContain("ทุน 500,000 บาท (ครอบครัวได้รับ 1,000,000)");
+    expect(text).toContain(`${monthlyFor("WLF99H", 500_000)} บาท/เดือน`);
+    expect(answer.slots.offer).toEqual({ coverWanted: 1_000_000, sumAssured: 500_000, variant: "WLF99H" });
+    expect(answer.messages[0].card).toBeUndefined();
+  });
+
+  it("does not offer the shorter terms, which cost more a year", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("แพงไป"), known);
+    expect(answer.messages[0].text).not.toContain("จ่าย 9 ปี");
+    expect(answer.messages[0].text).not.toContain("จ่าย 19 ปี");
+  });
+
+  it("points someone on a short term at the to-99 premium for the same cover", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("แพงไปหน่อย"), { ...known, variant: "WLF09H" });
+    expect(answer.messages[0].text).toContain("จ่ายถึงอายุ 99");
+    expect(answer.messages[0].text).toContain(`${monthlyFor("WLF99H", 1_000_000)} บาท/เดือน`);
+  });
+
+  it("prices the halved arrangement on a bare yes", async () => {
+    routed = { intent: "other" };
+    const offered = (await answerQuestion(said("แพงไป"), known)).slots;
+    const taken = await answerQuestion(said("เอา"), offered);
+    expect(taken.priced).toBe(true);
+    expect(taken.messages[0].card).toContain("sum=500000");
+    expect(taken.messages[0].card).toContain("variant=WLF99H");
+  });
+
+  it("keeps the offer's own sum when the customer names its cover, despite the one-million rule", async () => {
+    routed = { intent: "other" };
+    const offered = (await answerQuestion(said("แพงไป"), known)).slots;
+    // "1 ล้าน" alone would be read as a sum assured of a million; after the offer it is the offer
+    routed = { intent: "quote", coverWanted: 1_000_000 };
+    const taken = await answerQuestion(said("เอาแบบ 1 ล้าน"), offered);
+    expect(taken.messages[0].card).toContain("sum=500000");
+  });
+
+  it("says so when the cover is already at the floor", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("แพงไป"), { intent: "quote", age: 38, sex: "M", coverWanted: 300_000 });
+    expect(answer.messages[0].text).toContain("ขั้นต่ำ");
+    expect(answer.slots.offer).toBeUndefined();
+  });
+
+  it("asks for the details first when nothing has been priced", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("แพงไป"), null);
+    expect(answer.messages[0].text).toContain("อายุ");
+  });
+});
+
 describe("a couple in one message", () => {
   it("prices each of them, in the order they were named", async () => {
     routed = { intent: "quote", coverWanted: 2_000_000 };
