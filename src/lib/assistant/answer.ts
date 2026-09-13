@@ -48,8 +48,19 @@ function one(text: string, card?: string): Omit<Answer, "slots"> {
   return { messages: [card ? { text, card } : { text }] };
 }
 
+/** A person does not send one long block; the model's paragraphs go out as separate bubbles. */
+const MAX_BUBBLES = 3;
+
+function spoken(text: string): Omit<Answer, "slots"> {
+  const parts = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length <= 1) return one(text.trim());
+  const head = parts.slice(0, MAX_BUBBLES - 1);
+  const tail = parts.slice(MAX_BUBBLES - 1).join("\n\n");
+  return { messages: [...head, tail].map((t) => ({ text: t })) };
+}
+
 const ASK_FOR_DETAILS =
-  'รบกวนบอก อายุ / เพศ / ทุนประกันที่สนใจ ครับ แล้วผมคิดเบี้ยให้เลย (เช่น "ชาย 35 ทุน 1 ล้าน")';
+  'ขออายุ เพศ กับทุนที่สนใจหน่อยครับ เดี๋ยวคิดเบี้ยให้เลย (เช่น "ชาย 35 ทุน 1 ล้าน")';
 
 /**
  * What is still needed, named one field at a time.
@@ -75,11 +86,11 @@ function askForMissing(slots: Routed, table: LifeProtectTable): string {
   if (slots.coverWanted === undefined) { missing.push("ทุนประกันที่สนใจ"); example.push("ทุน 1 ล้าน"); }
   if (missing.length === 0) return ASK_FOR_DETAILS;
 
-  const ask = `รบกวนบอก${missing.join("กับ")}ด้วยครับ แล้วผมคิดเบี้ยให้เลย (เช่น "${example.join(" ")}")`;
-  return known.filter(Boolean).length ? `รับทราบครับ ${known.filter(Boolean).join(" · ")} 🙏\n${ask}` : ask;
+  const ask = `ขอ${missing.join("กับ")}ด้วยครับ เดี๋ยวคิดเบี้ยให้เลย (เช่น "${example.join(" ")}")`;
+  return known.filter(Boolean).length ? `ได้เลยครับ ${known.filter(Boolean).join(" · ")} 👍\n${ask}` : ask;
 }
 
-const HAND_OVER = "เดี๋ยวตัวแทนมาตอบในแชทนี้ครับ ระหว่างนี้สอบถามเรื่อง Life Protect x 2 ได้เลย";
+const HAND_OVER = "เดี๋ยวตัวแทนมาคุยต่อในแชทนี้ครับ ระหว่างนี้ถามเรื่อง Life Protect x 2 ได้เลย";
 
 /**
  * Who stands behind the policy, in the agency's own words rather than a model's.
@@ -282,7 +293,7 @@ function answerPayTerm(slots: Routed): Omit<Answer, "slots"> {
 /** The terms this quote did not take, offered by name so the customer can ask for one. */
 function otherTerms(table: LifeProtectTable, quoted: string): string {
   const rest = table.terms.filter((t) => QUOTABLE.has(t.variant) && t.variant !== quoted).map((t) => t.label);
-  return `สนใจแบบ${rest.join(" หรือ ")} ไหมครับ บอกมาได้เลย เดี๋ยวคิดให้ใหม่`;
+  return `ถ้าอยากดูแบบ${rest.join(" หรือ ")} บอกได้เลยนะครับ เดี๋ยวคิดให้`;
 }
 
 /**
@@ -358,7 +369,7 @@ async function answerPlanInfo(history: ChatMessage[], slots: Routed): Promise<Om
       ...recentTurns(history, 6),
     ],
   });
-  return one(r.text.trim() || ASK_FOR_DETAILS);
+  return spoken(r.text.trim() || ASK_FOR_DETAILS);
 }
 
 async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "slots">> {
@@ -368,7 +379,7 @@ async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "sl
     maxTokens: 200,
     messages: [{ role: "system", content: SMALL_TALK_SYSTEM }, ...recentTurns(history, 6)],
   });
-  return one(r.text.trim() || ASK_FOR_DETAILS);
+  return spoken(r.text.trim() || ASK_FOR_DETAILS);
 }
 
 /**

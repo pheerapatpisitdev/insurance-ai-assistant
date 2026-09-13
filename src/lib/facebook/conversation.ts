@@ -16,6 +16,8 @@ import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/
  * and get out of the way.
  */
 
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 const BUSY = "ตอนนี้มีคำถามเข้ามาเยอะครับ รบกวนรอสักครู่แล้วถามใหม่นะครับ";
 const BROKEN = "ขออภัยครับ ระบบตอบไม่ได้ในตอนนี้ รบกวนถามใหม่อีกครั้งครับ";
 const OUT_OF_BUDGET = "ตอนนี้ระบบผู้ช่วยปิดชั่วคราวครับ รบกวนติดต่อตัวแทนโดยตรงนะครับ";
@@ -57,7 +59,13 @@ export async function handle(event: Messaging): Promise<void> {
   await showTyping(psid).catch(() => {});
   try {
     const answer = await answerQuestion(history, session.slots);
-    for (const said of answer.messages) {
+    for (const [i, said] of answer.messages.entries()) {
+      // a second bubble arrives the way a person's would: after the dots, and after a pause
+      // that scales with how much there was to type
+      if (i > 0) {
+        await showTyping(psid).catch(() => {});
+        await pause(Math.min(2500, 400 + said.text.length * 15));
+      }
       await sendMessage(psid, said.text);
       // the card follows its own words, so the customer reads the quote before the picture of
       // it — and a couple priced together gets the pair in the order they were named

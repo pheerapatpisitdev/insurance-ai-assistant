@@ -12,6 +12,11 @@ describe("what the model is told", () => {
     expect(PLAN_INFO_SYSTEM).toContain("ไม่ต้องปิดท้ายทุกข้อความด้วยการให้ไปถามตัวแทน");
   });
 
+  it("tells the truth when asked outright whether it is a person", () => {
+    expect(PLAN_INFO_SYSTEM).toContain("ถ้าลูกค้าถามตรงๆ ว่าเป็นคนหรือบอท");
+    expect(PLAN_INFO_SYSTEM).toContain("ระบบช่วยตอบของเพจ");
+  });
+
   it("still names what a person must answer", () => {
     expect(PLAN_INFO_SYSTEM).toContain("การเคลม");
     expect(PLAN_INFO_SYSTEM).toContain("การพิจารณาสุขภาพ");
@@ -20,7 +25,7 @@ describe("what the model is told", () => {
   for (const [name, prompt] of [["plan info", PLAN_INFO_SYSTEM], ["small talk", SMALL_TALK_SYSTEM]] as const) {
     it(`keeps ${name} away from the company, an invented identity and a figure of its own`, () => {
       expect(prompt).toContain("ห้ามยืนยันหรือปฏิเสธชื่อบริษัทที่ลูกค้าเอ่ยถึง");
-      expect(prompt).toContain("ห้ามอ้างว่าตัวเองเป็นตัวแทน");
+      expect(prompt).toContain("ห้ามอ้างว่าเป็นตัวแทน");
       expect(prompt).toContain("ห้ามบอกว่าตัวเองเป็นคน");
     });
   }

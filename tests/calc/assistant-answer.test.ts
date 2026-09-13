@@ -253,8 +253,8 @@ describe("a couple in one message", () => {
   it("offers the other terms once, under the last price", async () => {
     routed = { intent: "quote", coverWanted: 2_000_000 };
     const answer = await answerQuestion(said("42 ญ กับช 56"), null);
-    expect(answer.messages[0].text).not.toContain("สนใจแบบ");
-    expect(answer.messages[1].text).toContain("สนใจแบบ");
+    expect(answer.messages[0].text).not.toContain("ถ้าอยากดูแบบ");
+    expect(answer.messages[1].text).toContain("ถ้าอยากดูแบบ");
   });
 
   it("prices the one it can when the other is out of range", async () => {
