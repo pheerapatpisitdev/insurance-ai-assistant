@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { toParts } from "@/lib/facebook/client";
-import { agentTyped, eventKey, textOf, type Messaging } from "@/lib/facebook/events";
+import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/facebook/events";
 import { hashUserId, verifySignature, verifyTokenMatches } from "@/lib/facebook/verify";
 
 const SECRET = "test-app-secret";
@@ -79,6 +79,24 @@ describe("telling the agent's message from the bot's", () => {
 
   it("does not count a message the customer sent", () => {
     expect(agentTyped({ message: { mid: "m", text: "สนใจครับ" } })).toBe(false);
+  });
+});
+
+describe("whose thread an event belongs to", () => {
+  it("is the sender when the customer wrote it", () => {
+    expect(customerOf({ sender: { id: "psid-1" }, recipient: { id: "page" }, message: { text: "hi" } })).toBe("psid-1");
+  });
+
+  it("is the recipient when the page wrote it", () => {
+    // Meta names the page as the sender of its own echo; the customer is who it went to
+    expect(customerOf({ sender: { id: "page" }, recipient: { id: "psid-1" }, message: { text: "hi", is_echo: true } }))
+      .toBe("psid-1");
+  });
+
+  it("gives the same thread either way round", () => {
+    const inbound: Messaging = { sender: { id: "psid-1" }, recipient: { id: "page" }, message: { text: "hi" } };
+    const echo: Messaging = { sender: { id: "page" }, recipient: { id: "psid-1" }, message: { text: "hi", is_echo: true } };
+    expect(customerOf(inbound)).toBe(customerOf(echo));
   });
 });
 

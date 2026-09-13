@@ -6,6 +6,7 @@
 
 export interface Messaging {
   sender?: { id?: string };
+  recipient?: { id?: string };
   timestamp?: number;
   message?: { mid?: string; text?: string; is_echo?: boolean; app_id?: number | string };
   postback?: { title?: string; payload?: string };
@@ -38,6 +39,18 @@ export function eventKey(event: Messaging): string | undefined {
  * typed it into the Page's inbox. An echo we cannot attribute is treated as the agent's,
  * because a bot that talks over its own agent is worse than one that waits a day.
  */
+/**
+ * The customer this event is about.
+ *
+ * On an ordinary message the sender is the customer. On an echo of the page's own message it
+ * is the page, and the customer is the recipient — which cost a day of the mute working at
+ * all: every echo hashed to the page's own id, so one phantom session was muted over and
+ * over while the threads an agent had actually answered were left wide open to the bot.
+ */
+export function customerOf(event: Messaging): string | undefined {
+  return event.message?.is_echo ? event.recipient?.id : event.sender?.id;
+}
+
 export function agentTyped(event: Messaging): boolean {
   if (!event.message?.is_echo) return false;
   const ours = process.env.FB_APP_ID;

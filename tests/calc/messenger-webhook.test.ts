@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const sent: { text: string[]; images: string[] } = { text: [], images: [] };
 const session = { messages: [] as { role: "user" | "assistant"; content: string }[], slots: null as unknown, mutedUntil: null as string | null };
 const saved: { mutedUntil: Date | null }[] = [];
+/** every user hash the handler touched, so one conversation can be shown to be one row */
+const hashesSeen: string[] = [];
 const answer = vi.fn(async () => ({
   messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }],
   slots: { intent: "quote" as const },
@@ -20,10 +22,10 @@ vi.mock("@/lib/chat/session", async () => {
   return {
     ...actual,
     claimEvent: async () => true,
-    loadSession: async () => session,
+    loadSession: async (_c: string, u: string) => { hashesSeen.push(u); return session; },
     saveSession: async (
-      _c: string, _u: string, _m: unknown, _s: unknown, mutedUntil: Date | null,
-    ) => { saved.push({ mutedUntil }); },
+      _c: string, u: string, _m: unknown, _s: unknown, mutedUntil: Date | null,
+    ) => { hashesSeen.push(u); saved.push({ mutedUntil }); },
   };
 });
 
@@ -74,8 +76,19 @@ describe("a couple priced together", () => {
 });
 
 describe("the agent answering by hand", () => {
+  it("mutes the customer's own thread, not one named after the page", async () => {
+    const seen: string[] = [];
+    hashesSeen.length = 0;
+    await handle({ sender: { id: "page" }, recipient: { id: "psid-9" }, message: { mid: "m8", text: "ครับ", is_echo: true } });
+    seen.push(...hashesSeen);
+    await handle({ sender: { id: "psid-9" }, recipient: { id: "page" }, message: { mid: "m8b", text: "ขอราคา" } });
+    seen.push(...hashesSeen);
+    // both events are the same conversation, so both must land on one row
+    expect(new Set(seen).size).toBe(1);
+  });
+
   it("silences the bot for a day and costs nothing", async () => {
-    await handle({ sender: { id: "psid" }, message: { mid: "m2", text: "เดี๋ยวโทรหาครับ", is_echo: true } });
+    await handle({ sender: { id: "page" }, recipient: { id: "psid" }, message: { mid: "m2", text: "เดี๋ยวโทรหาครับ", is_echo: true } });
     expect(answer).not.toHaveBeenCalled();
     expect(sent.text).toEqual([]);
     expect(saved[0].mutedUntil).toBeInstanceOf(Date);
@@ -95,7 +108,7 @@ describe("the agent answering by hand", () => {
   });
 
   it("does not silence the bot for its own echo", async () => {
-    await handle({ sender: { id: "psid" }, message: { mid: "m4", text: "เบี้ย…", is_echo: true, app_id: "app-1" } });
+    await handle({ sender: { id: "page" }, recipient: { id: "psid" }, message: { mid: "m4", text: "เบี้ย…", is_echo: true, app_id: "app-1" } });
     expect(saved).toEqual([]);
   });
 });

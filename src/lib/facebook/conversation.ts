@@ -6,7 +6,7 @@ import { answerQuestion } from "@/lib/assistant/answer";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
-import { agentTyped, eventKey, textOf, type Messaging } from "@/lib/facebook/events";
+import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/facebook/events";
 
 /**
  * One event from the page's inbox, answered.
@@ -21,7 +21,8 @@ const BROKEN = "ขออภัยครับ ระบบตอบไม่ไ
 const OUT_OF_BUDGET = "ตอนนี้ระบบผู้ช่วยปิดชั่วคราวครับ รบกวนติดต่อตัวแทนโดยตรงนะครับ";
 
 export async function handle(event: Messaging): Promise<void> {
-  const psid = event.sender?.id;
+  // on an echo the sender is the page, so the thread is named by who it was sent to
+  const psid = customerOf(event);
   if (!psid) return;
   const userHash = hashUserId(psid);
 
