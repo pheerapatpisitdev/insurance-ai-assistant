@@ -20,7 +20,8 @@ const HAIR = "rgba(201,162,111,0.24)";
 const RULE = "rgba(255,255,255,0.12)";
 const STRIPE = "rgba(255,255,255,0.035)";
 
-const WIDTH = 1400;
+/** Six columns twice over; 1400 left the seven-figure ones touching their rules. */
+const WIDTH = 1600;
 const PAD = 52;
 /** the space between the two halves the years are dealt into */
 const GUTTER = 48;
@@ -53,11 +54,12 @@ const CAPTION = "มูลค่าทุกปี ตั้งแต่ปี�
  * other down the column, so they sit right.
  */
 const COLS = [
-  { w: 68, align: "flex-start" as const },
-  { w: 68, align: "flex-start" as const },
-  { w: 168, align: "flex-end" as const },
-  { w: 168, align: "flex-end" as const },
-  { w: HALF - 68 - 68 - 168 - 168, align: "flex-end" as const },
+  { w: 60, align: "flex-start" as const },
+  { w: 60, align: "flex-start" as const },
+  { w: 136, align: "flex-end" as const },
+  { w: 152, align: "flex-end" as const },
+  { w: 152, align: "flex-end" as const },
+  { w: HALF - 60 - 60 - 136 - 152 - 152, align: "flex-end" as const },
 ];
 
 /** Air either side of a figure, so no column ever touches the rule beside it. */
@@ -117,7 +119,7 @@ function Half({ columns, rows }: { columns: string[]; rows: ValueTableRow[] }) {
          * hard to read.
          */
         const ink = r.breakEven ? GOLD_LIT : WHITE;
-        const cells = [String(r.year), String(r.age), r.paid ?? "—", r.cash, r.cover];
+        const cells = [String(r.year), String(r.age), r.due, r.paid ?? "—", r.cash, r.cover];
         return (
           <div
             key={r.year}

@@ -434,6 +434,8 @@ function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
 export interface ValueTableRow {
   year: number;
   age: number;
+  /** the premium falling due that year, or "—" once the paying term is over */
+  due: string;
   /** every premium paid up to and including this year; null when no price may be shown */
   paid: string | null;
   cash: string;
@@ -454,8 +456,8 @@ export interface ValueTableCard {
   notes: string[];
 }
 
-/** Same headings as the table on the sales page, less the premium the header line states. */
-const VALUE_COLUMNS = ["ปีที่", "อายุ", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"];
+/** The same headings as the table on the sales page, in the same order. */
+const VALUE_COLUMNS = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"];
 
 const baht = (satang: number) => money(Math.round(satang / 100));
 
@@ -504,6 +506,8 @@ export function valueTableCard(input: PlanCardInput, today: Date = new Date()): 
     rows: p.rows.map((r) => ({
       year: r.policyYear,
       age: r.age,
+      // a dash rather than a nought: the year is not worth nothing, there is nothing to pay
+      due: r.premiumDue ? baht(r.premiumDue) : "—",
       paid: r.premiumPaid === null ? null : baht(r.premiumPaid),
       cash: baht(r.cashValue),
       cover: baht(r.cover),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardInputFrom, cardPath, cardUrl, quoteCard, type CardInput, type QuoteCard } from "@/lib/quote-card";
+import { cardInputFrom, cardPath, cardUrl, quoteCard, valueTableCard, type CardInput, type PlanCardInput, type QuoteCard } from "@/lib/quote-card";
 
 /** The rate table behind these figures lapses on 2027-03-31. */
 const WHILE_CURRENT = new Date("2026-09-05");
@@ -164,6 +164,38 @@ describe("quoteCard", () => {
  * death benefit has no booster for the engine's deathBenefitFor to find — so before this the
  * card carried a price and a surrender schedule and said nothing about what the policy pays.
  */
+describe("the value table card", () => {
+  const NINE_YEARS: PlanCardInput = { ...(MAN35 as PlanCardInput), variant: "WLF09H" };
+
+  it("heads the same columns as the table on the sales page", () => {
+    expect(valueTableCard(NINE_YEARS, WHILE_CURRENT)!.columns)
+      .toEqual(["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"]);
+  });
+
+  it("runs every policy year from the first to the end of the contract", () => {
+    const card = valueTableCard(NINE_YEARS, WHILE_CURRENT)!;
+    expect(card.rows[0]).toMatchObject({ year: 1, age: 35 });
+    expect(card.rows.at(-1)!.year).toBe(card.rows.length);
+    expect(card.notes.some((n) => n.includes("ครบสัญญาอายุ 99"))).toBe(true);
+  });
+
+  it("shows the premium falling due each year, and stops when the paying does", () => {
+    const rows = valueTableCard(NINE_YEARS, WHILE_CURRENT)!.rows;
+    expect(rows[0].due).toBe("54,600");
+    expect(rows[8].due).toBe("54,600");
+    // a dash, not a nought: there is nothing to pay, the year is not worth nothing
+    expect(rows[9].due).toBe("—");
+    // and what has been paid stops climbing with it
+    expect(rows[8].paid).toBe(rows[9].paid);
+  });
+
+  it("marks the year the policy is first worth what has gone into it", () => {
+    const marked = valueTableCard(NINE_YEARS, WHILE_CURRENT)!.rows.filter((r) => r.breakEven);
+    expect(marked).toHaveLength(1);
+    expect(Number(marked[0].cash.replace(/,/g, ""))).toBeGreaterThanOrEqual(Number(marked[0].paid!.replace(/,/g, "")));
+  });
+});
+
 describe("the iShield card", () => {
   const card = quoteCard(
     { kind: "plan", planCode: "ISHIELD", variant: "WLCI10", age: 35, sex: "M", sumAssured: 1_000_000 },
