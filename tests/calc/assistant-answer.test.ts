@@ -129,12 +129,25 @@ describe("a quote", () => {
 });
 
 describe("who stands behind the policy", () => {
-  it("does not agree to a company name the customer put in its mouth", async () => {
+  it("names the insurer rather than agreeing with whatever the customer guessed", async () => {
     routed = { intent: "other" };
     worded = "ใช่ครับ ยินดีให้บริการครับ";
     const answer = await answerQuestion(said("กรุงไทยแอกซ่าใช่ไหม"), null);
-    expect(answer.reply).not.toContain("ใช่ครับ");
-    expect(answer.reply).toContain("ตัวแทน");
+    expect(answer.reply).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
+    expect(answer.reply).not.toContain("ยินดีให้บริการ");
+  });
+
+  it("corrects a rival's name instead of confirming it", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("เมืองไทยประกันชีวิตใช่ไหมครับ"), null);
+    expect(answer.reply).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
+  });
+
+  it("names the insurer and leaves the licence to a person", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("มีใบอนุญาตตัวแทนไหม บริษัทน่าเชื่อถือหรือเปล่า"), null);
+    expect(answer.reply).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
+    expect(answer.reply).toContain("ใบอนุญาต");
   });
 
   it("never asks a model who the insurer is", async () => {
@@ -142,13 +155,6 @@ describe("who stands behind the policy", () => {
     chat.mockClear();
     await answerQuestion(said("ของบริษัทอะไรครับ"), null);
     expect(chat.mock.calls.map((c) => c[0].task)).toEqual(["route"]);
-  });
-
-  it("turns down a question about the agent's licence the same way", async () => {
-    routed = { intent: "other" };
-    const answer = await answerQuestion(said("มีใบอนุญาตตัวแทนไหม"), null);
-    expect(answer.reply).toContain("ตัวแทน");
-    expect(answer.card).toBeUndefined();
   });
 
   it("still prices a quote that merely mentions a rival by name", async () => {

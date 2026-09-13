@@ -122,21 +122,32 @@ export function asksForPrice(text: string): boolean {
 }
 
 /**
- * Asking who is behind the policy: which insurer, which agency, whether they can be trusted,
- * what licence the person on the other end holds.
+ * Asking which company stands behind the policy — by name, by "ของบริษัทอะไร", or by
+ * proposing a rival and waiting to be agreed with.
  *
- * Nothing in this project records any of that — the rate tables carry a plan name and
- * nothing else — so there is no honest answer for a model to compose. Asked "กรุงไทยแอกซ่า
- * ใช่ไหม", it answered "ใช่ครับ": agreeing with whatever name the customer happened to say,
- * about the company that would be underwriting their life. That is why this is matched here
- * and answered by a sentence rather than by a model.
+ * Answered from a constant rather than by a model. Nothing in this project records the
+ * insurer: asked "กรุงไทยแอกซ่าใช่ไหม", the model said "ใช่ครับ", which was agreement with
+ * whatever name the customer happened to type, about the company that would be insuring
+ * their life. A rival's name is matched too, so that guess is corrected rather than confirmed.
  */
-const COMPANY_QUESTION =
-  /บริษัท(?!ประกันชีวิตชั้นนำ)|ผู้รับประกัน|รับประกันโดย|ค่ายไหน|แบรนด์|ใบอนุญาต|นายหน้า|ตัวแทนของ|เชื่อถือ|มั่นคง|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential|allianz|อลิอันซ์|fwd|โตเกียว/i;
+const INSURER_QUESTION =
+  /บริษัท\s*(อะไร|ไหน|อะไรคะ|ไรครับ)|ของบริษัท|ผู้รับประกัน|รับประกันโดย|ค่ายไหน|แบรนด์|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential|allianz|อลิอันซ์|\bfwd\b|โตเกียว|กรุงเทพประกัน|ไทยพาณิชย์|\bscb\b/i;
+
+/**
+ * Asking about the people rather than the company: a licence, a brokerage, whether any of
+ * them can be trusted. The insurer can be named from a constant; none of this can, so it
+ * goes to a person.
+ */
+const TRUST_QUESTION = /ใบอนุญาต|นายหน้า|ตัวแทนของ|เชื่อถือ|มั่นคง|โกง|หลอก|จดทะเบียน|ตัวจริง/i;
 
 /** Whether a message is asking who stands behind the policy. */
 export function asksAboutCompany(text: string): boolean {
-  return COMPANY_QUESTION.test(text);
+  return INSURER_QUESTION.test(text) || TRUST_QUESTION.test(text);
+}
+
+/** Whether that question is one only a person should answer. */
+export function asksAboutTrust(text: string): boolean {
+  return TRUST_QUESTION.test(text);
 }
 
 /** Anything the model returns is checked here, so an invented package never reaches the engine. */
