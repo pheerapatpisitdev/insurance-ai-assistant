@@ -35,8 +35,8 @@ describe("a quote", () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
     const table = lifeProtectTable();
     const term = termAt(table, "WLF99H");
-    // the customer asked for a million reaching the family; before sixty that is a sum of half
-    const SUM = 500_000;
+    // two million reaching the family; before sixty that is a sum assured of one
+    const SUM = 1_000_000;
     const expected = lifeProtectQuoteText({
       sumAssured: SUM,
       termLabel: term.label,
@@ -58,7 +58,7 @@ describe("a quote", () => {
 
   it("sends a card of the same arrangement", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
-    expect(answer.messages[0].card).toBe("/api/card?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=500000");
+    expect(answer.messages[0].card).toBe("/api/card?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=1000000");
   });
 
   it("offers the two terms it did not quote", async () => {
@@ -91,7 +91,7 @@ describe("a quote", () => {
   it("repeats the sum the advert's button named, and asks only for what is missing", async () => {
     routed = { intent: "quote", coverWanted: 1_000_000 };
     const answer = await answerQuestion(said("สนใจประกันมรดก ทุน 1,000,000"), null);
-    expect(answer.messages[0].text).toContain("ครอบครัวได้รับ 1,000,000 บาท");
+    expect(answer.messages[0].text).toContain("ทุน 1,000,000 บาท");
     expect(answer.messages[0].text).toContain("เพศ");
     expect(answer.messages[0].text).toContain("อายุ");
     expect(answer.messages[0].text).not.toContain("ทุนประกันที่สนใจ");
@@ -121,6 +121,13 @@ describe("a quote", () => {
     expect(answer.messages[0].text).toContain("300,000");
   });
 
+  it("reads the advert's own million as a sum assured, the way its artwork does", async () => {
+    routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 };
+    const answer = await answerQuestion(said("สนใจประกันมรดก ทุน 1,000,000 ชาย 35"), null);
+    expect(answer.messages[0].text).toContain("ทุน 1,000,000 บาท เพิ่มเป็น 2,000,000");
+    expect(answer.messages[0].card).toContain("sum=1000000");
+  });
+
   it("reads the customer's number as what the family receives, not as the sum assured", async () => {
     routed = { intent: "quote", age: 45, sex: "F", coverWanted: 3_000_000 };
     const answer = await answerQuestion(said("ทุน3ล้าน"), null);
@@ -129,9 +136,10 @@ describe("a quote", () => {
   });
 
   it("does not halve for an insured the plan no longer doubles for", async () => {
-    routed = { intent: "quote", age: 65, sex: "M", coverWanted: 1_000_000 };
-    const answer = await answerQuestion(said("อายุ 65 ทุนล้าน"), null);
-    expect(answer.messages[0].card).toContain("sum=1000000");
+    // past the booster age the cover is the sum assured, so there is nothing to divide by
+    routed = { intent: "quote", age: 65, sex: "M", coverWanted: 2_000_000 };
+    const answer = await answerQuestion(said("อายุ 65 อยากให้ครอบครัวได้ 2 ล้าน"), null);
+    expect(answer.messages[0].card).toContain("sum=2000000");
   });
 
   it("turns down a package this chat does not sell, rather than quoting another one", async () => {

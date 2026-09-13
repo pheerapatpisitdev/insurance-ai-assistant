@@ -61,7 +61,11 @@ const ASK_FOR_DETAILS =
  */
 function askForMissing(slots: Routed, table: LifeProtectTable): string {
   const known: string[] = [];
-  if (slots.coverWanted !== undefined) known.push(`ครอบครัวได้รับ ${slots.coverWanted.toLocaleString("en-US")} บาท`);
+  if (slots.coverWanted !== undefined) {
+    known.push(slots.coverWanted === COVER_MEANS_SUM
+      ? `ทุน ${slots.coverWanted.toLocaleString("en-US")} บาท`
+      : `ครอบครัวได้รับ ${slots.coverWanted.toLocaleString("en-US")} บาท`);
+  }
   if (slots.variant) known.push(table.terms.find((t) => t.variant === slots.variant)?.label ?? "");
 
   const missing: string[] = [];
@@ -159,6 +163,16 @@ function coverMultiple(table: LifeProtectTable, age: number): number {
 }
 
 /**
+ * The one figure a customer means as a sum assured rather than as what the family receives.
+ *
+ * The adverts teach it: their artwork reads "ทุน 1 ล้าน → ครอบครัวได้ 2 ล้าน", and the
+ * button under it says "สนใจประกันมรดก ทุน 1,000,000". Someone who says that number is
+ * repeating the advert back, and quoting them half of it would be quoting them half of what
+ * they were shown. Every other figure people name is the inheritance they want to leave.
+ */
+const COVER_MEANS_SUM = 1_000_000;
+
+/**
  * The sum assured that pays what the customer asked for.
  *
  * A customer who says "ทุน 3 ล้าน" means three million reaching the family, and before sixty
@@ -167,6 +181,7 @@ function coverMultiple(table: LifeProtectTable, age: number): number {
  * numbers are the same. Rounded to a whole thousand, which is the unit the rate table prices in.
  */
 function sumForCover(table: LifeProtectTable, age: number, cover: number): number {
+  if (cover === COVER_MEANS_SUM) return cover;
   return Math.round(cover / coverMultiple(table, age) / 1000) * 1000;
 }
 
