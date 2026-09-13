@@ -9,7 +9,13 @@ export type Channel = "facebook";
 const MAX_AGE_HOURS = 24;
 /** Enough turns for follow-up questions, few enough to keep every prompt cheap. */
 const MAX_TURNS = 6;
-/** How long the bot stays out of a thread after the agent has answered in it by hand. */
+/**
+ * How long the agent's mark on a thread stands.
+ *
+ * It is not a day of silence: the customer writing again hands the thread back to the bot.
+ * What the mark is for is the seconds the model takes — an answer already being composed
+ * when the agent types is dropped rather than sent on top of them.
+ */
 const MUTE_HOURS = 24;
 
 export interface Session {

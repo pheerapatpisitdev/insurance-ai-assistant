@@ -62,7 +62,7 @@ describe("a customer's message", () => {
 });
 
 describe("a customer whose answer would not come", () => {
-  const asked = { sender: { id: "psid" }, message: { mid: "m1", text: "สนใจประกันมรดก ทุน 1,000,000" } };
+  const asked = { sender: { id: "psid-lost" }, message: { mid: "m1", text: "สนใจประกันมรดก ทุน 1,000,000" } };
 
   it("is answered on the second attempt rather than apologised to", async () => {
     answer.mockRejectedValueOnce(new Error("ไม่มีคีย์ผู้ให้บริการ AI ที่ใช้ได้ในตอนนี้"));
@@ -79,23 +79,31 @@ describe("a customer whose answer would not come", () => {
 });
 
 describe("an agent who answers while the bot is still typing", () => {
+  it("does not stop the answer when the mark on the thread is the same one it started with", async () => {
+    session.mutedUntil = new Date(Date.now() + 23 * 3600_000).toISOString();
+    await handle({ sender: { id: "psid-mark" }, message: { mid: "m7", text: "ขอราคาหน่อย" } });
+    expect(sent.text).toEqual(["เบี้ยประมาณ…"]);
+  });
+
   it("is not talked over", async () => {
     // the mute lands during the model call, which is where the seconds go
+    session.mutedUntil = null;
     answer.mockImplementationOnce(async () => {
       session.mutedUntil = new Date(Date.now() + 3600_000).toISOString();
       return { messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }], slots: { intent: "quote" as const }, priced: true };
     });
-    await handle({ sender: { id: "psid" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
+    await handle({ sender: { id: "psid-cut" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
     expect(sent.text).toEqual([]);
     expect(sent.images).toEqual([]);
   });
 
   it("keeps their mute: the bot's own save must not wipe it", async () => {
+    session.mutedUntil = null;
     answer.mockImplementationOnce(async () => {
       session.mutedUntil = new Date(Date.now() + 3600_000).toISOString();
       return { messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }], slots: { intent: "quote" as const }, priced: true };
     });
-    await handle({ sender: { id: "psid" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
+    await handle({ sender: { id: "psid-cut2" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
     expect(saved).toEqual([]);
   });
 });
@@ -128,24 +136,25 @@ describe("the agent answering by hand", () => {
     expect(new Set(seen).size).toBe(1);
   });
 
-  it("silences the bot for a day and costs nothing", async () => {
+  it("marks the thread and costs nothing", async () => {
     await handle({ sender: { id: "page" }, recipient: { id: "psid" }, message: { mid: "m2", text: "เดี๋ยวโทรหาครับ", is_echo: true } });
     expect(answer).not.toHaveBeenCalled();
     expect(sent.text).toEqual([]);
     expect(saved[0].mutedUntil).toBeInstanceOf(Date);
   });
 
-  it("leaves the bot silent while the mute stands", async () => {
-    session.mutedUntil = new Date(Date.now() + 3600_000).toISOString();
-    await handle({ sender: { id: "psid" }, message: { mid: "m3", text: "ขอราคาหน่อย" } });
-    expect(answer).not.toHaveBeenCalled();
-    expect(sent.text).toEqual([]);
+  it("hands the thread back the moment the customer writes again", async () => {
+    // the agent said hello an hour ago and the customer has just answered: the pause is over
+    session.mutedUntil = new Date(Date.now() + 23 * 3600_000).toISOString();
+    await handle({ sender: { id: "psid-back" }, message: { mid: "m3", text: "เกิด2522 เพศญ" } });
+    expect(answer).toHaveBeenCalledOnce();
+    expect(sent.text).toEqual(["เบี้ยประมาณ…"]);
   });
 
-  it("lets the bot speak again once the mute has run out", async () => {
-    session.mutedUntil = new Date(Date.now() - 1000).toISOString();
-    await handle({ sender: { id: "psid" }, message: { mid: "m5", text: "ขอราคาหน่อย" } });
-    expect(answer).toHaveBeenCalledOnce();
+  it("keeps the agent's mark on the thread rather than clearing it to speak", async () => {
+    session.mutedUntil = new Date(Date.now() + 23 * 3600_000).toISOString();
+    await handle({ sender: { id: "psid-keep" }, message: { mid: "m5", text: "ขอราคาหน่อย" } });
+    expect(saved).toEqual([{ mutedUntil: undefined }]);
   });
 
   it("does not silence the bot for its own echo", async () => {

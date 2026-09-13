@@ -49,9 +49,9 @@ export async function handle(event: Messaging): Promise<void> {
   if (!psid) return;
   const userHash = hashUserId(psid);
 
-  // the agent has answered in the page's own inbox: the bot steps out of this thread for a
-  // day. Checked before the customer's words are read, because this event carries the
-  // page's words, not theirs.
+  // the agent has answered in the page's own inbox: the thread is marked as theirs until the
+  // customer writes again. Checked before the customer's words are read, because this event
+  // carries the page's words, not theirs.
   if (agentTyped(event)) {
     const session = await loadSession("facebook", userHash);
     await saveSession("facebook", userHash, session.messages, session.slots, muteFor());
@@ -67,8 +67,18 @@ export async function handle(event: Messaging): Promise<void> {
   if (key && !(await claimEvent("facebook", key))) return;
 
   const session = await loadSession("facebook", userHash);
-  // silence costs nothing: the check sits above the router, not below it
-  if (isMuted(session.mutedUntil)) return;
+  /**
+   * The agent answering by hand pauses the bot, and this message ends the pause: the customer
+   * has written again, so the thread is handed back.
+   *
+   * It used to be a day of silence, which is what the owner asked for at first and then
+   * watched go wrong — an agent said hello to a lead from the advertisement, the lead gave
+   * her age, and the bot sat on the answer it had ready. What the pause still has to stop is
+   * the bot talking over an agent who types in the seconds the model takes, so the mark on
+   * the thread is remembered here and compared with the one that is there when the answer is
+   * ready.
+   */
+  const markedBefore = session.mutedUntil;
 
   if (!allow(`fb:${userHash}`)) {
     await sendMessage(psid, BUSY);
@@ -82,8 +92,9 @@ export async function handle(event: Messaging): Promise<void> {
     const answer = await answered(history, session.slots);
     // the model takes seconds, and an agent watching the thread answers inside them. Their
     // words are already in the customer's phone by now, so the bot says nothing and records
-    // nothing — the mute stands and the thread is theirs.
-    if (isMuted((await loadSession("facebook", userHash)).mutedUntil)) return;
+    // nothing — a mark that was not there when this answer began is theirs, just now.
+    const marked = (await loadSession("facebook", userHash)).mutedUntil;
+    if (marked !== markedBefore && isMuted(marked)) return;
     for (const [i, said] of answer.messages.entries()) {
       // a second bubble arrives the way a person's would: after the dots, and after a pause
       // that scales with how much there was to type
