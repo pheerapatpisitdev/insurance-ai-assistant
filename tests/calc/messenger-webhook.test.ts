@@ -5,11 +5,12 @@ const session = { messages: [] as { role: "user" | "assistant"; content: string 
 const saved: { mutedUntil?: Date | null }[] = [];
 /** every user hash the handler touched, so one conversation can be shown to be one row */
 const hashesSeen: string[] = [];
-const answer = vi.fn(async () => ({
+const quoted = async () => ({
   messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }],
   slots: { intent: "quote" as const },
   priced: true,
-}));
+});
+const answer = vi.fn(quoted);
 
 vi.mock("@/lib/facebook/client", () => ({
   sendMessage: async (_psid: string, text: string) => { sent.text.push(text); },
@@ -38,7 +39,8 @@ beforeEach(() => {
   process.env.FB_APP_SECRET = "secret";
   sent.text = []; sent.images = []; saved.length = 0;
   session.messages = []; session.slots = null; session.mutedUntil = null;
-  answer.mockClear();
+  answer.mockReset();
+  answer.mockImplementation(quoted);
 });
 
 describe("a customer's message", () => {
@@ -56,6 +58,23 @@ describe("a customer's message", () => {
   it("is ignored when it carries no words at all", async () => {
     await handle({ sender: { id: "psid" }, message: { mid: "m0" } });
     expect(answer).not.toHaveBeenCalled();
+  });
+});
+
+describe("a customer whose answer would not come", () => {
+  const asked = { sender: { id: "psid" }, message: { mid: "m1", text: "สนใจประกันมรดก ทุน 1,000,000" } };
+
+  it("is answered on the second attempt rather than apologised to", async () => {
+    answer.mockRejectedValueOnce(new Error("ไม่มีคีย์ผู้ให้บริการ AI ที่ใช้ได้ในตอนนี้"));
+    await handle(asked);
+    expect(answer).toHaveBeenCalledTimes(2);
+    expect(sent.text).toEqual(["เบี้ยประมาณ…"]);
+  });
+
+  it("is handed to the agent, not told to come back later, when it truly cannot answer", async () => {
+    answer.mockRejectedValue(new Error("ล่ม"));
+    await expect(handle(asked)).rejects.toThrow();
+    expect(sent.text).toEqual(["ขออภัยครับ ระบบขัดข้องชั่วคราว เดี๋ยวแอดมินมาตอบให้นะครับ 🙏"]);
   });
 });
 

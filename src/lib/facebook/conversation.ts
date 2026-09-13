@@ -9,6 +9,22 @@ import type { ChatMessage } from "@/lib/ai/types";
 import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/facebook/events";
 
 /**
+ * The answer, with one more attempt before giving up.
+ *
+ * The failures that reach a customer are transient — a key table that could not be read on a
+ * cold start, a provider refusing one call. A second try costs a second and saves the lead.
+ */
+async function answered(history: ChatMessage[], slots: Parameters<typeof answerQuestion>[1]) {
+  try {
+    return await answerQuestion(history, slots);
+  } catch (e) {
+    if (e instanceof BudgetExceeded) throw e;
+    console.error("answer failed, trying once more:", e);
+    return await answerQuestion(history, slots);
+  }
+}
+
+/**
  * One event from the page's inbox, answered.
  *
  * It sits here rather than in the route because a Next route file may export only its own
@@ -19,7 +35,12 @@ import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const BUSY = "ตอนนี้มีคำถามเข้ามาเยอะครับ รบกวนรอสักครู่แล้วถามใหม่นะครับ";
-const BROKEN = "ขออภัยครับ ระบบตอบไม่ได้ในตอนนี้ รบกวนถามใหม่อีกครั้งครับ";
+/**
+ * What the customer sees when the bot cannot answer at all. It used to send them away —
+ * "รบกวนถามใหม่อีกครั้งครับ" — which is no way to treat someone who arrived through a paid
+ * advertisement. The agent watches this inbox, so the message says so.
+ */
+const BROKEN = "ขออภัยครับ ระบบขัดข้องชั่วคราว เดี๋ยวแอดมินมาตอบให้นะครับ 🙏";
 const OUT_OF_BUDGET = "ตอนนี้ระบบผู้ช่วยปิดชั่วคราวครับ รบกวนติดต่อตัวแทนโดยตรงนะครับ";
 
 export async function handle(event: Messaging): Promise<void> {
@@ -58,7 +79,7 @@ export async function handle(event: Messaging): Promise<void> {
 
   await showTyping(psid).catch(() => {});
   try {
-    const answer = await answerQuestion(history, session.slots);
+    const answer = await answered(history, session.slots);
     // the model takes seconds, and an agent watching the thread answers inside them. Their
     // words are already in the customer's phone by now, so the bot says nothing and records
     // nothing — the mute stands and the thread is theirs.

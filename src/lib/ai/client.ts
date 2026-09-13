@@ -57,6 +57,16 @@ async function loadConfig(): Promise<Config> {
     smallModel: settings.data?.small_model ?? null,
     largeModel: settings.data?.large_model ?? null,
   };
+  /**
+   * A read that came back with no keys is a failure, not a configuration: every model needs
+   * one, so caching it would silence the bot for the minute the cache lives. It cost a
+   * customer from the advertisement one evening — the first request on a fresh deployment
+   * could not read the key table, and the lead was told to ask again later.
+   */
+  if (Object.keys(config.keys).length === 0) {
+    if (keys.error) console.error("ai keys unreadable:", keys.error.message);
+    return config;
+  }
   cached = { at: Date.now(), config };
   return config;
 }
@@ -123,6 +133,7 @@ export async function chat({ tier, task, messages, maxTokens = 700, json }: Chat
       tried.push(`${model.model_name}: ${e instanceof Error ? e.message : e}`);
     }
   }
+  if (tried.length === 0) throw new Error("ไม่มีคีย์ผู้ให้บริการ AI ที่ใช้ได้ในตอนนี้");
   throw new Error(`ไม่มีผู้ให้บริการ AI ที่ตอบได้\n${tried.join("\n")}`);
 }
 
