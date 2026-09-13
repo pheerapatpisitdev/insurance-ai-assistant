@@ -3,7 +3,7 @@ import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { PER } from "@/lib/legacy-cta";
 import { deathBenefitRows } from "@/lib/death-benefit";
-import type { IHealthyShown } from "@/components/IHealthyCalculator";
+import type { IHealthyShown } from "@/lib/ihealthy-quote";
 
 const SEX_WORD: Record<Sex, string> = { M: "ชาย", F: "หญิง" };
 const INSTALMENT_ORDER: PayMode[] = ["monthly", "semi", "annual"];

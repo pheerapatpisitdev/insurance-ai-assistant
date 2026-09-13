@@ -8,7 +8,7 @@ import { MODES, coveragesFor, iHealthyPricing, plansFor } from "@/lib/ihealthy-q
 import {
   IHEALTHY_OPENING, baseFor, resolveArrangement, sumFor, sumsFor,
 } from "@/lib/ihealthy-choice";
-import { shownAt } from "@/components/IHealthyCalculator";
+import { shownAt } from "@/lib/ihealthy-quote";
 
 const WHILE_CURRENT = new Date("2026-09-12");
 const table = iHealthyTable(WHILE_CURRENT);
