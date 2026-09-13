@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { pageToken } from "@/lib/facebook/connection";
 
 /**
  * Is the whole thing answering? Watched from outside, because an app that has stopped
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const checks: Record<string, boolean> = {
     database: false,
+    messenger: false,
   };
   try {
     const { error } = await supabaseAdmin().from("ins_alert_settings").select("id").limit(1);
@@ -24,6 +26,8 @@ export async function GET() {
   } catch {
     checks.database = false;
   }
+  // the page connection, because a bot with no token is a page nobody is answering
+  checks.messenger = Boolean(await pageToken().catch(() => null));
   const ok = Object.values(checks).every(Boolean);
   return NextResponse.json({ ok, checks, at: new Date().toISOString() }, { status: ok ? 200 : 503 });
 }

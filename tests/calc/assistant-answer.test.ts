@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ChatOptions } from "@/lib/ai/client";
 
 /** What the stubbed model returns: strict JSON to the router, prose to everything else. */
 let routed: Record<string, unknown> = { intent: "other" };
 let worded = "ยินดีครับ";
 
-const chat = vi.fn(async ({ task }: { task: string }) => ({
+const chat = vi.fn(async ({ task }: ChatOptions) => ({
   text: task === "route" ? JSON.stringify(routed) : worded,
   model: "stub", provider: "stub", inputTokens: 0, outputTokens: 0, costThb: 0,
 }));
