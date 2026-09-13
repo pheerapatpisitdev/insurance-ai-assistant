@@ -29,20 +29,22 @@ beforeEach(() => {
 });
 
 describe("a quote", () => {
-  beforeEach(() => { routed = { intent: "quote", age: 35, sex: "M", sumAssured: 1_000_000 }; });
+  beforeEach(() => { routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 }; });
 
   it("says exactly what the sales page would say", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
     const table = lifeProtectTable();
     const term = termAt(table, "WLF99H");
+    // the customer asked for a million reaching the family; before sixty that is a sum of half
+    const SUM = 500_000;
     const expected = lifeProtectQuoteText({
-      sumAssured: 1_000_000,
+      sumAssured: SUM,
       termLabel: term.label,
       age: 35,
       sex: "M",
-      modes: lifeProtectModes(table, term, { sex: "M", age: 35, sumAssured: 1_000_000 })!,
-      death: deathBenefitOf(table, 35, 1_000_000),
-      cash: cashAt(term, "M", 35, 1_000_000, table.ageMin),
+      modes: lifeProtectModes(table, term, { sex: "M", age: 35, sumAssured: SUM })!,
+      death: deathBenefitOf(table, 35, SUM),
+      cash: cashAt(term, "M", 35, SUM, table.ageMin),
     });
     expect(answer.reply).toContain(expected);
     expect(answer.priced).toBe(true);
@@ -56,7 +58,7 @@ describe("a quote", () => {
 
   it("sends a card of the same arrangement", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
-    expect(answer.card).toBe("/api/card?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=1000000");
+    expect(answer.card).toBe("/api/card?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=500000");
   });
 
   it("offers the two terms it did not quote", async () => {
@@ -66,14 +68,14 @@ describe("a quote", () => {
   });
 
   it("quotes the term the customer named", async () => {
-    const answer = await answerQuestion(said("จ่าย 19 ปีเท่าไหร่"), { intent: "quote", age: 35, sex: "M", sumAssured: 1_000_000 });
+    const answer = await answerQuestion(said("จ่าย 19 ปีเท่าไหร่"), { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 });
     expect(answer.reply).toContain("จ่าย 19 ปี");
     expect(answer.card).toContain("variant=WLF19H");
   });
 
   it("keeps the age and sum from the turn before", async () => {
     routed = { intent: "quote" };
-    const answer = await answerQuestion(said("จ่าย 9 ปีล่ะ"), { intent: "quote", age: 35, sex: "M", sumAssured: 1_000_000 });
+    const answer = await answerQuestion(said("จ่าย 9 ปีล่ะ"), { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 });
     expect(answer.card).toContain("variant=WLF09H");
     expect(answer.priced).toBe(true);
   });
@@ -87,9 +89,9 @@ describe("a quote", () => {
   });
 
   it("repeats the sum the advert's button named, and asks only for what is missing", async () => {
-    routed = { intent: "quote", sumAssured: 1_000_000 };
+    routed = { intent: "quote", coverWanted: 1_000_000 };
     const answer = await answerQuestion(said("สนใจประกันมรดก ทุน 1,000,000"), null);
-    expect(answer.reply).toContain("1,000,000");
+    expect(answer.reply).toContain("ครอบครัวได้รับ 1,000,000 บาท");
     expect(answer.reply).toContain("เพศ");
     expect(answer.reply).toContain("อายุ");
     expect(answer.reply).not.toContain("ทุนประกันที่สนใจ");
@@ -98,29 +100,42 @@ describe("a quote", () => {
 
   it("asks for the one field left when the rest is known", async () => {
     routed = { intent: "quote" };
-    const answer = await answerQuestion(said("ชาย"), { intent: "quote", sex: "M", sumAssured: 1_000_000 });
+    const answer = await answerQuestion(said("ชาย"), { intent: "quote", sex: "M", coverWanted: 1_000_000 });
     expect(answer.reply).toContain("อายุ");
     expect(answer.reply).not.toContain("เพศ");
   });
 
   it("says no price at all for an age the plan does not issue to", async () => {
-    routed = { intent: "quote", age: 95, sex: "M", sumAssured: 1_000_000 };
+    routed = { intent: "quote", age: 95, sex: "M", coverWanted: 1_000_000 };
     const answer = await answerQuestion(said("อายุ 95 ทุนล้าน"), null);
     expect(answer.card).toBeUndefined();
     expect(answer.priced).toBeFalsy();
     expect(answer.reply).toContain("อายุ");
   });
 
-  it("says no price at all for a sum under the plan's floor", async () => {
-    routed = { intent: "quote", age: 35, sex: "M", sumAssured: 50_000 };
+  it("states the floor as what the family would receive, not as a sum assured", async () => {
+    routed = { intent: "quote", age: 35, sex: "M", coverWanted: 50_000 };
     const answer = await answerQuestion(said("ทุน 5 หมื่น"), null);
     expect(answer.card).toBeUndefined();
     expect(answer.priced).toBeFalsy();
-    expect(answer.reply).toContain("ขั้นต่ำ");
+    expect(answer.reply).toContain("300,000");
+  });
+
+  it("reads the customer's number as what the family receives, not as the sum assured", async () => {
+    routed = { intent: "quote", age: 45, sex: "F", coverWanted: 3_000_000 };
+    const answer = await answerQuestion(said("ทุน3ล้าน"), null);
+    expect(answer.reply).toContain("ทุน 1,500,000 บาท เพิ่มเป็น 3,000,000");
+    expect(answer.card).toContain("sum=1500000");
+  });
+
+  it("does not halve for an insured the plan no longer doubles for", async () => {
+    routed = { intent: "quote", age: 65, sex: "M", coverWanted: 1_000_000 };
+    const answer = await answerQuestion(said("อายุ 65 ทุนล้าน"), null);
+    expect(answer.card).toContain("sum=1000000");
   });
 
   it("turns down a package this chat does not sell, rather than quoting another one", async () => {
-    routed = { intent: "quote", age: 35, sex: "M", sumAssured: 1_000_000 };
+    routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 };
     const answer = await answerQuestion(said("แบบ x 1.5 จ่าย 9 ปี"), null);
     expect(answer.card).toBeUndefined();
     expect(answer.priced).toBeFalsy();
@@ -170,7 +185,7 @@ describe("who stands behind the policy", () => {
   });
 
   it("still prices a quote that merely mentions a rival by name", async () => {
-    routed = { intent: "quote", age: 35, sex: "M", sumAssured: 1_000_000 };
+    routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 };
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
     expect(answer.priced).toBe(true);
   });

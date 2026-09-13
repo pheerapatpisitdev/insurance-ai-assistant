@@ -8,7 +8,13 @@ vi.mock("@/lib/ai/client", async () => {
   return { ...actual, chat };
 });
 
-const { mergeSlots, routeMessage } = await import("@/lib/assistant/route");
+const { ageFromBirthdate, mergeSlots, routeMessage } = await import("@/lib/assistant/route");
+
+/** The age someone born on that date is today, counted the way a person counts it. */
+function ageOn(today: Date, day: number, month: number, year: number): number {
+  const passed = today.getMonth() + 1 > month || (today.getMonth() + 1 === month && today.getDate() >= day);
+  return today.getFullYear() - year - (passed ? 0 : 1);
+}
 
 const said = (content: string) => [{ role: "user" as const, content }];
 
@@ -16,9 +22,9 @@ beforeEach(() => { chat.mockClear(); });
 
 describe("reading what the customer wants", () => {
   it("reads an age, a sex and a sum out of one line", async () => {
-    reply.text = JSON.stringify({ intent: "quote", age: 35, sex: "M", sumAssured: 1000000 });
+    reply.text = JSON.stringify({ intent: "quote", age: 35, sex: "M", coverWanted: 1000000 });
     expect(await routeMessage(said("ชาย 35 ล้านนึง"))).toMatchObject({
-      intent: "quote", age: 35, sex: "M", sumAssured: 1000000,
+      intent: "quote", age: 35, sex: "M", coverWanted: 1000000,
     });
   });
 
@@ -48,14 +54,14 @@ describe("reading what the customer wants", () => {
   });
 
   it("treats the advert's own button as a request for a price, whatever the model called it", async () => {
-    reply.text = JSON.stringify({ intent: "plan_info", sumAssured: 1000000 });
+    reply.text = JSON.stringify({ intent: "plan_info", coverWanted: 1000000 });
     const routed = await routeMessage(said("สนใจประกันมรดก ทุน 1,000,000"));
     expect(routed.intent).toBe("quote");
-    expect(routed.sumAssured).toBe(1000000);
+    expect(routed.coverWanted).toBe(1000000);
   });
 
   it("leaves a question about what the family receives alone, sum or no sum", async () => {
-    reply.text = JSON.stringify({ intent: "plan_info", sumAssured: 1000000 });
+    reply.text = JSON.stringify({ intent: "plan_info", coverWanted: 1000000 });
     expect((await routeMessage(said("ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้านจริงไหม"))).intent).toBe("plan_info");
   });
 
@@ -65,17 +71,55 @@ describe("reading what the customer wants", () => {
   });
 });
 
+describe("an age given as a birthdate", () => {
+  it("is counted on the calendar, not by the model", async () => {
+    reply.text = JSON.stringify({ intent: "quote", age: 43 });
+    const routed = await routeMessage(said("เกิด 14/12/2523 ผู้หญิง"));
+    expect(routed.age).toBe(ageOn(new Date(), 14, 12, 1980));
+    expect(routed.age).not.toBe(43);
+  });
+
+  it("reads a Christian-era year too", async () => {
+    reply.text = JSON.stringify({ intent: "quote" });
+    expect((await routeMessage(said("เกิด 14/12/1980"))).age).toBe(ageOn(new Date(), 14, 12, 1980));
+  });
+
+  it("does not count a birthday that has not come round yet", () => {
+    expect(ageFromBirthdate("เกิด 31/12/2523", new Date("2026-09-13"))).toBe(45);
+    expect(ageFromBirthdate("เกิด 01/01/2523", new Date("2026-09-13"))).toBe(46);
+  });
+
+  it("leaves a bare year to be asked about", () => {
+    expect(ageFromBirthdate("เกิดปี 2523")).toBeUndefined();
+  });
+
+  it("ignores a date that is not one", () => {
+    expect(ageFromBirthdate("40/13/2523")).toBeUndefined();
+  });
+});
+
 describe("carrying the conversation forward", () => {
   it("keeps the age and sex from an earlier turn", () => {
     const merged = mergeSlots(
-      { intent: "quote", age: 35, sex: "M", sumAssured: 1000000 },
+      { intent: "quote", age: 35, sex: "M", coverWanted: 1000000 },
       { intent: "quote", variant: "WLF19H" },
     );
-    expect(merged).toMatchObject({ age: 35, sex: "M", sumAssured: 1000000, variant: "WLF19H" });
+    expect(merged).toMatchObject({ age: 35, sex: "M", coverWanted: 1000000, variant: "WLF19H" });
+  });
+
+  it("stays on the quote when the customer answers what it asked for", () => {
+    const merged = mergeSlots({ intent: "quote", coverWanted: 3_000_000 }, { intent: "plan_info", age: 45, sex: "F" });
+    expect(merged.intent).toBe("quote");
+    expect(merged.coverWanted).toBe(3_000_000);
+  });
+
+  it("does not force a quote onto a turn that supplies nothing", () => {
+    const merged = mergeSlots({ intent: "quote", coverWanted: 3_000_000 }, { intent: "plan_info" });
+    expect(merged.intent).toBe("plan_info");
   });
 
   it("lets the newest turn overwrite what it names", () => {
-    const merged = mergeSlots({ intent: "quote", sumAssured: 1000000 }, { intent: "quote", sumAssured: 500000 });
-    expect(merged.sumAssured).toBe(500000);
+    const merged = mergeSlots({ intent: "quote", coverWanted: 1000000 }, { intent: "quote", coverWanted: 500000 });
+    expect(merged.coverWanted).toBe(500000);
   });
 });

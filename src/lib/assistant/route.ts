@@ -13,7 +13,14 @@ export interface Routed {
   variant?: string;
   age?: number;
   sex?: "M" | "F";
-  sumAssured?: number;
+  /**
+   * What the customer wants the family to receive, in baht — not the sum assured.
+   *
+   * "ทุน 3 ล้าน" in a customer's message means three million to the family, which on this
+   * plan is a sum assured of one and a half before the booster age. Reading it as the sum
+   * assured doubles both the cover and the premium, so the two are kept apart by name.
+   */
+  coverWanted?: number;
   mode?: "annual" | "semi" | "monthly";
   /** a stand-alone rewrite of the question, with pronouns from earlier turns filled in */
   question?: string;
@@ -31,7 +38,7 @@ intent มี 3 แบบ
 ฟิลด์ที่ต้องเติมถ้ามีในข้อความ
 - age เป็นตัวเลขปี
 - sex เป็น "M" (ชาย) หรือ "F" (หญิง)
-- sumAssured ทุนประกันเป็นบาท ("1 ล้าน" = 1000000, "5 แสน" = 500000)
+- coverWanted จำนวนเงินที่ลูกค้าอยากให้ครอบครัวได้รับเมื่อเสียชีวิต เป็นบาท ("ทุน 1 ล้าน" = 1000000, "ทุน 5 แสน" = 500000)
 - variant เป็น "WLF09H" (จ่าย 9 ปี) "WLF19H" (จ่าย 19 ปี) หรือ "WLF99H" (จ่ายถึงอายุ 99)
 - mode เป็น "annual" (รายปี) "semi" (ราย 6 เดือน) หรือ "monthly" (รายเดือน)
 - question เขียนคำถามใหม่ให้เข้าใจได้ด้วยตัวเอง โดยเติมสิ่งที่อ้างถึงจากบทสนทนาก่อนหน้า
@@ -114,7 +121,8 @@ export function asksAboutDeathBenefit(text: string): boolean {
  * one button and quote on the next two. That is the first message of nearly every
  * conversation the campaign pays for, so it is settled here rather than left to a coin flip.
  */
-const ASKS_FOR_PRICE = /สนใจ|ขอ\s*เบี้ย|เบี้ย\s*เท่า|ราคา|คิดเบี้ย|เช็[กค]\s*เบี้ย|ทำทุน|อยากทำ/i;
+const ASKS_FOR_PRICE =
+  /สนใจ|ขอ\s*เบี้ย|เบี้ย\s*เท่า|ราคา|คิดเบี้ย|เช็[กค]\s*เบี้ย|ทำทุน|อยากทำ|รายละเอียด|ขอทราบ|สอบถาม/i;
 
 /** Whether a message asks for a premium on a sum it names. */
 export function asksForPrice(text: string): boolean {
@@ -150,6 +158,30 @@ export function asksAboutTrust(text: string): boolean {
   return TRUST_QUESTION.test(text);
 }
 
+/**
+ * The age a date of birth in the message works out to, or undefined when it names none.
+ *
+ * Customers answer "อายุเท่าไหร่" with a birthdate as readily as with a number — "เกิด
+ * 14/12/2523 ผู้หญิง" — and the model read that one as 43 when it is 45. Two years is a
+ * different premium. An age is arithmetic on a calendar, so it is done here, and only from a
+ * whole date: a bare year cannot say whether the birthday has passed, and guessing it wrong
+ * is the same mistake one year smaller.
+ */
+export function ageFromBirthdate(text: string, today: Date = new Date()): number | undefined {
+  const m = text.match(/(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})/);
+  if (!m) return undefined;
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  const named = Number(m[3]);
+  if (day < 1 || day > 31 || month < 1 || month > 12) return undefined;
+  // a year in the 2500s is พ.ศ.; anything else is read as ค.ศ.
+  const year = named >= 2400 ? named - 543 : named;
+  const passed = today.getMonth() + 1 > month
+    || (today.getMonth() + 1 === month && today.getDate() >= day);
+  const age = today.getFullYear() - year - (passed ? 0 : 1);
+  return age >= 0 && age <= 99 ? age : undefined;
+}
+
 /** Anything the model returns is checked here, so an invented package never reaches the engine. */
 function clean(raw: Routed, history: ChatMessage[]): Routed {
   const out: Routed = { intent: ["quote", "plan_info", "other"].includes(raw.intent) ? raw.intent : "other" };
@@ -162,12 +194,15 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
   const variant = named ?? raw.variant;
   if (variant && variant in getPlan(PLAN_CODE)!.variantLabels) out.variant = variant;
 
-  if (typeof raw.age === "number" && raw.age >= 0 && raw.age <= 99) out.age = Math.trunc(raw.age);
+  // a birthdate in the message beats whatever age the model worked out from it
+  const born = ageFromBirthdate(last);
+  if (born !== undefined) out.age = born;
+  else if (typeof raw.age === "number" && raw.age >= 0 && raw.age <= 99) out.age = Math.trunc(raw.age);
   if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
-  if (typeof raw.sumAssured === "number" && raw.sumAssured > 0) out.sumAssured = Math.trunc(raw.sumAssured);
+  if (typeof raw.coverWanted === "number" && raw.coverWanted > 0) out.coverWanted = Math.trunc(raw.coverWanted);
   if (raw.mode === "annual" || raw.mode === "semi" || raw.mode === "monthly") out.mode = raw.mode;
   // a sum the customer named, in a message asking for a price, is a request for a price
-  if (out.intent !== "quote" && out.sumAssured !== undefined && asksForPrice(last)) out.intent = "quote";
+  if (out.intent !== "quote" && out.coverWanted !== undefined && asksForPrice(last)) out.intent = "quote";
   out.question = typeof raw.question === "string" && raw.question.trim() ? raw.question.trim() : last;
   return out;
 }
@@ -179,8 +214,18 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
 export function mergeSlots(previous: Routed | null, current: Routed): Routed {
   if (!previous) return current;
   const merged: Routed = { ...current };
+  /**
+   * Someone filling in what the quote was waiting for is still asking for the quote.
+   *
+   * The bot asks for a sex and an age; the customer sends "เกิด 14/12/2523 ผู้หญิง", which
+   * names no price and reads to the model like a plan question. It was answered with a
+   * paragraph and no premium, one message after the bot had promised one.
+   */
+  if (previous.intent === "quote" && (current.age !== undefined || current.sex !== undefined || current.coverWanted !== undefined)) {
+    merged.intent = "quote";
+  }
   if (merged.variant === undefined) merged.variant = previous.variant;
-  if (merged.sumAssured === undefined) merged.sumAssured = previous.sumAssured;
+  if (merged.coverWanted === undefined) merged.coverWanted = previous.coverWanted;
   if (merged.age === undefined) merged.age = previous.age;
   if (merged.sex === undefined) merged.sex = previous.sex;
   if (merged.mode === undefined) merged.mode = previous.mode;

@@ -43,14 +43,14 @@ const ASK_FOR_DETAILS =
  */
 function askForMissing(slots: Routed, table: LifeProtectTable): string {
   const known: string[] = [];
-  if (slots.sumAssured !== undefined) known.push(`ทุน ${slots.sumAssured.toLocaleString("en-US")} บาท`);
+  if (slots.coverWanted !== undefined) known.push(`ครอบครัวได้รับ ${slots.coverWanted.toLocaleString("en-US")} บาท`);
   if (slots.variant) known.push(table.terms.find((t) => t.variant === slots.variant)?.label ?? "");
 
   const missing: string[] = [];
   const example: string[] = [];
   if (slots.sex === undefined) { missing.push("เพศ"); example.push("ชาย"); }
   if (slots.age === undefined) { missing.push("อายุ"); example.push("35"); }
-  if (slots.sumAssured === undefined) { missing.push("ทุนประกันที่สนใจ"); example.push("ทุน 1 ล้าน"); }
+  if (slots.coverWanted === undefined) { missing.push("ทุนประกันที่สนใจ"); example.push("ทุน 1 ล้าน"); }
   if (missing.length === 0) return ASK_FOR_DETAILS;
 
   const ask = `รบกวนบอก${missing.join("กับ")}ด้วยครับ แล้วผมคิดเบี้ยให้เลย (เช่น "${example.join(" ")}")`;
@@ -121,6 +121,26 @@ function lastAsked(history: ChatMessage[]): string {
   return [...history].reverse().find((m) => m.role === "user")?.content ?? "";
 }
 
+/**
+ * The multiple this plan pays on death at that age: twice the sum assured before the booster
+ * age, once after it.
+ */
+function coverMultiple(table: LifeProtectTable, age: number): number {
+  return age < table.boosterBeforeAge ? 1 + table.booster : 1;
+}
+
+/**
+ * The sum assured that pays what the customer asked for.
+ *
+ * A customer who says "ทุน 3 ล้าน" means three million reaching the family, and before sixty
+ * this plan pays twice the sum assured — so the contract behind that sentence is written at
+ * one and a half. Past the booster age there is no doubling left to divide by, and the two
+ * numbers are the same. Rounded to a whole thousand, which is the unit the rate table prices in.
+ */
+function sumForCover(table: LifeProtectTable, age: number, cover: number): number {
+  return Math.round(cover / coverMultiple(table, age) / 1000) * 1000;
+}
+
 /** The quote as the sales page would state it, or a sentence saying why there is none. */
 function answerQuote(slots: Routed): Omit<Answer, "slots"> {
   if (slots.variant && !QUOTABLE.has(slots.variant)) {
@@ -128,8 +148,8 @@ function answerQuote(slots: Routed): Omit<Answer, "slots"> {
   }
 
   const table = lifeProtectTable();
-  const { age, sex, sumAssured } = slots;
-  if (age === undefined || sex === undefined || sumAssured === undefined) {
+  const { age, sex, coverWanted } = slots;
+  if (age === undefined || sex === undefined || coverWanted === undefined) {
     return { reply: askForMissing(slots, table) };
   }
 
@@ -141,10 +161,13 @@ function answerQuote(slots: Routed): Omit<Answer, "slots"> {
   }
 
   const variant = slots.variant ?? DEFAULT_TERM;
-  // the floor is a rule of the plan, not a field of the page's slim table
+  const sumAssured = sumForCover(table, age, coverWanted);
+  // the floor is a rule of the plan, not a field of the page's slim table — and it is stated
+  // back in the customer's own terms, which are what the family receives
   const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, variant).min;
   if (sumAssured < floor) {
-    return { reply: `ทุนประกันขั้นต่ำของแบบนี้คือ ${floor.toLocaleString("en-US")} บาทครับ บอกทุนที่สนใจมาใหม่ได้เลย` };
+    const smallest = floor * coverMultiple(table, age);
+    return { reply: `แบบนี้เริ่มต้นที่ครอบครัวได้รับ ${smallest.toLocaleString("en-US")} บาทครับ บอกจำนวนที่สนใจมาใหม่ได้เลย` };
   }
 
   const term = termAt(table, variant);
