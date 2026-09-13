@@ -239,6 +239,24 @@ describe("asking how long the premium runs", () => {
   });
 });
 
+describe("leaving to think it over", () => {
+  it("leaves the door open by name once a quotation is in hand, and asks nothing", async () => {
+    chat.mockClear();
+    const answer = await answerQuestion(said("เดี๋ยวคิดดูก่อนนะคะ"), { intent: "quote", age: 38, sex: "M", coverWanted: 2_000_000 });
+    expect(answer.messages).toHaveLength(1);
+    expect(answer.messages[0].text).toBe("ได้เลยครับ ถ้าตัดสินใจแล้วหรืออยากได้ใบเสนออย่างเป็นทางการ ทักมาได้เลยนะครับ");
+    expect(chat).not.toHaveBeenCalled();
+    expect(answer.slots.coverWanted).toBe(2_000_000);
+  });
+
+  it("just says come back when nothing has been priced", async () => {
+    chat.mockClear();
+    const answer = await answerQuestion(said("ไว้จะติดต่อกลับค่ะ"), null);
+    expect(answer.messages[0].text).toBe("ได้เลยครับ สะดวกเมื่อไหร่ทักมาได้เลยนะครับ");
+    expect(chat).not.toHaveBeenCalled();
+  });
+});
+
 describe("the price being too much", () => {
   const known = { intent: "quote" as const, age: 38, sex: "M" as const, coverWanted: 2_000_000 };
   const monthlyFor = (variant: string, sum: number) => {

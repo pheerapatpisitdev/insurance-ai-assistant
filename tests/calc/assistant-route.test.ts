@@ -8,7 +8,7 @@ vi.mock("@/lib/ai/client", async () => {
   return { ...actual, chat };
 });
 
-const { affirms, ageFromBirthdate, asksCheaper, mergeSlots, routeMessage } = await import("@/lib/assistant/route");
+const { affirms, ageFromBirthdate, asksCheaper, mergeSlots, routeMessage, stalls } = await import("@/lib/assistant/route");
 
 /** The age someone born on that date is today, counted the way a person counts it. */
 function ageOn(today: Date, day: number, month: number, year: number): number {
@@ -129,6 +129,20 @@ describe("a bare yes", () => {
     const offer = { coverWanted: 1_000_000, sumAssured: 500_000, variant: "WLF99H" };
     const merged = mergeSlots({ intent: "quote", age: 38, sex: "M", coverWanted: 2_000_000, offer }, { intent: "other" });
     expect(merged.offer).toEqual(offer);
+  });
+});
+
+describe("leaving to think it over", () => {
+  it("is heard in the ways people say it", () => {
+    for (const t of ["เดี๋ยวคิดดูก่อนนะคะ", "ขอปรึกษาแฟนก่อนค่ะ", "ไว้จะติดต่อกลับค่ะ", "ขอเวลาคิดหน่อย", "ยังไม่ตัดสินใจครับ"]) {
+      expect(stalls(t), t).toBe(true);
+    }
+  });
+
+  it("is not a question that happens to mention thinking", () => {
+    for (const t of ["ถ้าคิดดูแล้วสนใจ ต้องทำยังไงต่อ", "คิดดูก่อนได้ไหม", "ติดต่อกลับทางไหน", "ขอบคุณค่ะ"]) {
+      expect(stalls(t), t).toBe(false);
+    }
   });
 });
 

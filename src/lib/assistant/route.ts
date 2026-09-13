@@ -199,6 +199,19 @@ export function affirms(text: string): boolean {
   return text.length <= 30 && !/\d/.test(text) && AFFIRMS.test(text);
 }
 
+/**
+ * Stepping back — "เดี๋ยวคิดดูก่อน", "ขอปรึกษาแฟนก่อน", "ไว้จะติดต่อกลับ". Not a question, not
+ * a refusal: a person who has what they came for and is leaving to think.
+ */
+const STALLS = /คิดดูก่อน|ขอคิดดู|คิดก่อน|ไว้ก่อน|ไว้ค่อย|ติดต่อกลับ|เดี๋ยวติดต่อ|ทักกลับ|ขอปรึกษา|ปรึกษาก่อน|ปรึกษาที่บ้าน|ยังไม่ตัดสินใจ|ขอเวลา|เดี๋ยวมาใหม่|ขอดูก่อน/;
+/** A stall that is really a question stays a question. */
+const ASKS = /\?|ไหม|มั้ย|ยังไง|อย่างไร|อะไร|เท่าไ|กี่/;
+
+/** Whether the customer is leaving to think it over. */
+export function stalls(text: string): boolean {
+  return STALLS.test(text) && !ASKS.test(text);
+}
+
 /** Whether a message is asking who stands behind the policy. */
 export function asksAboutCompany(text: string): boolean {
   return INSURER_QUESTION.test(text) || TRUST_QUESTION.test(text);

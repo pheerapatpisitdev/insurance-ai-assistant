@@ -10,7 +10,7 @@ import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprot
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
 import { faqAnswer } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
-import { affirms, asksAboutCompany, asksAboutTrust, asksCheaper, asksPayTerm, mergeSlots, PLAN_CODE, recentTurns, routeMessage, type Routed } from "./route";
+import { affirms, asksAboutCompany, asksAboutTrust, asksCheaper, asksPayTerm, mergeSlots, PLAN_CODE, recentTurns, routeMessage, stalls, type Routed } from "./route";
 
 /** The package quoted when the customer has not named one: the cheapest instalment of the three. */
 const DEFAULT_TERM = "WLF99H";
@@ -359,6 +359,18 @@ function answerCheaper(slots: Routed): Answer {
     : "บอกทุนที่อยากได้มาใหม่ได้เลยครับ เดี๋ยวคิดให้");
 
   return { messages: [{ text: lines.join("\n") }], slots: { ...slots, offer } };
+}
+
+/**
+ * What the bot says when the customer steps back. One line, no question, and — once they
+ * have a quotation in hand — the door left open by name: the owner's choice, over silence
+ * and over a follow-up.
+ */
+function stallReply(slots: Routed): string {
+  const quoted = slots.age !== undefined && slots.sex !== undefined && slots.coverWanted !== undefined;
+  return quoted
+    ? "ได้เลยครับ ถ้าตัดสินใจแล้วหรืออยากได้ใบเสนออย่างเป็นทางการ ทักมาได้เลยนะครับ"
+    : "ได้เลยครับ สะดวกเมื่อไหร่ทักมาได้เลยนะครับ";
 }
 
 /** The terms this quote did not take, offered by name so the customer can ask for one. */
