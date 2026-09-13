@@ -53,7 +53,9 @@ const MAX_BUBBLES = 3;
 
 function spoken(text: string): Omit<Answer, "slots"> {
   const parts = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-  if (parts.length <= 1) return one(text.trim());
+  if (parts.length === 0) return one(ASK_FOR_DETAILS);
+  if (parts.length <= MAX_BUBBLES) return { messages: parts.map((t) => ({ text: t })) };
+  // more than fits: the last bubble carries the rest, so nothing is dropped and none is empty
   const head = parts.slice(0, MAX_BUBBLES - 1);
   const tail = parts.slice(MAX_BUBBLES - 1).join("\n\n");
   return { messages: [...head, tail].map((t) => ({ text: t })) };
@@ -349,10 +351,16 @@ function quotedFigures(slots: Routed, table: LifeProtectTable): string | undefin
 
   const baht = (satang: number) => Math.round(satang / 100).toLocaleString("en-US");
   const by = (mode: string) => modes.find((m) => m.mode === mode);
+  // the last row of the surrender schedule is what the policy pays for staying to the end —
+  // asked "ถ้าไม่ตายจนครบสัญญาได้อะไร", the model had called it the sum assured, which it is
+  // not for every term
+  const cash = cashAt(termAt(table, variant), sex, age, sumAssured, table.ageMin);
+  const end = cash[cash.length - 1];
   return [
     by("monthly") ? `รายเดือน ${baht(by("monthly")!.total)} บาท` : "",
     by("semi") ? `ราย 6 เดือน ${baht(by("semi")!.total)} บาท` : "",
     by("annual") ? `รายปี ${baht(by("annual")!.total)} บาท` : "",
+    end ? `อยู่ครบสัญญาถึงอายุ ${end.age} รับเงินคืน ${end.amount.toLocaleString("en-US")} บาท` : "",
   ].filter(Boolean).join(" · ");
 }
 
@@ -401,6 +409,7 @@ function planInfoText(): string {
     `เสียชีวิตก่อนอายุ ${f.boosterBeforeAge} ปี ครอบครัวได้รับ 2 เท่าของทุน ตั้งแต่อายุ ${f.boosterBeforeAge} ปีขึ้นไปได้รับ 1 เท่าของทุน`,
     `แบบการชำระเบี้ยมีให้เลือก ${table.terms.filter((t) => QUOTABLE.has(t.variant)).map((t) => t.label).join(" / ")}`,
     "เบี้ยคงที่ตลอดระยะเวลาชำระ และมีมูลค่าเวนคืนสะสม",
+    `อยู่ครบสัญญาถึงอายุ ${f.coverToAge} ได้รับเงินคืนเท่ากับมูลค่าเงินสดสะสม ณ อายุนั้น (ตัวเลขต่างกันตามทุน อายุ และแบบชำระ อยู่ในใบเสนอราคาของแต่ละคน ไม่ใช่ทุนประกันเสมอไป)`,
     `ตัวอย่าง ${f.example.sex === "M" ? "ชาย" : "หญิง"}อายุ ${f.example.age} ปี ทุน ${f.example.sum} บาท: ${example}`,
     `มูลค่าเวนคืนเมื่ออายุ 60 ปีของตัวอย่างแบบจ่าย 19 ปี ${f.cash60} บาท`,
   ].join("\n");

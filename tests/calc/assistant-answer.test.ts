@@ -309,6 +309,21 @@ describe("everything else", () => {
     expect(system).toContain("รายเดือน 3,861 บาท");
     expect(system).toContain("รายปี 42,900 บาท");
     expect(system).toContain("ห้ามคำนวณเอง");
+    // and what staying to the end pays, which the model had been guessing
+    expect(system).toContain("อยู่ครบสัญญาถึงอายุ 99 รับเงินคืน 1,000,000 บาท");
+  });
+
+  it("splits a model's paragraphs into bubbles without ever sending an empty one", async () => {
+    routed = { intent: "plan_info" };
+    worded = "บรรทัดหนึ่งครับ\n\nบรรทัดสองครับ";
+    const two = await answerQuestion(said("คุ้มครองยังไง"), null);
+    expect(two.messages.map((m) => m.text)).toEqual(["บรรทัดหนึ่งครับ", "บรรทัดสองครับ"]);
+
+    worded = "หนึ่ง\n\nสอง\n\nสาม\n\nสี่\n\nห้า";
+    const many = await answerQuestion(said("คุ้มครองยังไง"), null);
+    expect(many.messages).toHaveLength(3);
+    expect(many.messages[2].text).toBe("สาม\n\nสี่\n\nห้า");
+    expect(many.messages.every((m) => m.text.trim().length > 0)).toBe(true);
   });
 
   it("forbids figures outright until something has been priced", async () => {
