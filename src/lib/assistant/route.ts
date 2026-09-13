@@ -289,13 +289,11 @@ export function peopleIn(text: string): { age: number; sex: "M" | "F" }[] {
  *
  * Customers answer "อายุเท่าไหร่" with a birthdate as readily as with a number — "เกิด
  * 14/12/2523 ผู้หญิง" — and the model read that one as 43 when it is 45. Two years is a
- * different premium. An age is arithmetic on a calendar, so it is done here, and only from a
- * whole date: a bare year cannot say whether the birthday has passed, and guessing it wrong
- * is the same mistake one year smaller.
+ * different premium. An age is arithmetic on a calendar, so it is done here.
  */
 export function ageFromBirthdate(text: string, today: Date = new Date()): number | undefined {
   const m = text.match(/(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})/);
-  if (!m) return undefined;
+  if (!m) return ageFromBirthYear(text, today);
   const day = Number(m[1]);
   const month = Number(m[2]);
   const named = Number(m[3]);
@@ -305,6 +303,27 @@ export function ageFromBirthdate(text: string, today: Date = new Date()): number
   const passed = today.getMonth() + 1 > month
     || (today.getMonth() + 1 === month && today.getDate() >= day);
   const age = today.getFullYear() - year - (passed ? 0 : 1);
+  return age >= 0 && age <= 99 ? age : undefined;
+}
+
+/**
+ * The age behind a birth year with no day or month — "เกิด2522 เพศญ".
+ *
+ * It cannot say whether this year's birthday has passed, which is why it was once left to
+ * the model. The model answered 47 with 45, to a customer waiting on a premium, so the
+ * arithmetic is done here instead and read the way it is said aloud in Thai: this year's
+ * พ.ศ. less the year named. Someone whose birthday is still to come is a year out, and the
+ * quotation prints the age it used, so they can say so.
+ *
+ * The year must follow the word เกิด. Every other four-digit number in these conversations
+ * is money.
+ */
+function ageFromBirthYear(text: string, today: Date): number | undefined {
+  const m = text.match(/เกิด\s*(?:ปี\s*)?(?:พ\s*\.?\s*ศ\s*\.?\s*)?(\d{4})(?!\d)/);
+  if (!m) return undefined;
+  const named = Number(m[1]);
+  const year = named >= 2400 ? named - 543 : named;
+  const age = today.getFullYear() - year;
   return age >= 0 && age <= 99 ? age : undefined;
 }
 

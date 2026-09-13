@@ -89,8 +89,23 @@ describe("an age given as a birthdate", () => {
     expect(ageFromBirthdate("เกิด 01/01/2523", new Date("2026-09-13"))).toBe(46);
   });
 
-  it("leaves a bare year to be asked about", () => {
-    expect(ageFromBirthdate("เกิดปี 2523")).toBeUndefined();
+  it("reads a bare birth year the way a Thai customer says it", () => {
+    const today = new Date("2026-09-13");
+    expect(ageFromBirthdate("เกิด2522 เพศญ", today)).toBe(47);
+    expect(ageFromBirthdate("ปีเกิด 2519 ครับ", today)).toBe(50);
+    expect(ageFromBirthdate("เกิด พ.ศ. 2530", today)).toBe(39);
+    expect(ageFromBirthdate("เกิด 1979", today)).toBe(47);
+  });
+
+  it("does not read a birth year out of any four digits", () => {
+    const today = new Date("2026-09-13");
+    expect(ageFromBirthdate("สนใจประกันมรดก ทุน 1,000,000", today)).toBeUndefined();
+    expect(ageFromBirthdate("ขอทุน 2000000 ครับ", today)).toBeUndefined();
+    expect(ageFromBirthdate("จ่ายถึงปี 2599", today)).toBeUndefined();
+  });
+
+  it("still lets a whole date win over the year inside it", () => {
+    expect(ageFromBirthdate("เกิด 31/12/2523", new Date("2026-09-13"))).toBe(45);
   });
 
   it("ignores a date that is not one", () => {
