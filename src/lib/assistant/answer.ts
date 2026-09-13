@@ -167,7 +167,7 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
   if (faq) return { ...one(faq), slots };
 
   if (slots.intent === "plan_info") return { ...(await answerPlanInfo(history, slots)), slots };
-  return { ...(await answerSmallTalk(history)), slots };
+  return { ...(await answerSmallTalk(history, slots)), slots };
 }
 
 /** What the customer said this turn. */
@@ -449,12 +449,19 @@ async function answerPlanInfo(history: ChatMessage[], slots: Routed): Promise<Om
   return spoken(r.text.trim() || ASK_FOR_DETAILS);
 }
 
-async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "slots">> {
+/**
+ * Small talk is told what is known too. "เดี๋ยวคิดดูก่อนนะคะ", from someone quoted a minute
+ * earlier, was answered with a request for their age, sex and amount.
+ */
+async function answerSmallTalk(history: ChatMessage[], slots: Routed): Promise<Omit<Answer, "slots">> {
   const r = await chat({
     tier: "small",
     task: "small_talk",
     maxTokens: 200,
-    messages: [{ role: "system", content: SMALL_TALK_SYSTEM }, ...recentTurns(history, 6)],
+    messages: [
+      { role: "system", content: `${SMALL_TALK_SYSTEM}${knownSoFar(slots, lifeProtectTable())}` },
+      ...recentTurns(history, 6),
+    ],
   });
   return spoken(r.text.trim() || ASK_FOR_DETAILS);
 }

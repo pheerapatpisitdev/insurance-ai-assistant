@@ -17,6 +17,11 @@ describe("what the model is told", () => {
     expect(PLAN_INFO_SYSTEM).toContain("ระบบช่วยตอบของเพจ");
   });
 
+  it("lets a customer leave without being asked for anything", () => {
+    expect(SMALL_TALK_SYSTEM).toContain("ขอคิดดูก่อน");
+    expect(SMALL_TALK_SYSTEM).toContain("ห้ามขอข้อมูล ห้ามชวนคุยต่อ ห้ามขาย");
+  });
+
   it("still names what a person must answer", () => {
     expect(PLAN_INFO_SYSTEM).toContain("การเคลม");
     expect(PLAN_INFO_SYSTEM).toContain("การพิจารณาสุขภาพ");

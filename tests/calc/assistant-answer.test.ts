@@ -445,6 +445,15 @@ describe("everything else", () => {
     expect(answer.priced).toBeFalsy();
   });
 
+  it("tells small talk what the customer already gave, so a goodbye is not an intake form", async () => {
+    routed = { intent: "other" };
+    chat.mockClear();
+    await answerQuestion(said("เดี๋ยวคิดดูก่อนนะคะ"), { intent: "quote", age: 38, sex: "M", coverWanted: 2_000_000 });
+    const system = chat.mock.calls[1][0].messages[0].content as string;
+    expect(system).toContain("ชาย · อายุ 38 ปี · ครอบครัวได้รับ 2,000,000 บาท");
+    expect(system).toContain("ห้ามขอข้อมูลที่ทราบแล้วซ้ำอีก");
+  });
+
   it("falls back to asking for the details when the model says nothing", async () => {
     routed = { intent: "other" };
     worded = "   ";
