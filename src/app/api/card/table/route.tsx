@@ -16,8 +16,6 @@ const GOLD = "#c9a26f";
 const GOLD_LIT = "#f2e0bb";
 const GOLD_GLOW = "rgba(201,162,111,0.14)";
 const WHITE = "#f5f5f5";
-const MUTE = "rgba(245,245,245,0.72)";
-const FAINT = "rgba(245,245,245,0.42)";
 const HAIR = "rgba(201,162,111,0.24)";
 const RULE = "rgba(255,255,255,0.12)";
 const STRIPE = "rgba(255,255,255,0.035)";
@@ -104,12 +102,21 @@ function Half({ columns, rows }: { columns: string[]; rows: ValueTableRow[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", width: HALF, flexShrink: 0 }}>
       <div style={{ ...band(H.head), width: HALF, fontSize: 21, borderBottom: `1px solid ${HAIR}` }}>
-        {columns.map((c, i) => <Cell key={c} i={i} height={H.head - 1} color={MUTE}>{c}</Cell>)}
+        {columns.map((c, i) => <Cell key={c} i={i} height={H.head - 1} color={WHITE}>{c}</Cell>)}
       </div>
       {rows.map((r, n) => {
         // the year the value first covers what has gone in is the one the customer looks for
         const ground = r.breakEven ? GOLD_GLOW : n % 2 ? STRIPE : undefined;
-        const ink = r.breakEven ? GOLD_LIT : r.empty ? FAINT : WHITE;
+        /**
+         * One ink for the whole table.
+         *
+         * The opening years used to recede, and the year and age columns were grey the way a
+         * label is. On a phone, zoomed in, that reads as text that has been switched off —
+         * the owner's word for it was "why is it grey". The years worth nothing say so in
+         * their own column, with a nought and a note underneath; they do not also need to be
+         * hard to read.
+         */
+        const ink = r.breakEven ? GOLD_LIT : WHITE;
         const cells = [String(r.year), String(r.age), r.paid ?? "—", r.cash, r.cover];
         return (
           <div
@@ -117,9 +124,7 @@ function Half({ columns, rows }: { columns: string[]; rows: ValueTableRow[] }) {
             style={{ ...band(H.row), width: HALF, fontSize: 22, ...(ground ? { background: ground } : {}) }}
           >
             {cells.map((cell, i) => (
-              <Cell key={columns[i]} i={i} height={H.row} color={i < 2 ? (r.breakEven ? GOLD_LIT : MUTE) : ink}>
-                {cell}
-              </Cell>
+              <Cell key={columns[i]} i={i} height={H.row} color={ink}>{cell}</Cell>
             ))}
           </div>
         );
@@ -183,7 +188,7 @@ export async function GET(req: NextRequest) {
         }}
       >
         <div style={{ ...band(H.plan), fontSize: 27, fontWeight: 600, color: GOLD }}>{card.planLine}</div>
-        <div style={{ ...band(H.insured), fontSize: 25, color: MUTE }}>{card.insuredLine}</div>
+        <div style={{ ...band(H.insured), fontSize: 25, color: WHITE }}>{card.insuredLine}</div>
         <div style={{ ...band(H.premium), fontFamily: "Trirong", fontSize: 30, color: GOLD_LIT }}>
           {card.premiumLine}
         </div>
@@ -203,7 +208,7 @@ export async function GET(req: NextRequest) {
         <div style={spacer(H.hairline, RULE)} />
         <div style={spacer(H.afterHairline)} />
         {card.notes.map((n) => (
-          <div key={n} style={{ ...band(H.note), fontSize: 20, color: MUTE }}>{n}</div>
+          <div key={n} style={{ ...band(H.note), fontSize: 20, color: WHITE }}>{n}</div>
         ))}
       </div>
     ),
