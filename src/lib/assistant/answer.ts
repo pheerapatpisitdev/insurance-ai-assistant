@@ -91,15 +91,18 @@ const ABOUT_AGENTS = [
 
 const ABOUT_TRUST = "ถ้าอยากคุยรายละเอียดกับตัวแทนโดยตรง เดี๋ยวมีคนมาตอบในแชทนี้ครับ";
 
-const BACK_TO_QUOTE = "ระหว่างนี้ถ้าอยากทราบเบี้ยของอายุตัวเอง บอกเพศกับอายุมาได้เลยครับ";
-
 /**
  * The answer to a question about who stands behind the policy: the insurer, then the people
  * selling it. Built from constants and never from a model — asked the same question, a model
  * agreed with whichever company name the customer had guessed.
+ *
+ * It ends there. It used to close by asking for an age and a sex, which reads as not
+ * listening to a customer who has already given both — and the question was answered, so
+ * there is nothing to add to it.
  */
 export function aboutCompany(question: string): string {
-  return [ABOUT_INSURER, "", ABOUT_AGENTS, "", asksAboutTrust(question) ? ABOUT_TRUST : BACK_TO_QUOTE].join("\n");
+  const tail = asksAboutTrust(question) ? ["", ABOUT_TRUST] : [];
+  return [ABOUT_INSURER, "", ABOUT_AGENTS, ...tail].join("\n");
 }
 
 export async function answerQuestion(history: ChatMessage[], previous: Routed | null): Promise<Answer> {

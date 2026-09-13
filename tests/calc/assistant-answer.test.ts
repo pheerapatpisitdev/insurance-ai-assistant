@@ -149,6 +149,8 @@ describe("who stands behind the policy", () => {
     expect(answer.reply).toContain("6001028534");
     expect(answer.reply).toContain("6401024117");
     expect(answer.reply).toContain("คปภ.");
+    // the question was answered; it does not then ask for details it may already have
+    expect(answer.reply).not.toContain("บอกเพศกับอายุ");
     // the licences carry a national id beside the number; it must never reach a customer
     expect(answer.reply).not.toMatch(/\b1[0-9]{12}\b/);
   });
