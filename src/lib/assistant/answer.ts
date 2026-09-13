@@ -20,14 +20,31 @@ const DEFAULT_TERM = "WLF99H";
  */
 const QUOTABLE = new Set(["WLF09H", "WLF19H", "WLF99H"]);
 
+/** One message the bot sends, and the picture that follows it. */
+export interface Said {
+  text: string;
+  /** where the quote is drawn as a picture, as a path on this site */
+  card?: string;
+}
+
 export interface Answer {
-  reply: string;
-  /** carried into the next turn so a follow-up keeps the age, sex and sum */
+  /**
+   * What the bot sends, in the order it sends it.
+   *
+   * A list rather than one string because a customer pricing a couple — "ผญ 32 ผช33ค่ะ" —
+   * is owed a quote each, and two quotes in one bubble is a wall of figures nobody can read
+   * back to their partner.
+   */
+  messages: Said[];
+  /** carried into the next turn so a follow-up keeps the age, sex and amount */
   slots: Routed;
   /** the answer carries a premium — the moment a browser turns into someone worth calling */
   priced?: boolean;
-  /** where the quote is drawn as a picture, as a path on this site */
-  card?: string;
+}
+
+/** The usual case: the bot says one thing. */
+function one(text: string, card?: string): Omit<Answer, "slots"> {
+  return { messages: [card ? { text, card } : { text }] };
 }
 
 const ASK_FOR_DETAILS =
@@ -110,7 +127,7 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
   // checked before the routes that speak: a question about the company is answered by the
   // agency's own sentence whatever else the turn was about
   const asked = lastAsked(history);
-  if (asksAboutCompany(asked)) return { reply: aboutCompany(asked), slots };
+  if (asksAboutCompany(asked)) return { ...one(aboutCompany(asked)), slots };
   if (slots.intent === "quote") return { ...answerQuote(slots), slots };
   if (slots.intent === "plan_info") return { ...(await answerPlanInfo(history)), slots };
   return { ...(await answerSmallTalk(history)), slots };
@@ -141,57 +158,70 @@ function sumForCover(table: LifeProtectTable, age: number, cover: number): numbe
   return Math.round(cover / coverMultiple(table, age) / 1000) * 1000;
 }
 
-/** The quote as the sales page would state it, or a sentence saying why there is none. */
-function answerQuote(slots: Routed): Omit<Answer, "slots"> {
-  if (slots.variant && !QUOTABLE.has(slots.variant)) {
-    return { reply: `ในแชทนี้ผมคิดให้ได้เฉพาะแบบ Life Protect x 2 ครับ แบบอื่นขอให้ตัวแทนเสนอให้นะครับ ${HAND_OVER}` };
-  }
-
-  const table = lifeProtectTable();
-  const { age, sex, coverWanted } = slots;
-  if (age === undefined || sex === undefined || coverWanted === undefined) {
-    return { reply: askForMissing(slots, table) };
-  }
-
-  if (table.expired) {
-    return { reply: `ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HAND_OVER}` };
-  }
+/** One insured, priced — or a sentence saying why this one has no price. */
+function quoteFor(
+  table: LifeProtectTable, variant: string, who: { age: number; sex: "M" | "F" }, coverWanted: number,
+): Said {
+  const { age, sex } = who;
   if (age < table.ageMin || age > table.ageMax) {
-    return { reply: `แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
+    return { text: `อายุ ${age} ปี แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
   }
 
-  const variant = slots.variant ?? DEFAULT_TERM;
   const sumAssured = sumForCover(table, age, coverWanted);
   // the floor is a rule of the plan, not a field of the page's slim table — and it is stated
   // back in the customer's own terms, which are what the family receives
   const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, variant).min;
   if (sumAssured < floor) {
     const smallest = floor * coverMultiple(table, age);
-    return { reply: `แบบนี้เริ่มต้นที่ครอบครัวได้รับ ${smallest.toLocaleString("en-US")} บาทครับ บอกจำนวนที่สนใจมาใหม่ได้เลย` };
+    return { text: `แบบนี้เริ่มต้นที่ครอบครัวได้รับ ${smallest.toLocaleString("en-US")} บาทครับ บอกจำนวนที่สนใจมาใหม่ได้เลย` };
   }
 
   const term = termAt(table, variant);
   const modes = lifeProtectModes(table, term, { sex, age, sumAssured });
-  if (!modes) return { reply: `แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
-
-  const text = lifeProtectQuoteText({
-    sumAssured,
-    termLabel: term.label,
-    age,
-    sex,
-    modes,
-    death: deathBenefitOf(table, age, sumAssured),
-    cash: cashAt(term, sex, age, sumAssured, table.ageMin),
-  });
+  if (!modes) return { text: `อายุ ${age} ปี แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
 
   return {
-    reply: `${text}\n\n${otherTerms(table, variant)}`,
-    priced: true,
-    card: cardPath({
-      kind: "plan", planCode: PLAN_CODE, variant, age, sex, sumAssured,
-      ...(slots.mode ? { mode: slots.mode } : {}),
+    text: lifeProtectQuoteText({
+      sumAssured,
+      termLabel: term.label,
+      age,
+      sex,
+      modes,
+      death: deathBenefitOf(table, age, sumAssured),
+      cash: cashAt(term, sex, age, sumAssured, table.ageMin),
     }),
+    card: cardPath({ kind: "plan", planCode: PLAN_CODE, variant, age, sex, sumAssured }),
   };
+}
+
+/**
+ * The quote, or a sentence saying why there is none — one message per insured.
+ *
+ * A couple asking together gets a quote each, in the order they named themselves, because
+ * each of them is buying their own contract at their own age.
+ */
+function answerQuote(slots: Routed): Omit<Answer, "slots"> {
+  if (slots.variant && !QUOTABLE.has(slots.variant)) {
+    return one(`ในแชทนี้ผมคิดให้ได้เฉพาะแบบ Life Protect x 2 ครับ แบบอื่นขอให้ตัวแทนเสนอให้นะครับ ${HAND_OVER}`);
+  }
+
+  const table = lifeProtectTable();
+  const { age, sex, coverWanted } = slots;
+  const people = slots.people ?? (age !== undefined && sex !== undefined ? [{ age, sex }] : []);
+  if (people.length === 0 || coverWanted === undefined) return one(askForMissing(slots, table));
+
+  if (table.expired) {
+    return one(`ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HAND_OVER}`);
+  }
+
+  const variant = slots.variant ?? DEFAULT_TERM;
+  const messages = people.map((who) => quoteFor(table, variant, who, coverWanted));
+
+  // the offer of the other terms belongs once, under the last price on the screen
+  const last = messages.map((m) => Boolean(m.card)).lastIndexOf(true);
+  if (last >= 0) messages[last].text += `\n\n${otherTerms(table, variant)}`;
+
+  return { messages, priced: last >= 0 };
 }
 
 /** The terms this quote did not take, offered by name so the customer can ask for one. */
@@ -210,7 +240,7 @@ async function answerPlanInfo(history: ChatMessage[]): Promise<Omit<Answer, "slo
       ...recentTurns(history, 6),
     ],
   });
-  return { reply: r.text.trim() || `${ASK_FOR_DETAILS}` };
+  return one(r.text.trim() || ASK_FOR_DETAILS);
 }
 
 async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "slots">> {
@@ -220,7 +250,7 @@ async function answerSmallTalk(history: ChatMessage[]): Promise<Omit<Answer, "sl
     maxTokens: 200,
     messages: [{ role: "system", content: SMALL_TALK_SYSTEM }, ...recentTurns(history, 6)],
   });
-  return { reply: r.text.trim() || ASK_FOR_DETAILS };
+  return one(r.text.trim() || ASK_FOR_DETAILS);
 }
 
 /**

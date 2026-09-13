@@ -14,6 +14,14 @@ export interface Routed {
   age?: number;
   sex?: "M" | "F";
   /**
+   * Everyone the message named, in the order it named them.
+   *
+   * "ผญ 32 ผช33ค่ะ" is one message asking for two quotes — a couple pricing themselves
+   * together, which is the larger sale. The first of them also fills `age` and `sex`, so a
+   * conversation about one person is unchanged.
+   */
+  people?: { age: number; sex: "M" | "F" }[];
+  /**
    * What the customer wants the family to receive, in baht — not the sum assured.
    *
    * "ทุน 3 ล้าน" in a customer's message means three million to the family, which on this
@@ -159,6 +167,35 @@ export function asksAboutTrust(text: string): boolean {
 }
 
 /**
+ * A sex and an age standing next to each other, in either order and in any of the forms
+ * customers actually use: "ผญ 32", "42 ญ", "ชายอายุ 35", "เพศหญิง อายุ 36".
+ *
+ * Read here rather than asked of the model, because the model returns one person and a
+ * message often names two. Two of six conversations from the campaign's first day were a
+ * couple in one line.
+ */
+const SEX_WORD = "ผู้หญิง|ผู้ชาย|ผญ|ผช|หญิง|ชาย|ญ|ช";
+const PERSON_RE = new RegExp(
+  `(${SEX_WORD})\\s*(?:เพศ\\s*)?(?:อายุ\\s*)?(\\d{1,2})(?!\\d)`
+  + `|(\\d{1,2})(?!\\d)\\s*(?:ปี)?\\s*(${SEX_WORD})`,
+  "g",
+);
+
+/** Everyone a message names, in the order it names them. */
+export function peopleIn(text: string): { age: number; sex: "M" | "F" }[] {
+  const out: { age: number; sex: "M" | "F" }[] = [];
+  for (const m of text.matchAll(PERSON_RE)) {
+    const word = m[1] ?? m[4] ?? "";
+    const age = Number(m[2] ?? m[3]);
+    if (!Number.isInteger(age) || age < 0 || age > 99) continue;
+    const sex = word.includes("ญ") ? "F" : "M";
+    // the same person written twice is still one person
+    if (!out.some((p) => p.age === age && p.sex === sex)) out.push({ age, sex });
+  }
+  return out;
+}
+
+/**
  * The age a date of birth in the message works out to, or undefined when it names none.
  *
  * Customers answer "อายุเท่าไหร่" with a birthdate as readily as with a number — "เกิด
@@ -194,11 +231,18 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
   const variant = named ?? raw.variant;
   if (variant && variant in getPlan(PLAN_CODE)!.variantLabels) out.variant = variant;
 
+  // everyone the message itself names, which the model cannot be relied on to count
+  const namedPeople = peopleIn(last);
+  if (namedPeople.length > 1) out.people = namedPeople;
+
   // a birthdate in the message beats whatever age the model worked out from it
   const born = ageFromBirthdate(last);
   if (born !== undefined) out.age = born;
+  else if (namedPeople.length) out.age = namedPeople[0].age;
   else if (typeof raw.age === "number" && raw.age >= 0 && raw.age <= 99) out.age = Math.trunc(raw.age);
-  if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
+
+  if (namedPeople.length) out.sex = namedPeople[0].sex;
+  else if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
   if (typeof raw.coverWanted === "number" && raw.coverWanted > 0) out.coverWanted = Math.trunc(raw.coverWanted);
   if (raw.mode === "annual" || raw.mode === "semi" || raw.mode === "monthly") out.mode = raw.mode;
   // a sum the customer named, in a message asking for a price, is a request for a price
@@ -223,6 +267,10 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
    */
   if (previous.intent === "quote" && (current.age !== undefined || current.sex !== undefined || current.coverWanted !== undefined)) {
     merged.intent = "quote";
+  }
+  // a turn that names its own people replaces the earlier ones rather than adding to them
+  if (merged.people === undefined && current.age === undefined && current.sex === undefined) {
+    merged.people = previous.people;
   }
   if (merged.variant === undefined) merged.variant = previous.variant;
   if (merged.coverWanted === undefined) merged.coverWanted = previous.coverWanted;

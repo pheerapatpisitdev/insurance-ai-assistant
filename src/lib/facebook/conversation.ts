@@ -56,11 +56,15 @@ export async function handle(event: Messaging): Promise<void> {
   await showTyping(psid).catch(() => {});
   try {
     const answer = await answerQuestion(history, session.slots);
-    await sendMessage(psid, answer.reply);
-    // the card follows the words, so the customer reads the answer before the picture of it
-    if (answer.card) await sendImage(psid, siteUrl(answer.card)).catch((e) => console.error("card failed:", e));
+    for (const said of answer.messages) {
+      await sendMessage(psid, said.text);
+      // the card follows its own words, so the customer reads the quote before the picture of
+      // it — and a couple priced together gets the pair in the order they were named
+      if (said.card) await sendImage(psid, siteUrl(said.card)).catch((e) => console.error("card failed:", e));
+    }
+    const spoken = answer.messages.map((m) => m.text).join("\n\n");
     await saveSession(
-      "facebook", userHash, [...history, { role: "assistant", content: answer.reply }], answer.slots, null,
+      "facebook", userHash, [...history, { role: "assistant", content: spoken }], answer.slots, null,
     );
   } catch (e) {
     await sendMessage(psid, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);

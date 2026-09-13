@@ -4,7 +4,9 @@ const sent: { text: string[]; images: string[] } = { text: [], images: [] };
 const session = { messages: [] as { role: "user" | "assistant"; content: string }[], slots: null as unknown, mutedUntil: null as string | null };
 const saved: { mutedUntil: Date | null }[] = [];
 const answer = vi.fn(async () => ({
-  reply: "เบี้ยประมาณ…", slots: { intent: "quote" as const }, priced: true, card: "/api/card?x=1",
+  messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }],
+  slots: { intent: "quote" as const },
+  priced: true,
 }));
 
 vi.mock("@/lib/facebook/client", () => ({
@@ -52,6 +54,22 @@ describe("a customer's message", () => {
   it("is ignored when it carries no words at all", async () => {
     await handle({ sender: { id: "psid" }, message: { mid: "m0" } });
     expect(answer).not.toHaveBeenCalled();
+  });
+});
+
+describe("a couple priced together", () => {
+  it("is sent one message and one card each, in the order they were named", async () => {
+    answer.mockResolvedValueOnce({
+      messages: [
+        { text: "หญิง อายุ 32…", card: "/api/card?a=1" },
+        { text: "ชาย อายุ 33…", card: "/api/card?a=2" },
+      ],
+      slots: { intent: "quote" as const },
+      priced: true,
+    });
+    await handle({ sender: { id: "psid" }, message: { mid: "m9", text: "ผญ 32 ผช33ค่ะ" } });
+    expect(sent.text).toEqual(["หญิง อายุ 32…", "ชาย อายุ 33…"]);
+    expect(sent.images.map((u) => u.slice(-4))).toEqual(["?a=1", "?a=2"]);
   });
 });
 
