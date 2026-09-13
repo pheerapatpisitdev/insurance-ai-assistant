@@ -257,6 +257,17 @@ describe("leaving to think it over", () => {
   });
 });
 
+describe("what the model is told about the plan", () => {
+  it("carries no example premium that could be handed to a customer as their own", async () => {
+    routed = { intent: "plan_info" };
+    await answerQuestion(said("คุ้มครองยังไง"), null);
+    const system = chat.mock.calls.at(-1)![0].messages[0].content as string;
+    expect(system).toContain("Life Protect+ 100");
+    expect(system).not.toContain("ตัวอย่าง");
+    expect(system).not.toMatch(/\d,\d{3} ?บาท\/เดือน|เดือนละ \d/);
+  });
+});
+
 describe("deciding to buy", () => {
   const FORM = "https://ktaxaform.vercel.app/?ref=sa-9f3a";
   const quoted = { intent: "quote" as const, age: 38, sex: "M" as const, coverWanted: 2_000_000 };

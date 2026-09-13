@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sent: { text: string[]; images: string[] } = { text: [], images: [] };
 const session = { messages: [] as { role: "user" | "assistant"; content: string }[], slots: null as unknown, mutedUntil: null as string | null };
-const saved: { mutedUntil: Date | null }[] = [];
+const saved: { mutedUntil?: Date | null }[] = [];
 /** every user hash the handler touched, so one conversation can be shown to be one row */
 const hashesSeen: string[] = [];
 const answer = vi.fn(async () => ({
@@ -24,7 +24,7 @@ vi.mock("@/lib/chat/session", async () => {
     claimEvent: async () => true,
     loadSession: async (_c: string, u: string) => { hashesSeen.push(u); return session; },
     saveSession: async (
-      _c: string, u: string, _m: unknown, _s: unknown, mutedUntil: Date | null,
+      _c: string, u: string, _m: unknown, _s: unknown, mutedUntil?: Date | null,
     ) => { hashesSeen.push(u); saved.push({ mutedUntil }); },
   };
 });
@@ -48,14 +48,36 @@ describe("a customer's message", () => {
     expect(sent.images[0]).toContain("/api/card?x=1");
   });
 
-  it("is remembered with no mute on it", async () => {
+  it("is remembered without touching whatever mute the thread carries", async () => {
     await handle({ sender: { id: "psid" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
-    expect(saved).toEqual([{ mutedUntil: null }]);
+    expect(saved).toEqual([{ mutedUntil: undefined }]);
   });
 
   it("is ignored when it carries no words at all", async () => {
     await handle({ sender: { id: "psid" }, message: { mid: "m0" } });
     expect(answer).not.toHaveBeenCalled();
+  });
+});
+
+describe("an agent who answers while the bot is still typing", () => {
+  it("is not talked over", async () => {
+    // the mute lands during the model call, which is where the seconds go
+    answer.mockImplementationOnce(async () => {
+      session.mutedUntil = new Date(Date.now() + 3600_000).toISOString();
+      return { messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }], slots: { intent: "quote" as const }, priced: true };
+    });
+    await handle({ sender: { id: "psid" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
+    expect(sent.text).toEqual([]);
+    expect(sent.images).toEqual([]);
+  });
+
+  it("keeps their mute: the bot's own save must not wipe it", async () => {
+    answer.mockImplementationOnce(async () => {
+      session.mutedUntil = new Date(Date.now() + 3600_000).toISOString();
+      return { messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }], slots: { intent: "quote" as const }, priced: true };
+    });
+    await handle({ sender: { id: "psid" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
+    expect(saved).toEqual([]);
   });
 });
 

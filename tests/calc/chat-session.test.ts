@@ -35,6 +35,16 @@ describe("a conversation", () => {
     expect((lastUpsert!.messages as { content: string }[])[0].content).toBe("4");
   });
 
+  it("leaves an existing mute alone when it is only recording what was said", async () => {
+    await saveSession("facebook", "hash", [{ role: "user", content: "hi" }], null);
+    expect(lastUpsert).not.toHaveProperty("muted_until");
+  });
+
+  it("still writes the mute when it is asked to", async () => {
+    await saveSession("facebook", "hash", [], null, muteFor());
+    expect(typeof lastUpsert!.muted_until).toBe("string");
+  });
+
   it("forgets what was said more than a day ago, but not the mute", async () => {
     const stale = new Date(Date.now() - 30 * 3600_000).toISOString();
     rows.set("session", {

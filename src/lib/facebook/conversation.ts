@@ -59,6 +59,10 @@ export async function handle(event: Messaging): Promise<void> {
   await showTyping(psid).catch(() => {});
   try {
     const answer = await answerQuestion(history, session.slots);
+    // the model takes seconds, and an agent watching the thread answers inside them. Their
+    // words are already in the customer's phone by now, so the bot says nothing and records
+    // nothing — the mute stands and the thread is theirs.
+    if (isMuted((await loadSession("facebook", userHash)).mutedUntil)) return;
     for (const [i, said] of answer.messages.entries()) {
       // a second bubble arrives the way a person's would: after the dots, and after a pause
       // that scales with how much there was to type
@@ -72,9 +76,8 @@ export async function handle(event: Messaging): Promise<void> {
       if (said.card) await sendImage(psid, siteUrl(said.card)).catch((e) => console.error("card failed:", e));
     }
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
-    await saveSession(
-      "facebook", userHash, [...history, { role: "assistant", content: spoken }], answer.slots, null,
-    );
+    // no mute argument: recording what was said must never clear one
+    await saveSession("facebook", userHash, [...history, { role: "assistant", content: spoken }], answer.slots);
   } catch (e) {
     await sendMessage(psid, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);
     throw e;

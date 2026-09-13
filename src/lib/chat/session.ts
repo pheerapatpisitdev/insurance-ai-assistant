@@ -48,12 +48,20 @@ export async function loadSession(channel: Channel, userHash: string): Promise<S
   return { messages: stored.slice(-MAX_TURNS), slots, mutedUntil: data.muted_until ?? null };
 }
 
+/**
+ * `mutedUntil` left out means the mute is none of this save's business, and the column is
+ * left exactly as it is.
+ *
+ * It used to be a required argument, and the bot passed null after every answer — so a mute
+ * the agent had written while the model was still thinking was wiped by the bot's own save,
+ * seconds later. The thread then took the next customer message as if nobody had answered.
+ */
 export async function saveSession(
   channel: Channel,
   userHash: string,
   messages: ChatMessage[],
   slots: Routed | null,
-  mutedUntil: Date | null,
+  mutedUntil?: Date | null,
 ): Promise<void> {
   await supabaseAdmin()
     .from("ins_chat_sessions")
@@ -62,7 +70,8 @@ export async function saveSession(
       user_hash: userHash,
       messages: messages.slice(-MAX_TURNS),
       slots: slots ?? {},
-      muted_until: mutedUntil?.toISOString() ?? null,
+      // only the columns named here are written on conflict, so omitting this one keeps it
+      ...(mutedUntil === undefined ? {} : { muted_until: mutedUntil?.toISOString() ?? null }),
       updated_at: new Date().toISOString(),
     });
 }

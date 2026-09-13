@@ -531,9 +531,6 @@ function planInfoText(): string {
   const f = lifeProtectFacts();
   const table = lifeProtectTable();
   const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, DEFAULT_TERM).min;
-  const example = f.example.terms
-    .map((t) => `${t.label} ${t.premium ? `${t.premium}${t.per ?? ""}` : "ขอราคาปัจจุบัน"}`)
-    .join(", ");
   return [
     "ชื่อแบบ: Life Protect+ 100 (Life Protect x 2)",
     `รับประกันอายุ ${f.ageMin}-${f.ageMax} ปี คุ้มครองถึงอายุ ${f.coverToAge} ปี`,
@@ -542,7 +539,6 @@ function planInfoText(): string {
     `แบบการชำระเบี้ยมีให้เลือก ${table.terms.filter((t) => QUOTABLE.has(t.variant)).map((t) => t.label).join(" / ")}`,
     "เบี้ยคงที่ตลอดระยะเวลาชำระ และมีมูลค่าเวนคืนสะสม",
     `อยู่ครบสัญญาถึงอายุ ${f.coverToAge} ได้รับเงินคืนเท่ากับมูลค่าเงินสดสะสม ณ อายุนั้น (ตัวเลขต่างกันตามทุน อายุ และแบบชำระ อยู่ในใบเสนอราคาของแต่ละคน ไม่ใช่ทุนประกันเสมอไป)`,
-    `ตัวอย่าง ${f.example.sex === "M" ? "ชาย" : "หญิง"}อายุ ${f.example.age} ปี ทุน ${f.example.sum} บาท: ${example}`,
-    `มูลค่าเวนคืนเมื่ออายุ 60 ปีของตัวอย่างแบบจ่าย 19 ปี ${f.cash60} บาท`,
+    "ไม่มีตัวเลขเบี้ยของใครอยู่ในนี้ ถ้าลูกค้าอยากรู้เบี้ย ให้ขอเพศ อายุ และทุน แล้วระบบจะคิดให้เอง",
   ].join("\n");
 }
