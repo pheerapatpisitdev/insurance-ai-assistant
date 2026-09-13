@@ -309,6 +309,34 @@ describe("the price being too much", () => {
     expect(taken.messages[0].card).toContain("variant=WLF99H");
   });
 
+  it("takes the offer once: a second yes is not the same quotation again", async () => {
+    routed = { intent: "other" };
+    const offered = (await answerQuestion(said("แพงไป"), known)).slots;
+    const first = await answerQuestion(said("โอเค"), offered);
+    expect(first.priced).toBe(true);
+    expect(first.slots.offer).toBeUndefined();
+    worded = "รับทราบครับ";
+    const second = await answerQuestion(said("ตกลง"), first.slots);
+    expect(second.priced).toBeFalsy();
+    expect(second.messages[0].text).toBe("รับทราบครับ");
+  });
+
+  it("still remembers the taken sum when a later follow-up names the same cover", async () => {
+    routed = { intent: "other" };
+    const offered = (await answerQuestion(said("แพงไป"), known)).slots;
+    const taken = (await answerQuestion(said("เอา"), offered)).slots;
+    routed = { intent: "quote", variant: "WLF19H" };
+    const again = await answerQuestion(said("จ่าย 19 ปีล่ะ"), taken);
+    expect(again.messages[0].card).toContain("sum=500000");
+  });
+
+  it("drops the offer when the customer steps back", async () => {
+    routed = { intent: "other" };
+    const offered = (await answerQuestion(said("แพงไป"), known)).slots;
+    const left = await answerQuestion(said("เดี๋ยวคิดดูก่อน"), offered);
+    expect(left.slots.offer).toBeUndefined();
+  });
+
   it("keeps the offer's own sum when the customer names its cover, despite the one-million rule", async () => {
     routed = { intent: "other" };
     const offered = (await answerQuestion(said("แพงไป"), known)).slots;
@@ -466,7 +494,8 @@ describe("everything else", () => {
   it("tells small talk what the customer already gave, so a goodbye is not an intake form", async () => {
     routed = { intent: "other" };
     chat.mockClear();
-    await answerQuestion(said("เดี๋ยวคิดดูก่อนนะคะ"), { intent: "quote", age: 38, sex: "M", coverWanted: 2_000_000 });
+    // a stall never reaches the model now; a thank-you still does
+    await answerQuestion(said("ขอบคุณค่ะ"), { intent: "quote", age: 38, sex: "M", coverWanted: 2_000_000 });
     const system = chat.mock.calls[1][0].messages[0].content as string;
     expect(system).toContain("ชาย · อายุ 38 ปี · ครอบครัวได้รับ 2,000,000 บาท");
     expect(system).toContain("ห้ามขอข้อมูลที่ทราบแล้วซ้ำอีก");

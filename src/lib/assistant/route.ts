@@ -40,6 +40,8 @@ export interface Routed {
    * be quoted the arrangement they just called too expensive.
    */
   offer?: { coverWanted: number; sumAssured: number; variant: string };
+  /** the sum assured behind a taken offer, so a follow-up on the same cover keeps it */
+  takenSum?: number;
 }
 
 const SYSTEM = `คุณเป็นตัวช่วยของตัวแทนประกันชีวิต อ่านข้อความล่าสุดแล้วบอกว่าลูกค้าต้องการอะไร ตอบเป็น JSON เท่านั้น
@@ -205,7 +207,7 @@ export function affirms(text: string): boolean {
  */
 const STALLS = /คิดดูก่อน|ขอคิดดู|คิดก่อน|ไว้ก่อน|ไว้ค่อย|ติดต่อกลับ|เดี๋ยวติดต่อ|ทักกลับ|ขอปรึกษา|ปรึกษาก่อน|ปรึกษาที่บ้าน|ยังไม่ตัดสินใจ|ขอเวลา|เดี๋ยวมาใหม่|ขอดูก่อน/;
 /** A stall that is really a question stays a question. */
-const ASKS = /\?|ไหม|มั้ย|ยังไง|อย่างไร|อะไร|เท่าไ|กี่/;
+const ASKS = /\?|ไหม|มั้ย|ยังไง|อย่างไร|อะไร|เท่าไ|กี่|ไหน|เมื่อไ/;
 
 /** Whether the customer is leaving to think it over. */
 export function stalls(text: string): boolean {
@@ -334,5 +336,6 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
   if (merged.sex === undefined) merged.sex = previous.sex;
   if (merged.mode === undefined) merged.mode = previous.mode;
   if (merged.offer === undefined) merged.offer = previous.offer;
+  if (merged.takenSum === undefined && merged.coverWanted === previous.coverWanted) merged.takenSum = previous.takenSum;
   return merged;
 }

@@ -142,6 +142,14 @@ export function aboutCompany(question: string): string {
 }
 
 export async function answerQuestion(history: ChatMessage[], previous: Routed | null): Promise<Answer> {
+  // leaving to think it over needs no model and changes nothing the bot knows
+  if (stalls(lastAsked(history))) {
+    // and whatever cheaper arrangement was on the table is off it: a "โอเค" days later must
+    // not re-price something they walked away from
+    const kept: Routed = { ...(previous ?? { intent: "other" as const }), offer: undefined };
+    return { ...one(stallReply(kept)), slots: kept };
+  }
+
   const slots = mergeSlots(previous, await routeMessage(history));
   // checked before the routes that speak: a question about the company is answered by the
   // agency's own sentence whatever else the turn was about
@@ -151,8 +159,12 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
   if (asksCheaper(asked)) return answerCheaper(slots);
   // a bare "เอา" takes the cheaper arrangement the bot last put on the table
   if (affirms(asked) && slots.offer) {
-    const taken: Routed = { ...slots, intent: "quote", coverWanted: slots.offer.coverWanted, variant: slots.offer.variant };
-    return { ...answerQuote(taken), slots: taken };
+    const { offer } = slots;
+    const taken: Routed = { ...slots, intent: "quote", coverWanted: offer.coverWanted, variant: offer.variant };
+    const priced = answerQuote(taken);
+    // the offer is taken once; a second "ตกลง" is an acknowledgement, not a request for the same quotation again
+    const sumTaken = offer.sumAssured;
+    return { ...priced, slots: { ...taken, offer: priced.priced ? undefined : offer, ...(priced.priced ? { takenSum: sumTaken } : {}) } };
   }
 
   // one of the answers the agency writes out by hand every day. A message can both ask for a
@@ -210,6 +222,7 @@ function sumForCover(table: LifeProtectTable, age: number, cover: number): numbe
 function quoteFor(
   table: LifeProtectTable, variant: string, who: { age: number; sex: "M" | "F" }, coverWanted: number,
   offer?: Routed["offer"],
+  takenSum?: number,
 ): Said {
   const { age, sex } = who;
   if (age < table.ageMin || age > table.ageMax) {
@@ -219,7 +232,7 @@ function quoteFor(
   // the offer carries its own sum, because its cover may be the one figure read as a sum
   const sumAssured = offer && offer.coverWanted === coverWanted && offer.variant === variant
     ? offer.sumAssured
-    : sumForCover(table, age, coverWanted);
+    : takenSum ?? sumForCover(table, age, coverWanted);
   // the floor is a rule of the plan, not a field of the page's slim table — and it is stated
   // back in the customer's own terms, which are what the family receives
   const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, variant).min;
@@ -267,7 +280,7 @@ function answerQuote(slots: Routed): Omit<Answer, "slots"> {
   }
 
   const variant = slots.variant ?? DEFAULT_TERM;
-  const messages = people.map((who) => quoteFor(table, variant, who, coverWanted, slots.offer));
+  const messages = people.map((who) => quoteFor(table, variant, who, coverWanted, slots.offer, slots.takenSum));
 
   // the offer of the other terms belongs once, under the last price on the screen
   const last = messages.map((m) => Boolean(m.card)).lastIndexOf(true);
