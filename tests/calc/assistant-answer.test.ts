@@ -285,6 +285,36 @@ describe("everything else", () => {
     expect(chat.mock.calls.map((c) => c[0].task)).toEqual(["route", "plan_info"]);
   });
 
+  it("tells the model what the customer already gave, so it stops asking", async () => {
+    routed = { intent: "plan_info" };
+    chat.mockClear();
+    await answerQuestion(
+      said("เบี้ยประกันคงที่ไหมคะ"),
+      { intent: "quote", age: 30, sex: "F", coverWanted: 2_000_000, variant: "WLF09H" },
+    );
+    const system = chat.mock.calls[1][0].messages[0].content as string;
+    expect(system).toContain("หญิง · อายุ 30 ปี · ครอบครัวได้รับ 2,000,000 บาท · จ่าย 9 ปี");
+    expect(system).toContain("ห้ามขอข้อมูลที่ทราบแล้วซ้ำอีก");
+    expect(system).toContain("คิดเบี้ยและส่งให้ลูกค้าไปแล้ว");
+  });
+
+  it("asks only for the gaps when the customer is half known", async () => {
+    routed = { intent: "plan_info" };
+    chat.mockClear();
+    await answerQuestion(said("คุ้มครองยังไง"), { intent: "quote", coverWanted: 2_000_000 });
+    const system = chat.mock.calls[1][0].messages[0].content as string;
+    expect(system).toContain("ครอบครัวได้รับ 2,000,000 บาท");
+    expect(system).toContain("ให้ขอเฉพาะข้อมูลที่ยังขาด");
+  });
+
+  it("says nothing about a customer it knows nothing about", async () => {
+    routed = { intent: "plan_info" };
+    chat.mockClear();
+    await answerQuestion(said("คุ้มครองยังไง"), null);
+    const system = chat.mock.calls[1][0].messages[0].content as string;
+    expect(system).not.toContain("ข้อมูลของลูกค้ารายนี้ที่ทราบแล้ว");
+  });
+
   it("hands the plan's own figures to the model rather than letting it recall them", async () => {
     routed = { intent: "plan_info" };
     await answerQuestion(said("คุ้มครองถึงกี่ขวบ"), null);

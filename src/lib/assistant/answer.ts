@@ -146,7 +146,7 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
   }
   if (faq) return { ...one(faq), slots };
 
-  if (slots.intent === "plan_info") return { ...(await answerPlanInfo(history)), slots };
+  if (slots.intent === "plan_info") return { ...(await answerPlanInfo(history, slots)), slots };
   return { ...(await answerSmallTalk(history)), slots };
 }
 
@@ -285,13 +285,44 @@ function otherTerms(table: LifeProtectTable, quoted: string): string {
   return `สนใจแบบ${rest.join(" หรือ ")} ไหมครับ บอกมาได้เลย เดี๋ยวคิดให้ใหม่`;
 }
 
-async function answerPlanInfo(history: ChatMessage[]): Promise<Omit<Answer, "slots">> {
+/**
+ * What is already known about this customer, written out for the model.
+ *
+ * Without it the answer ends "แจ้งเพศ อายุ และทุนประกันที่สนใจมาได้เลย ผมจะคำนวณให้ทันที"
+ * to someone who gave all three and was sent a premium three messages ago — the same not
+ * listening that asking for the amount twice was, one step further along.
+ */
+function knownSoFar(slots: Routed, table: LifeProtectTable): string {
+  const bits: string[] = [];
+  if (slots.sex) bits.push(slots.sex === "M" ? "ชาย" : "หญิง");
+  if (slots.age !== undefined) bits.push(`อายุ ${slots.age} ปี`);
+  if (slots.coverWanted !== undefined) {
+    bits.push(slots.coverWanted === COVER_MEANS_SUM
+      ? `ทุน ${slots.coverWanted.toLocaleString("en-US")} บาท`
+      : `ครอบครัวได้รับ ${slots.coverWanted.toLocaleString("en-US")} บาท`);
+  }
+  const term = slots.variant ? table.terms.find((t) => t.variant === slots.variant) : undefined;
+  if (term) bits.push(term.label);
+  if (bits.length === 0) return "";
+
+  const priced = slots.age !== undefined && slots.sex !== undefined && slots.coverWanted !== undefined;
+  return `\n\nข้อมูลของลูกค้ารายนี้ที่ทราบแล้ว: ${bits.join(" · ")}\n`
+    + "ห้ามขอข้อมูลที่ทราบแล้วซ้ำอีก\n"
+    + (priced
+      ? "คิดเบี้ยและส่งให้ลูกค้าไปแล้ว ถ้าจะชวนคุยต่อ ให้ชวนดูแบบชำระเบี้ยแบบอื่น หรือทุนจำนวนอื่น"
+      : "ถ้าลูกค้าอยากได้เบี้ย ให้ขอเฉพาะข้อมูลที่ยังขาด");
+}
+
+async function answerPlanInfo(history: ChatMessage[], slots: Routed): Promise<Omit<Answer, "slots">> {
   const r = await chat({
     tier: "small",
     task: "plan_info",
     maxTokens: 400,
     messages: [
-      { role: "system", content: `${PLAN_INFO_SYSTEM}\n\nข้อมูลแบบประกัน\n${planInfoText()}` },
+      {
+        role: "system",
+        content: `${PLAN_INFO_SYSTEM}\n\nข้อมูลแบบประกัน\n${planInfoText()}${knownSoFar(slots, lifeProtectTable())}`,
+      },
       ...recentTurns(history, 6),
     ],
   });
