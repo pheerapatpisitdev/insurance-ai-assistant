@@ -10,7 +10,7 @@ import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprot
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
 import { faqAnswer } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
-import { affirms, asksAboutCompany, asksAboutTrust, asksCheaper, asksPayTerm, mergeSlots, PLAN_CODE, recentTurns, routeMessage, stalls, type Routed } from "./route";
+import { affirms, asksAboutCompany, asksAboutTrust, asksCheaper, asksPayTerm, mergeSlots, PLAN_CODE, recentTurns, routeMessage, saysFormDone, stalls, wantsToBuy, type Routed } from "./route";
 
 /** The package quoted when the customer has not named one: the cheapest instalment of the three. */
 const DEFAULT_TERM = "WLF99H";
@@ -142,18 +142,26 @@ export function aboutCompany(question: string): string {
 }
 
 export async function answerQuestion(history: ChatMessage[], previous: Routed | null): Promise<Answer> {
+  const asked = lastAsked(history);
+  const known: Routed = previous ?? { intent: "other" };
   // leaving to think it over needs no model and changes nothing the bot knows
-  if (stalls(lastAsked(history))) {
+  if (stalls(asked)) {
     // and whatever cheaper arrangement was on the table is off it: a "โอเค" days later must
     // not re-price something they walked away from
-    const kept: Routed = { ...(previous ?? { intent: "other" as const }), offer: undefined };
+    const kept: Routed = { ...known, offer: undefined };
     return { ...one(stallReply(kept)), slots: kept };
+  }
+  // the form is out and they say it is filled in: the agent takes it from here
+  if (known.formSent && saysFormDone(asked)) return { ...one(FORM_RECEIVED), slots: known };
+  // deciding to buy is answered with the form — unless a cheaper offer is on the table and the
+  // word is a bare yes, which takes the offer first and is priced below
+  if (wantsToBuy(asked, hasQuote(known)) && !(known.offer && affirms(asked))) {
+    return { ...handOverForm(known), slots: { ...known, offer: undefined, formSent: true } };
   }
 
   const slots = mergeSlots(previous, await routeMessage(history));
   // checked before the routes that speak: a question about the company is answered by the
   // agency's own sentence whatever else the turn was about
-  const asked = lastAsked(history);
   if (asksAboutCompany(asked)) return { ...one(aboutCompany(asked)), slots };
   if (asksPayTerm(asked)) return { ...answerPayTerm(slots), slots };
   if (asksCheaper(asked)) return answerCheaper(slots);
@@ -374,14 +382,37 @@ function answerCheaper(slots: Routed): Answer {
   return { messages: [{ text: lines.join("\n") }], slots: { ...slots, offer } };
 }
 
+/** Whether this customer has been given a premium: the three things a quote needs are known. */
+function hasQuote(slots: Routed): boolean {
+  return slots.age !== undefined && slots.sex !== undefined && slots.coverWanted !== undefined;
+}
+
+/**
+ * The application form the agency sends a customer who has decided. The `ref` names the
+ * agent, so the form arrives already knowing who sold it.
+ */
+const APPLICATION_FORM = "https://ktaxaform.vercel.app/?ref=sa-9f3a";
+
+const FORM_NEXT = "กรอกเสร็จแล้วแจ้งในแชทนี้ได้เลย เดี๋ยวตัวแทนติดต่อกลับไปดูแลขั้นตอนต่อให้ครับ";
+const FORM_RECEIVED = "ขอบคุณครับ 🙏 เดี๋ยวตัวแทนเช็กข้อมูลแล้วติดต่อกลับในแชทนี้ครับ";
+
+/**
+ * Handing over the form: three bubbles, the link on its own so it is one tap. Someone who
+ * asks how to apply before hearing a price is also told the price is a message away — the
+ * only time the bot volunteers that, because here it knows nothing has been quoted.
+ */
+function handOverForm(slots: Routed): Omit<Answer, "slots"> {
+  const next = hasQuote(slots) ? FORM_NEXT : `${FORM_NEXT} ถ้าอยากทราบเบี้ยก่อน บอกเพศกับอายุมาได้เลยครับ เดี๋ยวคิดให้`;
+  return { messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }, { text: APPLICATION_FORM }, { text: next }] };
+}
+
 /**
  * What the bot says when the customer steps back. One line, no question, and — once they
  * have a quotation in hand — the door left open by name: the owner's choice, over silence
  * and over a follow-up.
  */
 function stallReply(slots: Routed): string {
-  const quoted = slots.age !== undefined && slots.sex !== undefined && slots.coverWanted !== undefined;
-  return quoted
+  return hasQuote(slots)
     ? "ได้เลยครับ ถ้าตัดสินใจแล้วหรืออยากได้ใบเสนออย่างเป็นทางการ ทักมาได้เลยนะครับ"
     : "ได้เลยครับ สะดวกเมื่อไหร่ทักมาได้เลยนะครับ";
 }

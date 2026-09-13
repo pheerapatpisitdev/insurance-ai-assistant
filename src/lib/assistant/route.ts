@@ -42,6 +42,8 @@ export interface Routed {
   offer?: { coverWanted: number; sumAssured: number; variant: string };
   /** the sum assured behind a taken offer, so a follow-up on the same cover keeps it */
   takenSum?: number;
+  /** the application form has been handed over; "กรอกแล้ว" after this is about that form */
+  formSent?: true;
 }
 
 const SYSTEM = `คุณเป็นตัวช่วยของตัวแทนประกันชีวิต อ่านข้อความล่าสุดแล้วบอกว่าลูกค้าต้องการอะไร ตอบเป็น JSON เท่านั้น
@@ -214,6 +216,35 @@ export function stalls(text: string): boolean {
   return STALLS.test(text) && !ASKS.test(text);
 }
 
+/**
+ * Deciding to buy — "เอาแผนนี้", "สมัครยังไง", "ต้องทำยังไงต่อ", "ใช้เอกสารอะไรบ้าง". The one
+ * message the whole campaign is for, and the one a model was wording on its own: it asked for
+ * a name and a phone number the privacy page says are never asked for, and once promised to
+ * "เตรียมเอกสาร". The agency's answer is a form, so the answer is written out and the words
+ * that mean it are listed here.
+ */
+const BUYS =
+  /สมัคร|ทำ(?:ยังไง|อย่างไร|ไง)|ขั้นตอน|ต้องทำอะไร|เอา(?:แผน|แบบ|แผ่น|อัน|ตัว)นี้|ตกลงทำ|สนใจทำ|ทำเลย|เอาเลย|เริ่ม(?:ยังไง|อย่างไร|ได้เลย)|เตรียม(?:อะไร|เอกสาร)|ใช้เอกสาร|เอกสารอะไร|ซื้อ(?:ยังไง|ได้ที่ไหน|ได้เลย|เลย)|ดำเนินการ/;
+/** "ทำยังไง" about a claim, a cancellation or a surrender is a service question, not a purchase */
+const NOT_BUYING = /เคลม|ยกเลิก|เวนคืน|กู้|ต่ออายุ|เปลี่ยนแปลง/;
+/** a bare ตกลง or เอา — a decision once a premium is on the table, and only then */
+const COMMITS = /^\s*(?:ตกลง|เอา)(?:\s*(?:ครับ|ค่ะ|คะ|เลย|นะ))*\s*$/;
+
+/**
+ * Whether the customer is asking to go ahead. `quoted` says a premium has been given, which
+ * is what lets a one-word ตกลง count; a one-word โอเค never does — it is an acknowledgement.
+ */
+export function wantsToBuy(text: string, quoted: boolean): boolean {
+  if (asksCheaper(text) || NOT_BUYING.test(text) || peopleIn(text).length > 0) return false;
+  return BUYS.test(text) || (quoted && COMMITS.test(text));
+}
+
+/** Whether the customer says the form has been filled in and sent. */
+const FORM_DONE = /กรอก(?:แล้ว|เสร็จ|เรียบร้อย)|ส่ง(?:ฟอร์ม|ข้อมูล)?แล้ว|เรียบร้อยแล้ว|ทำแล้ว/;
+export function saysFormDone(text: string): boolean {
+  return FORM_DONE.test(text);
+}
+
 /** Whether a message is asking who stands behind the policy. */
 export function asksAboutCompany(text: string): boolean {
   return INSURER_QUESTION.test(text) || TRUST_QUESTION.test(text);
@@ -337,5 +368,6 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
   if (merged.mode === undefined) merged.mode = previous.mode;
   if (merged.offer === undefined) merged.offer = previous.offer;
   if (merged.takenSum === undefined && merged.coverWanted === previous.coverWanted) merged.takenSum = previous.takenSum;
+  if (merged.formSent === undefined) merged.formSent = previous.formSent;
   return merged;
 }

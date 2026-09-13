@@ -8,7 +8,7 @@ vi.mock("@/lib/ai/client", async () => {
   return { ...actual, chat };
 });
 
-const { affirms, ageFromBirthdate, asksCheaper, mergeSlots, routeMessage, stalls } = await import("@/lib/assistant/route");
+const { affirms, ageFromBirthdate, asksCheaper, mergeSlots, routeMessage, stalls, wantsToBuy, saysFormDone } = await import("@/lib/assistant/route");
 
 /** The age someone born on that date is today, counted the way a person counts it. */
 function ageOn(today: Date, day: number, month: number, year: number): number {
@@ -143,6 +143,34 @@ describe("leaving to think it over", () => {
     for (const t of ["ถ้าคิดดูแล้วสนใจ ต้องทำยังไงต่อ", "คิดดูก่อนได้ไหม", "ติดต่อกลับทางไหน", "ขอบคุณค่ะ"]) {
       expect(stalls(t), t).toBe(false);
     }
+  });
+});
+
+describe("deciding to buy", () => {
+  it("is heard in the ways people say it", () => {
+    for (const t of ["เอาแผนนี้ครับ", "เอาแผ่นนี้", "ต้องทำยังไงต่อ", "สมัครยังไงคะ", "สนใจทำค่ะ ต้องเตรียมอะไรบ้าง", "ขั้นตอนเป็นยังไง", "ถ้าคิดดูแล้วสนใจ ต้องทำยังไงต่อ", "ใช้เอกสารอะไรบ้าง", "ซื้อได้เลยไหม"]) {
+      expect(wantsToBuy(t, true), t).toBe(true);
+    }
+  });
+
+  it("takes a bare ตกลง or เอา as buying only once a quotation is in hand", () => {
+    for (const t of ["ตกลง", "ตกลงค่ะ", "เอาครับ"]) {
+      expect(wantsToBuy(t, true), t).toBe(true);
+      expect(wantsToBuy(t, false), t).toBe(false);
+    }
+    // an acknowledgement is not a decision
+    for (const t of ["โอเค", "ครับ", "ได้ค่ะ", "รับทราบ"]) expect(wantsToBuy(t, true), t).toBe(false);
+  });
+
+  it("is not a question about paying, claiming, cancelling, or the price", () => {
+    for (const t of ["จ่ายยังไง", "แพงไป ทำยังไงให้ถูกลง", "เคลมยังไง", "ยกเลิกต้องทำยังไง", "เวนคืนทำยังไง", "ผู้ชาย 35 ทุน 1 ล้านเท่าไหร่", "ต้องจ่ายถึงกี่ปี"]) {
+      expect(wantsToBuy(t, true), t).toBe(false);
+    }
+  });
+
+  it("hears that the form has been filled in", () => {
+    for (const t of ["กรอกแล้วครับ", "กรอกเสร็จแล้วค่ะ", "ส่งฟอร์มแล้ว", "เรียบร้อยแล้วครับ", "ทำแล้วนะ"]) expect(saysFormDone(t), t).toBe(true);
+    for (const t of ["กรอกยังไง", "กรอกไม่ได้", "ฟอร์มเปิดไม่ขึ้น"]) expect(saysFormDone(t), t).toBe(false);
   });
 });
 

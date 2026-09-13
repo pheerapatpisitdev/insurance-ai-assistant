@@ -257,6 +257,62 @@ describe("leaving to think it over", () => {
   });
 });
 
+describe("deciding to buy", () => {
+  const FORM = "https://ktaxaform.vercel.app/?ref=sa-9f3a";
+  const quoted = { intent: "quote" as const, age: 38, sex: "M" as const, coverWanted: 2_000_000 };
+
+  it("hands over the application form, in the agency's own words, without a model", async () => {
+    const answer = await answerQuestion(said("เอาแผนนี้ครับ"), quoted);
+    expect(chat).not.toHaveBeenCalled();
+    expect(answer.messages.map((m) => m.text)).toEqual([
+      "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ",
+      FORM,
+      "กรอกเสร็จแล้วแจ้งในแชทนี้ได้เลย เดี๋ยวตัวแทนติดต่อกลับไปดูแลขั้นตอนต่อให้ครับ",
+    ]);
+    expect(answer.slots.formSent).toBe(true);
+    expect(answer.slots.coverWanted).toBe(2_000_000);
+  });
+
+  it("does the same for someone asking what to do next", async () => {
+    const answer = await answerQuestion(said("ต้องทำยังไงต่อ"), quoted);
+    expect(chat).not.toHaveBeenCalled();
+    expect(answer.messages[1].text).toBe(FORM);
+  });
+
+  it("reads ตกลง after a quotation as a decision", async () => {
+    const answer = await answerQuestion(said("ตกลงค่ะ"), quoted);
+    expect(chat).not.toHaveBeenCalled();
+    expect(answer.messages[1].text).toBe(FORM);
+  });
+
+  it("still lets a pending cheaper offer be taken by ตกลง first", async () => {
+    const offered = (await answerQuestion(said("แพงไป"), quoted)).slots;
+    const taken = await answerQuestion(said("ตกลง"), offered);
+    expect(taken.priced).toBe(true);
+    expect(taken.slots.formSent).toBeUndefined();
+  });
+
+  it("offers the premium too when nothing has been priced yet", async () => {
+    const answer = await answerQuestion(said("สมัครยังไงคะ"), null);
+    expect(chat).not.toHaveBeenCalled();
+    expect(answer.messages[1].text).toBe(FORM);
+    expect(answer.messages[2].text).toBe("กรอกเสร็จแล้วแจ้งในแชทนี้ได้เลย เดี๋ยวตัวแทนติดต่อกลับไปดูแลขั้นตอนต่อให้ครับ ถ้าอยากทราบเบี้ยก่อน บอกเพศกับอายุมาได้เลยครับ เดี๋ยวคิดให้");
+  });
+
+  it("acknowledges a filled-in form without promising anything", async () => {
+    const answer = await answerQuestion(said("กรอกแล้วครับ"), { ...quoted, formSent: true });
+    expect(chat).not.toHaveBeenCalled();
+    expect(answer.messages).toHaveLength(1);
+    expect(answer.messages[0].text).toBe("ขอบคุณครับ 🙏 เดี๋ยวตัวแทนเช็กข้อมูลแล้วติดต่อกลับในแชทนี้ครับ");
+    expect(answer.slots.formSent).toBe(true);
+  });
+
+  it("does not read กรอกแล้ว as the form when no form was sent", async () => {
+    const answer = await answerQuestion(said("กรอกแล้วครับ"), quoted);
+    expect(answer.messages[0].text).not.toContain("เช็กข้อมูล");
+  });
+});
+
 describe("the price being too much", () => {
   const known = { intent: "quote" as const, age: 38, sex: "M" as const, coverWanted: 2_000_000 };
   const monthlyFor = (variant: string, sum: number) => {
@@ -309,16 +365,16 @@ describe("the price being too much", () => {
     expect(taken.messages[0].card).toContain("variant=WLF99H");
   });
 
-  it("takes the offer once: a second yes is not the same quotation again", async () => {
+  it("takes the offer once: a second yes is the decision to buy, not the same quotation again", async () => {
     routed = { intent: "other" };
     const offered = (await answerQuestion(said("แพงไป"), known)).slots;
     const first = await answerQuestion(said("โอเค"), offered);
     expect(first.priced).toBe(true);
     expect(first.slots.offer).toBeUndefined();
-    worded = "รับทราบครับ";
     const second = await answerQuestion(said("ตกลง"), first.slots);
     expect(second.priced).toBeFalsy();
-    expect(second.messages[0].text).toBe("รับทราบครับ");
+    expect(second.messages[1].text).toBe("https://ktaxaform.vercel.app/?ref=sa-9f3a");
+    expect(second.slots.takenSum).toBe(first.slots.takenSum);
   });
 
   it("still remembers the taken sum when a later follow-up names the same cover", async () => {
