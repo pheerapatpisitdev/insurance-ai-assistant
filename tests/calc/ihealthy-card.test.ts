@@ -233,3 +233,38 @@ describe("iHealthyCard", () => {
     expect(notes).toContain("เบี้ยปีแรก");
   });
 });
+
+describe("a card sized for a chat", () => {
+  const at = (params: Record<string, string>) =>
+    iHealthyCard(new URLSearchParams({ age: "35", sex: "F", plan: "GOLD", ...params }));
+
+  it("carries six plans when nothing asks for fewer", () => {
+    expect(at({}).columns).toHaveLength(6);
+  });
+
+  it("carries the three a phone shows when it does", () => {
+    const card = at({ fit: "phone" });
+    expect(card.columns.map((c) => c.name)).toEqual(["Bronze", "Silver", "Gold"]);
+    expect(card.columns.filter((c) => c.selected)).toHaveLength(1);
+  });
+
+  it("keeps the plan it is pricing, even outside the three", () => {
+    const card = at({ plan: "PLATINUM", fit: "phone" });
+    expect(card.columns.map((c) => c.name)).toEqual(["Bronze", "Silver", "Gold", "Platinum"]);
+    expect(card.columns.find((c) => c.selected)!.name).toBe("Platinum");
+  });
+
+  it("carries only what a child may buy", () => {
+    const card = iHealthyCard(new URLSearchParams({ age: "8", sex: "M", plan: "SMART", fit: "phone" }));
+    expect(card.columns.map((c) => c.name)).toEqual(["Smart", "Bronze"]);
+    expect(card.columns.every((c) => c.sold)).toBe(true);
+  });
+
+  it("prices every column it carries", () => {
+    const card = at({ fit: "phone" });
+    for (const row of card.premiumRows) expect(row.cells).toHaveLength(card.columns.length);
+    for (const row of card.rows) {
+      if (row.span === undefined) expect(row.cells).toHaveLength(card.columns.length);
+    }
+  });
+});

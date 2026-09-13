@@ -1,7 +1,7 @@
 import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
 import { benefitCell } from "@/components/ihealthy/BenefitTable";
-import { PHONE_ROW_LABEL } from "@/lib/ihealthy-phone";
+import { PHONE_ROW_LABEL, phoneColumns } from "@/lib/ihealthy-phone";
 import { categoryNumbers, iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
 import { deathBenefitRows, type BenefitRow as DeathRow } from "@/lib/death-benefit";
 import { initialFrom, ridersFrom } from "@/lib/ihealthy-link";
@@ -131,6 +131,17 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
   const asked = ridersFrom(query.getAll("r"));
 
   const sellable = plansFor(table, v.age).map((p) => p.code);
+  /**
+   * The plans this picture has room for.
+   *
+   * `fit=phone` is asked for by the bot and never by the page: six columns of Thai on a
+   * canvas a chat scales to the width of a phone is a table nobody reads without pinching.
+   * The plan being priced is always among them, so the column the headline belongs to is
+   * never the one left out.
+   */
+  const order = facts.plans.map((p) => p.code);
+  const shown = query.get("fit") === "phone" ? phoneColumns(order, sellable, v.plan) : order;
+  const drawn = facts.plans.filter((p) => shown.includes(p.code));
   const arrangement = {
     base: v.base, age: v.age, sex: v.sex, sumAssured: v.sumAssured,
     plan: v.plan, territory: v.territory, coverage: v.coverage,
@@ -165,14 +176,14 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
   const at = (mode: PayMode) => here?.total.find((m) => m.mode === mode);
   const headline = at(v.mode);
 
-  const columns: CardColumn[] = facts.plans.map((p) => ({
+  const columns: CardColumn[] = drawn.map((p) => ({
     name: planLabel(p.code),
     ceiling: MILLIONS(p.annualMax),
     selected: p.code === v.plan,
     sold: sellable.includes(p.code),
   }));
   const cellsOf = (get: (code: string) => string): CardCell[] =>
-    facts.plans.map((p) => ({ text: get(p.code), dim: !sellable.includes(p.code) }));
+    drawn.map((p) => ({ text: get(p.code), dim: !sellable.includes(p.code) }));
 
   /**
    * The ceiling first and the company's categories under it, in the sheet's own order.
@@ -184,7 +195,7 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
    */
   const rows: CardTableRow[] = [
     { label: "วงเงินค่ารักษาต่อปี", cells: cellsOf((code) => {
-      const plan = facts.plans.find((p) => p.code === code)!;
+      const plan = drawn.find((p) => p.code === code)!;
       return MILLIONS(plan.annualMax);
     }) },
   ];
