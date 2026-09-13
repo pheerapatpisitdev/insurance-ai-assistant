@@ -55,12 +55,44 @@ const CAPTION = "มูลค่าทุกปี ตั้งแต่ปี�
  * other down the column, so they sit right.
  */
 const COLS = [
-  { w: 64, align: "flex-start" as const },
-  { w: 64, align: "flex-start" as const },
-  { w: 166, align: "flex-end" as const },
-  { w: 166, align: "flex-end" as const },
-  { w: HALF - 64 - 64 - 166 - 166, align: "flex-end" as const },
+  { w: 68, align: "flex-start" as const },
+  { w: 68, align: "flex-start" as const },
+  { w: 168, align: "flex-end" as const },
+  { w: 168, align: "flex-end" as const },
+  { w: HALF - 68 - 68 - 168 - 168, align: "flex-end" as const },
 ];
+
+/** Air either side of a figure, so no column ever touches the rule beside it. */
+const CELL_PAD = 11;
+
+/**
+ * One cell of the table, ruled off from the one before it.
+ *
+ * The rule is drawn by the cell rather than by a line of its own so that it runs the whole
+ * height of the row: a border on a box that is only as tall as its text leaves a dashed
+ * ladder down the table instead of a column.
+ */
+function Cell(
+  { i, height, color, children }: { i: number; height: number; color: string; children: string },
+) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        width: COLS[i].w,
+        height,
+        alignItems: "center",
+        justifyContent: COLS[i].align,
+        paddingLeft: CELL_PAD,
+        paddingRight: CELL_PAD,
+        ...(i > 0 ? { borderLeft: `1px solid ${RULE}` } : {}),
+        color,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 const band = (height: number) => ({ display: "flex", height, flexShrink: 0 }) as const;
 const spacer = (height: number, background?: string) => (
@@ -71,15 +103,8 @@ const spacer = (height: number, background?: string) => (
 function Half({ columns, rows }: { columns: string[]; rows: ValueTableRow[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", width: HALF, flexShrink: 0 }}>
-      <div style={{ ...band(H.head), width: HALF, alignItems: "center", borderBottom: `1px solid ${HAIR}` }}>
-        {columns.map((c, i) => (
-          <div
-            key={c}
-            style={{ display: "flex", width: COLS[i].w, justifyContent: COLS[i].align, fontSize: 21, color: MUTE }}
-          >
-            {c}
-          </div>
-        ))}
+      <div style={{ ...band(H.head), width: HALF, fontSize: 21, borderBottom: `1px solid ${HAIR}` }}>
+        {columns.map((c, i) => <Cell key={c} i={i} height={H.head - 1} color={MUTE}>{c}</Cell>)}
       </div>
       {rows.map((r, n) => {
         // the year the value first covers what has gone in is the one the customer looks for
@@ -89,21 +114,12 @@ function Half({ columns, rows }: { columns: string[]; rows: ValueTableRow[] }) {
         return (
           <div
             key={r.year}
-            style={{
-              ...band(H.row), width: HALF, alignItems: "center",
-              ...(ground ? { background: ground } : {}),
-            }}
+            style={{ ...band(H.row), width: HALF, fontSize: 22, ...(ground ? { background: ground } : {}) }}
           >
             {cells.map((cell, i) => (
-              <div
-                key={columns[i]}
-                style={{
-                  display: "flex", width: COLS[i].w, justifyContent: COLS[i].align, fontSize: 22,
-                  color: i < 2 ? (r.breakEven ? GOLD_LIT : MUTE) : ink,
-                }}
-              >
+              <Cell key={columns[i]} i={i} height={H.row} color={i < 2 ? (r.breakEven ? GOLD_LIT : MUTE) : ink}>
                 {cell}
-              </div>
+              </Cell>
             ))}
           </div>
         );
