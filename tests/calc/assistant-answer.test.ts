@@ -16,6 +16,7 @@ vi.mock("@/lib/ai/client", async () => {
 });
 
 const { answerQuestion } = await import("@/lib/assistant/answer");
+const { asksValueTable, lifeProtectVariantIn, wantsToBuy } = await import("@/lib/assistant/route");
 const { lifeProtectTable } = await import("@/lib/lifeprotect-table");
 const { lifeProtectQuoteText } = await import("@/lib/lifeprotect-cta");
 const { cashAt, deathBenefitOf, lifeProtectModes, termAt } = await import("@/lib/lifeprotect-quote");
@@ -265,6 +266,55 @@ describe("what the model is told about the plan", () => {
     expect(system).toContain("Life Protect+ 100");
     expect(system).not.toContain("ตัวอย่าง");
     expect(system).not.toMatch(/\d,\d{3} ?บาท\/เดือน|เดือนละ \d/);
+  });
+});
+
+describe("the buttons under a cheaper arrangement", () => {
+  const known = { intent: "quote" as const, age: 35, sex: "M" as const, coverWanted: 2_000_000 };
+
+  it("offer the smaller arrangement and the table", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("แพงไป"), known);
+    expect(answer.replies).toEqual(["เอาแบบนี้", "ขอตารางมูลค่า"]);
+  });
+
+  it("take the offer when tapped, rather than hearing the title as a new complaint", async () => {
+    routed = { intent: "other" };
+    const offered = await answerQuestion(said("แพงไป"), known);
+    const taken = await answerQuestion(said(offered.replies![0]), offered.slots);
+    expect(taken.priced).toBe(true);
+    expect(taken.messages[0].card).toContain("sum=500000");
+  });
+});
+
+describe("the buttons under a quotation", () => {
+  beforeEach(() => { routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 }; });
+
+  it("offers the table, the terms not taken, and the way on", async () => {
+    const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
+    expect(answer.replies).toEqual(["ขอตารางมูลค่า", "จ่าย 9 ปี", "จ่าย 19 ปี", "สนใจสมัคร"]);
+  });
+
+  it("never offers the term the customer is already looking at", async () => {
+    routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000, variant: "WLF19H" };
+    const answer = await answerQuestion(said("จ่าย 19 ปีเท่าไหร่"), null);
+    expect(answer.replies).not.toContain("จ่าย 19 ปี");
+    expect(answer.replies).toContain("จ่ายถึงอายุ 99");
+  });
+
+  it("says only what the bot can read back: a tap arrives as its own title", async () => {
+    const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
+    for (const title of answer.replies!) {
+      expect(title.length, title).toBeLessThanOrEqual(20);
+      const heard = asksValueTable(title) || lifeProtectVariantIn(title) !== undefined || wantsToBuy(title, true);
+      expect(heard, title).toBe(true);
+    }
+  });
+
+  it("offers none when there was no price to put them under", async () => {
+    routed = { intent: "quote", coverWanted: 1_000_000 };
+    const answer = await answerQuestion(said("ขอเบี้ยหน่อย"), null);
+    expect(answer.replies).toBeUndefined();
   });
 });
 

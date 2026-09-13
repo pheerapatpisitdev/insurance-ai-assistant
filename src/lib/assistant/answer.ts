@@ -42,6 +42,14 @@ export interface Answer {
   slots: Routed;
   /** the answer carries a premium — the moment a browser turns into someone worth calling */
   priced?: boolean;
+  /**
+   * Buttons offered under the last thing sent.
+   *
+   * A quotation ends with an invitation nobody acts on — it is the last line of twenty, under
+   * a picture. The same invitation as a row of buttons is one tap, and a tap arrives as the
+   * words themselves, so every title here is a sentence the bot already answers.
+   */
+  replies?: string[];
 }
 
 /** The usual case: the bot says one thing. */
@@ -282,6 +290,25 @@ function sumBehind(
 }
 
 /**
+ * The buttons under a quotation: the table, whichever terms this quote did not take, and the
+ * way on. Titles are kept under twenty characters, which is all Messenger shows of one.
+ */
+function quoteReplies(table: LifeProtectTable, quoted: string): string[] {
+  return [
+    ASK_FOR_TABLE,
+    ...table.terms.filter((t) => QUOTABLE.has(t.variant) && t.variant !== quoted).map((t) => t.label),
+    WANTS_IN,
+  ];
+}
+
+/** The words a tapped button sends, which are the words the bot reads. */
+const ASK_FOR_TABLE = "ขอตารางมูลค่า";
+const WANTS_IN = "สนใจสมัคร";
+/** Not "เอาแบบลดทุน": ลดทุน is one of the words that mean "too expensive", and the title
+ * would come back as a fresh objection rather than as an acceptance. */
+const TAKES_OFFER = "เอาแบบนี้";
+
+/**
  * The contract year by year, as a picture.
  *
  * Only ever the arrangement already on the table: the table is drawn from the same sum the
@@ -305,6 +332,10 @@ function answerValueTable(slots: Routed): Omit<Answer, "slots"> {
       card: valueTablePath({ kind: "plan", planCode: PLAN_CODE, variant, age, sex, sumAssured }),
     }],
     priced: true,
+    replies: [
+      ...table.terms.filter((t) => QUOTABLE.has(t.variant) && t.variant !== variant).map((t) => t.label),
+      WANTS_IN,
+    ],
   };
 }
 
@@ -335,7 +366,7 @@ function answerQuote(slots: Routed): Omit<Answer, "slots"> {
   const last = messages.map((m) => Boolean(m.card)).lastIndexOf(true);
   if (last >= 0) messages[last].text += `\n\n${otherTerms(table, variant)}`;
 
-  return { messages, priced: last >= 0 };
+  return { messages, priced: last >= 0, ...(last >= 0 ? { replies: quoteReplies(table, variant) } : {}) };
 }
 
 /**
@@ -416,11 +447,18 @@ function answerCheaper(slots: Routed): Answer {
     lines.push(`ทุนตอนนี้อยู่ที่ขั้นต่ำของแบบนี้แล้วครับ ลดลงกว่านี้ไม่ได้`);
   }
 
-  lines.push(offer && offer !== slots.offer
+  const offered = Boolean(offer && offer !== slots.offer);
+  lines.push(offered
     ? 'สนใจแบบลดทุน พิมพ์ว่า "เอา" ได้เลยครับ เดี๋ยวส่งใบเสนอให้ หรือบอกทุนที่อยากได้มาใหม่ก็ได้'
     : "บอกทุนที่อยากได้มาใหม่ได้เลยครับ เดี๋ยวคิดให้");
 
-  return { messages: [{ text: lines.join("\n") }], slots: { ...slots, offer } };
+  // the objection is the moment the table earns its place: it is the answer to "what do I
+  // get back". And taking the smaller arrangement should be a tap, not a sentence to type.
+  return {
+    messages: [{ text: lines.join("\n") }],
+    slots: { ...slots, offer },
+    replies: [...(offered ? [TAKES_OFFER] : []), ASK_FOR_TABLE],
+  };
 }
 
 /** Whether this customer has been given a premium: the three things a quote needs are known. */

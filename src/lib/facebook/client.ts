@@ -5,6 +5,9 @@ const GRAPH = "https://graph.facebook.com/v23.0/me";
 /** Messenger refuses a message longer than this, so a long answer is split across messages. */
 const MAX_TEXT = 1900;
 const MAX_PARTS = 5;
+/** Messenger shows at most this many buttons, and cuts a title longer than this. */
+const MAX_REPLIES = 13;
+const MAX_REPLY_TITLE = 20;
 
 async function token(): Promise<string> {
   const t = await pageToken();
@@ -34,6 +37,20 @@ export function toParts(text: string): string[] {
   return chunks.slice(0, MAX_PARTS);
 }
 
+/**
+ * Buttons under a message.
+ *
+ * A tap arrives back as an ordinary message whose text is the title, so every title has to
+ * be something the bot already understands — "ขอตารางมูลค่า", "จ่าย 9 ปี". There is nothing
+ * to route on a payload that the words do not already say.
+ */
+function quickReplies(titles: string[]) {
+  return titles.slice(0, MAX_REPLIES).map((t) => {
+    const title = t.slice(0, MAX_REPLY_TITLE);
+    return { content_type: "text", title, payload: title };
+  });
+}
+
 async function post(path: string, body: unknown): Promise<void> {
   // the token goes in the header, not the query string: a URL is written to access logs and
   // proxy caches, and this one can send messages as the page
@@ -55,17 +72,28 @@ export async function showTyping(psid: string): Promise<void> {
  * internet can reach — which the card route is, and which is why the card carries no more
  * than the arrangement it draws.
  */
-export async function sendImage(psid: string, url: string): Promise<void> {
+export async function sendImage(psid: string, url: string, replies?: string[]): Promise<void> {
   await post("messages", {
     recipient: { id: psid },
     messaging_type: "RESPONSE",
-    message: { attachment: { type: "image", payload: { url, is_reusable: true } } },
+    message: {
+      attachment: { type: "image", payload: { url, is_reusable: true } },
+      ...(replies?.length ? { quick_replies: quickReplies(replies) } : {}),
+    },
   });
 }
 
-export async function sendMessage(psid: string, text: string): Promise<void> {
+export async function sendMessage(psid: string, text: string, replies?: string[]): Promise<void> {
   // parts go one after another, because Messenger shows them in the order they arrive
-  for (const part of toParts(text)) {
-    await post("messages", { recipient: { id: psid }, messaging_type: "RESPONSE", message: { text: part } });
+  const parts = toParts(text);
+  for (const [i, part] of parts.entries()) {
+    // the buttons belong to the last thing on the screen: a message sent after them takes
+    // them away again
+    const last = i === parts.length - 1;
+    await post("messages", {
+      recipient: { id: psid },
+      messaging_type: "RESPONSE",
+      message: { text: part, ...(last && replies?.length ? { quick_replies: quickReplies(replies) } : {}) },
+    });
   }
 }

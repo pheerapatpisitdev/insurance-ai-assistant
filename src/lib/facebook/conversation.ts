@@ -102,10 +102,15 @@ export async function handle(event: Messaging): Promise<void> {
         await showTyping(psid).catch(() => {});
         await pause(Math.min(2500, 400 + said.text.length * 15));
       }
-      await sendMessage(psid, said.text);
+      // the buttons ride on whatever lands last, because anything sent after them clears them
+      const last = i === answer.messages.length - 1;
+      await sendMessage(psid, said.text, last && !said.card ? answer.replies : undefined);
       // the card follows its own words, so the customer reads the quote before the picture of
       // it — and a couple priced together gets the pair in the order they were named
-      if (said.card) await sendImage(psid, siteUrl(said.card)).catch((e) => console.error("card failed:", e));
+      if (said.card) {
+        await sendImage(psid, siteUrl(said.card), last ? answer.replies : undefined)
+          .catch((e) => console.error("card failed:", e));
+      }
     }
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
     // no mute argument: recording what was said must never clear one

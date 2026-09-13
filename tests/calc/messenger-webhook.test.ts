@@ -1,20 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Answer } from "@/lib/assistant/answer";
 
-const sent: { text: string[]; images: string[] } = { text: [], images: [] };
+const sent: { text: string[]; images: string[]; replies: (string[] | undefined)[] } = { text: [], images: [], replies: [] };
 const session = { messages: [] as { role: "user" | "assistant"; content: string }[], slots: null as unknown, mutedUntil: null as string | null };
 const saved: { mutedUntil?: Date | null }[] = [];
 /** every user hash the handler touched, so one conversation can be shown to be one row */
 const hashesSeen: string[] = [];
-const quoted = async () => ({
+const quoted = async (): Promise<Answer> => ({
   messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }],
-  slots: { intent: "quote" as const },
+  slots: { intent: "quote" },
   priced: true,
 });
 const answer = vi.fn(quoted);
 
 vi.mock("@/lib/facebook/client", () => ({
-  sendMessage: async (_psid: string, text: string) => { sent.text.push(text); },
-  sendImage: async (_psid: string, url: string) => { sent.images.push(url); },
+  sendMessage: async (_psid: string, text: string, replies?: string[]) => {
+    sent.text.push(text); sent.replies.push(replies);
+  },
+  sendImage: async (_psid: string, url: string, replies?: string[]) => {
+    sent.images.push(url); sent.replies.push(replies);
+  },
   showTyping: async () => {},
 }));
 
@@ -37,7 +42,7 @@ const { handle } = await import("@/lib/facebook/conversation");
 beforeEach(() => {
   process.env.FB_APP_ID = "app-1";
   process.env.FB_APP_SECRET = "secret";
-  sent.text = []; sent.images = []; saved.length = 0;
+  sent.text = []; sent.images = []; sent.replies = []; saved.length = 0;
   session.messages = []; session.slots = null; session.mutedUntil = null;
   answer.mockReset();
   answer.mockImplementation(quoted);
@@ -88,9 +93,9 @@ describe("an agent who answers while the bot is still typing", () => {
   it("is not talked over", async () => {
     // the mute lands during the model call, which is where the seconds go
     session.mutedUntil = null;
-    answer.mockImplementationOnce(async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => {
       session.mutedUntil = new Date(Date.now() + 3600_000).toISOString();
-      return { messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }], slots: { intent: "quote" as const }, priced: true };
+      return { messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }], slots: { intent: "quote" }, priced: true };
     });
     await handle({ sender: { id: "psid-cut" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
     expect(sent.text).toEqual([]);
@@ -99,12 +104,37 @@ describe("an agent who answers while the bot is still typing", () => {
 
   it("keeps their mute: the bot's own save must not wipe it", async () => {
     session.mutedUntil = null;
-    answer.mockImplementationOnce(async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => {
       session.mutedUntil = new Date(Date.now() + 3600_000).toISOString();
-      return { messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }], slots: { intent: "quote" as const }, priced: true };
+      return { messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }], slots: { intent: "quote" }, priced: true };
     });
     await handle({ sender: { id: "psid-cut2" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
     expect(saved).toEqual([]);
+  });
+});
+
+describe("the buttons an answer offers", () => {
+  it("ride on the picture, which is what lands last", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }],
+      slots: { intent: "quote" },
+      priced: true,
+      replies: ["ขอตารางมูลค่า"],
+    }));
+    await handle({ sender: { id: "psid-btn" }, message: { mid: "mb1", text: "ชาย 35 ล้านนึง" } });
+    // the words go out bare; anything sent after the buttons would take them away
+    expect(sent.replies).toEqual([undefined, ["ขอตารางมูลค่า"]]);
+  });
+
+  it("ride on the words when there is no picture", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "ส่งตารางให้แล้วครับ" }],
+      slots: { intent: "quote" },
+      priced: true,
+      replies: ["สนใจสมัคร"],
+    }));
+    await handle({ sender: { id: "psid-btn2" }, message: { mid: "mb2", text: "ขอตาราง" } });
+    expect(sent.replies).toEqual([["สนใจสมัคร"]]);
   });
 });
 
