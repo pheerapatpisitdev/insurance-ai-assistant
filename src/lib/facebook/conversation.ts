@@ -2,7 +2,7 @@ import { siteUrl } from "@/lib/site-url";
 import { hashUserId } from "@/lib/facebook/verify";
 import { claimEvent, isMuted, loadSession, muteFor, saveSession } from "@/lib/chat/session";
 import { sendImage, sendMessage, showTyping } from "@/lib/facebook/client";
-import { answerQuestion } from "@/lib/assistant/lifeprotect/answer";
+import { answerAny } from "@/lib/assistant/dispatch";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
@@ -14,13 +14,13 @@ import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/
  * The failures that reach a customer are transient — a key table that could not be read on a
  * cold start, a provider refusing one call. A second try costs a second and saves the lead.
  */
-async function answered(history: ChatMessage[], slots: Parameters<typeof answerQuestion>[1]) {
+async function answered(history: ChatMessage[], slots: Parameters<typeof answerAny>[1]) {
   try {
-    return await answerQuestion(history, slots);
+    return await answerAny(history, slots);
   } catch (e) {
     if (e instanceof BudgetExceeded) throw e;
     console.error("answer failed, trying once more:", e);
-    return await answerQuestion(history, slots);
+    return await answerAny(history, slots);
   }
 }
 

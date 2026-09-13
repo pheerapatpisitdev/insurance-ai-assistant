@@ -16,6 +16,11 @@ export const PLAN_CODE = "LIFEPROTECT";
 
 export interface Routed {
   intent: Intent;
+  /**
+   * Which brain these slots belong to. Optional because rows written before the health brain
+   * existed have none, and those can only have been this plan's.
+   */
+  product?: "lifeprotect";
   /** a package of the plan, e.g. "WLF19H"; the answer decides whether it is one it may quote */
   variant?: string;
   age?: number;

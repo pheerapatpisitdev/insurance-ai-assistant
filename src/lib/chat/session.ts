@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ChatMessage } from "@/lib/ai/types";
-import type { Routed } from "@/lib/assistant/lifeprotect/route";
+import type { AnySlots } from "@/lib/assistant/slots";
 
 /** Which messaging service a person wrote from. Messenger is the only one the bot answers on. */
 export type Channel = "facebook";
@@ -20,7 +20,7 @@ const MUTE_HOURS = 24;
 
 export interface Session {
   messages: ChatMessage[];
-  slots: Routed | null;
+  slots: AnySlots | null;
   /** ISO time the bot may speak again, or null when it was never asked to stop */
   mutedUntil: string | null;
 }
@@ -50,7 +50,7 @@ export async function loadSession(channel: Channel, userHash: string): Promise<S
 
   const fresh = new Date(data.updated_at).getTime() > Date.now() - MAX_AGE_HOURS * 3600_000;
   const stored = fresh && Array.isArray(data.messages) ? (data.messages as ChatMessage[]) : [];
-  const slots = fresh && data.slots && Object.keys(data.slots).length ? (data.slots as Routed) : null;
+  const slots = fresh && data.slots && Object.keys(data.slots).length ? (data.slots as AnySlots) : null;
   return { messages: stored.slice(-MAX_TURNS), slots, mutedUntil: data.muted_until ?? null };
 }
 
@@ -66,7 +66,7 @@ export async function saveSession(
   channel: Channel,
   userHash: string,
   messages: ChatMessage[],
-  slots: Routed | null,
+  slots: AnySlots | null,
   mutedUntil?: Date | null,
 ): Promise<void> {
   await supabaseAdmin()

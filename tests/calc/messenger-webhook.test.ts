@@ -35,7 +35,7 @@ vi.mock("@/lib/chat/session", async () => {
   };
 });
 
-vi.mock("@/lib/assistant/lifeprotect/answer", () => ({ answerQuestion: answer }));
+vi.mock("@/lib/assistant/dispatch", () => ({ answerAny: answer }));
 
 const { handle } = await import("@/lib/facebook/conversation");
 

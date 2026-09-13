@@ -20,7 +20,7 @@ describe("rehearsal", () => {
       const m = line.match(/^([A-Z_]+)=(.*)$/);
       if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
     }
-    const { answerQuestion } = await import("@/lib/assistant/lifeprotect/answer");
+    const { answerAny } = await import("@/lib/assistant/dispatch");
 
     const fresh = process.env.CHAT_RESET === "1" || !fs.existsSync(STATE);
     const state = fresh
@@ -29,7 +29,7 @@ describe("rehearsal", () => {
 
     const history = [...state.history, { role: "user" as const, content: MSG }];
     const started = Date.now();
-    const answer = await answerQuestion(history, state.slots);
+    const answer = await answerAny(history, state.slots);
 
     console.log(`\n👤 ลูกค้า: ${MSG}`);
     answer.messages.forEach((m, i) => {
