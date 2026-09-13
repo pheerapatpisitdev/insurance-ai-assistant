@@ -52,8 +52,8 @@ export interface BundleCardInput {
 /** What a card can be asked for: an arrangement priced from the customer's own sum, or one the agency sells under its own name and tier. */
 export type CardInput = PlanCardInput | BundleCardInput;
 
-/** The path a card is drawn at, with the arrangement it draws written into it. */
-export function cardPath(input: CardInput): string {
+/** The arrangement, written the way a link carries it. */
+function cardQuery(input: CardInput): string {
   const q = input.kind === "bundle"
     ? new URLSearchParams({
       bundle: input.bundleCode,
@@ -69,7 +69,21 @@ export function cardPath(input: CardInput): string {
       sum: String(input.sumAssured),
     });
   if (input.mode) q.set("mode", input.mode);
-  return `/api/card?${q.toString()}`;
+  return q.toString();
+}
+
+/** The path a card is drawn at, with the arrangement it draws written into it. */
+export function cardPath(input: CardInput): string {
+  return `/api/card?${cardQuery(input)}`;
+}
+
+/**
+ * The path the year-by-year value table is drawn at — the same arrangement, told as a table
+ * rather than as a headline. Only for a plan: a bundle's worth is its parts', and a table of
+ * one column per part is not a picture anybody reads on a phone.
+ */
+export function valueTablePath(input: PlanCardInput): string {
+  return `/api/card/table?${cardQuery(input)}`;
 }
 
 /** The same path against a host, for the channels that can only send an absolute URL. */

@@ -268,6 +268,37 @@ describe("what the model is told about the plan", () => {
   });
 });
 
+describe("the value table", () => {
+  const known = { intent: "quote" as const, age: 35, sex: "M" as const, coverWanted: 2_000_000 };
+
+  it("is sent as a picture of the same contract the quotation priced", async () => {
+    const answer = await answerQuestion(said("ขอตารางมูลค่าหน่อยครับ"), known);
+    // the router reads the turn, but no model writes the words or the figures
+    expect(chat.mock.calls.map((c) => c[0].task)).toEqual(["route"]);
+    expect(answer.messages).toHaveLength(1);
+    expect(answer.messages[0].card).toBe("/api/card/table?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=1000000");
+    expect(answer.messages[0].text).toContain("ตารางมูลค่าทุกปี");
+  });
+
+  it("follows the term the customer is looking at", async () => {
+    const answer = await answerQuestion(said("ขอตารางมูลค่า"), { ...known, variant: "WLF19H" });
+    expect(answer.messages[0].card).toContain("variant=WLF19H");
+  });
+
+  it("keeps the halved offer's own sum once it has been taken", async () => {
+    routed = { intent: "other" };
+    const offered = (await answerQuestion(said("แพงไป"), known)).slots;
+    const taken = (await answerQuestion(said("เอา"), offered)).slots;
+    const answer = await answerQuestion(said("ขอตารางมูลค่า"), taken);
+    expect(answer.messages[0].card).toContain("sum=500000");
+  });
+
+  it("asks for what it is missing rather than drawing a table of nothing", async () => {
+    const answer = await answerQuestion(said("ขอตารางมูลค่า"), null);
+    expect(answer.messages[0].card).toBeUndefined();
+  });
+});
+
 describe("deciding to buy", () => {
   const FORM = "https://ktaxaform.vercel.app/?ref=sa-9f3a";
   const quoted = { intent: "quote" as const, age: 38, sex: "M" as const, coverWanted: 2_000_000 };

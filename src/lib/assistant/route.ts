@@ -245,6 +245,21 @@ export function saysFormDone(text: string): boolean {
   return FORM_DONE.test(text);
 }
 
+/**
+ * Asking for the contract year by year — "ขอตารางมูลค่า", "มูลค่าเวนคืนแต่ละปีเท่าไหร่".
+ *
+ * The quotation already carries four milestone ages, which answers whether the policy is
+ * worth anything but not what it is worth in the year they retire. Someone asking for the
+ * table wants all of it, and all of it is a picture rather than a paragraph.
+ */
+const VALUE_TABLE =
+  /ตาราง\s*(?:มูลค่า|เวนคืน|เงินสด|ผลประโยชน์|ผลตอบแทน|กรมธรรม์)|ขอตาราง|(?:มูลค่า|เวนคืน|เงินสด|ได้คืน)[^\n]{0,12}(?:ทุกปี|แต่ละปี|รายปี|ปีต่อปี)/;
+
+/** Whether the customer is asking for the year-by-year table. */
+export function asksValueTable(text: string): boolean {
+  return VALUE_TABLE.test(text);
+}
+
 /** Whether a message is asking who stands behind the policy. */
 export function asksAboutCompany(text: string): boolean {
   return INSURER_QUESTION.test(text) || TRUST_QUESTION.test(text);

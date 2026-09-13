@@ -8,7 +8,7 @@ vi.mock("@/lib/ai/client", async () => {
   return { ...actual, chat };
 });
 
-const { affirms, ageFromBirthdate, asksCheaper, mergeSlots, routeMessage, stalls, wantsToBuy, saysFormDone } = await import("@/lib/assistant/route");
+const { affirms, ageFromBirthdate, asksCheaper, asksValueTable, mergeSlots, routeMessage, stalls, wantsToBuy, saysFormDone } = await import("@/lib/assistant/route");
 
 /** The age someone born on that date is today, counted the way a person counts it. */
 function ageOn(today: Date, day: number, month: number, year: number): number {
@@ -157,6 +157,20 @@ describe("leaving to think it over", () => {
   it("is not a question that happens to mention thinking", () => {
     for (const t of ["ถ้าคิดดูแล้วสนใจ ต้องทำยังไงต่อ", "คิดดูก่อนได้ไหม", "ติดต่อกลับทางไหน", "ขอบคุณค่ะ"]) {
       expect(stalls(t), t).toBe(false);
+    }
+  });
+});
+
+describe("asking for the value table", () => {
+  it("is heard in the ways people ask for it", () => {
+    for (const t of ["ขอตารางมูลค่าหน่อยครับ", "มีตารางเวนคืนไหม", "ขอตารางครับ", "มูลค่าเวนคืนแต่ละปีเท่าไหร่", "เงินสดทุกปีดูได้ไหม", "ขอตารางผลประโยชน์"]) {
+      expect(asksValueTable(t), t).toBe(true);
+    }
+  });
+
+  it("is not every mention of what the policy is worth", () => {
+    for (const t of ["เวนคืนได้ไหม", "ตอนอายุ 60 ได้เท่าไหร่", "ตารางเบี้ยหมดอายุหรือยัง", "ครบสัญญาได้เงินคืนไหม"]) {
+      expect(asksValueTable(t), t).toBe(false);
     }
   });
 });

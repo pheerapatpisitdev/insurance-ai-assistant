@@ -3,14 +3,14 @@ import type { ChatMessage } from "@/lib/ai/types";
 import { getPlan } from "@/calc/plans/registry";
 import { baseSumAssuredLimits } from "@/calc/rules";
 import { formatBaht } from "@/calc/money";
-import { cardPath } from "@/lib/card-link";
+import { cardPath, valueTablePath } from "@/lib/card-link";
 import { lifeProtectQuoteText } from "@/lib/lifeprotect-cta";
 import { lifeProtectFacts } from "@/lib/lifeprotect-facts";
 import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
 import { faqAnswer } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
-import { affirms, asksAboutCompany, asksAboutTrust, asksCheaper, asksPayTerm, mergeSlots, PLAN_CODE, recentTurns, routeMessage, saysFormDone, stalls, wantsToBuy, type Routed } from "./route";
+import { affirms, asksAboutCompany, asksAboutTrust, asksCheaper, asksPayTerm, asksValueTable, mergeSlots, PLAN_CODE, recentTurns, routeMessage, saysFormDone, stalls, wantsToBuy, type Routed } from "./route";
 
 /** The package quoted when the customer has not named one: the cheapest instalment of the three. */
 const DEFAULT_TERM = "WLF99H";
@@ -164,6 +164,7 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
   // agency's own sentence whatever else the turn was about
   if (asksAboutCompany(asked)) return { ...one(aboutCompany(asked)), slots };
   if (asksPayTerm(asked)) return { ...answerPayTerm(slots), slots };
+  if (asksValueTable(asked)) return { ...answerValueTable(slots), slots };
   if (asksCheaper(asked)) return answerCheaper(slots);
   // a bare "เอา" takes the cheaper arrangement the bot last put on the table
   if (affirms(asked) && slots.offer) {
@@ -237,10 +238,7 @@ function quoteFor(
     return { text: `อายุ ${age} ปี แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
   }
 
-  // the offer carries its own sum, because its cover may be the one figure read as a sum
-  const sumAssured = offer && offer.coverWanted === coverWanted && offer.variant === variant
-    ? offer.sumAssured
-    : takenSum ?? sumForCover(table, age, coverWanted);
+  const sumAssured = sumBehind(table, age, coverWanted, variant, offer, takenSum);
   // the floor is a rule of the plan, not a field of the page's slim table — and it is stated
   // back in the customer's own terms, which are what the family receives
   const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, variant).min;
@@ -264,6 +262,49 @@ function quoteFor(
       cash: cashAt(term, sex, age, sumAssured, table.ageMin),
     }),
     card: cardPath({ kind: "plan", planCode: PLAN_CODE, variant, age, sex, sumAssured }),
+  };
+}
+
+/**
+ * The sum assured behind the cover the customer named, on the arrangement in front of them.
+ *
+ * The offer carries its own sum, because its cover may be the one figure read as a sum
+ * assured. Shared by the quotation and the value table so that the table can never be drawn
+ * for a different contract than the price the customer was just given.
+ */
+function sumBehind(
+  table: LifeProtectTable, age: number, coverWanted: number, variant: string,
+  offer?: Routed["offer"], takenSum?: number,
+): number {
+  return offer && offer.coverWanted === coverWanted && offer.variant === variant
+    ? offer.sumAssured
+    : takenSum ?? sumForCover(table, age, coverWanted);
+}
+
+/**
+ * The contract year by year, as a picture.
+ *
+ * Only ever the arrangement already on the table: the table is drawn from the same sum the
+ * quotation was, so the two cannot tell the customer different things. Without a price
+ * behind it there is nothing to tabulate, so the bot asks for what it is missing instead.
+ */
+function answerValueTable(slots: Routed): Omit<Answer, "slots"> {
+  const table = lifeProtectTable();
+  const { age, sex, coverWanted } = slots;
+  if (age === undefined || sex === undefined || coverWanted === undefined) {
+    return one(askForMissing(slots, table));
+  }
+  if (table.expired) return one(`ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HAND_OVER}`);
+
+  const variant = QUOTABLE.has(slots.variant ?? "") ? slots.variant! : DEFAULT_TERM;
+  const sumAssured = sumBehind(table, age, coverWanted, variant, slots.offer, slots.takenSum);
+  const term = termAt(table, variant);
+  return {
+    messages: [{
+      text: `ส่งตารางมูลค่าทุกปีให้ดูครับ ตั้งแต่ปีแรกจนครบสัญญาอายุ ${table.coverToAge} ปี — มีทั้งเบี้ยสะสม เงินเวนคืน และความคุ้มครองของแต่ละปี (แบบ${term.label})`,
+      card: valueTablePath({ kind: "plan", planCode: PLAN_CODE, variant, age, sex, sumAssured }),
+    }],
+    priced: true,
   };
 }
 
@@ -420,7 +461,7 @@ function stallReply(slots: Routed): string {
 /** The terms this quote did not take, offered by name so the customer can ask for one. */
 function otherTerms(table: LifeProtectTable, quoted: string): string {
   const rest = table.terms.filter((t) => QUOTABLE.has(t.variant) && t.variant !== quoted).map((t) => t.label);
-  return `ถ้าอยากดูแบบ${rest.join(" หรือ ")} บอกได้เลยนะครับ เดี๋ยวคิดให้`;
+  return `ถ้าอยากดูแบบ${rest.join(" หรือ ")} หรือตารางมูลค่าทุกปี บอกได้เลยนะครับ เดี๋ยวคิดให้`;
 }
 
 /**

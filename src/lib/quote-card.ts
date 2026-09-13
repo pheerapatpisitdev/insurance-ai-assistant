@@ -430,6 +430,96 @@ function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
   };
 }
 
+/** One policy year, as the value table states it. */
+export interface ValueTableRow {
+  year: number;
+  age: number;
+  /** every premium paid up to and including this year; null when no price may be shown */
+  paid: string | null;
+  cash: string;
+  cover: string;
+  /** the first year the policy is worth what has gone into it */
+  breakEven?: boolean;
+  /** a year that would return nothing at all on surrender */
+  empty?: boolean;
+}
+
+export interface ValueTableCard {
+  planLine: string;
+  insuredLine: string;
+  /** "เบี้ย 23,200 บาทต่อปี · ชำระ 53 ปี" */
+  premiumLine: string;
+  columns: string[];
+  rows: ValueTableRow[];
+  notes: string[];
+}
+
+/** Same headings as the table on the sales page, less the premium the header line states. */
+const VALUE_COLUMNS = ["ปีที่", "อายุ", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"];
+
+const baht = (satang: number) => money(Math.round(satang / 100));
+
+/**
+ * Every year of the contract as a picture: what has been paid in by then, what surrendering
+ * would return, and what the family would receive.
+ *
+ * The sales page shows this table and customers ask the chat for it by name. The quote card
+ * carries four milestone ages, which answers "is it worth anything" but not "worth what, in
+ * the year I retire" — and a customer who wants that wants all of it, not a better-chosen
+ * four.
+ *
+ * Undefined for a plan whose cover rule has not been read off its own benefit sheet: the
+ * cover column would be a guess, and a guess in a table reads as a fact.
+ */
+export function valueTableCard(input: PlanCardInput, today: Date = new Date()): ValueTableCard | undefined {
+  const plan = getPlan(input.planCode);
+  if (!plan?.coverTopUp) return undefined;
+
+  const result = quote(quoteInput(input, "annual"), today);
+  const base = result.items[0];
+  if (!base?.eligible || result.sumAssured <= 0) return undefined;
+  if (result.warnings.some((w) => w.level === "error")) return undefined;
+
+  const factors = cashValueSchedule(input.planCode, input.variant, input.sex, input.age, 1000).map((r) => r.amount);
+  if (factors.length < 2) return undefined;
+
+  const annual = quoteModePremiums(quoteInput(input, "annual"), today)?.find((m) => m.mode === "annual");
+  const annualSatang = result.meta.expired || !annual ? null : annual.total;
+  const payYears = payYearsFor(plan, input.variant, input.age);
+  const death = result.deathBenefit
+    ?? { beforeAge: 0, sumBefore: result.sumAssured, sumFrom: result.sumAssured, alreadyPastAge: true };
+  const p = cashProjection({
+    factors, age: input.age, sumAssured: input.sumAssured, annualSatang, payYears, death, topUp: plan.coverTopUp,
+  });
+
+  const variantLabel = plan.variantLabels[input.variant];
+  const planLabel = plan.planLabel ?? result.meta.planName;
+  return {
+    planLine: variantLabel.includes("·") ? variantLabel : `${planLabel} · ${variantLabel}`,
+    insuredLine: `${SEX_WORD[input.sex]} ${input.age} ปี · ทุน ${money(result.sumAssured)} บาท`,
+    premiumLine: annualSatang === null
+      ? "ขอราคาปัจจุบันได้ทางแชท"
+      : `เบี้ย ${baht(annualSatang)} บาทต่อปี · ชำระ ${payYears} ปี`,
+    columns: VALUE_COLUMNS,
+    rows: p.rows.map((r) => ({
+      year: r.policyYear,
+      age: r.age,
+      paid: r.premiumPaid === null ? null : baht(r.premiumPaid),
+      cash: baht(r.cashValue),
+      cover: baht(r.cover),
+      ...(p.breakEven?.policyYear === r.policyYear ? { breakEven: true } : {}),
+      ...(r.cashValue === 0 ? { empty: true } : {}),
+    })),
+    notes: [
+      ...(p.zeroYears > 0
+        ? [`${p.zeroYears === 1 ? "ปีที่ 1" : `ปีที่ 1-${p.zeroYears}`} ยังไม่มีมูลค่าเวนคืน เบี้ยช่วงต้นถูกใช้ไปกับค่าใช้จ่ายในการออกกรมธรรม์`]
+        : []),
+      `แถวสุดท้าย (ปีที่ ${p.rows.length}) คือเงินที่ได้รับเมื่ออยู่ครบสัญญาอายุ ${p.maturityAge} ปี`,
+      ...cardNotes(result.meta.expired, result.meta.version, "เบี้ยมาตรฐานโดยประมาณ", planNotes(input)),
+    ],
+  };
+}
+
 /**
  * The rider a bundle pays a critical-illness lump sum through. Named here rather than
  * inferred, because "what this pays on a diagnosis" is a claim about a specific contract and
