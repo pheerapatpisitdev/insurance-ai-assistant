@@ -2,6 +2,7 @@ import { chat } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { getPlan } from "@/calc/plans/registry";
 import { baseSumAssuredLimits } from "@/calc/rules";
+import { formatBaht } from "@/calc/money";
 import { cardPath } from "@/lib/card-link";
 import { lifeProtectQuoteText } from "@/lib/lifeprotect-cta";
 import { lifeProtectFacts } from "@/lib/lifeprotect-facts";
@@ -319,7 +320,8 @@ function answerCheaper(slots: Routed): Answer {
   }
   if (table.expired || age < table.ageMin || age > table.ageMax) return { ...one(HAND_OVER), slots };
 
-  const baht = (satang: number) => Math.round(satang / 100).toLocaleString("en-US");
+  // the same formatting the quotation uses, so one instalment never shows as two figures
+  const baht = formatBaht;
   const monthly = (variant: string, sum: number) =>
     lifeProtectModes(table, termAt(table, variant), { sex, age, sumAssured: sum })?.find((m) => m.mode === "monthly");
   const variant = slots.variant ?? DEFAULT_TERM;
@@ -416,7 +418,7 @@ function quotedFigures(slots: Routed, table: LifeProtectTable): string | undefin
   const modes = lifeProtectModes(table, termAt(table, variant), { sex, age, sumAssured });
   if (!modes) return undefined;
 
-  const baht = (satang: number) => Math.round(satang / 100).toLocaleString("en-US");
+  const baht = formatBaht;
   const by = (mode: string) => modes.find((m) => m.mode === mode);
   // the last row of the surrender schedule is what the policy pays for staying to the end —
   // asked "ถ้าไม่ตายจนครบสัญญาได้อะไร", the model had called it the sum assured, which it is

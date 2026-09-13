@@ -19,6 +19,7 @@ const { answerQuestion } = await import("@/lib/assistant/answer");
 const { lifeProtectTable } = await import("@/lib/lifeprotect-table");
 const { lifeProtectQuoteText } = await import("@/lib/lifeprotect-cta");
 const { cashAt, deathBenefitOf, lifeProtectModes, termAt } = await import("@/lib/lifeprotect-quote");
+const { formatBaht } = await import("@/calc/money");
 
 const said = (content: string) => [{ role: "user" as const, content }];
 
@@ -243,8 +244,18 @@ describe("the price being too much", () => {
   const monthlyFor = (variant: string, sum: number) => {
     const table = lifeProtectTable();
     const m = lifeProtectModes(table, termAt(table, variant), { sex: "M", age: 38, sumAssured: sum })!;
-    return Math.round(m.find((x) => x.mode === "monthly")!.total / 100).toLocaleString("en-US");
+    return formatBaht(m.find((x) => x.mode === "monthly")!.total);
   };
+
+  it("shows the halved premium exactly as the quotation will, half-baht and all", async () => {
+    routed = { intent: "other" };
+    const offered = await answerQuestion(said("แพงไป"), known);
+    routed = { intent: "other" };
+    const taken = await answerQuestion(said("เอา"), offered.slots);
+    // 9,550 a year is 859.50 a month; the quotation floors it and so must the offer
+    const shown = offered.messages[0].text.match(/ประมาณ ([\d,]+) บาท\/เดือน/)![1];
+    expect(taken.messages[0].text).toContain(`รายเดือน ${shown} บาท`);
+  });
 
   it("names the to-99 term as the cheapest by the year, and offers half the cover with a real figure", async () => {
     routed = { intent: "other" };
