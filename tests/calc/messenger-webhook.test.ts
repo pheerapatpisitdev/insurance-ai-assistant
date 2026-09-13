@@ -27,7 +27,7 @@ vi.mock("@/lib/chat/session", async () => {
 
 vi.mock("@/lib/assistant/answer", () => ({ answerQuestion: answer }));
 
-const { handle } = await import("@/app/api/facebook/webhook/route");
+const { handle } = await import("@/lib/facebook/conversation");
 
 beforeEach(() => {
   process.env.FB_APP_ID = "app-1";
