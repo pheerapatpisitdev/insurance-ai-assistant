@@ -69,19 +69,37 @@ const HAND_OVER = "เดี๋ยวตัวแทนมาตอบในแ�
  */
 const INSURER = "บมจ. กรุงไทย-แอกซ่า ประกันชีวิต";
 
-const ABOUT_INSURER =
-  `แบบประกันนี้รับประกันโดย ${INSURER} ครับ 🙏`;
+/**
+ * The agents behind the page, as their own licences record them.
+ *
+ * Only the two fields a customer is entitled to check: the name and the licence number the
+ * regulator issued, which an agent is required to show anyway. The national id printed beside
+ * them on the same card is deliberately not here — the bot tells customers it never handles
+ * one, and it should hold none of its own either.
+ */
+const AGENTS = [
+  { name: "พีรพัฒฑ์พิสิษฐ์ ทองสีทอง", licence: "6001028534" },
+  { name: "ศิวลักษณ์ ทองสีทอง", licence: "6401024117" },
+];
 
-const ABOUT_TRUST =
-  "ส่วนรายละเอียดของตัวแทนและใบอนุญาต ขอให้ตัวแทนตอบเองนะครับ เดี๋ยวมีคนมาตอบในแชทนี้ครับ";
+const ABOUT_INSURER = `แบบประกันนี้รับประกันโดย ${INSURER} ครับ 🙏`;
+
+const ABOUT_AGENTS = [
+  "ดูแลโดยตัวแทนที่ได้รับใบอนุญาตจาก คปภ.",
+  ...AGENTS.map((a) => `• ${a.name} — ใบอนุญาตเลขที่ ${a.licence}`),
+].join("\n");
+
+const ABOUT_TRUST = "ถ้าอยากคุยรายละเอียดกับตัวแทนโดยตรง เดี๋ยวมีคนมาตอบในแชทนี้ครับ";
 
 const BACK_TO_QUOTE = "ระหว่างนี้ถ้าอยากทราบเบี้ยของอายุตัวเอง บอกเพศกับอายุมาได้เลยครับ";
 
-/** The answer to a question about the company, with the part a person must answer split off. */
+/**
+ * The answer to a question about who stands behind the policy: the insurer, then the people
+ * selling it. Built from constants and never from a model — asked the same question, a model
+ * agreed with whichever company name the customer had guessed.
+ */
 export function aboutCompany(question: string): string {
-  return asksAboutTrust(question)
-    ? `${ABOUT_INSURER}\n${ABOUT_TRUST}`
-    : `${ABOUT_INSURER}\n${BACK_TO_QUOTE}`;
+  return [ABOUT_INSURER, "", ABOUT_AGENTS, "", asksAboutTrust(question) ? ABOUT_TRUST : BACK_TO_QUOTE].join("\n");
 }
 
 export async function answerQuestion(history: ChatMessage[], previous: Routed | null): Promise<Answer> {

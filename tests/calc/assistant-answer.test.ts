@@ -143,6 +143,16 @@ describe("who stands behind the policy", () => {
     expect(answer.reply).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
   });
 
+  it("names both licensed agents, and never their national ids", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("ของบริษัทอะไรครับ"), null);
+    expect(answer.reply).toContain("6001028534");
+    expect(answer.reply).toContain("6401024117");
+    expect(answer.reply).toContain("คปภ.");
+    // the licences carry a national id beside the number; it must never reach a customer
+    expect(answer.reply).not.toMatch(/\b1[0-9]{12}\b/);
+  });
+
   it("names the insurer and leaves the licence to a person", async () => {
     routed = { intent: "other" };
     const answer = await answerQuestion(said("มีใบอนุญาตตัวแทนไหม บริษัทน่าเชื่อถือหรือเปล่า"), null);
