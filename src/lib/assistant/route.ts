@@ -156,6 +156,21 @@ const INSURER_QUESTION =
  */
 const TRUST_QUESTION = /ใบอนุญาต|นายหน้า|ตัวแทนของ|เชื่อถือ|มั่นคง|โกง|หลอก|จดทะเบียน|ตัวจริง/i;
 
+/**
+ * Asking how long the premium has to be paid — "ต้องจ่ายถึงกี่ปี" — rather than asking what a
+ * named term costs. The difference matters: the first wants one line, and was answered with
+ * the whole quotation again, card and all, one message after the customer had received it.
+ *
+ * A message that names a term is the second kind and is left to the quote.
+ */
+const PAY_TERM_QUESTION =
+  /(?:จ่าย|ส่ง|ชำระ)[^0-9]{0,12}(?:กี่ปี|นานไหม|นานแค่ไหน|นานเท่าไ|ถึงเมื่อไ|เมื่อไหร่|อีกกี่)|กี่ปี(?:ถึง)?(?:จะ)?(?:หมด|ครบ|จบ)/;
+
+/** Whether a message is asking how long the premium runs for. */
+export function asksPayTerm(text: string): boolean {
+  return PAY_TERM_QUESTION.test(text) && lifeProtectVariantIn(text) === undefined;
+}
+
 /** Whether a message is asking who stands behind the policy. */
 export function asksAboutCompany(text: string): boolean {
   return INSURER_QUESTION.test(text) || TRUST_QUESTION.test(text);

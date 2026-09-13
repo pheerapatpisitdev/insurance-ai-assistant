@@ -9,7 +9,7 @@ import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprot
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
 import { faqAnswer } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
-import { asksAboutCompany, asksAboutTrust, mergeSlots, PLAN_CODE, recentTurns, routeMessage, type Routed } from "./route";
+import { asksAboutCompany, asksAboutTrust, asksPayTerm, mergeSlots, PLAN_CODE, recentTurns, routeMessage, type Routed } from "./route";
 
 /** The package quoted when the customer has not named one: the cheapest instalment of the three. */
 const DEFAULT_TERM = "WLF99H";
@@ -133,6 +133,7 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
   // agency's own sentence whatever else the turn was about
   const asked = lastAsked(history);
   if (asksAboutCompany(asked)) return { ...one(aboutCompany(asked)), slots };
+  if (asksPayTerm(asked)) return { ...answerPayTerm(slots), slots };
 
   // one of the answers the agency writes out by hand every day. A message can both ask for a
   // price and ask one of these — "ญ 37 ลดหย่อนภาษีได้ไหม" — so it is added to the quote
@@ -249,6 +250,33 @@ function answerQuote(slots: Routed): Omit<Answer, "slots"> {
   if (last >= 0) messages[last].text += `\n\n${otherTerms(table, variant)}`;
 
   return { messages, priced: last >= 0 };
+}
+
+/**
+ * How long the premium runs, in one line, for whichever term is on the table.
+ *
+ * Answered from the plan's own terms rather than by re-sending the quotation: someone who
+ * asks how many years they pay for has the figures already and wants the one fact that was
+ * not among them.
+ */
+function answerPayTerm(slots: Routed): Omit<Answer, "slots"> {
+  const table = lifeProtectTable();
+  const quotable = table.terms.filter((t) => QUOTABLE.has(t.variant));
+  const term = slots.variant ? quotable.find((t) => t.variant === slots.variant) : undefined;
+
+  if (!term) {
+    return one(
+      `แบบนี้เลือกระยะเวลาชำระเบี้ยได้ 3 แบบครับ — ${quotable.map((t) => t.label).join(" · ")}\n`
+      + `ทุกแบบคุ้มครองถึงอายุ ${table.coverToAge} เหมือนกัน สนใจแบบไหนบอกได้เลยครับ`,
+    );
+  }
+
+  const rest = quotable.filter((t) => t.variant !== term.variant).map((t) => t.label).join(" หรือ ");
+  return one(term.payTerm !== undefined
+    ? `แบบที่คิดให้อยู่นี้ ${term.label} ครับ จ่ายครบ ${term.payTerm} ปีแล้วไม่ต้องจ่ายอีก `
+      + `แต่ยังคุ้มครองถึงอายุ ${table.coverToAge}\nถ้าอยากดูแบบ${rest} บอกได้เลยครับ`
+    : `แบบที่คิดให้อยู่นี้ ${term.label} ครับ คือชำระเบี้ยไปจนถึงอายุ ${table.coverToAge}\n`
+      + `ถ้าอยากให้จ่ายจบเร็วกว่านี้ มีแบบ${rest} บอกได้เลยครับ`);
 }
 
 /** The terms this quote did not take, offered by name so the customer can ask for one. */

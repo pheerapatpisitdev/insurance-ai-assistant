@@ -199,6 +199,45 @@ describe("who stands behind the policy", () => {
   });
 });
 
+describe("asking how long the premium runs", () => {
+  it("answers with the term on the table, not the quotation again", async () => {
+    routed = { intent: "quote" };
+    const answer = await answerQuestion(
+      said("ต้องจ่ายถึงกี่ปี"),
+      { intent: "quote", age: 30, sex: "F", coverWanted: 2_000_000, variant: "WLF09H" },
+    );
+    expect(answer.messages).toHaveLength(1);
+    expect(answer.messages[0].text).toContain("จ่าย 9 ปี");
+    expect(answer.messages[0].card).toBeUndefined();
+    expect(answer.messages[0].text).not.toContain("มูลค่าเงินสดสะสม");
+  });
+
+  it("names all three when no term has been chosen", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("ต้องจ่ายกี่ปี"), null);
+    expect(answer.messages[0].text).toContain("จ่าย 9 ปี");
+    expect(answer.messages[0].text).toContain("จ่าย 19 ปี");
+    expect(answer.messages[0].text).toContain("จ่ายถึงอายุ 99");
+  });
+
+  it("says the to-99 term keeps running, and offers the shorter ones", async () => {
+    routed = { intent: "quote" };
+    const answer = await answerQuestion(
+      said("ต้องจ่ายนานแค่ไหน"),
+      { intent: "quote", age: 30, sex: "F", coverWanted: 2_000_000, variant: "WLF99H" },
+    );
+    expect(answer.messages[0].text).toContain("จ่ายถึงอายุ 99");
+    expect(answer.messages[0].text).toContain("9 ปี");
+  });
+
+  it("still prices a term the customer names outright", async () => {
+    routed = { intent: "quote", age: 30, sex: "F", coverWanted: 2_000_000, variant: "WLF19H" };
+    const answer = await answerQuestion(said("จ่าย 19 ปีเท่าไหร่"), null);
+    expect(answer.priced).toBe(true);
+    expect(answer.messages[0].card).toContain("variant=WLF19H");
+  });
+});
+
 describe("a couple in one message", () => {
   it("prices each of them, in the order they were named", async () => {
     routed = { intent: "quote", coverWanted: 2_000_000 };
