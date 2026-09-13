@@ -128,6 +128,36 @@ describe("a quote", () => {
   });
 });
 
+describe("who stands behind the policy", () => {
+  it("does not agree to a company name the customer put in its mouth", async () => {
+    routed = { intent: "other" };
+    worded = "ใช่ครับ ยินดีให้บริการครับ";
+    const answer = await answerQuestion(said("กรุงไทยแอกซ่าใช่ไหม"), null);
+    expect(answer.reply).not.toContain("ใช่ครับ");
+    expect(answer.reply).toContain("ตัวแทน");
+  });
+
+  it("never asks a model who the insurer is", async () => {
+    routed = { intent: "plan_info" };
+    chat.mockClear();
+    await answerQuestion(said("ของบริษัทอะไรครับ"), null);
+    expect(chat.mock.calls.map((c) => c[0].task)).toEqual(["route"]);
+  });
+
+  it("turns down a question about the agent's licence the same way", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("มีใบอนุญาตตัวแทนไหม"), null);
+    expect(answer.reply).toContain("ตัวแทน");
+    expect(answer.card).toBeUndefined();
+  });
+
+  it("still prices a quote that merely mentions a rival by name", async () => {
+    routed = { intent: "quote", age: 35, sex: "M", sumAssured: 1_000_000 };
+    const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
+    expect(answer.priced).toBe(true);
+  });
+});
+
 describe("everything else", () => {
   it("answers a question about the plan in the model's words", async () => {
     routed = { intent: "plan_info" };

@@ -121,6 +121,24 @@ export function asksForPrice(text: string): boolean {
   return ASKS_FOR_PRICE.test(text) && !asksAboutDeathBenefit(text);
 }
 
+/**
+ * Asking who is behind the policy: which insurer, which agency, whether they can be trusted,
+ * what licence the person on the other end holds.
+ *
+ * Nothing in this project records any of that — the rate tables carry a plan name and
+ * nothing else — so there is no honest answer for a model to compose. Asked "กรุงไทยแอกซ่า
+ * ใช่ไหม", it answered "ใช่ครับ": agreeing with whatever name the customer happened to say,
+ * about the company that would be underwriting their life. That is why this is matched here
+ * and answered by a sentence rather than by a model.
+ */
+const COMPANY_QUESTION =
+  /บริษัท(?!ประกันชีวิตชั้นนำ)|ผู้รับประกัน|รับประกันโดย|ค่ายไหน|แบรนด์|ใบอนุญาต|นายหน้า|ตัวแทนของ|เชื่อถือ|มั่นคง|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential|allianz|อลิอันซ์|fwd|โตเกียว/i;
+
+/** Whether a message is asking who stands behind the policy. */
+export function asksAboutCompany(text: string): boolean {
+  return COMPANY_QUESTION.test(text);
+}
+
 /** Anything the model returns is checked here, so an invented package never reaches the engine. */
 function clean(raw: Routed, history: ChatMessage[]): Routed {
   const out: Routed = { intent: ["quote", "plan_info", "other"].includes(raw.intent) ? raw.intent : "other" };

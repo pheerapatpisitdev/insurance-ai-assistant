@@ -8,7 +8,7 @@ import { lifeProtectFacts } from "@/lib/lifeprotect-facts";
 import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
-import { mergeSlots, PLAN_CODE, recentTurns, routeMessage, type Routed } from "./route";
+import { asksAboutCompany, mergeSlots, PLAN_CODE, recentTurns, routeMessage, type Routed } from "./route";
 
 /** The package quoted when the customer has not named one: the cheapest instalment of the three. */
 const DEFAULT_TERM = "WLF99H";
@@ -59,11 +59,28 @@ function askForMissing(slots: Routed, table: LifeProtectTable): string {
 
 const HAND_OVER = "เดี๋ยวตัวแทนมาตอบในแชทนี้ครับ ระหว่างนี้สอบถามเรื่อง Life Protect x 2 ได้เลย";
 
+/**
+ * Who stands behind the policy. Answered by this sentence and never by a model, because the
+ * project holds no fact about the insurer or the agency for a model to answer from, and the
+ * question is one a wrong answer cannot be taken back from.
+ */
+const ABOUT_COMPANY =
+  "เรื่องบริษัทผู้รับประกันและรายละเอียดของตัวแทน ขอให้ตัวแทนตอบเองนะครับ จะได้ข้อมูลที่ถูกต้องครบถ้วน "
+  + "เดี๋ยวมีคนมาตอบในแชทนี้ครับ 🙏 ระหว่างนี้ถ้าอยากทราบเบี้ยของอายุตัวเอง บอกเพศกับอายุมาได้เลยครับ";
+
 export async function answerQuestion(history: ChatMessage[], previous: Routed | null): Promise<Answer> {
   const slots = mergeSlots(previous, await routeMessage(history));
+  // checked before the routes that speak: a question about the company is answered by the
+  // agency's own sentence whatever else the turn was about
+  if (asksAboutCompany(lastAsked(history))) return { reply: ABOUT_COMPANY, slots };
   if (slots.intent === "quote") return { ...answerQuote(slots), slots };
   if (slots.intent === "plan_info") return { ...(await answerPlanInfo(history)), slots };
   return { ...(await answerSmallTalk(history)), slots };
+}
+
+/** What the customer said this turn. */
+function lastAsked(history: ChatMessage[]): string {
+  return [...history].reverse().find((m) => m.role === "user")?.content ?? "";
 }
 
 /** The quote as the sales page would state it, or a sentence saying why there is none. */
