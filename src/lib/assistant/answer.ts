@@ -7,6 +7,7 @@ import { lifeProtectQuoteText } from "@/lib/lifeprotect-cta";
 import { lifeProtectFacts } from "@/lib/lifeprotect-facts";
 import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
+import { faqAnswer } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
 import { asksAboutCompany, asksAboutTrust, mergeSlots, PLAN_CODE, recentTurns, routeMessage, type Routed } from "./route";
 
@@ -128,7 +129,18 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
   // agency's own sentence whatever else the turn was about
   const asked = lastAsked(history);
   if (asksAboutCompany(asked)) return { ...one(aboutCompany(asked)), slots };
-  if (slots.intent === "quote") return { ...answerQuote(slots), slots };
+
+  // one of the answers the agency writes out by hand every day. A message can both ask for a
+  // price and ask one of these — "ญ 37 ลดหย่อนภาษีได้ไหม" — so it is added to the quote
+  // rather than replacing it.
+  const faq = faqAnswer(asked);
+  if (slots.intent === "quote") {
+    const quoted = answerQuote(slots);
+    if (faq) quoted.messages.push({ text: faq });
+    return { ...quoted, slots };
+  }
+  if (faq) return { ...one(faq), slots };
+
   if (slots.intent === "plan_info") return { ...(await answerPlanInfo(history)), slots };
   return { ...(await answerSmallTalk(history)), slots };
 }

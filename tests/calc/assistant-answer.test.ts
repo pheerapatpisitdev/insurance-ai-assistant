@@ -219,6 +219,16 @@ describe("a couple in one message", () => {
   });
 });
 
+describe("a question asked alongside a price", () => {
+  it("is answered after the quote, not instead of it", async () => {
+    routed = { intent: "quote", age: 37, sex: "F", coverWanted: 1_000_000 };
+    const answer = await answerQuestion(said("ญ 37 ลดหย่อนภาษีได้ไหม"), null);
+    expect(answer.messages).toHaveLength(2);
+    expect(answer.messages[0].card).toBeDefined();
+    expect(answer.messages[1].text).toContain("100,000");
+  });
+});
+
 describe("everything else", () => {
   it("answers a question about the plan in the model's words", async () => {
     routed = { intent: "plan_info" };
