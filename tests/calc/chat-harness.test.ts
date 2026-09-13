@@ -20,7 +20,7 @@ describe("rehearsal", () => {
       const m = line.match(/^([A-Z_]+)=(.*)$/);
       if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
     }
-    const { answerQuestion } = await import("@/lib/assistant/answer");
+    const { answerQuestion } = await import("@/lib/assistant/lifeprotect/answer");
 
     const fresh = process.env.CHAT_RESET === "1" || !fs.existsSync(STATE);
     const state = fresh

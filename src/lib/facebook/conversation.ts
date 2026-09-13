@@ -2,7 +2,7 @@ import { siteUrl } from "@/lib/site-url";
 import { hashUserId } from "@/lib/facebook/verify";
 import { claimEvent, isMuted, loadSession, muteFor, saveSession } from "@/lib/chat/session";
 import { sendImage, sendMessage, showTyping } from "@/lib/facebook/client";
-import { answerQuestion } from "@/lib/assistant/answer";
+import { answerQuestion } from "@/lib/assistant/lifeprotect/answer";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";

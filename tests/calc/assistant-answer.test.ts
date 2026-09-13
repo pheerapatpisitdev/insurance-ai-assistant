@@ -15,8 +15,9 @@ vi.mock("@/lib/ai/client", async () => {
   return { ...actual, chat };
 });
 
-const { answerQuestion } = await import("@/lib/assistant/answer");
-const { asksValueTable, lifeProtectVariantIn, wantsToBuy } = await import("@/lib/assistant/route");
+const { answerQuestion } = await import("@/lib/assistant/lifeprotect/answer");
+const { asksValueTable, lifeProtectVariantIn } = await import("@/lib/assistant/lifeprotect/route");
+const { wantsToBuy } = await import("@/lib/assistant/common");
 const { lifeProtectTable } = await import("@/lib/lifeprotect-table");
 const { lifeProtectQuoteText } = await import("@/lib/lifeprotect-cta");
 const { cashAt, deathBenefitOf, lifeProtectModes, termAt } = await import("@/lib/lifeprotect-quote");

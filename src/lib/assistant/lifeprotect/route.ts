@@ -1,6 +1,13 @@
 import { chat, parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { getPlan } from "@/calc/plans/registry";
+import { ageFromBirthdate, peopleIn, recentTurns } from "../common";
+
+/**
+ * Re-exported where they have always been named from: these read a person out of a message,
+ * which is neither plan's business, but every caller of this module already knows them here.
+ */
+export { ageFromBirthdate, peopleIn, recentTurns };
 
 export type Intent = "quote" | "plan_info" | "other";
 
@@ -64,18 +71,6 @@ intent มี 3 แบบ
 - question เขียนคำถามใหม่ให้เข้าใจได้ด้วยตัวเอง โดยเติมสิ่งที่อ้างถึงจากบทสนทนาก่อนหน้า
 
 ถ้าไม่มีข้อมูลให้ละฟิลด์นั้นไป ห้ามเดา`;
-
-/**
- * The last few turns, always beginning with something the customer said. Cutting a
- * conversation to a fixed length can land on an assistant turn, and providers differ on
- * whether they accept a reply with nothing to reply to — one refuses outright. Starting on
- * a user turn keeps every provider in the failover chain usable.
- */
-export function recentTurns(history: ChatMessage[], count: number): ChatMessage[] {
-  const recent = history.slice(-count);
-  const first = recent.findIndex((m) => m.role === "user");
-  return first < 0 ? [] : recent.slice(first);
-}
 
 /** Reads the conversation and returns what the customer is asking for. Cheap model, strict JSON. */
 export async function routeMessage(history: ChatMessage[]): Promise<Routed> {
@@ -150,25 +145,6 @@ export function asksForPrice(text: string): boolean {
 }
 
 /**
- * Asking which company stands behind the policy — by name, by "ของบริษัทอะไร", or by
- * proposing a rival and waiting to be agreed with.
- *
- * Answered from a constant rather than by a model. Nothing in this project records the
- * insurer: asked "กรุงไทยแอกซ่าใช่ไหม", the model said "ใช่ครับ", which was agreement with
- * whatever name the customer happened to type, about the company that would be insuring
- * their life. A rival's name is matched too, so that guess is corrected rather than confirmed.
- */
-const INSURER_QUESTION =
-  /บริษัท\s*(อะไร|ไหน|อะไรคะ|ไรครับ)|ของบริษัท|ผู้รับประกัน|รับประกันโดย|ค่ายไหน|แบรนด์|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential|allianz|อลิอันซ์|\bfwd\b|โตเกียว|กรุงเทพประกัน|ไทยพาณิชย์|\bscb\b/i;
-
-/**
- * Asking about the people rather than the company: a licence, a brokerage, whether any of
- * them can be trusted. The insurer can be named from a constant; none of this can, so it
- * goes to a person.
- */
-const TRUST_QUESTION = /ใบอนุญาต|นายหน้า|ตัวแทนของ|เชื่อถือ|มั่นคง|โกง|หลอก|จดทะเบียน|ตัวจริง/i;
-
-/**
  * Asking how long the premium has to be paid — "ต้องจ่ายถึงกี่ปี" — rather than asking what a
  * named term costs. The difference matters: the first wants one line, and was answered with
  * the whole quotation again, card and all, one message after the customer had received it.
@@ -184,68 +160,6 @@ export function asksPayTerm(text: string): boolean {
 }
 
 /**
- * The premium is too much. Answered by pointing at what is actually cheaper — the pay-to-99
- * term, a smaller cover — rather than by the shorter terms the bot offered on its first
- * attempt, which cost more a year, not less.
- */
-const TOO_EXPENSIVE = /แพง|ถูกกว่า|ถูกลง|ลดได้|ลดหน่อย|ลดทุน|ส่วนลด|ต่อราคา|โปรโมชั่น|มีโปร|เกินงบ|งบไม่ถึง|ไม่มีตังค์|ไม่มีเงิน/;
-
-/** Whether a message is saying the price is too high. */
-export function asksCheaper(text: string): boolean {
-  return TOO_EXPENSIVE.test(text);
-}
-
-/** A short yes, with nothing else in it — taking whatever was last offered. */
-const AFFIRMS = /^\s*(?:เอา|ตกลง|โอเค|โอเช|ok|okay|ได้|สนใจ|ครับ|ค่ะ|คะ|ขอ)(?:เลย|ครับ|ค่ะ|คะ|แบบนี้|อันนี้|แบบลดทุน|แบบนั้น|นี้)*\s*(?:ครับ|ค่ะ|คะ)?\s*$/i;
-
-/** Whether a message is a bare acceptance of what the bot last put on the table. */
-export function affirms(text: string): boolean {
-  return text.length <= 30 && !/\d/.test(text) && AFFIRMS.test(text);
-}
-
-/**
- * Stepping back — "เดี๋ยวคิดดูก่อน", "ขอปรึกษาแฟนก่อน", "ไว้จะติดต่อกลับ". Not a question, not
- * a refusal: a person who has what they came for and is leaving to think.
- */
-const STALLS = /คิดดูก่อน|ขอคิดดู|คิดก่อน|ไว้ก่อน|ไว้ค่อย|ติดต่อกลับ|เดี๋ยวติดต่อ|ทักกลับ|ขอปรึกษา|ปรึกษาก่อน|ปรึกษาที่บ้าน|ยังไม่ตัดสินใจ|ขอเวลา|เดี๋ยวมาใหม่|ขอดูก่อน/;
-/** A stall that is really a question stays a question. */
-const ASKS = /\?|ไหม|มั้ย|ยังไง|อย่างไร|อะไร|เท่าไ|กี่|ไหน|เมื่อไ/;
-
-/** Whether the customer is leaving to think it over. */
-export function stalls(text: string): boolean {
-  return STALLS.test(text) && !ASKS.test(text);
-}
-
-/**
- * Deciding to buy — "เอาแผนนี้", "สมัครยังไง", "ต้องทำยังไงต่อ", "ใช้เอกสารอะไรบ้าง". The one
- * message the whole campaign is for, and the one a model was wording on its own: it asked for
- * a name and a phone number the privacy page says are never asked for, and once promised to
- * "เตรียมเอกสาร". The agency's answer is a form, so the answer is written out and the words
- * that mean it are listed here.
- */
-const BUYS =
-  /สมัคร|ทำ(?:ยังไง|อย่างไร|ไง)|ขั้นตอน|ต้องทำอะไร|เอา(?:แผน|แบบ|แผ่น|อัน|ตัว)นี้|ตกลงทำ|สนใจทำ|ทำเลย|เอาเลย|เริ่ม(?:ยังไง|อย่างไร|ได้เลย)|เตรียม(?:อะไร|เอกสาร)|ใช้เอกสาร|เอกสารอะไร|ซื้อ(?:ยังไง|ได้ที่ไหน|ได้เลย|เลย)|ดำเนินการ/;
-/** "ทำยังไง" about a claim, a cancellation or a surrender is a service question, not a purchase */
-const NOT_BUYING = /เคลม|ยกเลิก|เวนคืน|กู้|ต่ออายุ|เปลี่ยนแปลง/;
-/** a bare ตกลง or เอา — a decision once a premium is on the table, and only then */
-const COMMITS = /^\s*(?:ตกลง|เอา)(?:\s*(?:ครับ|ค่ะ|คะ|เลย|นะ))*\s*$/;
-
-/**
- * Whether the customer is asking to go ahead. `quoted` says a premium has been given, which
- * is what lets a one-word ตกลง count; a one-word โอเค never does — it is an acknowledgement.
- */
-export function wantsToBuy(text: string, quoted: boolean): boolean {
-  if (asksCheaper(text) || NOT_BUYING.test(text) || peopleIn(text).length > 0) return false;
-  return BUYS.test(text) || (quoted && COMMITS.test(text));
-}
-
-/** Whether the customer says the form has been filled in and sent. */
-const FORM_DONE = /กรอก(?:แล้ว|เสร็จ|เรียบร้อย)|ส่ง(?:ฟอร์ม|ข้อมูล)?แล้ว|เรียบร้อยแล้ว|ทำแล้ว/;
-export function saysFormDone(text: string): boolean {
-  return FORM_DONE.test(text);
-}
-
-/**
  * Asking for the contract year by year — "ขอตารางมูลค่า", "มูลค่าเวนคืนแต่ละปีเท่าไหร่".
  *
  * The quotation already carries four milestone ages, which answers whether the policy is
@@ -258,88 +172,6 @@ const VALUE_TABLE =
 /** Whether the customer is asking for the year-by-year table. */
 export function asksValueTable(text: string): boolean {
   return VALUE_TABLE.test(text);
-}
-
-/** Whether a message is asking who stands behind the policy. */
-export function asksAboutCompany(text: string): boolean {
-  return INSURER_QUESTION.test(text) || TRUST_QUESTION.test(text);
-}
-
-/** Whether that question is one only a person should answer. */
-export function asksAboutTrust(text: string): boolean {
-  return TRUST_QUESTION.test(text);
-}
-
-/**
- * A sex and an age standing next to each other, in either order and in any of the forms
- * customers actually use: "ผญ 32", "42 ญ", "ชายอายุ 35", "เพศหญิง อายุ 36".
- *
- * Read here rather than asked of the model, because the model returns one person and a
- * message often names two. Two of six conversations from the campaign's first day were a
- * couple in one line.
- */
-const SEX_WORD = "ผู้หญิง|ผู้ชาย|ผญ|ผช|หญิง|ชาย|ญ|ช";
-const PERSON_RE = new RegExp(
-  `(${SEX_WORD})\\s*(?:เพศ\\s*)?(?:อายุ\\s*)?(\\d{1,2})(?!\\d)`
-  + `|(\\d{1,2})(?!\\d)\\s*(?:ปี)?\\s*(${SEX_WORD})`,
-  "g",
-);
-
-/** Everyone a message names, in the order it names them. */
-export function peopleIn(text: string): { age: number; sex: "M" | "F" }[] {
-  const out: { age: number; sex: "M" | "F" }[] = [];
-  for (const m of text.matchAll(PERSON_RE)) {
-    const word = m[1] ?? m[4] ?? "";
-    const age = Number(m[2] ?? m[3]);
-    if (!Number.isInteger(age) || age < 0 || age > 99) continue;
-    const sex = word.includes("ญ") ? "F" : "M";
-    // the same person written twice is still one person
-    if (!out.some((p) => p.age === age && p.sex === sex)) out.push({ age, sex });
-  }
-  return out;
-}
-
-/**
- * The age a date of birth in the message works out to, or undefined when it names none.
- *
- * Customers answer "อายุเท่าไหร่" with a birthdate as readily as with a number — "เกิด
- * 14/12/2523 ผู้หญิง" — and the model read that one as 43 when it is 45. Two years is a
- * different premium. An age is arithmetic on a calendar, so it is done here.
- */
-export function ageFromBirthdate(text: string, today: Date = new Date()): number | undefined {
-  const m = text.match(/(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})/);
-  if (!m) return ageFromBirthYear(text, today);
-  const day = Number(m[1]);
-  const month = Number(m[2]);
-  const named = Number(m[3]);
-  if (day < 1 || day > 31 || month < 1 || month > 12) return undefined;
-  // a year in the 2500s is พ.ศ.; anything else is read as ค.ศ.
-  const year = named >= 2400 ? named - 543 : named;
-  const passed = today.getMonth() + 1 > month
-    || (today.getMonth() + 1 === month && today.getDate() >= day);
-  const age = today.getFullYear() - year - (passed ? 0 : 1);
-  return age >= 0 && age <= 99 ? age : undefined;
-}
-
-/**
- * The age behind a birth year with no day or month — "เกิด2522 เพศญ".
- *
- * It cannot say whether this year's birthday has passed, which is why it was once left to
- * the model. The model answered 47 with 45, to a customer waiting on a premium, so the
- * arithmetic is done here instead and read the way it is said aloud in Thai: this year's
- * พ.ศ. less the year named. Someone whose birthday is still to come is a year out, and the
- * quotation prints the age it used, so they can say so.
- *
- * The year must follow the word เกิด. Every other four-digit number in these conversations
- * is money.
- */
-function ageFromBirthYear(text: string, today: Date): number | undefined {
-  const m = text.match(/เกิด\s*(?:ปี\s*)?(?:พ\s*\.?\s*ศ\s*\.?\s*)?(\d{4})(?!\d)/);
-  if (!m) return undefined;
-  const named = Number(m[1]);
-  const year = named >= 2400 ? named - 543 : named;
-  const age = today.getFullYear() - year;
-  return age >= 0 && age <= 99 ? age : undefined;
 }
 
 /** Anything the model returns is checked here, so an invented package never reaches the engine. */

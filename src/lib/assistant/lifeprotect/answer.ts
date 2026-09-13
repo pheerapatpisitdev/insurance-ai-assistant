@@ -10,7 +10,12 @@ import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprot
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
 import { faqAnswer } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
-import { affirms, asksAboutCompany, asksAboutTrust, asksCheaper, asksPayTerm, asksValueTable, mergeSlots, PLAN_CODE, recentTurns, routeMessage, saysFormDone, stalls, wantsToBuy, type Routed } from "./route";
+import { asksPayTerm, asksValueTable, mergeSlots, PLAN_CODE, routeMessage, type Routed } from "./route";
+import {
+  aboutCompany, affirms, APPLICATION_FORM, asksAboutCompany, asksCheaper, FORM_RECEIVED,
+  handOverForm, HEALTH_DECLARATION, one, recentTurns, Reply, Said, saysFormDone, spoken,
+  stallReply, stalls, WANTS_IN, wantsToBuy,
+} from "../common";
 
 /** The package quoted when the customer has not named one: the cheapest instalment of the three. */
 const DEFAULT_TERM = "WLF99H";
@@ -22,53 +27,8 @@ const DEFAULT_TERM = "WLF99H";
  */
 const QUOTABLE = new Set(["WLF09H", "WLF19H", "WLF99H"]);
 
-/** One message the bot sends, and the picture that follows it. */
-export interface Said {
-  text: string;
-  /** where the quote is drawn as a picture, as a path on this site */
-  card?: string;
-}
-
-export interface Answer {
-  /**
-   * What the bot sends, in the order it sends it.
-   *
-   * A list rather than one string because a customer pricing a couple — "ผญ 32 ผช33ค่ะ" —
-   * is owed a quote each, and two quotes in one bubble is a wall of figures nobody can read
-   * back to their partner.
-   */
-  messages: Said[];
-  /** carried into the next turn so a follow-up keeps the age, sex and amount */
-  slots: Routed;
-  /** the answer carries a premium — the moment a browser turns into someone worth calling */
-  priced?: boolean;
-  /**
-   * Buttons offered under the last thing sent.
-   *
-   * A quotation ends with an invitation nobody acts on — it is the last line of twenty, under
-   * a picture. The same invitation as a row of buttons is one tap, and a tap arrives as the
-   * words themselves, so every title here is a sentence the bot already answers.
-   */
-  replies?: string[];
-}
-
-/** The usual case: the bot says one thing. */
-function one(text: string, card?: string): Omit<Answer, "slots"> {
-  return { messages: [card ? { text, card } : { text }] };
-}
-
-/** A person does not send one long block; the model's paragraphs go out as separate bubbles. */
-const MAX_BUBBLES = 3;
-
-function spoken(text: string): Omit<Answer, "slots"> {
-  const parts = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-  if (parts.length === 0) return one(ASK_FOR_DETAILS);
-  if (parts.length <= MAX_BUBBLES) return { messages: parts.map((t) => ({ text: t })) };
-  // more than fits: the last bubble carries the rest, so nothing is dropped and none is empty
-  const head = parts.slice(0, MAX_BUBBLES - 1);
-  const tail = parts.slice(MAX_BUBBLES - 1).join("\n\n");
-  return { messages: [...head, tail].map((t) => ({ text: t })) };
-}
+/** One answer, and what the bot should remember about this customer next turn. */
+export type Answer = Reply & { slots: Routed };
 
 const ASK_FOR_DETAILS =
   'ขออายุ เพศ กับทุนที่สนใจหน่อยครับ เดี๋ยวคิดเบี้ยให้เลย (เช่น "ชาย 35 ทุน 1 ล้าน")';
@@ -103,52 +63,6 @@ function askForMissing(slots: Routed, table: LifeProtectTable): string {
 
 const HAND_OVER = "เดี๋ยวตัวแทนมาคุยต่อในแชทนี้ครับ ระหว่างนี้ถามเรื่อง Life Protect x 2 ได้เลย";
 
-/**
- * Who stands behind the policy, in the agency's own words rather than a model's.
- *
- * The insurer is a constant because the project holds no other record of it, and because a
- * model asked the question agreed with whichever name the customer proposed. Anything about
- * the people — a licence, whether they can be trusted — is not a fact this code has, so it
- * is handed to someone who does.
- */
-const INSURER = "บมจ. กรุงไทย-แอกซ่า ประกันชีวิต";
-
-/**
- * The agents behind the page, as their own licences record them.
- *
- * Only the two fields a customer is entitled to check: the name and the licence number the
- * regulator issued, which an agent is required to show anyway. The national id printed beside
- * them on the same card is deliberately not here — the bot tells customers it never handles
- * one, and it should hold none of its own either.
- */
-const AGENTS = [
-  { name: "พีรพัฒฑ์พิสิษฐ์ ทองสีทอง", licence: "6001028534" },
-  { name: "ศิวลักษณ์ ทองสีทอง", licence: "6401024117" },
-];
-
-const ABOUT_INSURER = `แบบประกันนี้รับประกันโดย ${INSURER} ครับ 🙏`;
-
-const ABOUT_AGENTS = [
-  "ดูแลโดยตัวแทนที่ได้รับใบอนุญาตจาก คปภ.",
-  ...AGENTS.map((a) => `• ${a.name} — ใบอนุญาตเลขที่ ${a.licence}`),
-].join("\n");
-
-const ABOUT_TRUST = "ถ้าอยากคุยรายละเอียดกับตัวแทนโดยตรง เดี๋ยวมีคนมาตอบในแชทนี้ครับ";
-
-/**
- * The answer to a question about who stands behind the policy: the insurer, then the people
- * selling it. Built from constants and never from a model — asked the same question, a model
- * agreed with whichever company name the customer had guessed.
- *
- * It ends there. It used to close by asking for an age and a sex, which reads as not
- * listening to a customer who has already given both — and the question was answered, so
- * there is nothing to add to it.
- */
-export function aboutCompany(question: string): string {
-  const tail = asksAboutTrust(question) ? ["", ABOUT_TRUST] : [];
-  return [ABOUT_INSURER, "", ABOUT_AGENTS, ...tail].join("\n");
-}
-
 export async function answerQuestion(history: ChatMessage[], previous: Routed | null): Promise<Answer> {
   const asked = lastAsked(history);
   const known: Routed = previous ?? { intent: "other" };
@@ -157,14 +71,14 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
     // and whatever cheaper arrangement was on the table is off it: a "โอเค" days later must
     // not re-price something they walked away from
     const kept: Routed = { ...known, offer: undefined };
-    return { ...one(stallReply(kept)), slots: kept };
+    return { ...one(stallReply(hasQuote(kept))), slots: kept };
   }
   // the form is out and they say it is filled in: the agent takes it from here
   if (known.formSent && saysFormDone(asked)) return { ...one(FORM_RECEIVED), slots: known };
   // deciding to buy is answered with the form — unless a cheaper offer is on the table and the
   // word is a bare yes, which takes the offer first and is priced below
   if (wantsToBuy(asked, hasQuote(known)) && !(known.offer && affirms(asked))) {
-    return { ...handOverForm(known), slots: { ...known, offer: undefined, formSent: true } };
+    return { ...handOverForm(hasQuote(known)), slots: { ...known, offer: undefined, formSent: true } };
   }
 
   const slots = mergeSlots(previous, await routeMessage(history));
@@ -303,7 +217,6 @@ function quoteReplies(table: LifeProtectTable, quoted: string): string[] {
 
 /** The words a tapped button sends, which are the words the bot reads. */
 const ASK_FOR_TABLE = "ขอตารางมูลค่า";
-const WANTS_IN = "สนใจสมัคร";
 /** Not "เอาแบบลดทุน": ลดทุน is one of the words that mean "too expensive", and the title
  * would come back as a fresh objection rather than as an acceptance. */
 const TAKES_OFFER = "เอาแบบนี้";
@@ -315,7 +228,7 @@ const TAKES_OFFER = "เอาแบบนี้";
  * quotation was, so the two cannot tell the customer different things. Without a price
  * behind it there is nothing to tabulate, so the bot asks for what it is missing instead.
  */
-function answerValueTable(slots: Routed): Omit<Answer, "slots"> {
+function answerValueTable(slots: Routed): Reply {
   const table = lifeProtectTable();
   const { age, sex, coverWanted } = slots;
   if (age === undefined || sex === undefined || coverWanted === undefined) {
@@ -345,7 +258,7 @@ function answerValueTable(slots: Routed): Omit<Answer, "slots"> {
  * A couple asking together gets a quote each, in the order they named themselves, because
  * each of them is buying their own contract at their own age.
  */
-function answerQuote(slots: Routed): Omit<Answer, "slots"> {
+function answerQuote(slots: Routed): Reply {
   if (slots.variant && !QUOTABLE.has(slots.variant)) {
     return one(`ในแชทนี้ผมคิดให้ได้เฉพาะแบบ Life Protect x 2 ครับ แบบอื่นขอให้ตัวแทนเสนอให้นะครับ ${HAND_OVER}`);
   }
@@ -376,7 +289,7 @@ function answerQuote(slots: Routed): Omit<Answer, "slots"> {
  * asks how many years they pay for has the figures already and wants the one fact that was
  * not among them.
  */
-function answerPayTerm(slots: Routed): Omit<Answer, "slots"> {
+function answerPayTerm(slots: Routed): Reply {
   const table = lifeProtectTable();
   const quotable = table.terms.filter((t) => QUOTABLE.has(t.variant));
   const term = slots.variant ? quotable.find((t) => t.variant === slots.variant) : undefined;
@@ -466,36 +379,6 @@ function hasQuote(slots: Routed): boolean {
   return slots.age !== undefined && slots.sex !== undefined && slots.coverWanted !== undefined;
 }
 
-/**
- * The application form the agency sends a customer who has decided. The `ref` names the
- * agent, so the form arrives already knowing who sold it.
- */
-const APPLICATION_FORM = "https://ktaxaform.vercel.app/?ref=sa-9f3a";
-
-const FORM_NEXT = "กรอกเสร็จแล้วแจ้งในแชทนี้ได้เลย เดี๋ยวตัวแทนติดต่อกลับไปดูแลขั้นตอนต่อให้ครับ";
-const FORM_RECEIVED = "ขอบคุณครับ 🙏 เดี๋ยวตัวแทนเช็กข้อมูลแล้วติดต่อกลับในแชทนี้ครับ";
-
-/**
- * Handing over the form: three bubbles, the link on its own so it is one tap. Someone who
- * asks how to apply before hearing a price is also told the price is a message away — the
- * only time the bot volunteers that, because here it knows nothing has been quoted.
- */
-function handOverForm(slots: Routed): Omit<Answer, "slots"> {
-  const next = hasQuote(slots) ? FORM_NEXT : `${FORM_NEXT} ถ้าอยากทราบเบี้ยก่อน บอกเพศกับอายุมาได้เลยครับ เดี๋ยวคิดให้`;
-  return { messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }, { text: APPLICATION_FORM }, { text: next }] };
-}
-
-/**
- * What the bot says when the customer steps back. One line, no question, and — once they
- * have a quotation in hand — the door left open by name: the owner's choice, over silence
- * and over a follow-up.
- */
-function stallReply(slots: Routed): string {
-  return hasQuote(slots)
-    ? "ได้เลยครับ ถ้าตัดสินใจแล้วหรืออยากได้ใบเสนออย่างเป็นทางการ ทักมาได้เลยนะครับ"
-    : "ได้เลยครับ สะดวกเมื่อไหร่ทักมาได้เลยนะครับ";
-}
-
 /** The terms this quote did not take, offered by name so the customer can ask for one. */
 function otherTerms(table: LifeProtectTable, quoted: string): string {
   const rest = table.terms.filter((t) => QUOTABLE.has(t.variant) && t.variant !== quoted).map((t) => t.label);
@@ -568,7 +451,7 @@ function quotedFigures(slots: Routed, table: LifeProtectTable): string | undefin
   ].filter(Boolean).join(" · ");
 }
 
-async function answerPlanInfo(history: ChatMessage[], slots: Routed): Promise<Omit<Answer, "slots">> {
+async function answerPlanInfo(history: ChatMessage[], slots: Routed): Promise<Reply> {
   const r = await chat({
     tier: "small",
     task: "plan_info",
@@ -581,14 +464,14 @@ async function answerPlanInfo(history: ChatMessage[], slots: Routed): Promise<Om
       ...recentTurns(history, 6),
     ],
   });
-  return spoken(r.text.trim() || ASK_FOR_DETAILS);
+  return spoken(r.text.trim() || ASK_FOR_DETAILS, ASK_FOR_DETAILS);
 }
 
 /**
  * Small talk is told what is known too. "เดี๋ยวคิดดูก่อนนะคะ", from someone quoted a minute
  * earlier, was answered with a request for their age, sex and amount.
  */
-async function answerSmallTalk(history: ChatMessage[], slots: Routed): Promise<Omit<Answer, "slots">> {
+async function answerSmallTalk(history: ChatMessage[], slots: Routed): Promise<Reply> {
   const r = await chat({
     tier: "small",
     task: "small_talk",
@@ -598,7 +481,7 @@ async function answerSmallTalk(history: ChatMessage[], slots: Routed): Promise<O
       ...recentTurns(history, 6),
     ],
   });
-  return spoken(r.text.trim() || ASK_FOR_DETAILS);
+  return spoken(r.text.trim() || ASK_FOR_DETAILS, ASK_FOR_DETAILS);
 }
 
 /**

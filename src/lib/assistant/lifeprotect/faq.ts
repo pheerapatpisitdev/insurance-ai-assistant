@@ -1,3 +1,5 @@
+import { HEALTH_DECLARATION, HEALTH_QUESTION } from "../common";
+
 /**
  * The five answers the agent types by hand every day, taken from the campaign's own inbox.
  *
@@ -21,12 +23,8 @@ export interface FaqEntry {
 export const FAQ: FaqEntry[] = [
   {
     key: "health",
-    match: /โรคประจำตัว|มีโรค|เป็นโรค|ป่วยเป็น|เบาหวาน|ความดัน|ไทรอยด์|หอบ|ภูมิแพ้|มะเร็ง|หัวใจ|ผ่าตัด|ตรวจสุขภาพ|แถลงสุขภาพ|สุขภาพไม่ดี|กินยา|รักษาตัว/i,
-    answer:
-      "มีโรคประจำตัวยื่นขอทำประกันได้ครับ แต่ต้องแถลงข้อมูลสุขภาพตามจริงในใบคำขอ "
-      + "แล้วบริษัทจะพิจารณาเป็นรายบุคคล — อาจรับตามปกติ มีเบี้ยเพิ่ม หรือมีข้อยกเว้นเฉพาะโรค\n"
-      + "ผลพิจารณาผมตอบแทนบริษัทไม่ได้ครับ ขอให้ตัวแทนดูให้ เดี๋ยวมีคนมาตอบในแชทนี้ 🙏\n"
-      + "และไม่ต้องส่งรายละเอียดสุขภาพหรือผลตรวจมาในแชทนะครับ",
+    match: HEALTH_QUESTION,
+    answer: HEALTH_DECLARATION,
   },
   {
     key: "tax",

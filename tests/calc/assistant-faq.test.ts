@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { faqAnswer } from "@/lib/assistant/faq";
+import { faqAnswer } from "@/lib/assistant/lifeprotect/faq";
 
 /** The customers' own words, taken from the campaign's inbox. */
 describe("the answers the agency writes by hand", () => {

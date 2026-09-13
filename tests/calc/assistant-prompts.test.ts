@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "@/lib/assistant/prompts";
+import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "@/lib/assistant/lifeprotect/prompts";
 
 /**
  * The prompts are the only place the model is allowed to speak from, so what they forbid is

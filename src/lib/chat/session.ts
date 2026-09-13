@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ChatMessage } from "@/lib/ai/types";
-import type { Routed } from "@/lib/assistant/route";
+import type { Routed } from "@/lib/assistant/lifeprotect/route";
 
 /** Which messaging service a person wrote from. Messenger is the only one the bot answers on. */
 export type Channel = "facebook";

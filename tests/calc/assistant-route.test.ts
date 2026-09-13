@@ -8,7 +8,9 @@ vi.mock("@/lib/ai/client", async () => {
   return { ...actual, chat };
 });
 
-const { affirms, ageFromBirthdate, asksCheaper, asksValueTable, mergeSlots, routeMessage, stalls, wantsToBuy, saysFormDone } = await import("@/lib/assistant/route");
+const { asksValueTable, mergeSlots, routeMessage } = await import("@/lib/assistant/lifeprotect/route");
+// these read a customer rather than a plan, and now live where both brains can reach them
+const { affirms, ageFromBirthdate, asksCheaper, saysFormDone, stalls, wantsToBuy } = await import("@/lib/assistant/common");
 
 /** The age someone born on that date is today, counted the way a person counts it. */
 function ageOn(today: Date, day: number, month: number, year: number): number {

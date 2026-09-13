@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Answer } from "@/lib/assistant/answer";
+import type { Answer } from "@/lib/assistant/lifeprotect/answer";
 
 const sent: { text: string[]; images: string[]; replies: (string[] | undefined)[] } = { text: [], images: [], replies: [] };
 const session = { messages: [] as { role: "user" | "assistant"; content: string }[], slots: null as unknown, mutedUntil: null as string | null };
@@ -35,7 +35,7 @@ vi.mock("@/lib/chat/session", async () => {
   };
 });
 
-vi.mock("@/lib/assistant/answer", () => ({ answerQuestion: answer }));
+vi.mock("@/lib/assistant/lifeprotect/answer", () => ({ answerQuestion: answer }));
 
 const { handle } = await import("@/lib/facebook/conversation");
 
