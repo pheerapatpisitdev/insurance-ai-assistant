@@ -295,7 +295,29 @@ describe("everything else", () => {
     const system = chat.mock.calls[1][0].messages[0].content as string;
     expect(system).toContain("หญิง · อายุ 30 ปี · ครอบครัวได้รับ 2,000,000 บาท · จ่าย 9 ปี");
     expect(system).toContain("ห้ามขอข้อมูลที่ทราบแล้วซ้ำอีก");
-    expect(system).toContain("คิดเบี้ยและส่งให้ลูกค้าไปแล้ว");
+  });
+
+  it("puts the engine's own premium in front of the model, so it cannot invent one", async () => {
+    routed = { intent: "plan_info" };
+    chat.mockClear();
+    await answerQuestion(
+      said("เบี้ยประกันคงที่ไหมคะ"),
+      { intent: "quote", age: 30, sex: "F", coverWanted: 2_000_000, variant: "WLF09H" },
+    );
+    const system = chat.mock.calls[1][0].messages[0].content as string;
+    // the figures the quotation actually carried, not a rounding of them
+    expect(system).toContain("รายเดือน 3,861 บาท");
+    expect(system).toContain("รายปี 42,900 บาท");
+    expect(system).toContain("ห้ามคำนวณเอง");
+  });
+
+  it("forbids figures outright until something has been priced", async () => {
+    routed = { intent: "plan_info" };
+    chat.mockClear();
+    await answerQuestion(said("คุ้มครองยังไง"), { intent: "quote", coverWanted: 2_000_000 });
+    const system = chat.mock.calls[1][0].messages[0].content as string;
+    expect(system).toContain("ห้ามตอบตัวเลขเบี้ยเอง");
+    expect(system).not.toContain("รายเดือน");
   });
 
   it("asks only for the gaps when the customer is half known", async () => {

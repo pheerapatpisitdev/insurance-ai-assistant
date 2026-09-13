@@ -305,12 +305,44 @@ function knownSoFar(slots: Routed, table: LifeProtectTable): string {
   if (term) bits.push(term.label);
   if (bits.length === 0) return "";
 
-  const priced = slots.age !== undefined && slots.sex !== undefined && slots.coverWanted !== undefined;
+  const quoted = quotedFigures(slots, table);
   return `\n\nข้อมูลของลูกค้ารายนี้ที่ทราบแล้ว: ${bits.join(" · ")}\n`
     + "ห้ามขอข้อมูลที่ทราบแล้วซ้ำอีก\n"
-    + (priced
-      ? "คิดเบี้ยและส่งให้ลูกค้าไปแล้ว ถ้าจะชวนคุยต่อ ให้ชวนดูแบบชำระเบี้ยแบบอื่น หรือทุนจำนวนอื่น"
-      : "ถ้าลูกค้าอยากได้เบี้ย ให้ขอเฉพาะข้อมูลที่ยังขาด");
+    + (quoted
+      ? `เบี้ยที่คิดและส่งให้ลูกค้าไปแล้วคือ ${quoted}\n`
+        + "ถ้าจะพูดถึงตัวเลขเบี้ย ให้ใช้ตัวเลขชุดนี้เท่านั้น คัดลอกมาตรงๆ ห้ามคำนวณเอง ห้ามประมาณ ห้ามปัดเศษ\n"
+        + "ถ้าลูกค้าอยากได้เบี้ยของอายุ ทุน หรือแบบชำระอื่น ห้ามตอบเป็นตัวเลข ให้บอกว่าเดี๋ยวคิดให้ แล้วให้เขาบอกมา"
+      : "ถ้าลูกค้าอยากได้เบี้ย ให้ขอเฉพาะข้อมูลที่ยังขาด ห้ามตอบตัวเลขเบี้ยเอง");
+}
+
+/**
+ * The premium this customer has already been sent, as the engine computed it.
+ *
+ * It is put in front of the model because withholding it did not stop the model reaching for
+ * one: asked whether the premium was level, it answered 3,790 a month where the quotation it
+ * had sent five messages earlier said 3,861. A figure it can copy is a figure it cannot
+ * invent. Undefined when nothing has been priced yet, and the prompt then forbids figures
+ * outright.
+ */
+function quotedFigures(slots: Routed, table: LifeProtectTable): string | undefined {
+  const { age, sex, coverWanted } = slots;
+  if (age === undefined || sex === undefined || coverWanted === undefined || table.expired) return undefined;
+  const variant = slots.variant ?? DEFAULT_TERM;
+  if (!QUOTABLE.has(variant)) return undefined;
+  if (age < table.ageMin || age > table.ageMax) return undefined;
+
+  const sumAssured = sumForCover(table, age, coverWanted);
+  if (sumAssured < baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, variant).min) return undefined;
+  const modes = lifeProtectModes(table, termAt(table, variant), { sex, age, sumAssured });
+  if (!modes) return undefined;
+
+  const baht = (satang: number) => Math.round(satang / 100).toLocaleString("en-US");
+  const by = (mode: string) => modes.find((m) => m.mode === mode);
+  return [
+    by("monthly") ? `รายเดือน ${baht(by("monthly")!.total)} บาท` : "",
+    by("semi") ? `ราย 6 เดือน ${baht(by("semi")!.total)} บาท` : "",
+    by("annual") ? `รายปี ${baht(by("annual")!.total)} บาท` : "",
+  ].filter(Boolean).join(" · ");
 }
 
 async function answerPlanInfo(history: ChatMessage[], slots: Routed): Promise<Omit<Answer, "slots">> {
