@@ -6,7 +6,8 @@ import { formatBaht } from "@/calc/money";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
 import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
 import { planLabel } from "@/lib/ihealthy-facts";
-import { BenefitTable, PHONE_PLANS } from "@/components/ihealthy/BenefitTable";
+import { BenefitTable } from "@/components/ihealthy/BenefitTable";
+import { PHONE_PLANS } from "@/lib/ihealthy-phone";
 import { RiderPanel } from "@/components/ihealthy/RiderPanel";
 import {
   MODES, dailyCashLabel, deathBenefitOf, iHealthyPricing, type IHealthyPricing,

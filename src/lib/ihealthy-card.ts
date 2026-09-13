@@ -1,6 +1,7 @@
 import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
-import { benefitCell, PHONE_ROW_LABEL } from "@/components/ihealthy/BenefitTable";
+import { benefitCell } from "@/components/ihealthy/BenefitTable";
+import { PHONE_ROW_LABEL } from "@/lib/ihealthy-phone";
 import { categoryNumbers, iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
 import { deathBenefitRows, type BenefitRow as DeathRow } from "@/lib/death-benefit";
 import { initialFrom, ridersFrom } from "@/lib/ihealthy-link";
