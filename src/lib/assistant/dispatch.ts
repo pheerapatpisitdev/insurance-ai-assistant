@@ -1,6 +1,6 @@
 import type { ChatMessage } from "@/lib/ai/types";
 import { askWhich, productByTopic, productNamedIn, type Product } from "./choose";
-import { peopleIn, type Reply } from "./common";
+import { aboutCompany, asksAboutCompany, peopleIn, type Reply } from "./common";
 import { answerHealth } from "./ihealthy/answer";
 import type { HealthSlots } from "./ihealthy/route";
 import { answerQuestion } from "./lifeprotect/answer";
@@ -14,6 +14,14 @@ export type AnyAnswer = Reply & { slots: AnySlots };
 interface Person {
   age?: number;
   sex?: "M" | "F";
+  /**
+   * Everyone the message named, when it named more than one.
+   *
+   * Carried because it was not: a family of three wrote "ช 23 / ญ 25 / ช 53" before saying
+   * which plan, and only the first of them survived the question — the other two were asked
+   * for again, given again, and never priced.
+   */
+  people?: { age: number; sex: "M" | "F" }[];
 }
 
 /**
@@ -33,7 +41,12 @@ function settled(slots: AnySlots | null): Product | "undecided" | undefined {
 function personIn(slots: AnySlots | null): Person {
   if (!slots) return {};
   const { age, sex } = slots as Routed | HealthSlots | Undecided;
-  return { ...(age !== undefined ? { age } : {}), ...(sex ? { sex } : {}) };
+  const { people } = slots as Routed | Undecided;
+  return {
+    ...(age !== undefined ? { age } : {}),
+    ...(sex ? { sex } : {}),
+    ...(people?.length ? { people } : {}),
+  };
 }
 
 /**
@@ -60,13 +73,18 @@ export async function answerAny(history: ChatMessage[], stored: AnySlots | null)
   const product = named ?? productByTopic(asked);
   if (product) return run(product, history, personIn(stored), true);
 
-  // the customer has not said, so the customer is asked — and what they did say is kept
-  const person = peopleIn(asked)[0];
+  // the customer has not said, so the customer is asked — and what they did say is kept,
+  // all of it: everyone they named, not only whoever they named first
+  const here = peopleIn(asked);
   const undecided: Undecided = {
     product: "undecided",
-    ...(person ? { age: person.age, sex: person.sex } : personIn(stored)),
+    ...(here.length
+      ? { age: here[0].age, sex: here[0].sex, ...(here.length > 1 ? { people: here } : {}) }
+      : personIn(stored)),
   };
-  return { ...askWhich(), slots: undecided };
+  // and a question they asked on the way in is answered before the question they are asked back
+  const lead = asksAboutCompany(asked) ? aboutCompany(asked) : undefined;
+  return { ...askWhich(lead), slots: undecided };
 }
 
 /**
@@ -92,9 +110,10 @@ async function run(
 }
 
 /** A health conversation begun from whatever the last one knew about the person. */
-function startHealth(person: Person): HealthSlots | null {
-  if (person.age === undefined && person.sex === undefined) return null;
-  return { product: "ihealthy", intent: "quote", ...person };
+function startHealth({ age, sex }: Person): HealthSlots | null {
+  // the group is left behind on purpose: the health contract is priced one person at a time
+  if (age === undefined && sex === undefined) return null;
+  return { product: "ihealthy", intent: "quote", ...(age !== undefined ? { age } : {}), ...(sex ? { sex } : {}) };
 }
 
 /** The same, the other way round. */

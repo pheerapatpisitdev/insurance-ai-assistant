@@ -12,6 +12,8 @@ export interface Undecided {
   product: "undecided";
   age?: number;
   sex?: "M" | "F";
+  /** everyone the message named, when it named more than one; the life brain prices them all */
+  people?: { age: number; sex: "M" | "F" }[];
 }
 
 /**

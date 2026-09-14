@@ -1,7 +1,7 @@
 import { chat, parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { getPlan } from "@/calc/plans/registry";
-import { ageFromBirthdate, peopleIn, recentTurns } from "../common";
+import { ageFromBirthdate, coverIn, peopleIn, recentTurns } from "../common";
 
 /**
  * Re-exported where they have always been named from: these read a person out of a message,
@@ -212,6 +212,8 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
   if (namedPeople.length) out.sex = namedPeople[0].sex;
   else if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
   if (typeof raw.coverWanted === "number" && raw.coverWanted > 0) out.coverWanted = Math.trunc(raw.coverWanted);
+  // the model first, the message itself when the model read no amount at all
+  else out.coverWanted = coverIn(last);
   if (raw.mode === "annual" || raw.mode === "semi" || raw.mode === "monthly") out.mode = raw.mode;
   // a sum the customer named, in a message asking for a price, is a request for a price
   if (out.intent !== "quote" && out.coverWanted !== undefined && asksForPrice(last)) out.intent = "quote";
@@ -232,10 +234,15 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
    * The bot asks for a sex and an age; the customer sends "เกิด 14/12/2523 ผู้หญิง", which
    * names no price and reads to the model like a plan question. It was answered with a
    * paragraph and no premium, one message after the bot had promised one.
+   *
+   * The rule used to need the previous turn to have been a quote as well, which held only
+   * while there was one plan to ask about. A family of three now taps a button first — the
+   * model calls that turn a question about the plan — and their "ทุน1ล้าน" the turn after was
+   * read as nothing in particular. So a turn that completes the three things a quotation
+   * needs is a request for one, whatever the model called it.
    */
-  if (previous.intent === "quote" && (current.age !== undefined || current.sex !== undefined || current.coverWanted !== undefined)) {
-    merged.intent = "quote";
-  }
+  const supplied = current.age !== undefined || current.sex !== undefined
+    || current.coverWanted !== undefined || (current.people?.length ?? 0) > 0;
   // a turn that names its own people replaces the earlier ones rather than adding to them
   if (merged.people === undefined && current.age === undefined && current.sex === undefined) {
     merged.people = previous.people;
@@ -248,5 +255,11 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
   if (merged.offer === undefined) merged.offer = previous.offer;
   if (merged.takenSum === undefined && merged.coverWanted === previous.coverWanted) merged.takenSum = previous.takenSum;
   if (merged.formSent === undefined) merged.formSent = previous.formSent;
+
+  // decided last, because it asks what is known once everything has been carried over: a turn
+  // that completes the three things a quotation needs is a request for one
+  const complete = ((merged.people?.length ?? 0) > 0 || (merged.age !== undefined && merged.sex !== undefined))
+    && merged.coverWanted !== undefined;
+  if (supplied && (previous.intent === "quote" || complete)) merged.intent = "quote";
   return merged;
 }

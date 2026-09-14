@@ -164,6 +164,29 @@ describe("leaving to think it over", () => {
   });
 });
 
+describe("the cover a message names", () => {
+  it("is read out of the message when the model missed it", async () => {
+    // "ทุน1ล้าน", with no space, is what a real customer typed twice and was asked for twice
+    reply.text = JSON.stringify({ intent: "quote" });
+    expect((await routeMessage(said("ช 23 ทุน1ล้าน"))).coverWanted).toBe(1_000_000);
+    expect((await routeMessage(said("ขอทุน 2 ล้านครับ"))).coverWanted).toBe(2_000_000);
+    expect((await routeMessage(said("ทุน 500,000"))).coverWanted).toBe(500_000);
+    expect((await routeMessage(said("สนใจ 5 แสน"))).coverWanted).toBe(500_000);
+  });
+
+  it("lets the model's own reading win when it has one", async () => {
+    reply.text = JSON.stringify({ intent: "quote", coverWanted: 3_000_000 });
+    expect((await routeMessage(said("ทุน 1 ล้าน"))).coverWanted).toBe(3_000_000);
+  });
+
+  it("is not read out of an age or a year", async () => {
+    reply.text = JSON.stringify({ intent: "quote" });
+    for (const t of ["ชาย 49", "เกิด2522", "จ่าย 19 ปี"]) {
+      expect((await routeMessage(said(t))).coverWanted, t).toBeUndefined();
+    }
+  });
+});
+
 describe("when the model's reply is unusable", () => {
   it("still reads out of the message what the code can read for itself", async () => {
     // exactly what a customer sent at 06:58: a couple, one to a line, no spaces

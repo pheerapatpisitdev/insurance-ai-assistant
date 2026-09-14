@@ -286,6 +286,30 @@ const PERSON_RE = new RegExp(
   "g",
 );
 
+/**
+ * The cover a message names, in baht — "ทุน1ล้าน", "ขอ 2 ล้าน", "ทุน 500,000", "5 แสน".
+ *
+ * A backstop for the model, not a replacement: it is consulted only when the model read no
+ * amount at all. A family of three wrote "ช 23 ญ 25 ช 53 ทุน1ล้าน", the model missed the sum
+ * for want of a space, and the bot asked for what it had been given — twice.
+ *
+ * Nothing without ล้าน, แสน or the word ทุน in front of it counts, so an age, a year of birth
+ * and a payment term are all left alone.
+ */
+const COVER_WORDS = /(\d+(?:\.\d+)?)\s*(ล้าน|แสน)|ทุน(?:ประกัน)?\s*([\d,]{6,})/;
+const SMALLEST_COVER = 10_000;
+const LARGEST_COVER = 100_000_000;
+
+export function coverIn(text: string): number | undefined {
+  const m = text.match(COVER_WORDS);
+  if (!m) return undefined;
+  const baht = m[1]
+    ? Number(m[1]) * (m[2] === "ล้าน" ? 1_000_000 : 100_000)
+    : Number(m[3].replace(/,/g, ""));
+  if (!Number.isFinite(baht) || baht < SMALLEST_COVER || baht > LARGEST_COVER) return undefined;
+  return Math.round(baht);
+}
+
 /** Everyone a message names, in the order it names them. */
 export function peopleIn(text: string): { age: number; sex: "M" | "F" }[] {
   const out: { age: number; sex: "M" | "F" }[] = [];

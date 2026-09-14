@@ -18,6 +18,49 @@ const said = (content: string) => [{ role: "user" as const, content }];
 beforeEach(() => { chat.mockClear(); routed = { intent: "other" }; });
 
 describe("a customer who has not said what they came for", () => {
+  it("is answered before being asked back, when the question was about the company", async () => {
+    // a real first message: "ของอะไร" means which company, and got "สนใจแบบไหนครับ" back
+    const answer = await answerAny(said("ของอะไร"), null);
+    expect(answer.messages[0].text).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
+    // the question is still put, and the buttons still offered
+    expect(answer.messages.at(-1)!.text).toContain("สนใจแบบไหน");
+    expect(answer.replies).toEqual([CHOOSE_HEALTH, CHOOSE_LIFE]);
+    expect(chat).not.toHaveBeenCalled();
+  });
+
+  it("keeps everyone the message named, not just the first", async () => {
+    // a family of three, the message that lost two of them yesterday
+    const answer = await answerAny(said("ช 23\nญ 25\nช 53"), null);
+    expect(answer.slots).toMatchObject({
+      product: "undecided",
+      people: [{ age: 23, sex: "M" }, { age: 25, sex: "F" }, { age: 53, sex: "M" }],
+    });
+  });
+
+  it("prices all of them when the cover finally arrives, whatever the model calls the turn", async () => {
+    const asked = await answerAny(said("ญ 34 / ช 33 / ช54"), null);
+    // tapping the button settles the plan; the model reads it as a question about the plan
+    routed = { intent: "plan_info" };
+    const chose = await answerAny(said("🛡️ Life Protect x 2"), asked.slots);
+    // and now the one thing that was missing, which the model reads as nothing in particular
+    routed = { intent: "other" };
+    const answer = await answerAny(said("ทุน1ล้าน"), chose.slots);
+    expect(answer.priced).toBe(true);
+    expect(answer.messages).toHaveLength(3);
+    expect(answer.messages[0].card).toContain("age=34&sex=F");
+    expect(answer.messages[1].card).toContain("age=33&sex=M");
+    expect(answer.messages[2].card).toContain("age=54&sex=M");
+  });
+
+  it("prices all of them once the plan is settled", async () => {
+    const asked = await answerAny(said("ช 23\nญ 25\nช 53"), null);
+    routed = { intent: "quote", coverWanted: 1_000_000 };
+    const answer = await answerAny(said("ประกันมรดก ทุน 1 ล้าน"), asked.slots);
+    expect(answer.messages).toHaveLength(3);
+    expect(answer.messages[0].card).toContain("age=23&sex=M");
+    expect(answer.messages[2].card).toContain("age=53&sex=M");
+  });
+
   it("is asked, with two buttons, and no model is paid", async () => {
     const answer = await answerAny(said("สนใจค่ะ"), null);
     expect(answer.replies).toEqual([CHOOSE_HEALTH, CHOOSE_LIFE]);

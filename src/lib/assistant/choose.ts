@@ -1,4 +1,4 @@
-import { one, type Reply } from "./common";
+import type { Reply } from "./common";
 
 /** The two things this page sells, as the session records which one a customer came for. */
 export type Product = "lifeprotect" | "ihealthy";
@@ -57,6 +57,11 @@ export const CHOOSE_LIFE = "🛡️ Life Protect x 2";
  * and most customers type a sum or a symptom, and a lead the campaign paid for should not have
  * to tap twice to be answered.
  */
-export function askWhich(): Reply {
-  return { ...one("สวัสดีครับ 🙏 สนใจแบบไหนครับ"), replies: [CHOOSE_HEALTH, CHOOSE_LIFE] };
+export function askWhich(lead?: string): Reply {
+  // a customer who asked something first is answered first: "ของอะไร" met with "สนใจแบบไหนครับ"
+  // is a question answered with a question, which is how it read in the inbox
+  const messages = lead
+    ? [{ text: lead }, { text: "สนใจแบบไหนครับ" }]
+    : [{ text: "สวัสดีครับ 🙏 สนใจแบบไหนครับ" }];
+  return { messages, replies: [CHOOSE_HEALTH, CHOOSE_LIFE] };
 }
