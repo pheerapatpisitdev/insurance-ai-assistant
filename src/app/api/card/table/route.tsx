@@ -2,23 +2,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
-import { cardInputFrom } from "@/lib/quote-card";
-import { valueTableCard, type ValueTableCard, type ValueTableRow } from "@/lib/quote-card";
+import { cardInputFrom, valueTableCard, type ValueTableCard, type ValueTableRow } from "@/lib/quote-card";
+import { cardPaletteFor, type CardPalette } from "@/lib/card-theme";
 
 export const runtime = "nodejs";
 /** The figures come from a dated rate table, so a day of caching is as far as it can go. */
 export const revalidate = 86400;
-
-/** The sales page's palette, so a table dropped into a chat is recognisably the same agency. */
-const GROUND = "#26272a";
-const GROUND_DEEP = "#1c1d1f";
-const GOLD = "#c9a26f";
-const GOLD_LIT = "#f2e0bb";
-const GOLD_GLOW = "rgba(201,162,111,0.14)";
-const WHITE = "#f5f5f5";
-const HAIR = "rgba(201,162,111,0.24)";
-const RULE = "rgba(255,255,255,0.12)";
-const STRIPE = "rgba(255,255,255,0.035)";
 
 /** Six columns twice over; 1400 left the seven-figure ones touching their rules. */
 const WIDTH = 1600;
@@ -73,7 +62,8 @@ const CELL_PAD = 11;
  * ladder down the table instead of a column.
  */
 function Cell(
-  { i, height, color, children }: { i: number; height: number; color: string; children: string },
+  { i, height, color, rule, children }:
+  { i: number; height: number; color: string; rule: string; children: string },
 ) {
   return (
     <div
@@ -85,7 +75,7 @@ function Cell(
         justifyContent: COLS[i].align,
         paddingLeft: CELL_PAD,
         paddingRight: CELL_PAD,
-        ...(i > 0 ? { borderLeft: `1px solid ${RULE}` } : {}),
+        ...(i > 0 ? { borderLeft: `1px solid ${rule}` } : {}),
         color,
       }}
     >
@@ -100,15 +90,15 @@ const spacer = (height: number, background?: string) => (
 ) as const;
 
 /** Half the years, headed by their own row of column names so each half is read on its own. */
-function Half({ columns, rows }: { columns: string[]; rows: ValueTableRow[] }) {
+function Half({ columns, rows, p }: { columns: string[]; rows: ValueTableRow[]; p: CardPalette }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", width: HALF, flexShrink: 0 }}>
-      <div style={{ ...band(H.head), width: HALF, fontSize: 21, borderBottom: `1px solid ${HAIR}` }}>
-        {columns.map((c, i) => <Cell key={c} i={i} height={H.head - 1} color={WHITE}>{c}</Cell>)}
+      <div style={{ ...band(H.head), width: HALF, fontSize: 21, borderBottom: `1px solid ${p.hair}` }}>
+        {columns.map((c, i) => <Cell key={c} i={i} height={H.head - 1} color={p.ink} rule={p.rule}>{c}</Cell>)}
       </div>
       {rows.map((r, n) => {
         // the year the value first covers what has gone in is the one the customer looks for
-        const ground = r.breakEven ? GOLD_GLOW : n % 2 ? STRIPE : undefined;
+        const ground = r.breakEven ? p.glow : n % 2 ? p.stripe : undefined;
         /**
          * One ink for the whole table.
          *
@@ -118,7 +108,7 @@ function Half({ columns, rows }: { columns: string[]; rows: ValueTableRow[] }) {
          * their own column, with a nought and a note underneath; they do not also need to be
          * hard to read.
          */
-        const ink = r.breakEven ? GOLD_LIT : WHITE;
+        const ink = r.breakEven ? p.figure : p.ink;
         const cells = [String(r.year), String(r.age), r.due, r.paid ?? "—", r.cash, r.cover];
         return (
           <div
@@ -126,7 +116,7 @@ function Half({ columns, rows }: { columns: string[]; rows: ValueTableRow[] }) {
             style={{ ...band(H.row), width: HALF, fontSize: 22, ...(ground ? { background: ground } : {}) }}
           >
             {cells.map((cell, i) => (
-              <Cell key={columns[i]} i={i} height={H.row} color={ink}>{cell}</Cell>
+              <Cell key={columns[i]} i={i} height={H.row} color={ink} rule={p.rule}>{cell}</Cell>
             ))}
           </div>
         );
@@ -166,7 +156,9 @@ const loadFont = (file: string) => readFile(path.join(FONT_DIR, file));
 export async function GET(req: NextRequest) {
   const input = cardInputFrom(req.nextUrl.searchParams);
   const card = input?.kind === "plan" ? valueTableCard(input) : undefined;
-  if (!card) return new Response("ไม่พบแบบประกันตามที่ระบุ", { status: 400 });
+  if (!input || !card) return new Response("ไม่พบแบบประกันตามที่ระบุ", { status: 400 });
+  /** the theme the plan is sold under, so the sheet matches the page it was quoted from */
+  const p = cardPaletteFor(input);
 
   const [regular, semibold, display] = await Promise.all([
     loadFont("IBMPlexSansThai-Regular.ttf"),
@@ -184,33 +176,33 @@ export async function GET(req: NextRequest) {
           display: "flex",
           flexDirection: "column",
           padding: PAD,
-          background: `linear-gradient(160deg, ${GROUND} 0%, ${GROUND_DEEP} 82%)`,
+          background: `linear-gradient(160deg, ${p.ground} 0%, ${p.groundDeep} 82%)`,
           fontFamily: "Plex",
-          color: WHITE,
+          color: p.ink,
         }}
       >
-        <div style={{ ...band(H.plan), fontSize: 27, fontWeight: 600, color: GOLD }}>{card.planLine}</div>
-        <div style={{ ...band(H.insured), fontSize: 25, color: WHITE }}>{card.insuredLine}</div>
-        <div style={{ ...band(H.premium), fontFamily: "Trirong", fontSize: 30, color: GOLD_LIT }}>
+        <div style={{ ...band(H.plan), fontSize: 27, fontWeight: 600, color: p.accent }}>{card.planLine}</div>
+        <div style={{ ...band(H.insured), fontSize: 25, color: p.ink }}>{card.insuredLine}</div>
+        <div style={{ ...band(H.premium), fontFamily: "Trirong", fontSize: 30, color: p.figure }}>
           {card.premiumLine}
         </div>
 
         <div style={spacer(H.gap)} />
-        <div style={spacer(H.hairline, HAIR)} />
+        <div style={spacer(H.hairline, p.hair)} />
         <div style={spacer(H.afterHairline)} />
-        <div style={{ ...band(H.caption), fontSize: 25, color: GOLD }}>{CAPTION}</div>
+        <div style={{ ...band(H.caption), fontSize: 25, color: p.accent }}>{CAPTION}</div>
 
         <div style={{ display: "flex", width: WIDTH - PAD * 2, flexShrink: 0 }}>
-          <Half columns={card.columns} rows={card.rows.slice(0, cut)} />
+          <Half columns={card.columns} rows={card.rows.slice(0, cut)} p={p} />
           <div style={{ display: "flex", width: GUTTER, flexShrink: 0 }} />
-          <Half columns={card.columns} rows={card.rows.slice(cut)} />
+          <Half columns={card.columns} rows={card.rows.slice(cut)} p={p} />
         </div>
 
         <div style={spacer(H.gap)} />
-        <div style={spacer(H.hairline, RULE)} />
+        <div style={spacer(H.hairline, p.rule)} />
         <div style={spacer(H.afterHairline)} />
         {card.notes.map((n) => (
-          <div key={n} style={{ ...band(H.note), fontSize: 20, color: WHITE }}>{n}</div>
+          <div key={n} style={{ ...band(H.note), fontSize: 20, color: p.ink }}>{n}</div>
         ))}
       </div>
     ),

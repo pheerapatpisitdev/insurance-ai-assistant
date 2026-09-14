@@ -3,20 +3,12 @@ import path from "node:path";
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { cardInputFrom, quoteCard, type CardChart, type CardRow, type QuoteCard } from "@/lib/quote-card";
+import { cardPaletteFor, type CardPalette } from "@/lib/card-theme";
 
 export const runtime = "nodejs";
 /** The figures come from a dated rate table, so a day of caching is as far as it can go. */
 export const revalidate = 86400;
 
-/** The sales page's palette, so a card dropped into a chat is recognisably the same agency. */
-const GROUND = "#26272a";
-const GROUND_DEEP = "#1c1d1f";
-const GOLD = "#c9a26f";
-const GOLD_LIT = "#f2e0bb";
-const WHITE = "#f5f5f5";
-const MUTE = "rgba(245,245,245,0.72)";
-const HAIR = "rgba(201,162,111,0.24)";
-const RULE = "rgba(255,255,255,0.12)";
 
 const WIDTH = 1000;
 const PAD = 56;
@@ -47,8 +39,6 @@ const H = {
   legend: 46,
 };
 
-/** cash in gold, premiums in grey, cover as the dashed line it is on the page. */
-const LINE = { cash: GOLD, premium: "rgba(245,245,245,0.5)", cover: "rgba(245,245,245,0.34)" } as const;
 
 function sectionHeight(rows: CardRow[] | undefined): number {
   if (!rows?.length) return 0;
@@ -77,20 +67,20 @@ const spacer = (height: number, background?: string) => (
   { display: "flex", height, flexShrink: 0, ...(background ? { background } : {}) }
 ) as const;
 
-function Rows({ title, rows }: { title: string; rows: CardRow[] }) {
+function Rows({ title, rows, p }: { title: string; rows: CardRow[]; p: CardPalette }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
       <div style={spacer(H.gap)} />
-      <div style={spacer(H.hairline, HAIR)} />
+      <div style={spacer(H.hairline, p.hair)} />
       <div style={spacer(H.afterHairline)} />
-      <div style={{ ...band(H.sectionTitle), fontSize: 26, color: MUTE }}>{title}</div>
+      <div style={{ ...band(H.sectionTitle), fontSize: 26, color: p.mute }}>{title}</div>
       {rows.map((r) => (
         <div
           key={r.label}
           style={{ ...band(H.row), width: "100%", justifyContent: "space-between", alignItems: "center" }}
         >
-          <div style={{ display: "flex", fontSize: 27, color: MUTE }}>{r.label}</div>
-          <div style={{ display: "flex", fontFamily: "Trirong", fontSize: 34, color: WHITE }}>{r.amount} บาท</div>
+          <div style={{ display: "flex", fontSize: 27, color: p.mute }}>{r.label}</div>
+          <div style={{ display: "flex", fontFamily: "Trirong", fontSize: 34, color: p.ink }}>{r.amount} บาท</div>
         </div>
       ))}
     </div>
@@ -102,32 +92,32 @@ function Rows({ title, rows }: { title: string; rows: CardRow[] }) {
  * <img> holding an SVG data URI, which is how the first attempt at this came out blank — so
  * the shapes are written out here rather than handed over as a picture.
  */
-function Chart({ chart }: { chart: CardChart }) {
+function Chart({ chart, p }: { chart: CardChart; p: CardPalette }) {
   const { width: w, height: h } = chart;
   /** a label placed over the drawing; the SVG itself carries no text at all */
   const label = (style: React.CSSProperties) => ({
-    position: "absolute" as const, display: "flex", fontSize: 22, color: MUTE, ...style,
+    position: "absolute" as const, display: "flex", fontSize: 22, color: p.mute, ...style,
   });
   return (
     <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
       <div style={spacer(H.gap)} />
-      <div style={spacer(H.hairline, HAIR)} />
+      <div style={spacer(H.hairline, p.hair)} />
       <div style={spacer(H.afterHairline)} />
-      <div style={{ ...band(H.sectionTitle), fontSize: 26, color: MUTE }}>{chart.title}</div>
+      <div style={{ ...band(H.sectionTitle), fontSize: 26, color: p.mute }}>{chart.title}</div>
       <div style={{ display: "flex", position: "relative", width: w, height: h, flexShrink: 0 }}>
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-          <line x1={86} y1={h - 44} x2={w - 14} y2={h - 44} stroke={RULE} strokeWidth={2} />
-          <line x1={86} y1={18} x2={86} y2={h - 44} stroke={RULE} strokeWidth={2} />
+          <line x1={86} y1={h - 44} x2={w - 14} y2={h - 44} stroke={p.rule} strokeWidth={2} />
+          <line x1={86} y1={18} x2={86} y2={h - 44} stroke={p.rule} strokeWidth={2} />
           {chart.grid && (
-            <line x1={86} y1={chart.grid.y} x2={w - 14} y2={chart.grid.y} stroke={RULE} strokeWidth={2} />
+            <line x1={86} y1={chart.grid.y} x2={w - 14} y2={chart.grid.y} stroke={p.rule} strokeWidth={2} />
           )}
-          <polyline fill="none" stroke={LINE.cover} strokeWidth={4} strokeDasharray="10 7" points={chart.cover} />
+          <polyline fill="none" stroke={p.line.cover} strokeWidth={4} strokeDasharray="10 7" points={chart.cover} />
           {chart.premium && (
-            <polyline fill="none" stroke={LINE.premium} strokeWidth={4} points={chart.premium} />
+            <polyline fill="none" stroke={p.line.premium} strokeWidth={4} points={chart.premium} />
           )}
-          <polyline fill="none" stroke={LINE.cash} strokeWidth={5} points={chart.cash} />
+          <polyline fill="none" stroke={p.line.cash} strokeWidth={5} points={chart.cash} />
           {chart.breakEven && (
-            <circle cx={chart.breakEven.x} cy={chart.breakEven.y} r={9} fill={GOLD_LIT} />
+            <circle cx={chart.breakEven.x} cy={chart.breakEven.y} r={9} fill={p.figure} />
           )}
         </svg>
         <div style={label({ right: w - 78, top: 6, justifyContent: "flex-end" })}>{chart.topLabel}</div>
@@ -149,21 +139,21 @@ function Chart({ chart }: { chart: CardChart }) {
             {/* the cover's key is broken into two, because the line it stands for is dashed */}
             {l.kind === "cover" ? (
               <div style={{ display: "flex", alignItems: "center", marginRight: 12 }}>
-                <div style={{ display: "flex", width: 11, height: 5, background: LINE.cover }} />
+                <div style={{ display: "flex", width: 11, height: 5, background: p.line.cover }} />
                 <div style={{ display: "flex", width: 4, height: 5 }} />
-                <div style={{ display: "flex", width: 11, height: 5, background: LINE.cover }} />
+                <div style={{ display: "flex", width: 11, height: 5, background: p.line.cover }} />
               </div>
             ) : (
-              <div style={{ display: "flex", width: 26, height: 5, background: LINE[l.kind], marginRight: 12 }} />
+              <div style={{ display: "flex", width: 26, height: 5, background: p.line[l.kind], marginRight: 12 }} />
             )}
-            <div style={{ display: "flex", fontSize: 23, color: MUTE }}>{l.label}</div>
+            <div style={{ display: "flex", fontSize: 23, color: p.mute }}>{l.label}</div>
           </div>
         ))}
         {chart.breakEven && (
           <div style={{ display: "flex", alignItems: "center" }}>
             {/* a drawn dot rather than a bullet character — the Thai faces have no ● in them */}
-            <div style={{ display: "flex", width: 14, height: 14, borderRadius: 7, background: GOLD_LIT, marginRight: 10 }} />
-            <div style={{ display: "flex", fontSize: 23, color: GOLD_LIT }}>{chart.breakEven.label}</div>
+            <div style={{ display: "flex", width: 14, height: 14, borderRadius: 7, background: p.figure, marginRight: 10 }} />
+            <div style={{ display: "flex", fontSize: 23, color: p.figure }}>{chart.breakEven.label}</div>
           </div>
         )}
       </div>
@@ -195,7 +185,9 @@ const loadFont = (file: string) => readFile(path.join(FONT_DIR, file));
 export async function GET(req: NextRequest) {
   const input = cardInputFrom(req.nextUrl.searchParams);
   const card = input ? quoteCard(input) : undefined;
-  if (!card) return new Response("ไม่พบแบบประกันตามที่ระบุ", { status: 400 });
+  if (!input || !card) return new Response("ไม่พบแบบประกันตามที่ระบุ", { status: 400 });
+  /** the theme the plan is sold under, so the card matches the page it was quoted from */
+  const p = cardPaletteFor(input);
 
   const [regular, semibold, display] = await Promise.all([
     loadFont("IBMPlexSansThai-Regular.ttf"),
@@ -212,42 +204,42 @@ export async function GET(req: NextRequest) {
           display: "flex",
           flexDirection: "column",
           padding: PAD,
-          background: `linear-gradient(160deg, ${GROUND} 0%, ${GROUND_DEEP} 82%)`,
+          background: `linear-gradient(160deg, ${p.ground} 0%, ${p.groundDeep} 82%)`,
           fontFamily: "Plex",
-          color: WHITE,
+          color: p.ink,
         }}
       >
-        <div style={{ ...band(H.plan), fontSize: 27, fontWeight: 600, color: GOLD }}>{card.planLine}</div>
-        <div style={{ ...band(H.insured), fontSize: 27, color: MUTE }}>{card.insuredLine}</div>
+        <div style={{ ...band(H.plan), fontSize: 27, fontWeight: 600, color: p.accent }}>{card.planLine}</div>
+        <div style={{ ...band(H.insured), fontSize: 27, color: p.mute }}>{card.insuredLine}</div>
 
         {card.premium ? (
           <div style={{ ...band(H.premium), alignItems: "baseline", paddingTop: 14 }}>
-            <div style={{ display: "flex", fontFamily: "Trirong", fontSize: 86, lineHeight: 1, color: GOLD_LIT }}>
+            <div style={{ display: "flex", fontFamily: "Trirong", fontSize: 86, lineHeight: 1, color: p.figure }}>
               {card.premium.amount}
             </div>
-            <div style={{ display: "flex", fontSize: 30, color: MUTE, marginLeft: 16 }}>
+            <div style={{ display: "flex", fontSize: 30, color: p.mute, marginLeft: 16 }}>
               บาท {card.premium.per}
             </div>
           </div>
         ) : (
-          <div style={{ ...band(H.noPrice), fontSize: 34, color: GOLD, alignItems: "center" }}>
+          <div style={{ ...band(H.noPrice), fontSize: 34, color: p.accent, alignItems: "center" }}>
             ขอราคาปัจจุบันได้ทางแชท
           </div>
         )}
-        {card.perDay && <div style={{ ...band(H.perDay), fontSize: 26, color: MUTE }}>{card.perDay}</div>}
+        {card.perDay && <div style={{ ...band(H.perDay), fontSize: 26, color: p.mute }}>{card.perDay}</div>}
         {card.others.map((line) => (
-          <div key={line} style={{ ...band(H.others), fontSize: 25, color: MUTE }}>{line}</div>
+          <div key={line} style={{ ...band(H.others), fontSize: 25, color: p.mute }}>{line}</div>
         ))}
 
-        {card.sections.map((s) => <Rows key={s.title} title={s.title} rows={s.rows} />)}
-        {card.chart && <Chart chart={card.chart} />}
+        {card.sections.map((s) => <Rows key={s.title} title={s.title} rows={s.rows} p={p} />)}
+        {card.chart && <Chart chart={card.chart} p={p} />}
 
         <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={spacer(H.gap)} />
-          <div style={spacer(H.hairline, RULE)} />
+          <div style={spacer(H.hairline, p.rule)} />
           <div style={spacer(H.afterHairline)} />
           {card.notes.map((n) => (
-            <div key={n} style={{ ...band(H.note), fontSize: 21, color: MUTE }}>{n}</div>
+            <div key={n} style={{ ...band(H.note), fontSize: 21, color: p.mute }}>{n}</div>
           ))}
         </div>
       </div>

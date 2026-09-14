@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { CardCell, CardColumn, CardTableRow } from "@/lib/ihealthy-card";
+import { IHEALTHY_IVORY } from "@/lib/card-theme";
 
 /**
  * The ink both health pictures are drawn with: the palette, the bands, and the three
@@ -11,17 +12,26 @@ import type { CardCell, CardColumn, CardTableRow } from "@/lib/ihealthy-card";
  * would have the agency send two pictures that do not look like each other.
  */
 
-/** The sales page's palette, so a card dropped into a chat is recognisably the same agency. */
-export const GROUND = "#26272a";
-export const GROUND_DEEP = "#1c1d1f";
-export const GOLD = "#c9a26f";
-export const GOLD_LIT = "#f2e0bb";
-export const WHITE = "#f5f5f5";
-export const MUTE = "rgba(245,245,245,0.72)";
-export const RULE = "rgba(255,255,255,0.12)";
-export const GRID = "rgba(201,162,111,0.22)";
+/**
+ * The sales page's palette, so a card dropped into a chat is recognisably the same agency —
+ * and, since /ihealthy-ultra was re-themed, recognisably the same page. Taken from the shared
+ * registry rather than written out here: this route draws one plan under one theme, so it
+ * needs no picking, but the colours still belong beside the other three.
+ *
+ * GOLD_LIT and WHITE keep their names for the drawing code below while changing which end of
+ * the scale they sit at — on the ivory the premium is the darkest thing on the card, not the
+ * brightest. The registry names them `figure` and `ink` for that reason.
+ */
+export const GROUND = IHEALTHY_IVORY.ground;
+export const GROUND_DEEP = IHEALTHY_IVORY.groundDeep;
+export const GOLD = IHEALTHY_IVORY.accent;
+export const GOLD_LIT = IHEALTHY_IVORY.figure;
+export const WHITE = IHEALTHY_IVORY.ink;
+export const MUTE = IHEALTHY_IVORY.mute;
+export const RULE = IHEALTHY_IVORY.rule;
+export const GRID = IHEALTHY_IVORY.grid;
 /** the chosen plan's column, laid over the ground rather than instead of it */
-export const TINT = "rgba(201,162,111,0.11)";
+export const TINT = IHEALTHY_IVORY.tint;
 
 /**
  * The canvas, and the table drawn on it.
