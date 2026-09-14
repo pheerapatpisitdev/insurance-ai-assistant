@@ -45,9 +45,30 @@ const PLAN_WORDS: [string, RegExp][] = [
   ["SMART", /สมาร์ท|สมาร์ต|\bsmart\b/i],
 ];
 
-/** The plan a message asks for by name, or nothing where it names none. */
+/**
+ * The plan behind an annual ceiling said in millions — "เหมาจ่าย 10 ล้าน".
+ *
+ * This is how the adverts name the plans, and how customers repeat them back: the ceiling is
+ * the thing being bought, where "Bronze" is a word they have to translate first. The figures
+ * come from the benefit sheet rather than a second list of them, so a plan the company
+ * re-prices is read correctly the day the sheet is re-extracted.
+ *
+ * An amount no plan is written for reads as nothing at all — "ทุน 1 ล้าน" is a sum assured on
+ * the life contract, said in the wrong chat, and must not be turned into a health plan.
+ */
+function planByCeiling(text: string): string | undefined {
+  const m = text.match(/(\d+)\s*ล้าน/);
+  if (!m) return undefined;
+  const baht = Number(m[1]) * 1_000_000;
+  return iHealthyFacts().plans.find((p) => p.annualMax === baht)?.code;
+}
+
+/**
+ * The plan a message asks for, by name or by what it pays in a year. The name wins where a
+ * message carries both, because it is the less ambiguous of the two.
+ */
 export function planNamedIn(text: string): string | undefined {
-  return PLAN_WORDS.find(([, re]) => re.test(text))?.[0];
+  return PLAN_WORDS.find(([, re]) => re.test(text))?.[0] ?? planByCeiling(text);
 }
 
 /**
@@ -100,8 +121,6 @@ intent มี 3 แบบ
 ฟิลด์ที่ต้องเติมถ้ามีในข้อความ
 - age เป็นตัวเลขปี
 - sex เป็น "M" (ชาย) หรือ "F" (หญิง)
-- plan เป็นรหัสแผน "SMART" "BRONZE" "SILVER" "GOLD" "DIAMOND" "PLATINUM"
-- territory เป็น "ประเทศไทย" "เอเชีย" หรือ "ทั่วโลก"
 - question เขียนคำถามใหม่ให้เข้าใจได้ด้วยตัวเอง โดยเติมสิ่งที่อ้างถึงจากบทสนทนาก่อนหน้า
 
 ถ้าไม่มีข้อมูลให้ละฟิลด์นั้นไป ห้ามเดา`;
@@ -124,13 +143,20 @@ function clean(raw: Partial<HealthSlots>, history: ChatMessage[]): HealthSlots {
     intent: raw.intent && ["quote", "plan_info", "other"].includes(raw.intent) ? raw.intent : "other",
   };
 
-  // the plan written in the message wins over the model's: it is the one the customer tapped
-  const codes = new Set(iHealthyFacts().plans.map((p) => p.code));
-  const plan = planNamedIn(last) ?? raw.plan;
-  if (plan && codes.has(plan)) out.plan = plan;
+  /**
+   * The plan and the territory are read off the message and never taken from the model.
+   *
+   * Not "the message wins where it says something" — the model does not get a vote at all.
+   * An ice breaker settled Bronze from "เหมาจ่าย 10 ล้าน"; the next turn was "ญ 34", which
+   * names no plan, and the model handed back Smart. It won, and a customer who had asked for
+   * ten million was quoted three. What the message does not name, `merge` carries over from
+   * the turn that did name it — which is the customer's own last answer, not a guess.
+   */
+  const plan = planNamedIn(last);
+  if (plan) out.plan = plan;
 
-  const territory = territoryNamedIn(last) ?? raw.territory;
-  if (territory && TERRITORY_WORDS.some(([label]) => label === territory)) out.territory = territory;
+  const territory = territoryNamedIn(last);
+  if (territory) out.territory = territory;
 
   // a birthdate in the message beats whatever age the model worked out from it, and a sex and
   // an age standing next to each other beat both

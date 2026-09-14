@@ -28,6 +28,26 @@ describe("a plan named in a message", () => {
     expect(planNamedIn("ซิลเวอร์")).toBe("SILVER");
   });
 
+  it("is read from the annual ceiling, which is how the adverts name it", () => {
+    // the ice breakers on the health ad say what the plan pays in a year, not what it is called
+    expect(planNamedIn("สนใจประกันสุขภาพ เหมาจ่าย 10 ล้าน")).toBe("BRONZE");
+    expect(planNamedIn("สนใจประกันสุขภาพเหมาจ่าย 15 ล้าน")).toBe("SILVER");
+    expect(planNamedIn("สนใจประกันสุขภาพเหมาจ่าย 25 ล้าน")).toBe("GOLD");
+    expect(planNamedIn("เอา 3 ล้านพอ")).toBe("SMART");
+    expect(planNamedIn("70 ล้าน")).toBe("DIAMOND");
+    expect(planNamedIn("100 ล้านเลย")).toBe("PLATINUM");
+  });
+
+  it("prefers the plan's own name over a ceiling in the same message", () => {
+    expect(planNamedIn("Gold 25 ล้าน")).toBe("GOLD");
+  });
+
+  it("reads no plan from an amount no plan is written for", () => {
+    // a sum assured on the life contract, said in a health chat
+    expect(planNamedIn("ทุน 1 ล้าน")).toBeUndefined();
+    expect(planNamedIn("50 ล้าน")).toBeUndefined();
+  });
+
   it("is not guessed from a word that is not a plan", () => {
     expect(planNamedIn("แผนกลางๆ")).toBeUndefined();
     expect(planNamedIn("ถูกสุดเลย")).toBeUndefined();
@@ -80,9 +100,28 @@ describe("what the model is allowed to fill in", () => {
     expect(slots.plan).toBe("DIAMOND");
   });
 
+  it("never lets the model introduce a plan the message did not name", async () => {
+    // the ice breaker settled Bronze from "เหมาจ่าย 10 ล้าน"; the next turn is only an age and
+    // a sex, and the model guessed Smart — which quoted a three-million plan to someone who
+    // had asked for ten
+    routed = { intent: "quote", plan: "SMART" };
+    const slots = await routeHealth(said("ญ 34"), {
+      product: "ihealthy", intent: "quote", plan: "BRONZE",
+    });
+    expect(slots.plan).toBe("BRONZE");
+  });
+
+  it("never lets the model introduce a territory the message did not name", async () => {
+    routed = { intent: "quote", territory: "ทั่วโลก" };
+    const slots = await routeHealth(said("ญ 34"), {
+      product: "ihealthy", intent: "quote", plan: "DIAMOND", territory: "เอเชีย",
+    });
+    expect(slots.territory).toBe("เอเชีย");
+  });
+
   it("refuses a plan the company does not sell", async () => {
     routed = { intent: "quote", plan: "TITANIUM" };
-    const slots = await routeHealth(said("ขอราคา"), null);
+    const slots = await routeHealth(said("ขอราคา TITANIUM"), null);
     expect(slots.plan).toBeUndefined();
   });
 
