@@ -270,6 +270,19 @@ describe("what the model is told about the plan", () => {
   });
 });
 
+describe("a couple written one to a line", () => {
+  it("is priced even when the model could not read the turn", async () => {
+    // the router's own fallback: no age, no sex, no people — the code reads them instead
+    routed = { intent: "other" };
+    const known = { intent: "quote" as const, coverWanted: 1_000_000 };
+    const answer = await answerQuestion(said("ญ40\nช49"), known);
+    expect(answer.priced).toBe(true);
+    expect(answer.messages).toHaveLength(2);
+    expect(answer.messages[0].card).toContain("age=40&sex=F");
+    expect(answer.messages[1].card).toContain("age=49&sex=M");
+  });
+});
+
 describe("the buttons under a cheaper arrangement", () => {
   const known = { intent: "quote" as const, age: 35, sex: "M" as const, coverWanted: 2_000_000 };
 

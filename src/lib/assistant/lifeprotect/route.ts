@@ -81,8 +81,16 @@ intent มี 3 แบบ
 export async function routeMessage(history: ChatMessage[]): Promise<Routed> {
   const messages: ChatMessage[] = [{ role: "system", content: SYSTEM }, ...recentTurns(history, 6)];
   const r = await chat({ tier: "small", task: "route", messages, maxTokens: 300, json: true });
+  /**
+   * A reply that will not parse costs the model's reading of the turn, not the code's.
+   *
+   * It used to return a bare "other" and throw away everything `clean` reads for itself — the
+   * people, the ages, the birth year, the term. A customer answered the bot's own question
+   * with "ญ40 ช49", the model's reply came back unusable, and a couple who had just asked for
+   * two premiums were told to wait for something nobody was going to send.
+   */
   const parsed = parseJsonReply<Routed>(r.text);
-  return parsed ? clean(parsed, history) : { intent: "other" };
+  return clean(parsed ?? { intent: "other" }, history);
 }
 
 /**
