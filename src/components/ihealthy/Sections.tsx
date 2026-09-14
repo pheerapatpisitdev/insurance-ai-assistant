@@ -6,18 +6,29 @@ const millions = (baht: number) => (baht / 1_000_000).toLocaleString("en-US");
 export function Hero({ facts }: { facts: IHealthyFacts }) {
   const ceilings = facts.plans.map((p) => p.annualMax);
   return (
-    <header className="pt-10 pb-8">
-      <h1 className="lg-figure text-[2rem] leading-tight text-[var(--lg-white)] sm:text-4xl">
-        ค่ารักษาพยาบาล <span className="lg-metal-text">iHealthy Ultra</span>
+    <header className="ihu-hero">
+      <div className="ihu-eyebrow">
+        <svg width="20" height="22" viewBox="0 0 24 26" fill="none" aria-hidden="true">
+          <path d="M12 2 3 6v7c0 5 5 9 9 11 4-2 9-6 9-11V6L12 2Z" stroke="currentColor" strokeWidth="1.7" />
+          <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        </svg>
+        ประกันสุขภาพ · iHealthy Ultra
+      </div>
+      <h1>
+        <span className="ihu-title-label">ค่ารักษาพยาบาล</span>
+        <span className="ihu-title-name">iHealthy <span>Ultra</span></span>
       </h1>
-      {/* Both ends of the range, not just the ceiling: the card below opens on โกลด์, and a
-          hero that named only the hundred million would promise one figure above the fold
-          and show a quarter of it in the first panel under it. */}
-      <p className="mt-4 text-base leading-[1.9] text-[var(--lg-mute)]">
+      <p className="ihu-intro">
         เหมาจ่ายค่ารักษาต่อปี ตั้งแต่ {millions(Math.min(...ceilings))} ล้าน
         ถึงสูงสุด {millions(Math.max(...ceilings))} ล้านบาท
         เลือกได้ {facts.plans.length} แผน ต่ออายุได้ถึงอายุ {facts.terms.renewalToAge} ปี
       </p>
+      <div className="ihu-highlights" aria-label="จุดเด่นความคุ้มครอง">
+        <div><span>วงเงินสูงสุดต่อปี</span><strong>{millions(Math.max(...ceilings))} <small>ล้านบาท</small></strong></div>
+        <div><span>เลือกความคุ้มครอง</span><strong>{facts.plans.length} <small>แผน</small></strong></div>
+        <div><span>ต่ออายุได้ถึง</span><strong>{facts.terms.renewalToAge} <small>ปี</small></strong></div>
+      </div>
+      <div className="ihu-section-label"><span>ออกแบบความคุ้มครองของคุณ</span><span aria-hidden="true">↓</span></div>
     </header>
   );
 }
