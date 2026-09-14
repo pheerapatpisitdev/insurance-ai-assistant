@@ -34,6 +34,13 @@ describe("what the model is told", () => {
   }
 
   for (const [name, prompt] of [["plan info", PLAN_INFO_SYSTEM], ["small talk", SMALL_TALK_SYSTEM]] as const) {
+    it(`never tells ${name} to promise the form link`, () => {
+      // the code sends the form; a model that promises it leaves the customer waiting
+      expect(prompt).not.toContain("เดี๋ยวส่งลิงก์ฟอร์ม");
+    });
+  }
+
+  for (const [name, prompt] of [["plan info", PLAN_INFO_SYSTEM], ["small talk", SMALL_TALK_SYSTEM]] as const) {
     it(`keeps ${name} away from the company, an invented identity and a figure of its own`, () => {
       expect(prompt).toContain("ห้ามยืนยันหรือปฏิเสธชื่อบริษัทที่ลูกค้าเอ่ยถึง");
       expect(prompt).toContain("ห้ามอ้างว่าเป็นตัวแทน");
