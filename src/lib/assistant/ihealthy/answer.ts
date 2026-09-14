@@ -7,11 +7,12 @@ import { plansFor, territoriesFor } from "@/lib/ihealthy-quote";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import { siteUrl } from "@/lib/site-url";
 import {
-  WANTS_IN, aboutCompany, affirms, asksAboutCompany, asksCheaper, handOverForm, one,
-  recentTurns, saysFormDone, spoken, stallReply, stalls, wantsToBuy, type Reply,
+  WANTS_IN, aboutCompany, affirms, asksAboutCompany, asksAboutTrust, asksCheaper, handOverForm, one,
+  recentTurns, saysFormDone, spoken, stallReply, stalls, wantsToBuy,
+  type AnswerContext, type Reply, type TraceEvent,
 } from "../common";
 import { CHOOSE_HEALTH } from "../choose";
-import { healthFaqAnswer } from "./faq";
+import { healthFaqMatch } from "./faq";
 import { healthMenu, otherPlansReply } from "./menu";
 import { HEALTH_PLAN_INFO_SYSTEM, HEALTH_SMALL_TALK_SYSTEM, healthFactsFor } from "./prompts";
 import {
@@ -63,29 +64,50 @@ function lastAsked(history: ChatMessage[]): string {
  * checks below is the whole of that guarantee.
  */
 export async function answerHealth(
-  history: ChatMessage[], previous: HealthSlots | null,
+  history: ChatMessage[], previous: HealthSlots | null, ctx: AnswerContext = {},
 ): Promise<HealthAnswer> {
   const asked = lastAsked(history);
   const known: HealthSlots = previous ?? { product: "ihealthy", intent: "other" };
   const quoted = hasHealthQuote(known);
+  const trace: TraceEvent[] = [];
+  /** the reply with this turn's trace on it, so every way out below is written down the same way */
+  const traced = (reply: Reply, slots: HealthSlots): HealthAnswer =>
+    ({ ...reply, slots, trace: [...trace, ...(reply.trace ?? [])] });
 
   // leaving to think it over needs no model and changes nothing the bot knows
-  if (stalls(asked)) return { ...one(stallReply(quoted)), slots: known };
+  if (stalls(asked)) {
+    trace.push({ kind: "stalled", data: { had_quote: quoted } });
+    return traced(one(stallReply(quoted)), known);
+  }
   // the form is out and they say it is filled in: the agent takes it from here
   if (known.formSent && saysFormDone(asked)) {
-    return { ...one("ขอบคุณครับ 🙏 เดี๋ยวตัวแทนเช็กข้อมูลแล้วติดต่อกลับในแชทนี้ครับ"), slots: known };
+    trace.push({ kind: "form_done" });
+    return traced(one("ขอบคุณครับ 🙏 เดี๋ยวตัวแทนเช็กข้อมูลแล้วติดต่อกลับในแชทนี้ครับ"), known);
   }
   if (wantsToBuy(asked, quoted) && !affirms(asked)) {
-    return { ...handOverForm(quoted), slots: { ...known, formSent: true } };
+    trace.push({ kind: "form_sent", data: { had_quote: quoted, ...(ctx.formRef ? { form_ref: ctx.formRef } : {}) } });
+    return traced(handOverForm(quoted, ctx.formRef), { ...known, formSent: true });
   }
   // a question about the company is answered by the agency's own sentence, whatever else the
   // turn was about
-  if (asksAboutCompany(asked)) return { ...one(aboutCompany(asked)), slots: known };
+  if (asksAboutCompany(asked)) {
+    trace.push({ kind: "company", data: { trust: asksAboutTrust(asked) } });
+    if (asksAboutTrust(asked)) trace.push({ kind: "handover", data: { reason: "trust" } });
+    return traced(one(aboutCompany(asked)), known);
+  }
   // one of the answers the agency writes out by hand: the declaration, the tax relief, the
   // rising premium, the waiting periods
-  const faq = healthFaqAnswer(asked);
-  if (faq) return { ...one(faq), slots: known };
-  if (asksShareOfBill(asked)) return { ...one(SHARE_OF_BILL_ANSWER), slots: known };
+  const faq = healthFaqMatch(asked);
+  if (faq) {
+    trace.push({ kind: "faq", data: { key: faq.key } });
+    // a condition is the one question the written answer hands to a person as well
+    if (faq.key === "health") trace.push({ kind: "handover", data: { reason: "health" } });
+    return traced(one(faq.answer()), known);
+  }
+  if (asksShareOfBill(asked)) {
+    trace.push({ kind: "handover", data: { reason: "share_of_bill" } });
+    return traced(one(SHARE_OF_BILL_ANSWER), known);
+  }
 
   /**
    * The customer tapped the button that got them here, and it says nothing but the product's
@@ -94,30 +116,51 @@ export async function answerHealth(
    * wanted. It is a button title like the others, so it is answered like the others.
    */
   if (asked === CHOOSE_HEALTH) {
-    return known.age !== undefined && known.sex !== undefined
-      ? { ...healthMenu(known.age, known.sex), slots: known }
-      : { ...one(askForMissing(known)), slots: known };
+    if (known.age !== undefined && known.sex !== undefined) {
+      trace.push({ kind: "menu", data: { age: known.age, sex: known.sex } });
+      return traced(healthMenu(known.age, known.sex), known);
+    }
+    return traced(one(askForMissing(known)), known);
   }
 
   if (known.age !== undefined && known.sex !== undefined) {
     const who = { ...known, age: known.age, sex: known.sex };
-    if (asksFullTable(asked)) return { ...fullTableLink(who), slots: known };
-    if (asksOtherPlans(asked) || asked === SEE_OTHER_PLANS) {
-      return { ...otherPlansReply(who.age, who.sex), slots: known };
+    if (asksFullTable(asked)) {
+      trace.push({ kind: "full_table", data: { plan: known.plan ?? null } });
+      return traced(fullTableLink(who), known);
     }
-    if (asksCheaper(asked)) return { ...cheaper(who.age, who.sex, known.plan), slots: known };
+    if (asksOtherPlans(asked) || asked === SEE_OTHER_PLANS) {
+      trace.push({ kind: "other_plans", data: { plan: known.plan ?? null } });
+      return traced(otherPlansReply(who.age, who.sex), known);
+    }
+    if (asksCheaper(asked)) {
+      trace.push({ kind: "cheaper", data: { plan: known.plan ?? null } });
+      return traced(cheaper(who.age, who.sex, known.plan), known);
+    }
     // a territory named while a plan is on the table either re-prices it or is turned down
     const wanted = territoryNamedIn(asked);
-    if (wanted && known.plan) return territoryAnswer({ ...who, plan: known.plan }, wanted);
+    if (wanted && known.plan) {
+      trace.push({ kind: "territory", data: { territory: wanted, plan: known.plan } });
+      const answer = territoryAnswer({ ...who, plan: known.plan }, wanted);
+      return traced(answer, answer.slots);
+    }
   }
 
   const slots = await routeHealth(history, previous);
+  trace.push({
+    kind: "routed",
+    data: { intent: slots.intent, has_age: slots.age !== undefined, has_sex: slots.sex !== undefined, plan: slots.plan ?? null },
+  });
+  // a question the model answers is one the bot had no written answer for; only the model's
+  // own rewrite of it is kept, never the raw message
+  const question = slots.question && slots.question !== asked ? slots.question : undefined;
 
   if (asked === THIS_PLAN_BENEFITS || slots.intent === "plan_info") {
-    return { ...(await planInfo(history, slots)), slots };
+    trace.push({ kind: "plan_info", question });
+    return traced(await planInfo(history, slots), slots);
   }
   if (slots.age === undefined || slots.sex === undefined) {
-    return { ...one(askForMissing(slots)), slots };
+    return traced(one(askForMissing(slots)), slots);
   }
   /**
    * A plan is quoted when the customer has asked to be: they named one this turn, they picked
@@ -133,12 +176,17 @@ export async function answerHealth(
       || slots.plan !== known.plan
       || !hasHealthQuote(known);
     if (asking) {
-      return { ...healthQuote({ ...slots, age: slots.age, sex: slots.sex, plan: slots.plan }), slots };
+      return traced(healthQuote({ ...slots, age: slots.age, sex: slots.sex, plan: slots.plan }), slots);
     }
-    return { ...(await planInfo(history, slots)), slots };
+    trace.push({ kind: "plan_info", question });
+    return traced(await planInfo(history, slots), slots);
   }
-  if (slots.intent === "quote") return { ...healthMenu(slots.age, slots.sex), slots };
-  return { ...(await smallTalk(history, slots)), slots };
+  if (slots.intent === "quote") {
+    trace.push({ kind: "menu", data: { age: slots.age, sex: slots.sex } });
+    return traced(healthMenu(slots.age, slots.sex), slots);
+  }
+  trace.push({ kind: "small_talk", question });
+  return traced(await smallTalk(history, slots), slots);
 }
 
 /**

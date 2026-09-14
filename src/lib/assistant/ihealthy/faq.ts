@@ -10,7 +10,7 @@ import { HEALTH_DECLARATION, HEALTH_QUESTION } from "../common";
  * re-prices at every birthday and relieves twenty-five. A bot answering a health customer out
  * of the life list would be wrong about both, in writing, on the page's own letterhead.
  */
-interface Entry {
+export interface HealthFaqEntry {
   key: string;
   match: RegExp;
   /** a function, because two of them are read off the contract sheet rather than typed */
@@ -21,7 +21,7 @@ interface Entry {
  * Order matters: the declaration is first because a message that mentions a condition and
  * asks a price is, above everything else, a message that must not be told it will be accepted.
  */
-const FAQ: Entry[] = [
+const FAQ: HealthFaqEntry[] = [
   { key: "health", match: HEALTH_QUESTION, answer: () => HEALTH_DECLARATION },
   {
     key: "tax",
@@ -56,7 +56,12 @@ const FAQ: Entry[] = [
   },
 ];
 
+/** The entry a message asks for, or undefined when it asks none of these. */
+export function healthFaqMatch(text: string): HealthFaqEntry | undefined {
+  return FAQ.find((e) => e.match.test(text));
+}
+
 /** The written answer for a message, or undefined when it asks none of these. */
 export function healthFaqAnswer(text: string): string | undefined {
-  return FAQ.find((e) => e.match.test(text))?.answer();
+  return healthFaqMatch(text)?.answer();
 }

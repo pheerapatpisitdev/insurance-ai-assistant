@@ -5,7 +5,7 @@ import { IHEALTHY_OPENING, type IHealthyInitial } from "@/lib/ihealthy-choice";
 import { cardPath } from "@/lib/ihealthy-link";
 import { deathBenefitOf, iHealthyPricing, plansFor, shownAt, territoriesFor } from "@/lib/ihealthy-quote";
 import { iHealthyTable } from "@/lib/ihealthy-table";
-import { WANTS_IN, one, type Reply } from "../common";
+import { WANTS_IN, one, type Reply, type TraceEvent } from "../common";
 import type { HealthSlots } from "./route";
 
 /** What the bot says when only a person can answer. */
@@ -40,6 +40,11 @@ export function arrangementFor(slots: {
 /** The buttons under a quotation. Titles stay under twenty characters, which is all Messenger shows. */
 const QUOTE_REPLIES = [SEE_OTHER_PLANS, THIS_PLAN_BENEFITS, WANTS_IN];
 
+/** The reply, with what it did written on it for the record. */
+function traced(reply: Reply, ...events: TraceEvent[]): Reply {
+  return { ...reply, trace: events };
+}
+
 /**
  * One plan quoted: the sales page's own words, its own picture, and every reason there is no
  * price said in the customer's terms rather than as a silence.
@@ -57,20 +62,26 @@ export function healthQuote(
   const { age, sex } = slots;
 
   if (age < table.ageMin || age > table.ageMax) {
-    return one(`ไอเฮลท์ตี้ อัลตร้า รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ อายุ ${age} ปีอยู่นอกช่วงนี้ ${HEALTH_HAND_OVER}`);
+    return traced(
+      one(`ไอเฮลท์ตี้ อัลตร้า รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ อายุ ${age} ปีอยู่นอกช่วงนี้ ${HEALTH_HAND_OVER}`),
+      { kind: "no_price", data: { reason: "out_of_range", age } }, { kind: "handover", data: { reason: "no_price" } },
+    );
   }
   if (table.expired) {
-    return one(`ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HEALTH_HAND_OVER}`);
+    return traced(
+      one(`ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HEALTH_HAND_OVER}`),
+      { kind: "no_price", data: { reason: "expired" } }, { kind: "handover", data: { reason: "no_price" } },
+    );
   }
 
   const sellable = plansFor(table, age);
   const chosen = sellable.find((p) => p.code === slots.plan);
   if (!chosen) {
     const names = sellable.map((p) => planLabel(p.code)).join(" · ");
-    return {
-      ...one(`อายุ ${age} ปี บริษัทเขียนแผนนี้ไว้ให้เลือก ${names} ครับ สนใจแผนไหนบอกได้เลย`),
-      replies: sellable.map((p) => planLabel(p.code)),
-    };
+    return traced(
+      { ...one(`อายุ ${age} ปี บริษัทเขียนแผนนี้ไว้ให้เลือก ${names} ครับ สนใจแผนไหนบอกได้เลย`), replies: sellable.map((p) => planLabel(p.code)) },
+      { kind: "no_price", data: { reason: "not_sold_at_age", plan: slots.plan, age } },
+    );
   }
 
   // a territory the plan is not written for is not quoted in it; the caller has already told
@@ -107,14 +118,24 @@ export function healthQuote(
 
   // no text means no price may be shown; the card would only say the same thing in a picture
   if (!text) {
-    return one(`ตอนนี้ยังคิดราคาแผนนี้ให้ไม่ได้ครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HEALTH_HAND_OVER}`);
+    return traced(
+      one(`ตอนนี้ยังคิดราคาแผนนี้ให้ไม่ได้ครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HEALTH_HAND_OVER}`),
+      { kind: "no_price", data: { reason: "unpriced", plan: chosen.code } }, { kind: "handover", data: { reason: "no_price" } },
+    );
   }
 
-  return {
-    messages: [{ text, card: `${cardPath(table, v)}&fit=phone` }],
-    priced: true,
-    replies: QUOTE_REPLIES,
-  };
+  // the figures as the engine made them, in baht, so the record can be read against the card
+  const baht = (mode: string) => { const m = priced?.total.find((x) => x.mode === mode); return m ? m.total / 100 : undefined; };
+  return traced(
+    { messages: [{ text, card: `${cardPath(table, v)}&fit=phone` }], priced: true, replies: QUOTE_REPLIES },
+    {
+      kind: "quoted",
+      data: {
+        planCode: "IHU", plan: chosen.code, territory: v.territory, base: v.base, sumAssured: v.sumAssured, age, sex,
+        monthly: baht("monthly"), semi: baht("semi"), annual: baht("annual"),
+      },
+    },
+  );
 }
 
 /** Whether this customer has been quoted: the three things a price needs. */

@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { toParts } from "@/lib/facebook/client";
-import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/facebook/events";
+import { agentTyped, customerOf, eventKey, pageOf, referralOf, textOf, type Messaging } from "@/lib/facebook/events";
 import { hashUserId, verifySignature, verifyTokenMatches } from "@/lib/facebook/verify";
 
 const SECRET = "test-app-secret";
@@ -111,5 +111,43 @@ describe("a long answer", () => {
   it("hard-wraps a paragraph Messenger would refuse on its own", () => {
     const parts = toParts("ก".repeat(4000));
     expect(parts.every((p) => p.length <= 1900)).toBe(true);
+  });
+});
+
+describe("where a conversation came from", () => {
+  const ad = { source: "ADS", type: "OPEN_THREAD", ad_id: "120212345678901234", ads_context_data: { ad_title: "Life Protect x 2" } };
+
+  it("is read off the first message from an advert", () => {
+    const r = referralOf({ sender: { id: "p" }, message: { mid: "m1", text: "สนใจครับ", referral: ad } });
+    expect(r).toMatchObject({ source: "ads", adId: "120212345678901234" });
+    expect(r?.raw).toEqual(ad);
+  });
+
+  it("is read off the Get Started postback", () => {
+    const r = referralOf({ postback: { title: "เริ่ม", payload: "GET_STARTED", referral: { ...ad, ref: "lp-99" } } });
+    expect(r).toMatchObject({ source: "ads", adId: "120212345678901234", ref: "lp-99" });
+  });
+
+  it("is read off a referral event that carries no words", () => {
+    const event: Messaging = {
+      sender: { id: "p" }, recipient: { id: "page" },
+      referral: { source: "SHORTLINK", type: "OPEN_THREAD", ref: "line-bio" },
+    };
+    expect(textOf(event)).toBe("");
+    expect(referralOf(event)).toMatchObject({ source: "shortlink", ref: "line-bio" });
+    expect(referralOf(event)?.adId).toBeUndefined();
+  });
+
+  it("is nothing on an ordinary message", () => {
+    expect(referralOf({ message: { mid: "m", text: "ชาย 35 ล้านนึง" } })).toBeUndefined();
+  });
+
+  it("keeps an ad id Meta sent as a number", () => {
+    expect(referralOf({ message: { referral: { source: "ADS", ad_id: 42 } } })?.adId).toBe("42");
+  });
+
+  it("names the page from either side of the thread", () => {
+    expect(pageOf({ sender: { id: "psid" }, recipient: { id: "page" }, message: { text: "hi" } })).toBe("page");
+    expect(pageOf({ sender: { id: "page" }, recipient: { id: "psid" }, message: { text: "hi", is_echo: true } })).toBe("page");
   });
 });

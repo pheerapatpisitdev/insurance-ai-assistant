@@ -1,6 +1,6 @@
 import type { ChatMessage } from "@/lib/ai/types";
 import { askWhich, productByTopic, productNamedIn, type Product } from "./choose";
-import { peopleIn, type Reply } from "./common";
+import { peopleIn, type AnswerContext, type Reply } from "./common";
 import { answerHealth } from "./ihealthy/answer";
 import type { HealthSlots } from "./ihealthy/route";
 import { answerQuestion } from "./lifeprotect/answer";
@@ -44,7 +44,9 @@ function personIn(slots: AnySlots | null): Person {
  * settle one that has not begun; and where neither says anything, the customer is asked with
  * two buttons rather than guessed at.
  */
-export async function answerAny(history: ChatMessage[], stored: AnySlots | null): Promise<AnyAnswer> {
+export async function answerAny(
+  history: ChatMessage[], stored: AnySlots | null, ctx: AnswerContext = {},
+): Promise<AnyAnswer> {
   const asked = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
   const now = settled(stored);
   const named = productNamedIn(asked);
@@ -52,13 +54,13 @@ export async function answerAny(history: ChatMessage[], stored: AnySlots | null)
   if (now === "lifeprotect" || now === "ihealthy") {
     // the customer has named the other plan: only the person travels, because the sum, the
     // plan, the territory and any offer on the table all belong to the contract being left
-    if (named && named !== now) return run(named, history, personIn(stored), true);
-    return run(now, history, stored, false);
+    if (named && named !== now) return run(named, history, personIn(stored), true, ctx);
+    return run(now, history, stored, false, ctx);
   }
 
   // nothing settled yet: the name first, then the subject
   const product = named ?? productByTopic(asked);
-  if (product) return run(product, history, personIn(stored), true);
+  if (product) return run(product, history, personIn(stored), true, ctx);
 
   // the customer has not said, so the customer is asked — and what they did say is kept
   const person = peopleIn(asked)[0];
@@ -66,7 +68,7 @@ export async function answerAny(history: ChatMessage[], stored: AnySlots | null)
     product: "undecided",
     ...(person ? { age: person.age, sex: person.sex } : personIn(stored)),
   };
-  return { ...askWhich(), slots: undecided };
+  return { ...askWhich(), slots: undecided, trace: [{ kind: "asked_which" }] };
 }
 
 /**
@@ -77,17 +79,17 @@ export async function answerAny(history: ChatMessage[], stored: AnySlots | null)
  * fields that were about something else.
  */
 async function run(
-  product: Product, history: ChatMessage[], carried: AnySlots | Person | null, fresh: boolean,
+  product: Product, history: ChatMessage[], carried: AnySlots | Person | null, fresh: boolean, ctx: AnswerContext,
 ): Promise<AnyAnswer> {
   if (product === "ihealthy") {
     const previous = fresh
       ? startHealth(carried as Person)
       : (carried as HealthSlots);
-    const answer = await answerHealth(history, previous);
+    const answer = await answerHealth(history, previous, ctx);
     return { ...answer, slots: answer.slots };
   }
   const previous = fresh ? startLife(carried as Person) : (carried as Routed);
-  const answer = await answerQuestion(history, previous);
+  const answer = await answerQuestion(history, previous, ctx);
   return { ...answer, slots: { ...answer.slots, product: "lifeprotect" } };
 }
 

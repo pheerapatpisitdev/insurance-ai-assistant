@@ -670,3 +670,68 @@ describe("everything else", () => {
     expect(answer.messages[0].text).toContain("อายุ");
   });
 });
+
+describe("what the turn leaves for the record", () => {
+  const kinds = (trace: { kind: string }[] | undefined) => (trace ?? []).map((t) => t.kind);
+
+  it("writes the premium down exactly as the engine made it", async () => {
+    routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 };
+    const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
+    const table = lifeProtectTable();
+    const modes = lifeProtectModes(table, termAt(table, "WLF99H"), { sex: "M", age: 35, sumAssured: 1_000_000 })!;
+    expect(kinds(answer.trace)).toEqual(["routed", "quoted"]);
+    const quoted = answer.trace!.find((t) => t.kind === "quoted")!;
+    expect(quoted.data).toMatchObject({ planCode: "LIFEPROTECT", variant: "WLF99H", age: 35, sex: "M", sumAssured: 1_000_000, coverWanted: 1_000_000, people: 1 });
+    expect(quoted.data!.monthly).toBe(modes.find((m) => m.mode === "monthly")!.total / 100);
+    expect(quoted.data!.annual).toBe(modes.find((m) => m.mode === "annual")!.total / 100);
+  });
+
+  it("says why there was no price, and hands over, for an age the plan does not issue to", async () => {
+    routed = { intent: "quote", age: 95, sex: "M", coverWanted: 1_000_000 };
+    const answer = await answerQuestion(said("อายุ 95 ทุนล้าน"), null);
+    expect(kinds(answer.trace)).toEqual(["routed", "no_price", "handover"]);
+    expect(answer.trace![1].data).toMatchObject({ reason: "out_of_range", age: 95 });
+  });
+
+  it("puts the lead code on the form link and in the record", async () => {
+    const quoted = { intent: "quote" as const, age: 38, sex: "M" as const, coverWanted: 2_000_000 };
+    const answer = await answerQuestion(said("เอาแผนนี้ครับ"), quoted, { formRef: "abc123def4" });
+    expect(answer.messages[1].text).toBe("https://ktaxaform.vercel.app/?ref=sa-9f3a&lead=abc123def4");
+    expect(answer.trace).toEqual([{ kind: "form_sent", data: { had_quote: true, form_ref: "abc123def4" } }]);
+  });
+
+  it("leaves the form link bare when it has no conversation to tie it to", async () => {
+    const answer = await answerQuestion(said("สมัครยังไงคะ"), null);
+    expect(answer.messages[1].text).toBe("https://ktaxaform.vercel.app/?ref=sa-9f3a");
+    expect(answer.trace).toEqual([{ kind: "form_sent", data: { had_quote: false } }]);
+  });
+
+  it("names the written answer it gave, and hands a condition to a person", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("เป็นเบาหวานทำได้ไหม"), null);
+    expect(kinds(answer.trace)).toEqual(["routed", "faq", "handover"]);
+    expect(answer.trace![1].data).toEqual({ key: "health" });
+    expect(answer.trace![2].data).toEqual({ reason: "health" });
+  });
+
+  it("keeps the model's rewrite of a question it had to answer itself, and only the rewrite", async () => {
+    routed = { intent: "plan_info", question: "แบบประกันนี้มีมูลค่าเวนคืนไหม" };
+    const rewritten = await answerQuestion(said("เวนคืนได้มั้ย"), null);
+    expect(rewritten.trace!.at(-1)).toEqual({ kind: "plan_info", question: "แบบประกันนี้มีมูลค่าเวนคืนไหม" });
+    routed = { intent: "plan_info" };
+    const verbatim = await answerQuestion(said("เวนคืนได้มั้ย"), null);
+    expect(verbatim.trace!.at(-1)).toEqual({ kind: "plan_info", question: undefined });
+  });
+
+  it("never files the customer's own words among the figures", async () => {
+    routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 };
+    const token = "ZQXV-เฉพาะคนนี้";
+    const answer = await answerQuestion(said(`ชาย 35 ล้านนึง ${token}`), null);
+    expect(JSON.stringify(answer.trace!.map((t) => t.data ?? {}))).not.toContain(token);
+  });
+
+  it("records the customer stepping back, and whether they had a price in hand", async () => {
+    const answer = await answerQuestion(said("ขอคิดดูก่อนนะคะ"), { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 });
+    expect(answer.trace).toEqual([{ kind: "stalled", data: { had_quote: true } }]);
+  });
+});

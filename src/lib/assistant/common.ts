@@ -84,6 +84,30 @@ export const WANTS_IN = "สนใจสมัคร";
  * The slots are the one part that differs between brains, so each brain adds its own:
  * `type Answer = Reply & { slots: Routed }`.
  */
+/** What a turn did, as the record keeps it: a kind and its figures, never the customer's words. */
+export type TraceKind =
+  | "routed" | "quoted" | "no_price" | "value_table" | "cheaper" | "offer_taken" | "pay_term"
+  | "company" | "faq" | "plan_info" | "small_talk" | "handover" | "form_sent" | "form_done" | "stalled"
+  | "menu" | "other_plans" | "full_table" | "territory" | "asked_which";
+
+export interface TraceEvent {
+  kind: TraceKind;
+  /** kinds and figures only — an age, a sum, a premium, a reason — and never a word the customer typed */
+  data?: Record<string, unknown>;
+  /**
+   * The model's stand-alone rewrite of a question the bot had no written answer for. Kept
+   * apart from `data` so it goes to the list of unanswered questions and never into the
+   * event log, where it would sit beside the conversation it came from.
+   */
+  question?: string;
+}
+
+/** What the webhook knows about the conversation that an answer may want to carry. */
+export interface AnswerContext {
+  /** the short code that rides on the application form link, so the form can be matched back */
+  formRef?: string;
+}
+
 export interface Reply {
   /**
    * What the bot sends, in the order it sends it.
@@ -103,6 +127,8 @@ export interface Reply {
    * words themselves, so every title here is a sentence the bot already answers.
    */
   replies?: string[];
+  /** what this turn did, for the record; the webhook writes it down after answering */
+  trace?: TraceEvent[];
 }
 
 /** The usual case: the bot says one thing. */
@@ -134,9 +160,11 @@ export function spoken(text: string, fallback: string): Reply {
  * `quoted` rather than the slots themselves: what counts as a quote differs between plans
  * (a sum assured on one, a chosen health plan on the other) and neither answer differs.
  */
-export function handOverForm(quoted: boolean): Reply {
+export function handOverForm(quoted: boolean, formRef?: string): Reply {
   const next = quoted ? FORM_NEXT : `${FORM_NEXT} ถ้าอยากทราบเบี้ยก่อน บอกเพศกับอายุมาได้เลยครับ เดี๋ยวคิดให้`;
-  return { messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }, { text: APPLICATION_FORM }, { text: next }] };
+  // the short code lets a filled-in form be matched back to this conversation, where the form keeps it
+  const link = formRef ? `${APPLICATION_FORM}&lead=${encodeURIComponent(formRef)}` : APPLICATION_FORM;
+  return { messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }, { text: link }, { text: next }] };
 }
 
 /**

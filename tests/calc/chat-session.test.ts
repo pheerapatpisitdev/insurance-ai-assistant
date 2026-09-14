@@ -25,7 +25,7 @@ beforeEach(() => { rows.clear(); lastUpsert = null; });
 
 describe("a conversation", () => {
   it("starts empty when nobody has written", async () => {
-    expect(await loadSession("facebook", "hash")).toEqual({ messages: [], slots: null, mutedUntil: null });
+    expect(await loadSession("facebook", "hash")).toEqual({ messages: [], slots: null, mutedUntil: null, conversationId: null });
   });
 
   it("keeps only the last six turns", async () => {
@@ -83,5 +83,25 @@ describe("the mute", () => {
     expect(isMuted("2026-09-13T12:00:00Z", at)).toBe(true);
     expect(isMuted("2026-09-13T09:00:00Z", at)).toBe(false);
     expect(isMuted(null, at)).toBe(false);
+  });
+});
+
+describe("the conversation a session belongs to", () => {
+  it("is remembered while the session is live", async () => {
+    rows.set("session", { messages: [], slots: {}, updated_at: now(), muted_until: null, conversation_id: "conv-1" });
+    expect((await loadSession("facebook", "hash")).conversationId).toBe("conv-1");
+  });
+
+  it("is over once what was said is a day old, so the next message starts a new one", async () => {
+    const stale = new Date(Date.now() - 30 * 3600_000).toISOString();
+    rows.set("session", { messages: [], slots: {}, updated_at: stale, muted_until: null, conversation_id: "conv-old" });
+    expect((await loadSession("facebook", "hash")).conversationId).toBeNull();
+  });
+
+  it("is written only when the save is given one", async () => {
+    await saveSession("facebook", "hash", [], null, undefined, "conv-2");
+    expect(lastUpsert!.conversation_id).toBe("conv-2");
+    await saveSession("facebook", "hash", [], null);
+    expect(lastUpsert).not.toHaveProperty("conversation_id");
   });
 });

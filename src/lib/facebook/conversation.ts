@@ -1,12 +1,29 @@
 import { siteUrl } from "@/lib/site-url";
 import { hashUserId } from "@/lib/facebook/verify";
 import { claimEvent, isMuted, loadSession, muteFor, saveSession } from "@/lib/chat/session";
+import {
+  attribute, formRefOf, openConversation, openLead, record,
+  type CollectedEvent, type LeadStage, type Unanswered,
+} from "@/lib/chat/collect";
 import { sendImage, sendMessage, showTyping } from "@/lib/facebook/client";
-import { answerAny } from "@/lib/assistant/dispatch";
+import { answerAny, type AnyAnswer } from "@/lib/assistant/dispatch";
+import type { AnswerContext, TraceEvent } from "@/lib/assistant/common";
+import type { AnySlots } from "@/lib/assistant/slots";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
-import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/facebook/events";
+import { agentTyped, customerOf, eventKey, pageOf, referralOf, textOf, type Messaging } from "@/lib/facebook/events";
+
+/**
+ * Which plan a session is about, as the record names it. A row with no product was written
+ * before there were two plans and can only be the life one; a customer still being asked
+ * which plan they came for is about neither yet.
+ */
+function productOf(slots: AnySlots | null): string | null {
+  if (!slots) return null;
+  if (!("product" in slots) || !slots.product) return "lifeprotect";
+  return slots.product === "undecided" ? null : slots.product;
+}
 
 /**
  * The answer, with one more attempt before giving up.
@@ -14,13 +31,13 @@ import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/
  * The failures that reach a customer are transient — a key table that could not be read on a
  * cold start, a provider refusing one call. A second try costs a second and saves the lead.
  */
-async function answered(history: ChatMessage[], slots: Parameters<typeof answerAny>[1]) {
+async function answered(history: ChatMessage[], slots: AnySlots | null, ctx: AnswerContext) {
   try {
-    return await answerAny(history, slots);
+    return await answerAny(history, slots, ctx);
   } catch (e) {
     if (e instanceof BudgetExceeded) throw e;
     console.error("answer failed, trying once more:", e);
-    return await answerAny(history, slots);
+    return await answerAny(history, slots, ctx);
   }
 }
 
@@ -55,12 +72,17 @@ export async function handle(event: Messaging): Promise<void> {
   if (agentTyped(event)) {
     const session = await loadSession("facebook", userHash);
     await saveSession("facebook", userHash, session.messages, session.slots, muteFor());
+    // their stepping in is part of the conversation's story, when there is a live one to tell it in
+    if (session.conversationId) await record(session.conversationId, [{ kind: "agent_replied" }], productOf(session.slots));
     return;
   }
 
-  // a typed message and a tapped button are both the customer's words; an echo is not
+  // a typed message and a tapped button are both the customer's words; an echo is not.
+  // A referral is not words either, but it is where the thread was opened from, and a
+  // messaging_referrals event carries nothing else.
   const text = textOf(event);
-  if (!text) return;
+  const referral = referralOf(event);
+  if (!text && !referral) return;
 
   // a redelivery of an event already answered must not answer it a second time
   const key = eventKey(event);
@@ -80,16 +102,37 @@ export async function handle(event: Messaging): Promise<void> {
    */
   const markedBefore = session.mutedUntil;
 
+  // the conversation this event belongs to in the record: the live one, or a new one starting
+  // now and carrying where it came from. Null when the record cannot be reached, in which
+  // case the customer is answered and this turn is simply not written down.
+  let conversationId = session.conversationId;
+  if (!conversationId) {
+    conversationId = await openConversation({
+      channel: "facebook", userHash, pageId: pageOf(event), referral, entryPayload: event.postback?.payload,
+    });
+  } else if (referral) {
+    await attribute(conversationId, referral);
+  }
+
+  // a referral with no words: the thread was opened from an advert or a link, and the words
+  // are on their way. The conversation is kept on the session so those words join it.
+  if (!text) {
+    if (conversationId) await saveSession("facebook", userHash, session.messages, session.slots, undefined, conversationId);
+    return;
+  }
+
   if (!allow(`fb:${userHash}`)) {
     await sendMessage(psid, BUSY);
+    if (conversationId) await record(conversationId, [{ kind: "rate_limited" }], productOf(session.slots));
     return;
   }
 
   const history: ChatMessage[] = [...session.messages, { role: "user", content: text }];
+  const ctx: AnswerContext = conversationId ? { formRef: formRefOf(conversationId) } : {};
 
   await showTyping(psid).catch(() => {});
   try {
-    const answer = await answered(history, session.slots);
+    const answer = await answered(history, session.slots, ctx);
     // the model takes seconds, and an agent watching the thread answers inside them. Their
     // words are already in the customer's phone by now, so the bot says nothing and records
     // nothing — a mark that was not there when this answer began is theirs, just now.
@@ -114,9 +157,55 @@ export async function handle(event: Messaging): Promise<void> {
     }
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
     // no mute argument: recording what was said must never clear one
-    await saveSession("facebook", userHash, [...history, { role: "assistant", content: spoken }], answer.slots);
+    await saveSession("facebook", userHash, [...history, { role: "assistant", content: spoken }], answer.slots, undefined, conversationId);
+    // the customer has their answer; what the turn did is written down afterwards, and a
+    // record that fails to write fails alone
+    if (conversationId) await remember(conversationId, psid, event, answer).catch((e) => console.error("record failed:", e));
   } catch (e) {
     await sendMessage(psid, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);
+    if (conversationId) {
+      await record(conversationId, [{
+        kind: e instanceof BudgetExceeded ? "budget_exceeded" : "error",
+        // the system's words about itself, never the customer's: the first line of the error
+        data: { message: (e instanceof Error ? e.message : String(e)).split("\n")[0].slice(0, 120) },
+      }], productOf(session.slots));
+    }
     throw e;
   }
+}
+
+/**
+ * The turn, written down: that the customer wrote, what the bot did with it, and a lead when
+ * they asked to go ahead or to talk to a person.
+ *
+ * The events carry the trace's kinds and figures. A question the bot had no written answer
+ * for travels separately, to a list with no conversation on it, so a customer's words are
+ * never filed next to the thread they came from.
+ */
+async function remember(conversationId: string, psid: string, event: Messaging, answer: AnyAnswer): Promise<void> {
+  const trace = answer.trace ?? [];
+  const product = productOf(answer.slots);
+  const events: CollectedEvent[] = [
+    { kind: "message", data: { chars: textOf(event).length, button: Boolean(event.postback) } },
+    ...trace.map(({ kind, data }) => (data ? { kind, data } : { kind })),
+  ];
+  const unanswered: Unanswered[] = trace
+    .filter((t): t is TraceEvent & { question: string } => Boolean(t.question))
+    .map((t) => ({ intent: t.kind === "plan_info" ? "plan_info" : "other", route: "model" as const, question: t.question }));
+  await record(conversationId, events, product, unanswered);
+
+  const stage = leadStageOf(trace);
+  if (stage) await openLead({ conversationId, psid, stage, product, formRef: formRefOf(conversationId) });
+}
+
+/**
+ * Whether this turn made the customer a lead, and how far along: the form went out, the form
+ * came back, or they asked for a person — about the company's standing or about a condition,
+ * which are the two questions the bot hands over rather than answers.
+ */
+function leadStageOf(trace: TraceEvent[]): LeadStage | undefined {
+  if (trace.some((t) => t.kind === "form_done")) return "form_done";
+  if (trace.some((t) => t.kind === "form_sent")) return "form_sent";
+  const askedForAPerson = trace.some((t) => t.kind === "handover" && (t.data?.reason === "trust" || t.data?.reason === "health"));
+  return askedForAPerson ? "interested" : undefined;
 }

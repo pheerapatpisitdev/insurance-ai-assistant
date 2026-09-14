@@ -4,12 +4,27 @@
  * tapped — to the bot they are the same thing: words from the customer.
  */
 
+/**
+ * Where a thread was opened from, as Meta reports it: an advert (`source: "ADS"` with the
+ * ad's id), an m.me link, a Messenger code. The `ref` is whatever we put on the advert or
+ * the link ourselves, when we did.
+ */
+export interface Referral {
+  ref?: string;
+  source?: string;
+  type?: string;
+  ad_id?: string | number;
+  ads_context_data?: { ad_title?: string; photo_url?: string; video_url?: string; post_id?: string; product_id?: string };
+}
+
 export interface Messaging {
   sender?: { id?: string };
   recipient?: { id?: string };
   timestamp?: number;
-  message?: { mid?: string; text?: string; is_echo?: boolean; app_id?: number | string };
-  postback?: { title?: string; payload?: string };
+  message?: { mid?: string; text?: string; is_echo?: boolean; app_id?: number | string; referral?: Referral };
+  postback?: { title?: string; payload?: string; referral?: Referral };
+  /** a messaging_referrals event: a thread that already existed, opened again from an advert or a link, with no words in it */
+  referral?: Referral;
 }
 
 const MAX_CHARS = 1000;
@@ -55,4 +70,36 @@ export function agentTyped(event: Messaging): boolean {
   if (!event.message?.is_echo) return false;
   const ours = process.env.FB_APP_ID;
   return !ours || String(event.message.app_id ?? "") !== ours;
+}
+
+/** The Page an event happened on: the recipient of a customer's message, the sender of the Page's own echo. */
+export function pageOf(event: Messaging): string | undefined {
+  return event.message?.is_echo ? event.sender?.id : event.recipient?.id;
+}
+
+/** Where a conversation came from, read off an event. */
+export interface Attribution {
+  /** Meta's source, lowercased: "ads", "shortlink", "messenger_code", … */
+  source: string;
+  adId?: string;
+  ref?: string;
+  /** the object as Meta sent it, kept whole because the fields above are not all it ever carries */
+  raw: Referral;
+}
+
+/**
+ * The referral on an event, from whichever of the three places Meta puts it: on the first
+ * message from someone with no thread yet, on the Get Started postback, or as an event of
+ * its own when the thread already existed. Undefined when the event names no source, which
+ * is every ordinary message.
+ *
+ * Read here because it is the one thing that ties a conversation to the advert that paid
+ * for it. It was thrown away for the campaign's first ten days, so nothing could say which
+ * advert had produced a quotation and which had produced only a greeting.
+ */
+export function referralOf(event: Messaging): Attribution | undefined {
+  const raw = event.referral ?? event.message?.referral ?? event.postback?.referral;
+  if (!raw) return undefined;
+  const adId = raw.ad_id === undefined || raw.ad_id === null || raw.ad_id === "" ? undefined : String(raw.ad_id);
+  return { source: (raw.source ?? "unknown").toLowerCase(), adId, ref: raw.ref || undefined, raw };
 }

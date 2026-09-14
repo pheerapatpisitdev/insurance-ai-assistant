@@ -21,7 +21,7 @@ export async function GET() {
     messenger: false,
   };
   try {
-    const { error } = await supabaseAdmin().from("ins_alert_settings").select("id").limit(1);
+    const { error } = await supabaseAdmin().from("ins_ai_settings").select("id").limit(1);
     checks.database = !error;
   } catch {
     checks.database = false;
