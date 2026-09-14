@@ -67,7 +67,8 @@ describe("reading what the customer wants", () => {
 
   it("falls back to a plain conversation when the model answers with rubbish", async () => {
     reply.text = "ไม่ใช่ JSON";
-    expect(await routeMessage(said("สวัสดี"))).toEqual({ intent: "other" });
+    // a greeting holds nothing to read, so the fallback is a plain turn carrying its own words
+    expect(await routeMessage(said("สวัสดี"))).toEqual({ intent: "other", question: "สวัสดี" });
   });
 });
 
@@ -158,6 +159,27 @@ describe("leaving to think it over", () => {
     for (const t of ["ถ้าคิดดูแล้วสนใจ ต้องทำยังไงต่อ", "คิดดูก่อนได้ไหม", "ติดต่อกลับทางไหน", "ขอบคุณค่ะ"]) {
       expect(stalls(t), t).toBe(false);
     }
+  });
+});
+
+describe("when the model's reply is unusable", () => {
+  it("still reads out of the message what the code can read for itself", async () => {
+    // exactly what a customer sent at 06:58: a couple, one to a line, no spaces
+    reply.text = "ขอโทษครับ ผมไม่เข้าใจ";
+    const routed = await routeMessage(said("ญ40\nช49"));
+    expect(routed.people).toEqual([{ age: 40, sex: "F" }, { age: 49, sex: "M" }]);
+    expect(routed.age).toBe(40);
+    expect(routed.sex).toBe("F");
+  });
+
+  it("still works out an age from a birth year", async () => {
+    reply.text = "{ broken";
+    expect((await routeMessage(said("เกิด2522 เพศญ"))).age).toBe(47);
+  });
+
+  it("still hears the payment term the customer named", async () => {
+    reply.text = "";
+    expect((await routeMessage(said("จ่าย 19 ปีเท่าไหร่"))).variant).toBe("WLF19H");
   });
 });
 
