@@ -25,7 +25,13 @@ export const SCOPES = ["pages_show_list", "pages_messaging", "pages_manage_metad
  * agent has replied by hand, which is what tells the bot to stay out of that thread — a page
  * subscribed without it has a bot that talks over its own agent.
  */
-export const SUBSCRIBED_FIELDS = ["messages", "messaging_postbacks", "message_echoes"];
+/**
+ * The fourth is where a conversation came from: when someone opens a thread from an advert
+ * or an m.me link, Meta names the advert in a referral, and on a thread that already exists
+ * that referral arrives as an event of its own. Without it, an advert's conversations and
+ * an organic greeting look the same in the record.
+ */
+export const SUBSCRIBED_FIELDS = ["messages", "messaging_postbacks", "message_echoes", "messaging_referrals"];
 
 export interface FacebookPage {
   id: string;

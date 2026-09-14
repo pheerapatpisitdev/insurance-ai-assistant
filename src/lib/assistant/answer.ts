@@ -8,7 +8,7 @@ import { lifeProtectQuoteText } from "@/lib/lifeprotect-cta";
 import { lifeProtectFacts } from "@/lib/lifeprotect-facts";
 import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
-import { faqAnswer } from "./faq";
+import { faqMatch } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
 import { affirms, asksAboutCompany, asksAboutTrust, asksCheaper, asksPayTerm, asksValueTable, mergeSlots, PLAN_CODE, recentTurns, routeMessage, saysFormDone, stalls, wantsToBuy, type Routed } from "./route";
 
@@ -27,6 +27,29 @@ export interface Said {
   text: string;
   /** where the quote is drawn as a picture, as a path on this site */
   card?: string;
+}
+
+/** What a turn did, as the record keeps it: a kind and its figures, never the customer's words. */
+export type TraceKind =
+  | "routed" | "quoted" | "no_price" | "value_table" | "cheaper" | "offer_taken" | "pay_term"
+  | "company" | "faq" | "plan_info" | "small_talk" | "handover" | "form_sent" | "form_done" | "stalled";
+
+export interface TraceEvent {
+  kind: TraceKind;
+  /** kinds and figures only — an age, a sum, a premium, a reason — and never a word the customer typed */
+  data?: Record<string, unknown>;
+  /**
+   * The model's stand-alone rewrite of a question the bot had no written answer for. Kept
+   * apart from `data` so it goes to the list of unanswered questions and never into the
+   * event log, where it would sit beside the conversation it came from.
+   */
+  question?: string;
+}
+
+/** What the caller knows about the conversation that the answer may want to carry. */
+export interface AnswerContext {
+  /** the short code that rides on the application form link, so the form can be matched back */
+  formRef?: string;
 }
 
 export interface Answer {
@@ -50,6 +73,8 @@ export interface Answer {
    * words themselves, so every title here is a sentence the bot already answers.
    */
   replies?: string[];
+  /** what this turn did, for the record; the caller writes it down after answering */
+  trace?: TraceEvent[];
 }
 
 /** The usual case: the bot says one thing. */
@@ -149,54 +174,87 @@ export function aboutCompany(question: string): string {
   return [ABOUT_INSURER, "", ABOUT_AGENTS, ...tail].join("\n");
 }
 
-export async function answerQuestion(history: ChatMessage[], previous: Routed | null): Promise<Answer> {
+export async function answerQuestion(
+  history: ChatMessage[], previous: Routed | null, ctx: AnswerContext = {},
+): Promise<Answer> {
   const asked = lastAsked(history);
   const known: Routed = previous ?? { intent: "other" };
+  const trace: TraceEvent[] = [];
   // leaving to think it over needs no model and changes nothing the bot knows
   if (stalls(asked)) {
     // and whatever cheaper arrangement was on the table is off it: a "โอเค" days later must
     // not re-price something they walked away from
     const kept: Routed = { ...known, offer: undefined };
-    return { ...one(stallReply(kept)), slots: kept };
+    trace.push({ kind: "stalled", data: { had_quote: hasQuote(kept) } });
+    return { ...one(stallReply(kept)), slots: kept, trace };
   }
   // the form is out and they say it is filled in: the agent takes it from here
-  if (known.formSent && saysFormDone(asked)) return { ...one(FORM_RECEIVED), slots: known };
+  if (known.formSent && saysFormDone(asked)) {
+    trace.push({ kind: "form_done" });
+    return { ...one(FORM_RECEIVED), slots: known, trace };
+  }
   // deciding to buy is answered with the form — unless a cheaper offer is on the table and the
   // word is a bare yes, which takes the offer first and is priced below
   if (wantsToBuy(asked, hasQuote(known)) && !(known.offer && affirms(asked))) {
-    return { ...handOverForm(known), slots: { ...known, offer: undefined, formSent: true } };
+    trace.push({ kind: "form_sent", data: { had_quote: hasQuote(known), ...(ctx.formRef ? { form_ref: ctx.formRef } : {}) } });
+    return { ...handOverForm(known, ctx.formRef), slots: { ...known, offer: undefined, formSent: true }, trace };
   }
 
   const slots = mergeSlots(previous, await routeMessage(history));
+  trace.push({
+    kind: "routed",
+    data: { intent: slots.intent, has_age: slots.age !== undefined, has_sex: slots.sex !== undefined, has_cover: slots.coverWanted !== undefined },
+  });
   // checked before the routes that speak: a question about the company is answered by the
   // agency's own sentence whatever else the turn was about
-  if (asksAboutCompany(asked)) return { ...one(aboutCompany(asked)), slots };
-  if (asksPayTerm(asked)) return { ...answerPayTerm(slots), slots };
-  if (asksValueTable(asked)) return { ...answerValueTable(slots), slots };
-  if (asksCheaper(asked)) return answerCheaper(slots);
+  if (asksAboutCompany(asked)) {
+    trace.push({ kind: "company", data: { trust: asksAboutTrust(asked) } });
+    if (asksAboutTrust(asked)) trace.push({ kind: "handover", data: { reason: "trust" } });
+    return { ...one(aboutCompany(asked)), slots, trace };
+  }
+  if (asksPayTerm(asked)) {
+    trace.push({ kind: "pay_term", data: { variant: slots.variant ?? null } });
+    return { ...answerPayTerm(slots), slots, trace };
+  }
+  if (asksValueTable(asked)) return { ...answerValueTable(slots, trace), slots, trace };
+  if (asksCheaper(asked)) return { ...answerCheaper(slots, trace), trace };
   // a bare "เอา" takes the cheaper arrangement the bot last put on the table
   if (affirms(asked) && slots.offer) {
     const { offer } = slots;
     const taken: Routed = { ...slots, intent: "quote", coverWanted: offer.coverWanted, variant: offer.variant };
-    const priced = answerQuote(taken);
+    trace.push({ kind: "offer_taken", data: { sumAssured: offer.sumAssured } });
+    const priced = answerQuote(taken, trace);
     // the offer is taken once; a second "ตกลง" is an acknowledgement, not a request for the same quotation again
     const sumTaken = offer.sumAssured;
-    return { ...priced, slots: { ...taken, offer: priced.priced ? undefined : offer, ...(priced.priced ? { takenSum: sumTaken } : {}) } };
+    return { ...priced, slots: { ...taken, offer: priced.priced ? undefined : offer, ...(priced.priced ? { takenSum: sumTaken } : {}) }, trace };
   }
 
   // one of the answers the agency writes out by hand every day. A message can both ask for a
   // price and ask one of these — "ญ 37 ลดหย่อนภาษีได้ไหม" — so it is added to the quote
   // rather than replacing it.
-  const faq = faqAnswer(asked);
-  if (slots.intent === "quote") {
-    const quoted = answerQuote(slots);
-    if (faq) quoted.messages.push({ text: faq });
-    return { ...quoted, slots };
+  const faq = faqMatch(asked);
+  if (faq) {
+    trace.push({ kind: "faq", data: { key: faq.key } });
+    // a condition is the one question the written answer hands to a person as well
+    if (faq.key === "health") trace.push({ kind: "handover", data: { reason: "health" } });
   }
-  if (faq) return { ...one(faq), slots };
+  if (slots.intent === "quote") {
+    const quoted = answerQuote(slots, trace);
+    if (faq) quoted.messages.push({ text: faq.answer });
+    return { ...quoted, slots, trace };
+  }
+  if (faq) return { ...one(faq.answer), slots, trace };
 
-  if (slots.intent === "plan_info") return { ...(await answerPlanInfo(history, slots)), slots };
-  return { ...(await answerSmallTalk(history, slots)), slots };
+  // a question the model answers is one the bot had no written answer for. The model's own
+  // rewrite of it is kept for the list of such questions — only the rewrite, never the raw
+  // message, so a turn the model did not rewrite leaves nothing there.
+  const question = slots.question && slots.question !== asked ? slots.question : undefined;
+  if (slots.intent === "plan_info") {
+    trace.push({ kind: "plan_info", question });
+    return { ...(await answerPlanInfo(history, slots)), slots, trace };
+  }
+  trace.push({ kind: "small_talk", question });
+  return { ...(await answerSmallTalk(history, slots)), slots, trace };
 }
 
 /** What the customer said this turn. */
@@ -235,14 +293,16 @@ function sumForCover(table: LifeProtectTable, age: number, cover: number): numbe
   return Math.round(cover / coverMultiple(table, age) / 1000) * 1000;
 }
 
-/** One insured, priced — or a sentence saying why this one has no price. */
+/** One insured, priced — or a sentence saying why this one has no price. Either way the trace says which. */
 function quoteFor(
   table: LifeProtectTable, variant: string, who: { age: number; sex: "M" | "F" }, coverWanted: number,
+  trace: TraceEvent[], people: number,
   offer?: Routed["offer"],
   takenSum?: number,
 ): Said {
   const { age, sex } = who;
   if (age < table.ageMin || age > table.ageMax) {
+    trace.push({ kind: "no_price", data: { reason: "out_of_range", age } }, { kind: "handover", data: { reason: "no_price" } });
     return { text: `อายุ ${age} ปี แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
   }
 
@@ -252,12 +312,26 @@ function quoteFor(
   const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, variant).min;
   if (sumAssured < floor) {
     const smallest = floor * coverMultiple(table, age);
+    trace.push({ kind: "no_price", data: { reason: "below_min", age, sumAssured } });
     return { text: `แบบนี้เริ่มต้นที่ครอบครัวได้รับ ${smallest.toLocaleString("en-US")} บาทครับ บอกจำนวนที่สนใจมาใหม่ได้เลย` };
   }
 
   const term = termAt(table, variant);
   const modes = lifeProtectModes(table, term, { sex, age, sumAssured });
-  if (!modes) return { text: `อายุ ${age} ปี แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
+  if (!modes) {
+    trace.push({ kind: "no_price", data: { reason: "out_of_range", age } }, { kind: "handover", data: { reason: "no_price" } });
+    return { text: `อายุ ${age} ปี แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
+  }
+
+  // the figures as the engine made them, in baht, so the record can be read against the card
+  const baht = (mode: string) => { const m = modes.find((x) => x.mode === mode); return m ? m.total / 100 : undefined; };
+  trace.push({
+    kind: "quoted",
+    data: {
+      planCode: PLAN_CODE, variant, age, sex, sumAssured, coverWanted, people,
+      monthly: baht("monthly"), semi: baht("semi"), annual: baht("annual"),
+    },
+  });
 
   return {
     text: lifeProtectQuoteText({
@@ -315,17 +389,21 @@ const TAKES_OFFER = "เอาแบบนี้";
  * quotation was, so the two cannot tell the customer different things. Without a price
  * behind it there is nothing to tabulate, so the bot asks for what it is missing instead.
  */
-function answerValueTable(slots: Routed): Omit<Answer, "slots"> {
+function answerValueTable(slots: Routed, trace: TraceEvent[]): Omit<Answer, "slots"> {
   const table = lifeProtectTable();
   const { age, sex, coverWanted } = slots;
   if (age === undefined || sex === undefined || coverWanted === undefined) {
     return one(askForMissing(slots, table));
   }
-  if (table.expired) return one(`ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HAND_OVER}`);
+  if (table.expired) {
+    trace.push({ kind: "no_price", data: { reason: "expired" } }, { kind: "handover", data: { reason: "no_price" } });
+    return one(`ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HAND_OVER}`);
+  }
 
   const variant = QUOTABLE.has(slots.variant ?? "") ? slots.variant! : DEFAULT_TERM;
   const sumAssured = sumBehind(table, age, coverWanted, variant, slots.offer, slots.takenSum);
   const term = termAt(table, variant);
+  trace.push({ kind: "value_table", data: { variant, sumAssured } });
   return {
     messages: [{
       text: `ส่งตารางมูลค่าทุกปีให้ดูครับ ตั้งแต่ปีแรกจนครบสัญญาอายุ ${table.coverToAge} ปี — มีทั้งเบี้ยสะสม เงินเวนคืน และความคุ้มครองของแต่ละปี (แบบ${term.label})`,
@@ -345,8 +423,9 @@ function answerValueTable(slots: Routed): Omit<Answer, "slots"> {
  * A couple asking together gets a quote each, in the order they named themselves, because
  * each of them is buying their own contract at their own age.
  */
-function answerQuote(slots: Routed): Omit<Answer, "slots"> {
+function answerQuote(slots: Routed, trace: TraceEvent[]): Omit<Answer, "slots"> {
   if (slots.variant && !QUOTABLE.has(slots.variant)) {
+    trace.push({ kind: "no_price", data: { reason: "not_quotable", variant: slots.variant } }, { kind: "handover", data: { reason: "other_plan" } });
     return one(`ในแชทนี้ผมคิดให้ได้เฉพาะแบบ Life Protect x 2 ครับ แบบอื่นขอให้ตัวแทนเสนอให้นะครับ ${HAND_OVER}`);
   }
 
@@ -356,11 +435,12 @@ function answerQuote(slots: Routed): Omit<Answer, "slots"> {
   if (people.length === 0 || coverWanted === undefined) return one(askForMissing(slots, table));
 
   if (table.expired) {
+    trace.push({ kind: "no_price", data: { reason: "expired" } }, { kind: "handover", data: { reason: "no_price" } });
     return one(`ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HAND_OVER}`);
   }
 
   const variant = slots.variant ?? DEFAULT_TERM;
-  const messages = people.map((who) => quoteFor(table, variant, who, coverWanted, slots.offer, slots.takenSum));
+  const messages = people.map((who) => quoteFor(table, variant, who, coverWanted, trace, people.length, slots.offer, slots.takenSum));
 
   // the offer of the other terms belongs once, under the last price on the screen
   const last = messages.map((m) => Boolean(m.card)).lastIndexOf(true);
@@ -405,13 +485,16 @@ function answerPayTerm(slots: Routed): Omit<Answer, "slots"> {
  * proportion. Both are stated with the engine's figures, and the smaller cover is left on the
  * table so a bare "เอา" can take it.
  */
-function answerCheaper(slots: Routed): Answer {
+function answerCheaper(slots: Routed, trace: TraceEvent[]): Answer {
   const table = lifeProtectTable();
   const { age, sex, coverWanted } = slots;
   if (age === undefined || sex === undefined || coverWanted === undefined) {
     return { ...one(`บอกอายุ เพศ กับทุนที่สนใจมาก่อนครับ เดี๋ยวคิดให้ดูว่าแบบไหนเบาที่สุด`), slots };
   }
-  if (table.expired || age < table.ageMin || age > table.ageMax) return { ...one(HAND_OVER), slots };
+  if (table.expired || age < table.ageMin || age > table.ageMax) {
+    trace.push({ kind: "handover", data: { reason: "no_price" } });
+    return { ...one(HAND_OVER), slots };
+  }
 
   // the same formatting the quotation uses, so one instalment never shows as two figures
   const baht = formatBaht;
@@ -451,6 +534,7 @@ function answerCheaper(slots: Routed): Answer {
   lines.push(offered
     ? 'สนใจแบบลดทุน พิมพ์ว่า "เอา" ได้เลยครับ เดี๋ยวส่งใบเสนอให้ หรือบอกทุนที่อยากได้มาใหม่ก็ได้'
     : "บอกทุนที่อยากได้มาใหม่ได้เลยครับ เดี๋ยวคิดให้");
+  trace.push({ kind: "cheaper", data: offered && offer ? { offered: offer.sumAssured } : {} });
 
   // the objection is the moment the table earns its place: it is the answer to "what do I
   // get back". And taking the smaller arrangement should be a tap, not a sentence to type.
@@ -480,9 +564,11 @@ const FORM_RECEIVED = "ขอบคุณครับ 🙏 เดี๋ยวต
  * asks how to apply before hearing a price is also told the price is a message away — the
  * only time the bot volunteers that, because here it knows nothing has been quoted.
  */
-function handOverForm(slots: Routed): Omit<Answer, "slots"> {
+function handOverForm(slots: Routed, formRef?: string): Omit<Answer, "slots"> {
   const next = hasQuote(slots) ? FORM_NEXT : `${FORM_NEXT} ถ้าอยากทราบเบี้ยก่อน บอกเพศกับอายุมาได้เลยครับ เดี๋ยวคิดให้`;
-  return { messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }, { text: APPLICATION_FORM }, { text: next }] };
+  // the short code lets a filled-in form be matched back to this conversation, where the form keeps it
+  const link = formRef ? `${APPLICATION_FORM}&lead=${encodeURIComponent(formRef)}` : APPLICATION_FORM;
+  return { messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }, { text: link }, { text: next }] };
 }
 
 /**

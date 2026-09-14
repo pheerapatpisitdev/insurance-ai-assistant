@@ -1,7 +1,7 @@
 # ฐานข้อมูลรวบรวมข้อมูล: ที่มา บทสนทนา ใบเสนอราคา ลีด และผลโฆษณา
 
 วันที่ 2026-09-14
-สถานะ: รอผู้ใช้ตรวจทาน (มีสี่ข้อที่ต้องตัดสินใจในหัวข้อท้ายเอกสาร)
+สถานะ: อนุมัติแล้ว (ผู้ใช้ยืนยัน 2026-09-14 ตามค่าแนะนำทั้งสี่ข้อ) · ตารางและฟังก์ชันสร้างใน Supabase แล้ว
 
 ## ปัญหา
 
@@ -52,6 +52,18 @@ v_ins_ad_attribution = ins_ad_daily ⋈ ins_conversations ⋈ ins_leads   →  �
 3. **การบันทึกห้ามทำให้บอทช้าหรือล้ม** เขียนหลังส่งคำตอบแล้ว ผิดพลาดก็แค่ log ลูกค้าไม่รู้เรื่อง
 4. **ตัวเลขทุกตัวในรายงานย้อนกลับไปหาแถวต้นทางได้** มุมมองคำนวณจากตารางตอนอ่าน ไม่มีตารางสรุปที่
    ต้องคอยอัปเดตให้ตรงกัน
+
+## SQL ที่รันจริง
+
+SQL ที่รันบน Supabase เมื่อ 2026-09-14 อยู่ที่ `docs/sql/2026-09-14-data-collection.sql` เป็นสี่ migration
+(ตาราง · มุมมองกับ `ins_prune()` · ฟังก์ชัน RPC · ตารางเวลา pg_cron) รันซ้ำได้ ต่างจากร่างในหัวข้อถัดไปสามจุด
+
+- มุมมองทั้งสี่เป็น `security_invoker` และถอนสิทธิ์อ่านจาก `anon` กับ `authenticated` เพราะ Supabase ให้สิทธิ์
+  ตารางและมุมมองใหม่ใน `public` แก่บทบาทของ API โดยปริยาย มุมมองธรรมดาจึงจะข้าม RLS ของตารางข้างใต้ได้
+- การเขียนทั้งหมดผ่าน RPC สี่ตัว `ins_open_conversation` `ins_attribute` `ins_record` `ins_open_lead` เรียกได้เฉพาะ
+  `service_role` แต่ละตัวทำงานหนึ่งรอบต่อเทิร์นตามที่ออกแบบ และ `ins_open_lead` คัดลอกใบเสนอราคาล่าสุดจาก
+  `ins_events` เอง จึงไม่ต้องส่งมาจากแอป
+- ฟังก์ชันทุกตัวปัก `search_path` และเรียก pgcrypto ผ่านสคีมา `extensions` ตามแบบ `ins_set_channel_auth`
 
 ## ตาราง
 
@@ -118,7 +130,7 @@ alter table ins_events enable row level security;
 
 | `kind` | เกิดเมื่อ | `data` | ปล่อยจาก |
 | --- | --- | --- | --- |
-| `started` | บทสนทนาใหม่ | `source`, `ad_id`, `ref` | `session.ts` |
+| `started` | บทสนทนาใหม่ | `source`, `ad_id`, `ref` | `ins_open_conversation()` |
 | `referral` | กดโฆษณาหรือลิงก์เข้ามาระหว่างคุยอยู่ | ก้อน referral ดิบ | `conversation.ts` |
 | `message` | ทุกข้อความของลูกค้า นับอย่างเดียว | `chars`, `button` (กดปุ่มหรือพิมพ์) | `conversation.ts` |
 | `routed` | โมเดลเล็กอ่านข้อความ | `intent`, `model`, `has_age`, `has_sex`, `has_cover` | `answer.ts` |
@@ -387,10 +399,10 @@ Meta แนบก้อน `referral` มาสามที่ แล้วแ�
 | --- | --- |
 | `src/lib/facebook/events.ts` | `Messaging` รับ `referral` สามที่ · `referralOf()` |
 | `src/lib/facebook/oauth.ts` | `SUBSCRIBED_FIELDS` เพิ่ม `messaging_referrals` |
-| `src/lib/chat/session.ts` | `Session.conversationId` · เซสชันหมดอายุหรือไม่มี = เปิดบทสนทนาใหม่ พร้อมเหตุการณ์ `started` |
+| `src/lib/chat/session.ts` | `Session.conversationId` อ่านคืนเฉพาะเมื่อเซสชันยังสด และเขียนเมื่อถูกส่งมา |
 | `src/lib/chat/collect.ts` (ใหม่) | `openConversation()` `record()` `openLead()` ทุกตัวกลืน error แล้ว log ไม่โยนต่อ |
 | `src/lib/assistant/answer.ts` | `Answer.trace` แต่ละเส้นทาง push ชนิดของตัวเอง · `handOverForm()` รับ `formRef` |
-| `src/lib/facebook/conversation.ts` | อ่าน referral · เรียก `record()` หลังส่งครบ · เปิดลีดตาม trace |
+| `src/lib/facebook/conversation.ts` | อ่าน referral · เปิดบทสนทนาใหม่เมื่อเซสชันไม่มีหรือหมดอายุ · เรียก `record()` หลังส่งครบ · เปิดลีดตาม trace |
 | `src/app/privacy/page.tsx` | เขียนหัวข้อ "ข้อมูลที่เก็บ" ใหม่ตามหัวข้อถัดไป |
 | `docs/facebook-connect.md` | ข้อ 3 เพิ่มฟิลด์ที่สี่ |
 | `src/app/api/health/route.ts` | ตัวตรวจฐานข้อมูลอ่าน `ins_ai_settings` แทน `ins_alert_settings` ซึ่งเป็นตารางของระบบแจ้งเตือน LINE ที่ถอดไปแล้ว |

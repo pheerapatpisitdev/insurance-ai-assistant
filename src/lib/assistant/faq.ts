@@ -60,7 +60,12 @@ export const FAQ: FaqEntry[] = [
   },
 ];
 
+/** The entry a message asks for, or undefined when it asks none of these. */
+export function faqMatch(text: string): FaqEntry | undefined {
+  return FAQ.find((e) => e.match.test(text));
+}
+
 /** The written answer for a message, or undefined when it asks none of these. */
 export function faqAnswer(text: string): string | undefined {
-  return FAQ.find((e) => e.match.test(text))?.answer;
+  return faqMatch(text)?.answer;
 }

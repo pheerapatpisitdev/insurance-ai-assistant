@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 /** Last change to what this page describes, not to its wording. */
-const UPDATED = "13 กันยายน 2569";
+const UPDATED = "14 กันยายน 2569";
 const CONTACT = "pheerapatpisit.dev@gmail.com";
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -37,10 +37,22 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong>เมื่อคุณทักแชทเพจเฟซบุ๊ก</strong> เราเก็บข้อความในบทสนทนาไว้ไม่เกิน{" "}
-          <strong>24 ชั่วโมง</strong> เพื่อให้ถามต่อเนื่องได้ว่าอ้างถึงอะไร แล้วข้อความนั้นจะถูกลบ
+          <strong>24 ชั่วโมง</strong> เพื่อให้ถามต่อเนื่องได้ว่าอ้างถึงอะไร แล้วงานอัตโนมัติรายชั่วโมงจะลบข้อความนั้น
           ส่วนตัวตนของผู้ส่ง เราไม่ได้เก็บรหัสที่เฟซบุ๊กให้มาตรง ๆ แต่เก็บเป็นค่าที่เข้ารหัสทางเดียว
           ซึ่งใช้ต่อบทสนทนาเดิมได้อย่างเดียว และย้อนกลับเป็นตัวคุณไม่ได้
           เราไม่ได้เก็บชื่อ รูปโปรไฟล์ หรือรายชื่อเพื่อนของคุณ
+        </p>
+        <p>
+          <strong>บันทึกของบทสนทนา</strong> เราบันทึกว่าบทสนทนาเกิดขึ้นเมื่อไหร่ มาจากโฆษณาชิ้นไหน
+          และดำเนินไปถึงขั้นไหน เป็นชนิดของเหตุการณ์กับตัวเลข เช่น อายุ เพศ ทุน และเบี้ยที่ระบบคำนวณให้
+          ไม่มีข้อความที่คุณพิมพ์ ตัวตนบนบันทึกนั้นเป็นค่าเข้ารหัสทางเดียวชุดเดิม และถูกลบออกจากบันทึกภายใน{" "}
+          <strong>90 วัน</strong> สถิติที่เหลือโยงกลับหาใครไม่ได้
+          คำถามที่ผู้ช่วยไม่มีคำตอบเตรียมไว้ ถูกเก็บเป็นประโยคที่เขียนใหม่โดยไม่มีตัวตน 30 วัน เพื่อปรับปรุงคำตอบ
+        </p>
+        <p>
+          <strong>เมื่อคุณกดสนใจสมัครหรือขอคุยกับตัวแทน</strong> เราบันทึกรหัสห้องแชทของคุณแบบเข้ารหัส
+          เพื่อให้ตัวแทนเปิดห้องแชทนี้กลับมาติดต่อได้ตามที่ผู้ช่วยแจ้งไว้ พร้อมใบเสนอราคาล่าสุดที่คุณได้รับ
+          และลบรหัสนั้นเมื่อเรื่องจบไปแล้ว 180 วัน
         </p>
         <p>
           <strong>บันทึกค่าใช้จ่ายของระบบ</strong> เก็บเพียงจำนวนคำที่ประมวลผลและค่าใช้จ่ายเป็นเงินบาท
@@ -90,8 +102,10 @@ export default function PrivacyPage() {
           ผู้ที่ใช้หน้าคำนวณเบี้ยอย่างเดียวไม่มีข้อมูลอยู่กับเราเลย จึงไม่มีอะไรให้ลบ
         </p>
         <p>
-          ผู้ที่ทักแชทเพจ บทสนทนาจะหมดอายุและถูกลบเองภายใน 24 ชั่วโมง
-          หากต้องการให้ลบก่อนหน้านั้น หรืออยากทราบว่ามีอะไรเก็บอยู่ ส่งอีเมลมาที่{" "}
+          ผู้ที่ทักแชทเพจ ข้อความในบทสนทนาถูกลบโดยงานอัตโนมัติเมื่อพ้น 24 ชั่วโมง
+          และตัวตนบนบันทึกของบทสนทนาถูกลบภายใน 90 วัน
+          หากต้องการให้ลบก่อนหน้านั้น รวมถึงรหัสห้องแชทที่บันทึกไว้เมื่อคุณกดสนใจสมัคร
+          หรืออยากทราบว่ามีอะไรเก็บอยู่ ส่งอีเมลมาที่{" "}
           <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>{" "}
           พร้อมบอกว่าทักเข้ามาจากเพจใดและเมื่อใด เราจะลบให้ทันทีที่ตรวจสอบได้
           ส่วนสำเนาข้อความที่อยู่ในระบบของเฟซบุ๊กเอง ลบได้จากหน้าแชทของคุณ
@@ -125,8 +139,14 @@ export default function PrivacyPage() {
             age, sex and sum assured you choose are never sent to us. There are no visitor accounts and no
             tracking cookies — the site&rsquo;s only cookie belongs to the agency&rsquo;s own admin page.
             From a chat with the agency&rsquo;s Facebook Page, the conversation is kept for at most 24 hours
-            so that follow-up questions make sense, then deleted. The sender is stored only as a one-way
-            hash of the page-scoped id, which cannot be turned back into a person.
+            so that follow-up questions make sense, then deleted by an hourly job. The sender is stored only as
+            a one-way hash of the page-scoped id, which cannot be turned back into a person. We also keep a
+            record of each conversation &mdash; when it happened, which advert it came from and how far it went,
+            as event kinds and figures such as age, sex, sum assured and the computed premium, never your
+            words &mdash; and remove the hashed sender from that record within 90 days. Questions the assistant
+            had no written answer for are kept for 30 days as a stand-alone rewrite with no identity attached.
+            If you ask to apply or to talk to the agent, we store your Messenger thread id encrypted so the
+            agent can reopen this chat and follow up as promised, and delete it 180 days after the matter closes.
           </p>
           <p>
             <strong>Who else sees it.</strong> The site is served from Vercel, which sees the ordinary
