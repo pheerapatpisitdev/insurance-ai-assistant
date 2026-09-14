@@ -37,6 +37,13 @@ body {
      on the ground, where it would sit at 2.5:1. Neutralised to match the charcoal. */
   --lg-panel: rgba(255, 255, 255, 0.055);
   --lg-panel-line: rgba(255, 255, 255, 0.12);
+
+  /* The cash-value chart's two secondary series — what the policy has cost, and what the
+     family would receive — held below the gold line that answers the question being asked.
+     Tokens rather than a white at an opacity inside the component, because a theme on a light
+     ground has to make them darker, and there is no opacity of white that does that. */
+  --lg-series-paid: rgba(245, 245, 245, 0.5);
+  --lg-series-cover: rgba(245, 245, 245, 0.3);
 }
 
 .theme-legacy {
@@ -225,6 +232,9 @@ body:has(.theme-legacy) {
     --lg-gold-glow: transparent;
     --lg-hair: #999;
     --lg-panel-line: #c4c4c4;
+    /* on paper a near-white series is no series at all */
+    --lg-series-paid: #777;
+    --lg-series-cover: #9a9a9a;
   }
 
   body:has(.theme-legacy) {

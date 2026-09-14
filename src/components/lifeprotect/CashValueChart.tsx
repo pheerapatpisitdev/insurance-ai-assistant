@@ -6,8 +6,9 @@ import type { Projection, ProjectionRow } from "@/lib/cash-projection";
 const W = 340, H = 190, LEFT = 46, RIGHT = 8, TOP = 12, BOTTOM = 24;
 
 const GOLD = "var(--lg-gold)";
-const GREY = "rgba(245,245,245,.5)";
-const COVER = "rgba(245,245,245,.3)";
+/* Named for what they draw, not for a colour: on the ivory sales theme neither is grey. */
+const PAID = "var(--lg-series-paid)";
+const COVER = "var(--lg-series-cover)";
 
 /** 1,112,000 → "1.1 ล้าน". The vertical axis carries two labels, so they must read at a glance. */
 function short(baht: number): string {
@@ -74,7 +75,7 @@ export function CashValueChart({ projection, age }: CashValueChartProps) {
   };
 
   const readout: [string, string, number | null][] = [
-    ["เบี้ยสะสม", GREY, here.premiumPaid],
+    ["เบี้ยสะสม", PAID, here.premiumPaid],
     ["มูลค่าเวนคืนเงินสด", GOLD, here.cashValue],
     ["ความคุ้มครองเสียชีวิต", COVER, here.cover],
   ];
@@ -142,11 +143,11 @@ export function CashValueChart({ projection, age }: CashValueChartProps) {
 
         <polyline fill="none" stroke={COVER} strokeWidth="1.5" strokeDasharray="4 3" points={coverPath} />
         {here.premiumPaid !== null && (
-          <polyline fill="none" stroke={GREY} strokeWidth="1.5" strokeLinejoin="round" points={path((r) => r.premiumPaid!)} />
+          <polyline fill="none" stroke={PAID} strokeWidth="1.5" strokeLinejoin="round" points={path((r) => r.premiumPaid!)} />
         )}
         <polyline fill="none" stroke={GOLD} strokeWidth="2" strokeLinejoin="round" points={path((r) => r.cashValue)} />
 
-        {([["cover", here.cover, COVER], ["paid", here.premiumPaid, GREY], ["cash", here.cashValue, GOLD]] as [string, number | null, string][])
+        {([["cover", here.cover, COVER], ["paid", here.premiumPaid, PAID], ["cash", here.cashValue, GOLD]] as [string, number | null, string][])
           .map(([key, value, colour]) => value === null ? null : (
             <circle
               key={key} cx={x(here.age)} cy={y(value)} r="3.5"

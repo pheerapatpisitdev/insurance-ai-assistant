@@ -1,0 +1,189 @@
+/* iShield wears satin rather than the shared charcoal-and-gold: warm ivory, with copper and
+   chocolate for the accents. The shared sales components read the --lg-* tokens, so the whole
+   page turns over by re-pointing them here — nothing under src/components changes.
+
+   The copper is darker than it looks on a swatch on purpose. --lg-gold carries small text (the
+   eyebrow at 12px, the per-claim figure), and on ivory a bright copper lands near 3.6:1. Each
+   colour below is picked against the ground it actually sits on, including the satin bands. */
+.ishield-scope .theme-legacy {
+  color-scheme: light;
+  --lg-ground: #f6f1ea;
+  --lg-ground-deep: #efe6d9;
+  --lg-ground-lit: #fffcf8;
+  --lg-raise: #fffdfa;
+  /* the ink on a copper face */
+  --lg-ink: #fff8ef;
+  /* 5.8:1 on the ivory, 5.2:1 where a satin band crosses it */
+  --lg-gold: #85512f;
+  --lg-gold-deep: #6b3b22;
+  /* Also worn as small text — the note above the cash-value table is 12px of it — so it is a
+     readable copper, not the pale one. The ramp in .lg-metal-text carries its own lit band. */
+  --lg-gold-lit: #96603a;
+  --lg-gold-glow: rgba(169, 113, 75, 0.1);
+  --lg-white: #3b2418;
+  /* 5.3:1 at its worst — quiet, not faint */
+  --lg-mute: #6b5647;
+  --lg-panel: #fffcf7;
+
+  /* The two line colours. On the charcoal they were a gold at 24% and a white at 12%, which
+     ivory turns into nothing: measured on the page, every border on it sat between 1.1:1 and
+     1.45:1. A line is a thing you have to be able to see.
+
+     They are not the same weight, because they do not do the same job. --lg-panel-line draws
+     the controls — the select, the term row, the sex toggle, the table frame — and a control
+     whose boundary is the only thing announcing it needs 3:1. --lg-hair groups things that
+     are already grouped by a fill and a shadow, so it stays a shade quieter. */
+  --lg-panel-line: #a08a72;
+  --lg-hair: #b3a08b;
+
+  /* The chart's other two series, which on the charcoal were a white at 50% and at 30% — on
+     ivory, nothing at all. Both clear 3:1 now, and they keep the order they were drawn in:
+     the copper cash-value line is still the loudest, because it is the one being asked about. */
+  --lg-series-paid: #8a8075;
+  --lg-series-cover: #9c8f82;
+  font-weight: 400;
+}
+
+/* so overscroll and short pages never flash the dark ground */
+body:has(.ishield-scope) { background: #efe6d9; }
+
+/* The fabric: two soft diagonal passes of champagne and pearl across the ivory, and a low
+   copper warmth at the top. Held at low contrast — a band crossing a paragraph must not be
+   readable as a band, only as light. The grain the dark theme paints over its charcoal is
+   dropped; on ivory it reads as a dirty page rather than as texture. */
+.ishield-scope .theme-legacy::before {
+  background:
+    radial-gradient(120% 58% at 50% -10%, var(--lg-gold-glow), transparent 70%),
+    linear-gradient(112deg, transparent 16%, rgba(224, 211, 196, 0.42) 29%, transparent 43%),
+    linear-gradient(112deg, transparent 54%, rgba(255, 253, 248, 0.85) 65%, transparent 79%);
+}
+.ishield-scope .theme-legacy::after { display: none; }
+
+/* The metal ramp survives the change of ground, but runs copper-to-chocolate instead of
+   gold-to-champagne: on ivory the old lit band was brighter than the paper behind it and the
+   headline dissolved mid-word. Every stop here clears 3:1, which is what the display sizes
+   this class is used at need.
+
+   background-image, not the background shorthand: the shorthand resets background-clip along
+   with everything else it does not name, and the ramp would be painted over the lettering as
+   a solid copper block instead of through it. */
+.ishield-scope .lg-metal-text {
+  background-image: linear-gradient(
+    100deg,
+    #5e3721 0%,
+    var(--lg-gold) 26%,
+    #a86c43 47%,
+    var(--lg-gold) 66%,
+    #5e3721 100%
+  );
+}
+
+/* Copper bar, lit along the top edge. The cream lettering sits at 4.75:1 against the lightest
+   stop, so the label holds at the button's brightest point rather than only at its average. */
+.ishield-scope .lg-metal-face {
+  background: linear-gradient(180deg, #9c6140 0%, #86502f 45%, #6b3b22 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 12px 28px -14px rgba(107, 59, 34, 0.55);
+}
+
+/* The engraved hairline, re-cut in taupe. Still fading at both ends — that is what makes it
+   read as engraved rather than drawn — but its middle now lands at 2.8:1 instead of the 1.5:1
+   the champagne version managed, where the whole rule simply disappeared into the card. */
+.ishield-scope .lg-rule {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(160, 138, 114, 0.35) 12%,
+    rgba(160, 138, 114, 0.9) 50%,
+    rgba(160, 138, 114, 0.35) 88%,
+    transparent
+  );
+}
+
+/* The cash-value table draws its own rules as white at 5% and 10% — invisible by definition on
+   ivory, and the 5% one measured 1.0:1 over the highlighted column, meaning the row rules were
+   not being drawn at all. The component is shared with the dark sales pages, so they are
+   re-cut here rather than there. The row rules stay lighter than the column rules: there is one
+   per row, and at the column weight the table would read as a grid of boxes. */
+.ishield-scope table td { border-bottom-color: #bfae9b; }
+.ishield-scope table :is(th, td)[class*="border-l"] { border-left-color: var(--lg-panel-line); }
+/* the header sits above every row, so its underline is the one line here that carries weight */
+.ishield-scope table th { border-bottom-color: var(--lg-panel-line); }
+
+/* On charcoal a hairline border was enough to raise a panel. On ivory it is not: the cards
+   need a shadow to sit above the fabric instead of being drawn onto it. */
+.ishield-scope .rounded-sm { border-radius: 14px; }
+.ishield-scope #calc > div > .border {
+  box-shadow: 0 10px 34px -20px rgba(59, 36, 24, 0.35), inset 0 1px 0 #fffffe;
+}
+/* The quote itself, carried on a copper edge. Found by the engraved rule it is the only card
+   to contain: :last-of-type would count the sticky phone bar as the last div and match
+   nothing, and an nth- would move the day a card is added above it. */
+.ishield-scope #calc > div > .border:has(hr.lg-rule) {
+  border-top: 3px solid var(--lg-gold-lit);
+}
+
+/* appearance-none leaves a bare box, which on ivory reads as a text field rather than a
+   control — on charcoal the raised fill said "control" by itself. */
+.ishield-scope select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236b5647' stroke-width='1.5'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* The shared components make secondary text quieter by fading it — 86 spans on this page carry
+   opacity-55/70/75/80, and every one of them is text. On the charcoal that worked: --lg-mute
+   was already a translucent white, and fading white further over a dark ground barely moves the
+   contrast. On ivory it moves it the wrong way, and the whole set landed between 2.95:1 and
+   4.21:1 — the slider's end labels, the per-year premium under each term, the disclaimer.
+
+   So the fade is dropped here and the hierarchy is left to the two ink tokens, which already
+   carry it: --lg-white at 12.9:1 for what is being said, --lg-mute at 6.2:1 for the aside. A
+   third step exists only if it stays readable, and on this ground it does not — cream on the
+   copper button has just 4.75:1 to spend before any fade at all.
+
+   opacity-35 is the disabled term button and is deliberately left alone: a control you cannot
+   use should look like one, and WCAG exempts it. */
+.ishield-scope :is(.opacity-55, .opacity-70, .opacity-75, .opacity-80) { opacity: 1; }
+
+.ishield-scope :is(button, a, select, input, summary):focus-visible {
+  outline: 3px solid var(--lg-gold);
+  outline-offset: 3px;
+}
+
+/* The shared print block re-points .theme-legacy to ink on paper; these scoped rules outrank
+   it, so the page would otherwise print in satin. Restated here at the scope's specificity. */
+@media print {
+  .ishield-scope .theme-legacy {
+    background: #fff;
+    --lg-ground: #fff;
+    --lg-ground-deep: #fff;
+    --lg-ground-lit: #fff;
+    --lg-raise: #fff;
+    --lg-panel: #fff;
+    --lg-ink: #111;
+    --lg-white: #111;
+    --lg-mute: #3a3a3a;
+    --lg-gold: #6b3b22;
+    --lg-gold-deep: #6b3b22;
+    --lg-gold-lit: #6b3b22;
+    --lg-gold-glow: transparent;
+    --lg-hair: #999;
+    --lg-panel-line: #c4c4c4;
+  }
+  .ishield-scope .theme-legacy::before { display: none; }
+  .ishield-scope #calc > div > .border { box-shadow: none; }
+
+  /* The ramp is painted behind the glyphs, and a browser prints backgrounds only if the
+     reader ticks "Background graphics" — which is off by default. Transparent lettering over
+     a dropped background is nothing at all, and this class carries the headline and every
+     premium on the sheet. Flattened to ink for paper. */
+  .ishield-scope .lg-metal-text {
+    background-image: none;
+    color: var(--lg-gold);
+    -webkit-text-fill-color: currentColor;
+  }
+}
