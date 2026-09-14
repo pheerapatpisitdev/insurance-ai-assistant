@@ -23,6 +23,13 @@ vi.mock("@/lib/facebook/client", () => ({
   showTyping: async () => {},
 }));
 
+/** the follow-up the bot arms after a quotation, and drops the moment anyone speaks */
+const followups: { armed: string[]; dropped: string[] } = { armed: [], dropped: [] };
+vi.mock("@/lib/chat/followup", () => ({
+  armFollowup: async (_c: string, u: string) => { followups.armed.push(u); },
+  dropFollowup: async (_c: string, u: string) => { followups.dropped.push(u); },
+}));
+
 vi.mock("@/lib/chat/session", async () => {
   const actual = await vi.importActual<typeof import("@/lib/chat/session")>("@/lib/chat/session");
   return {
@@ -43,6 +50,7 @@ beforeEach(() => {
   process.env.FB_APP_ID = "app-1";
   process.env.FB_APP_SECRET = "secret";
   sent.text = []; sent.images = []; sent.replies = []; saved.length = 0;
+  followups.armed.length = 0; followups.dropped.length = 0;
   session.messages = []; session.slots = null; session.mutedUntil = null;
   answer.mockReset();
   answer.mockImplementation(quoted);
@@ -110,6 +118,37 @@ describe("an agent who answers while the bot is still typing", () => {
     });
     await handle({ sender: { id: "psid-cut2" }, message: { mid: "m1", text: "ชาย 35 ล้านนึง" } });
     expect(saved).toEqual([]);
+  });
+});
+
+describe("the question the bot arms for five minutes' time", () => {
+  it("is armed on a quotation, addressed to the customer it quoted", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "เบี้ยประมาณ…", card: "/api/card?x=1" }],
+      slots: { intent: "quote", product: "lifeprotect" },
+      priced: true,
+    }));
+    await handle({ sender: { id: "psid-arm" }, message: { mid: "mf1", text: "หญิง 40 ทุน 1 ล้าน" } });
+    expect(followups.armed).toHaveLength(1);
+  });
+
+  it("is not armed by an answer that carries no premium", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "ขอเพศกับอายุด้วยครับ" }],
+      slots: { intent: "quote", product: "lifeprotect" },
+    }));
+    await handle({ sender: { id: "psid-arm2" }, message: { mid: "mf2", text: "สนใจครับ" } });
+    expect(followups.armed).toEqual([]);
+  });
+
+  it("is dropped when the agent takes the thread", async () => {
+    await handle({ sender: { id: "page" }, recipient: { id: "psid-drop" }, message: { mid: "mf3", text: "สวัสดีครับ", is_echo: true } });
+    expect(followups.dropped).toHaveLength(1);
+  });
+
+  it("is dropped when the customer writes again, before anything else happens", async () => {
+    await handle({ sender: { id: "psid-drop2" }, message: { mid: "mf4", text: "สนใจครับ" } });
+    expect(followups.dropped).toHaveLength(1);
   });
 });
 

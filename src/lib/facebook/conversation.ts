@@ -1,6 +1,7 @@
 import { siteUrl } from "@/lib/site-url";
 import { hashUserId } from "@/lib/facebook/verify";
 import { claimEvent, isMuted, loadSession, muteFor, saveSession } from "@/lib/chat/session";
+import { armFollowup, dropFollowup } from "@/lib/chat/followup";
 import { sendImage, sendMessage, showTyping } from "@/lib/facebook/client";
 import { answerAny } from "@/lib/assistant/dispatch";
 import { allow } from "@/lib/assistant/rate-limit";
@@ -55,6 +56,9 @@ export async function handle(event: Messaging): Promise<void> {
   if (agentTyped(event)) {
     const session = await loadSession("facebook", userHash);
     await saveSession("facebook", userHash, session.messages, session.slots, muteFor());
+    // the thread is theirs now, so the bot's own follow-up is not wanted — and the id it was
+    // holding to send it with goes with it
+    await dropFollowup("facebook", userHash);
     return;
   }
 
@@ -65,6 +69,9 @@ export async function handle(event: Messaging): Promise<void> {
   // a redelivery of an event already answered must not answer it a second time
   const key = eventKey(event);
   if (key && !(await claimEvent("facebook", key))) return;
+
+  // they are talking, which is the whole of what a follow-up was for
+  await dropFollowup("facebook", userHash);
 
   const session = await loadSession("facebook", userHash);
   /**
@@ -115,6 +122,17 @@ export async function handle(event: Messaging): Promise<void> {
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
     // no mute argument: recording what was said must never clear one
     await saveSession("facebook", userHash, [...history, { role: "assistant", content: spoken }], answer.slots);
+    /**
+     * A quotation is where the conversation used to stop, so it is where the bot now arms one
+     * question five minutes out. Armed after the session is written, because the follow-up
+     * only goes if nothing has touched the thread since.
+     *
+     * The life plan alone for now: its words offer a shorter term and a lighter sum, which
+     * the health contract does not have.
+     */
+    if (answer.priced && (answer.slots as { product?: string }).product === "lifeprotect") {
+      await armFollowup("facebook", userHash, psid).catch((e) => console.error("followup:", e));
+    }
   } catch (e) {
     await sendMessage(psid, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);
     throw e;

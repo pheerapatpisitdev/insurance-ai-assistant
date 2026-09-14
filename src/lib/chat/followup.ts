@@ -1,0 +1,110 @@
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import type { Channel } from "./session";
+
+/**
+ * The one message the bot sends into a silence.
+ *
+ * A quotation used to end the conversation rather than open it: of thirteen customers quoted
+ * in a day, not one wrote again — not to accept, not to object, not even to say the price was
+ * too high. The agent picked up eleven of those threads by hand.
+ *
+ * So the bot asks once, five minutes later, and only if nobody has spoken since. Everything
+ * about it is deliberately narrow: one message per quotation, never a second; nothing at all
+ * once the agent has typed; and nothing outside the day Meta allows a page to write in.
+ */
+
+/**
+ * What it asks.
+ *
+ * Two doors, and the bot can walk through either on its own: a lighter arrangement, or a
+ * shorter term. Neither assumes the customer cannot afford it, and neither is "สนใจไหมครับ",
+ * which invites the one answer that ends the conversation.
+ */
+export const FOLLOWUP_TEXT = [
+  "ดูตัวเลขแล้วเป็นยังไงบ้างครับ",
+  "ถ้าอยากได้แบบที่เบี้ยเบากว่านี้ หรืออยากดูแบบจ่ายสั้นจบไว บอกได้เลยครับ เดี๋ยวคิดให้ใหม่",
+].join("\n");
+
+/**
+ * The buttons under it, which also puts them back on the screen: a message sent after quick
+ * replies clears them, so the quotation's own buttons are gone by now.
+ *
+ * Every title is a phrase the bot already routes — "ถูกลง" is one of the words that mean the
+ * price is too high — because a tap arrives as nothing but its own words.
+ */
+export const FOLLOWUP_REPLIES = ["ขอแบบถูกลง", "ขอตารางมูลค่า", "สนใจสมัคร"];
+
+/** How long a quotation is left to speak for itself. */
+export const SILENCE_MS = 5 * 60_000;
+
+/**
+ * How long a page may write to someone who wrote to it. Meta's rule, not ours — outside it
+ * the send is refused, so the follow-up is simply dropped.
+ */
+const WINDOW_HOURS = 24;
+
+/**
+ * The customer's page-scoped id, kept only while a follow-up is owed.
+ *
+ * It is the one thing about a conversation this project stores in a form it can read back,
+ * and it exists for exactly one purpose: a message cannot be addressed without it. The column
+ * is encrypted with the same passphrase the page token uses, emptied the moment the message
+ * is claimed for sending, and the row is deleted within the day either way.
+ */
+function passphrase(): string {
+  const s = process.env.ADMIN_SESSION_SECRET;
+  if (!s) throw new Error("ADMIN_SESSION_SECRET is not set");
+  return s;
+}
+
+/** Arm the follow-up for a thread that has just been quoted. */
+export async function armFollowup(
+  channel: Channel, userHash: string, psid: string, now: Date = new Date(),
+): Promise<void> {
+  const { error } = await supabaseAdmin().rpc("ins_arm_followup", {
+    p_channel: channel,
+    p_user_hash: userHash,
+    p_psid: psid,
+    p_due_at: new Date(now.getTime() + SILENCE_MS).toISOString(),
+    p_expires_at: new Date(now.getTime() + WINDOW_HOURS * 3600_000).toISOString(),
+    p_passphrase: passphrase(),
+  });
+  if (error) throw new Error(`ตั้งเวลาติดตามไม่สำเร็จ: ${error.message}`);
+}
+
+/** The customer wrote back, or the agent did: the id goes now rather than at expiry. */
+export async function dropFollowup(channel: Channel, userHash: string): Promise<void> {
+  const { error } = await supabaseAdmin().rpc("ins_drop_followup", {
+    p_channel: channel,
+    p_user_hash: userHash,
+  });
+  if (error) console.error("ยกเลิกการติดตามไม่สำเร็จ:", error.message);
+}
+
+export interface Due {
+  userHash: string;
+  psid: string;
+}
+
+/**
+ * Every follow-up that has come due and is still wanted, claimed in the same statement that
+ * reads it. A send that fails afterwards loses the message rather than repeating it, which is
+ * the right way round: a customer who hears nothing is where they already were, and a
+ * customer who hears the same question twice is being pestered.
+ */
+export async function claimDueFollowups(channel: Channel): Promise<Due[]> {
+  const { data, error } = await supabaseAdmin().rpc("ins_claim_followups", {
+    p_channel: channel,
+    p_passphrase: passphrase(),
+  });
+  if (error) throw new Error(`อ่านคิวติดตามไม่สำเร็จ: ${error.message}`);
+  return ((data ?? []) as { user_hash: string; psid: string }[])
+    .filter((r) => r.psid)
+    .map((r) => ({ userHash: r.user_hash, psid: r.psid }));
+}
+
+/** Rows past their day, sent or not. */
+export async function sweepFollowups(): Promise<void> {
+  const { error } = await supabaseAdmin().rpc("ins_sweep_followups", {});
+  if (error) console.error("เก็บกวาดคิวติดตามไม่สำเร็จ:", error.message);
+}
