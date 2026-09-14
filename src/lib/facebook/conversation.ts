@@ -6,14 +6,24 @@ import {
   type CollectedEvent, type LeadStage, type Unanswered,
 } from "@/lib/chat/collect";
 import { sendImage, sendMessage, showTyping } from "@/lib/facebook/client";
-import { answerQuestion, type Answer, type AnswerContext, type TraceEvent } from "@/lib/assistant/answer";
+import { answerAny, type AnyAnswer } from "@/lib/assistant/dispatch";
+import type { AnswerContext, TraceEvent } from "@/lib/assistant/common";
+import type { AnySlots } from "@/lib/assistant/slots";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { agentTyped, customerOf, eventKey, pageOf, referralOf, textOf, type Messaging } from "@/lib/facebook/events";
 
-/** The one plan this bot sells; the record names it until the slots carry a product of their own. */
-const PRODUCT = "lifeprotect";
+/**
+ * Which plan a session is about, as the record names it. A row with no product was written
+ * before there were two plans and can only be the life one; a customer still being asked
+ * which plan they came for is about neither yet.
+ */
+function productOf(slots: AnySlots | null): string | null {
+  if (!slots) return null;
+  if (!("product" in slots) || !slots.product) return "lifeprotect";
+  return slots.product === "undecided" ? null : slots.product;
+}
 
 /**
  * The answer, with one more attempt before giving up.
@@ -21,13 +31,13 @@ const PRODUCT = "lifeprotect";
  * The failures that reach a customer are transient — a key table that could not be read on a
  * cold start, a provider refusing one call. A second try costs a second and saves the lead.
  */
-async function answered(history: ChatMessage[], slots: Parameters<typeof answerQuestion>[1], ctx: AnswerContext) {
+async function answered(history: ChatMessage[], slots: AnySlots | null, ctx: AnswerContext) {
   try {
-    return await answerQuestion(history, slots, ctx);
+    return await answerAny(history, slots, ctx);
   } catch (e) {
     if (e instanceof BudgetExceeded) throw e;
     console.error("answer failed, trying once more:", e);
-    return await answerQuestion(history, slots, ctx);
+    return await answerAny(history, slots, ctx);
   }
 }
 
@@ -63,7 +73,7 @@ export async function handle(event: Messaging): Promise<void> {
     const session = await loadSession("facebook", userHash);
     await saveSession("facebook", userHash, session.messages, session.slots, muteFor());
     // their stepping in is part of the conversation's story, when there is a live one to tell it in
-    if (session.conversationId) await record(session.conversationId, [{ kind: "agent_replied" }], PRODUCT);
+    if (session.conversationId) await record(session.conversationId, [{ kind: "agent_replied" }], productOf(session.slots));
     return;
   }
 
@@ -113,7 +123,7 @@ export async function handle(event: Messaging): Promise<void> {
 
   if (!allow(`fb:${userHash}`)) {
     await sendMessage(psid, BUSY);
-    if (conversationId) await record(conversationId, [{ kind: "rate_limited" }], PRODUCT);
+    if (conversationId) await record(conversationId, [{ kind: "rate_limited" }], productOf(session.slots));
     return;
   }
 
@@ -158,7 +168,7 @@ export async function handle(event: Messaging): Promise<void> {
         kind: e instanceof BudgetExceeded ? "budget_exceeded" : "error",
         // the system's words about itself, never the customer's: the first line of the error
         data: { message: (e instanceof Error ? e.message : String(e)).split("\n")[0].slice(0, 120) },
-      }], PRODUCT);
+      }], productOf(session.slots));
     }
     throw e;
   }
@@ -172,8 +182,9 @@ export async function handle(event: Messaging): Promise<void> {
  * for travels separately, to a list with no conversation on it, so a customer's words are
  * never filed next to the thread they came from.
  */
-async function remember(conversationId: string, psid: string, event: Messaging, answer: Answer): Promise<void> {
+async function remember(conversationId: string, psid: string, event: Messaging, answer: AnyAnswer): Promise<void> {
   const trace = answer.trace ?? [];
+  const product = productOf(answer.slots);
   const events: CollectedEvent[] = [
     { kind: "message", data: { chars: textOf(event).length, button: Boolean(event.postback) } },
     ...trace.map(({ kind, data }) => (data ? { kind, data } : { kind })),
@@ -181,10 +192,10 @@ async function remember(conversationId: string, psid: string, event: Messaging, 
   const unanswered: Unanswered[] = trace
     .filter((t): t is TraceEvent & { question: string } => Boolean(t.question))
     .map((t) => ({ intent: t.kind === "plan_info" ? "plan_info" : "other", route: "model" as const, question: t.question }));
-  await record(conversationId, events, PRODUCT, unanswered);
+  await record(conversationId, events, product, unanswered);
 
   const stage = leadStageOf(trace);
-  if (stage) await openLead({ conversationId, psid, stage, product: PRODUCT, formRef: formRefOf(conversationId) });
+  if (stage) await openLead({ conversationId, psid, stage, product, formRef: formRefOf(conversationId) });
 }
 
 /**

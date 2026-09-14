@@ -401,7 +401,9 @@ Meta แนบก้อน `referral` มาสามที่ แล้วแ�
 | `src/lib/facebook/oauth.ts` | `SUBSCRIBED_FIELDS` เพิ่ม `messaging_referrals` |
 | `src/lib/chat/session.ts` | `Session.conversationId` อ่านคืนเฉพาะเมื่อเซสชันยังสด และเขียนเมื่อถูกส่งมา |
 | `src/lib/chat/collect.ts` (ใหม่) | `openConversation()` `record()` `openLead()` ทุกตัวกลืน error แล้ว log ไม่โยนต่อ |
-| `src/lib/assistant/answer.ts` | `Answer.trace` แต่ละเส้นทาง push ชนิดของตัวเอง · `handOverForm()` รับ `formRef` |
+| `src/lib/assistant/common.ts` | `TraceEvent` `AnswerContext` และ `Reply.trace` ที่สองสมองใช้ร่วม · `handOverForm()` รับ `formRef` |
+| `src/lib/assistant/dispatch.ts` | ส่ง `ctx` ต่อให้ทั้งสองสมอง · บันทึก `asked_which` เมื่อต้องถามลูกค้าว่าสนใจแบบไหน |
+| `src/lib/assistant/lifeprotect/answer.ts` · `ihealthy/answer.ts` · `ihealthy/quote.ts` | แต่ละเส้นทาง push ชนิดของตัวเองลง `trace` |
 | `src/lib/facebook/conversation.ts` | อ่าน referral · เปิดบทสนทนาใหม่เมื่อเซสชันไม่มีหรือหมดอายุ · เรียก `record()` หลังส่งครบ · เปิดลีดตาม trace |
 | `src/app/privacy/page.tsx` | เขียนหัวข้อ "ข้อมูลที่เก็บ" ใหม่ตามหัวข้อถัดไป |
 | `docs/facebook-connect.md` | ข้อ 3 เพิ่มฟิลด์ที่สี่ |

@@ -1,4 +1,5 @@
 import { formatBaht } from "@/calc/money";
+import { PHONE_PLANS, PHONE_ROW_LABEL } from "@/lib/ihealthy-phone";
 import {
   benefitValue, categoryNumbers, isHeading, planLabel, type BenefitEntry, type IHealthyFacts,
 } from "@/lib/ihealthy-facts";
@@ -44,36 +45,6 @@ export interface BenefitTableProps {
   premiums?: { mode: string; label: string; byPlan: Record<string, number | null> }[];
 }
 
-/**
- * What a phone shows of a table built for a sheet of paper.
- *
- * Three plans and three figures, chosen by the user. Six columns of Thai do not fit a phone
- * at a size worth reading, and forty-one rows of them is a document rather than a
- * comparison — so a phone gets the middle three plans and the three figures that separate
- * them, and the whole table waits on a wider screen.
- *
- * The plan being quoted is always kept, whichever it is: a link can arrive carrying
- * แพลทินั่ม and a child is sold สมาร์ท, and the column the card is pricing must not be the
- * one column missing from the table under it.
- */
-export const PHONE_PLANS = ["BRONZE", "SILVER", "GOLD"];
-/**
- * The rows a phone shows, and what to call them there.
- *
- * The company's own wording runs to thirteen lines in a column a phone can spare for it,
- * which is a paragraph where a label is wanted. The short form is the page's own and is only
- * ever a label: a wide screen and a printed sheet both keep the contract's words, which is
- * what a customer is actually buying.
- *
- * One map rather than a list and a lookup, so a row cannot be shown without a name for it.
- */
-export const PHONE_ROW_LABEL: Record<number, { icon: string; label: string }> = {
-  1: { icon: "🛏️", label: "ค่าห้องและค่าอาหาร" },
-  5: { icon: "🏥", label: "Day Surgery" },
-  7: { icon: "🚑", label: "อุบัติเหตุ OPD 24 ชม" },
-  10: { icon: "🎗️", label: "มะเร็ง รังสีรักษา" },
-  18: { icon: "💊", label: "ผู้ป่วยนอก OPD" },
-};
 
 /**
  * The mark beside a short label on a phone. Decoration, so it is hidden from a screen

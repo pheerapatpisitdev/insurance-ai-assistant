@@ -1,6 +1,7 @@
 import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
-import { benefitCell, PHONE_ROW_LABEL } from "@/components/ihealthy/BenefitTable";
+import { benefitCell } from "@/components/ihealthy/BenefitTable";
+import { PHONE_ROW_LABEL, phoneColumns } from "@/lib/ihealthy-phone";
 import { categoryNumbers, iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
 import { deathBenefitRows, type BenefitRow as DeathRow } from "@/lib/death-benefit";
 import { initialFrom, ridersFrom } from "@/lib/ihealthy-link";
@@ -130,6 +131,17 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
   const asked = ridersFrom(query.getAll("r"));
 
   const sellable = plansFor(table, v.age).map((p) => p.code);
+  /**
+   * The plans this picture has room for.
+   *
+   * `fit=phone` is asked for by the bot and never by the page: six columns of Thai on a
+   * canvas a chat scales to the width of a phone is a table nobody reads without pinching.
+   * The plan being priced is always among them, so the column the headline belongs to is
+   * never the one left out.
+   */
+  const order = facts.plans.map((p) => p.code);
+  const shown = query.get("fit") === "phone" ? phoneColumns(order, sellable, v.plan) : order;
+  const drawn = facts.plans.filter((p) => shown.includes(p.code));
   const arrangement = {
     base: v.base, age: v.age, sex: v.sex, sumAssured: v.sumAssured,
     plan: v.plan, territory: v.territory, coverage: v.coverage,
@@ -164,14 +176,14 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
   const at = (mode: PayMode) => here?.total.find((m) => m.mode === mode);
   const headline = at(v.mode);
 
-  const columns: CardColumn[] = facts.plans.map((p) => ({
+  const columns: CardColumn[] = drawn.map((p) => ({
     name: planLabel(p.code),
     ceiling: MILLIONS(p.annualMax),
     selected: p.code === v.plan,
     sold: sellable.includes(p.code),
   }));
   const cellsOf = (get: (code: string) => string): CardCell[] =>
-    facts.plans.map((p) => ({ text: get(p.code), dim: !sellable.includes(p.code) }));
+    drawn.map((p) => ({ text: get(p.code), dim: !sellable.includes(p.code) }));
 
   /**
    * The ceiling first and the company's categories under it, in the sheet's own order.
@@ -183,7 +195,7 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
    */
   const rows: CardTableRow[] = [
     { label: "วงเงินค่ารักษาต่อปี", cells: cellsOf((code) => {
-      const plan = facts.plans.find((p) => p.code === code)!;
+      const plan = drawn.find((p) => p.code === code)!;
       return MILLIONS(plan.annualMax);
     }) },
   ];
@@ -275,6 +287,45 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
         + `ตารางเต็มมีอีก ${hidden} หมวด ดูได้ในหน้าเว็บ`,
       "เบี้ยปีแรกของอาชีพชั้น 1 · เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
       "ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกันและที่ระบุในกรมธรรม์",
+    ],
+  };
+}
+
+/**
+ * The comparison table with nothing over it.
+ *
+ * The quote card answers "what does this plan cost me"; this answers the question before it,
+ * "which of these am I buying" — so it carries no headline premium, no death benefit and no
+ * highlighted column, and its premium rows are the whole of its point rather than a footnote
+ * under one.
+ *
+ * Every figure is `iHealthyCard`'s, taken from the same call: two pictures sent one after the
+ * other that disagreed about a premium would be worse than sending neither.
+ */
+export interface IHealthyTableCard {
+  headLine: string;
+  /** who it is for and what it rides on */
+  insuredLine: string;
+  columns: CardColumn[];
+  rows: CardTableRow[];
+  premiumRows: { label: string; cells: CardCell[] }[];
+  notes: string[];
+}
+
+export function iHealthyTableCard(query: URLSearchParams, today: Date = new Date()): IHealthyTableCard {
+  const card = iHealthyCard(query, today);
+  // the card's first note counts the categories this picture leaves out, which is as true here
+  const hidden = card.notes[0];
+  return {
+    headLine: "iHealthy Ultra · เปรียบเทียบแผน",
+    insuredLine: card.insuredLine,
+    // nothing is chosen yet, so nothing is lit
+    columns: card.columns.map((c) => ({ ...c, selected: false })),
+    rows: card.rows,
+    premiumRows: card.premiumRows,
+    notes: [
+      "เบี้ยรวมสัญญาหลัก ค่ารักษา และค่าชดเชยรายวัน" + (hidden ? ` · ${hidden}` : ""),
+      ...card.notes.slice(1),
     ],
   };
 }

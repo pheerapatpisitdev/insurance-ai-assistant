@@ -21,6 +21,7 @@ export type EventKind =
   | "started" | "referral" | "message"
   | "routed" | "quoted" | "no_price" | "value_table" | "cheaper" | "offer_taken" | "pay_term"
   | "company" | "faq" | "plan_info" | "small_talk" | "handover" | "form_sent" | "form_done" | "stalled"
+  | "menu" | "other_plans" | "full_table" | "territory" | "asked_which"
   | "agent_replied" | "rate_limited" | "budget_exceeded" | "error";
 
 export interface CollectedEvent {

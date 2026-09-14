@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Answer, AnswerContext } from "@/lib/assistant/answer";
+import type { AnswerContext } from "@/lib/assistant/common";
+import type { Answer } from "@/lib/assistant/lifeprotect/answer";
 
 const sent: { text: string[]; images: string[]; replies: (string[] | undefined)[] } = { text: [], images: [], replies: [] };
 const session = {
@@ -43,7 +44,7 @@ vi.mock("@/lib/chat/session", async () => {
   };
 });
 
-vi.mock("@/lib/assistant/answer", () => ({ answerQuestion: answer }));
+vi.mock("@/lib/assistant/dispatch", () => ({ answerAny: answer }));
 
 /** What the record was told, and how it answers. */
 type Recorded = { id: string; events: { kind: string; data?: Record<string, unknown> }[]; unanswered: unknown[] };

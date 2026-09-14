@@ -6,11 +6,16 @@ import { formatBaht } from "@/calc/money";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
 import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
 import { planLabel } from "@/lib/ihealthy-facts";
-import { BenefitTable, PHONE_PLANS } from "@/components/ihealthy/BenefitTable";
+import { BenefitTable } from "@/components/ihealthy/BenefitTable";
+import { PHONE_PLANS } from "@/lib/ihealthy-phone";
 import { RiderPanel } from "@/components/ihealthy/RiderPanel";
 import {
-  MODES, dailyCashLabel, deathBenefitOf, iHealthyPricing, type IHealthyPricing,
+  MODES, dailyCashLabel, deathBenefitOf, iHealthyPricing, shownAt,
+  type IHealthyPricing, type IHealthyShown,
 } from "@/lib/ihealthy-quote";
+
+/** Re-exported where it has always been named from, so its readers need no edit. */
+export type { IHealthyShown };
 import {
   baseFor, resolveArrangement, sumFor, sumsFor, type IHealthyInitial,
 } from "@/lib/ihealthy-choice";
@@ -28,57 +33,6 @@ const COVERAGE_LABEL: Record<string, string> = {
   Deductible: "มีความรับผิดส่วนแรก",
   "Co-Payment": "ร่วมจ่าย",
 };
-
-export interface IHealthyShown {
-  /** all three in satang, as the pricing carries them */
-  base: number;
-  rider: number;
-  /** the daily cash the agency attaches as standard, absent above the age it is written at */
-  standard?: { label: string; total: number };
-  total: number;
-  belowMinimum: boolean;
-  /**
-   * The instalments the card is not headlining, in the order the table prices them — less any
-   * the company will not accept. Every sibling calculator drops those the same way: a figure
-   * printed under a heading that says how to pay is an offer to be paid that way.
-   */
-  others: { mode: PayMode; total: number }[];
-  /**
-   * The instalments the company will not accept, named rather than merely absent. Dropping
-   * them was right — a figure under a heading that says how to pay is an offer to be paid
-   * that way — but dropping them silently left a reader wondering where the monthly line
-   * went, and this page has no instalment picker to ask again with.
-   */
-  refused: PayMode[];
-}
-
-/**
- * The three figures for the instalment on screen, or nothing at all.
- *
- * Nothing rather than a partial row: a mode the pricing turns out not to carry is a miss,
- * and a card that printed a total with no base line under it would read as a complete quote.
- */
-export function shownAt(priced: IHealthyPricing | undefined, mode: PayMode): IHealthyShown | undefined {
-  if (priced === undefined) return undefined;
-  const base = priced.base.find((m) => m.mode === mode);
-  const rider = priced.rider.find((m) => m.mode === mode);
-  const total = priced.total.find((m) => m.mode === mode);
-  if (!base || !rider || !total) return undefined;
-  const standard = priced.standard?.premiums.find((m) => m.mode === mode);
-  return {
-    base: base.total,
-    rider: rider.total,
-    ...(priced.standard && standard
-      ? { standard: { label: priced.standard.label, total: standard.total } }
-      : {}),
-    total: total.total,
-    belowMinimum: total.belowMinimum,
-    others: priced.total
-      .filter((m) => m.mode !== mode && !m.belowMinimum)
-      .map((m) => ({ mode: m.mode, total: m.total })),
-    refused: priced.total.filter((m) => m.mode !== mode && m.belowMinimum).map((m) => m.mode),
-  };
-}
 
 export interface IHealthyCalculatorProps {
   table: IHealthyTable;

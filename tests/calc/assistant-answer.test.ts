@@ -15,8 +15,9 @@ vi.mock("@/lib/ai/client", async () => {
   return { ...actual, chat };
 });
 
-const { answerQuestion } = await import("@/lib/assistant/answer");
-const { asksValueTable, lifeProtectVariantIn, wantsToBuy } = await import("@/lib/assistant/route");
+const { answerQuestion } = await import("@/lib/assistant/lifeprotect/answer");
+const { asksValueTable, lifeProtectVariantIn } = await import("@/lib/assistant/lifeprotect/route");
+const { wantsToBuy } = await import("@/lib/assistant/common");
 const { lifeProtectTable } = await import("@/lib/lifeprotect-table");
 const { lifeProtectQuoteText } = await import("@/lib/lifeprotect-cta");
 const { cashAt, deathBenefitOf, lifeProtectModes, termAt } = await import("@/lib/lifeprotect-quote");
@@ -266,6 +267,19 @@ describe("what the model is told about the plan", () => {
     expect(system).toContain("Life Protect+ 100");
     expect(system).not.toContain("ตัวอย่าง");
     expect(system).not.toMatch(/\d,\d{3} ?บาท\/เดือน|เดือนละ \d/);
+  });
+});
+
+describe("a couple written one to a line", () => {
+  it("is priced even when the model could not read the turn", async () => {
+    // the router's own fallback: no age, no sex, no people — the code reads them instead
+    routed = { intent: "other" };
+    const known = { intent: "quote" as const, coverWanted: 1_000_000 };
+    const answer = await answerQuestion(said("ญ40\nช49"), known);
+    expect(answer.priced).toBe(true);
+    expect(answer.messages).toHaveLength(2);
+    expect(answer.messages[0].card).toContain("age=40&sex=F");
+    expect(answer.messages[1].card).toContain("age=49&sex=M");
   });
 });
 

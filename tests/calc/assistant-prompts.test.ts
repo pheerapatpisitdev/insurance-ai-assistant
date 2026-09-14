@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "@/lib/assistant/prompts";
+import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "@/lib/assistant/lifeprotect/prompts";
 
 /**
  * The prompts are the only place the model is allowed to speak from, so what they forbid is
@@ -26,6 +26,12 @@ describe("what the model is told", () => {
     expect(PLAN_INFO_SYSTEM).toContain("การเคลม");
     expect(PLAN_INFO_SYSTEM).toContain("การพิจารณาสุขภาพ");
   });
+
+  for (const [name, prompt] of [["plan info", PLAN_INFO_SYSTEM], ["small talk", SMALL_TALK_SYSTEM]] as const) {
+    it(`forbids ${name} from promising to send something later`, () => {
+      expect(prompt).toContain("ห้ามสัญญาว่าจะส่งอะไรให้ทีหลัง");
+    });
+  }
 
   for (const [name, prompt] of [["plan info", PLAN_INFO_SYSTEM], ["small talk", SMALL_TALK_SYSTEM]] as const) {
     it(`keeps ${name} away from the company, an invented identity and a figure of its own`, () => {
