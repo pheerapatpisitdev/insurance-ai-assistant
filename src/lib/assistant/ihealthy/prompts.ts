@@ -97,7 +97,7 @@ function benefits(slots: HealthSlots, today: Date): string {
         return value ? `${row.title}: ${value}` : "";
       })
       .filter(Boolean);
-    return `แผน${planLabel(plan.code)} (วงเงินค่ารักษาต่อปี ${plan.annualMax.toLocaleString("en-US")} บาท)\n`
+    return `แผน ${planLabel(plan.code)} (วงเงินค่ารักษาต่อปี ${plan.annualMax.toLocaleString("en-US")} บาท)\n`
       + rows.join("\n");
   }
 
@@ -124,7 +124,7 @@ function known(slots: HealthSlots, today: Date): string {
   const bits: string[] = [];
   if (slots.sex) bits.push(slots.sex === "M" ? "ชาย" : "หญิง");
   if (slots.age !== undefined) bits.push(`อายุ ${slots.age} ปี`);
-  if (slots.plan) bits.push(`แผน${planLabel(slots.plan)}`);
+  if (slots.plan) bits.push(`แผน ${planLabel(slots.plan)}`);
   if (slots.territory) bits.push(`อาณาเขต${slots.territory}`);
   if (bits.length === 0) return "";
 

@@ -36,6 +36,9 @@ describe("rehearsal", () => {
       console.log(`\n🤖 บอท (ข้อความที่ ${i + 1}/${answer.messages.length}):\n${m.text}`);
       if (m.card) console.log(`   [ส่งรูปการ์ด] https://www.advisortool.app${m.card}`);
     });
+    // the buttons are half of what the health path does — a tap arrives as its own title,
+    // so a rehearsal that could not see them could not be continued by tapping one
+    if (answer.replies?.length) console.log(`\n   [ปุ่ม] ${answer.replies.join("  ·  ")}`);
     console.log(`\n⏱  ${((Date.now() - started) / 1000).toFixed(1)} วินาที · ข้อมูลที่บอทจำไว้: ${JSON.stringify(answer.slots)}`);
 
     fs.writeFileSync(STATE, JSON.stringify({

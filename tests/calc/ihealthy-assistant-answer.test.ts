@@ -37,6 +37,22 @@ describe("before it knows who it is quoting", () => {
   });
 });
 
+describe("the button the customer taps to get here", () => {
+  it("asks for an age and a sex, without paying a model to say so", async () => {
+    const answer = await answerHealth(said("🏥 ประกันสุขภาพ"), null);
+    expect(answer.messages).toHaveLength(1);
+    expect(answer.messages[0].text).toContain("อายุ");
+    expect(answer.messages[0].text).toContain("เพศ");
+    expect(chat).not.toHaveBeenCalled();
+  });
+
+  it("goes straight to the menu when the person is already known", async () => {
+    const answer = await answerHealth(said("🏥 ประกันสุขภาพ"), KNOWN);
+    expect(answer.replies).toEqual(["Bronze", "Silver", "Gold"]);
+    expect(chat).not.toHaveBeenCalled();
+  });
+});
+
 describe("once it knows an age and a sex", () => {
   it("sends the menu, not a quote", async () => {
     routed = { intent: "quote", age: 35, sex: "F" };
@@ -122,6 +138,32 @@ describe("the answers it gives without paying a model", () => {
     const answer = await answerHealth(said("เป็นเบาหวาน ทำได้ไหม"), quoted);
     expect(answer.messages[0].text).toContain("แถลงข้อมูลสุขภาพตามจริง");
     expect(chat).not.toHaveBeenCalled();
+  });
+});
+
+describe("a question asked after a quotation", () => {
+  const quoted = { ...KNOWN, plan: "GOLD" };
+
+  it("is answered, not quoted at all over again", async () => {
+    // the model has the plan in its context and hands it back; that is not a request to re-price
+    routed = { intent: "quote", plan: "GOLD" };
+    worded = "Gold ได้ OPD 12,000 บาทต่อปีครับ";
+    const answer = await answerHealth(said("OPD ได้ไหม"), quoted);
+    expect(answer.messages[0].text).toBe(worded);
+    expect(answer.messages[0].card).toBeUndefined();
+  });
+
+  it("still quotes when the customer names a different plan", async () => {
+    routed = { intent: "quote" };
+    const answer = await answerHealth(said("Diamond ล่ะ"), quoted);
+    expect(answer.messages[0].card).toContain("plan=DIAMOND");
+    expect(answer.priced).toBe(true);
+  });
+
+  it("still quotes when the customer asks for the same plan again by name", async () => {
+    routed = { intent: "quote" };
+    const answer = await answerHealth(said("ขอราคา Gold อีกที"), quoted);
+    expect(answer.priced).toBe(true);
   });
 });
 

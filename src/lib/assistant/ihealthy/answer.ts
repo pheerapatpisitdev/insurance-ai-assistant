@@ -10,6 +10,7 @@ import {
   WANTS_IN, aboutCompany, affirms, asksAboutCompany, asksCheaper, handOverForm, one,
   recentTurns, saysFormDone, spoken, stallReply, stalls, wantsToBuy, type Reply,
 } from "../common";
+import { CHOOSE_HEALTH } from "../choose";
 import { healthFaqAnswer } from "./faq";
 import { healthMenu, otherPlansReply } from "./menu";
 import { HEALTH_PLAN_INFO_SYSTEM, HEALTH_SMALL_TALK_SYSTEM, healthFactsFor } from "./prompts";
@@ -17,7 +18,8 @@ import {
   HEALTH_HAND_OVER, SEE_OTHER_PLANS, THIS_PLAN_BENEFITS, arrangementFor, hasHealthQuote, healthQuote,
 } from "./quote";
 import {
-  asksFullTable, asksOtherPlans, asksShareOfBill, routeHealth, territoryNamedIn, type HealthSlots,
+  asksFullTable, asksOtherPlans, asksShareOfBill, planNamedIn, routeHealth, territoryNamedIn,
+  type HealthSlots,
 } from "./route";
 
 /** One answer from the health brain, and what it should remember next turn. */
@@ -85,6 +87,18 @@ export async function answerHealth(
   if (faq) return { ...one(faq), slots: known };
   if (asksShareOfBill(asked)) return { ...one(SHARE_OF_BILL_ANSWER), slots: known };
 
+  /**
+   * The customer tapped the button that got them here, and it says nothing but the product's
+   * name. Left to the model it reads as a request for a description of the contract, and the
+   * first thing the advert paid for is three bubbles about renewal ages where a question was
+   * wanted. It is a button title like the others, so it is answered like the others.
+   */
+  if (asked === CHOOSE_HEALTH) {
+    return known.age !== undefined && known.sex !== undefined
+      ? { ...healthMenu(known.age, known.sex), slots: known }
+      : { ...one(askForMissing(known)), slots: known };
+  }
+
   if (known.age !== undefined && known.sex !== undefined) {
     const who = { ...known, age: known.age, sex: known.sex };
     if (asksFullTable(asked)) return { ...fullTableLink(who), slots: known };
@@ -105,8 +119,23 @@ export async function answerHealth(
   if (slots.age === undefined || slots.sex === undefined) {
     return { ...one(askForMissing(slots)), slots };
   }
+  /**
+   * A plan is quoted when the customer has asked to be: they named one this turn, they picked
+   * a different one, or they have not been quoted at all yet.
+   *
+   * Not merely because a plan is in the slots. The model is handed the conversation and hands
+   * the plan back with it, so "OPD ได้ไหม" three messages after a quotation came back as the
+   * whole quotation again, card and all — the same thing the life brain did when asked how
+   * long the premium ran.
+   */
   if (slots.plan) {
-    return { ...healthQuote({ ...slots, age: slots.age, sex: slots.sex, plan: slots.plan }), slots };
+    const asking = planNamedIn(asked) !== undefined
+      || slots.plan !== known.plan
+      || !hasHealthQuote(known);
+    if (asking) {
+      return { ...healthQuote({ ...slots, age: slots.age, sex: slots.sex, plan: slots.plan }), slots };
+    }
+    return { ...(await planInfo(history, slots)), slots };
   }
   if (slots.intent === "quote") return { ...healthMenu(slots.age, slots.sex), slots };
   return { ...(await smallTalk(history, slots)), slots };
@@ -125,11 +154,11 @@ function cheaper(age: number, sex: Sex, plan?: string): Reply {
   const sellable = plansFor(table, age).map((p) => p.code);
   const below = sellable.slice(0, sellable.indexOf(plan));
   if (below.length === 0) {
-    return one(`แผน${planLabel(plan)} เป็นแผนที่เบี้ยถูกที่สุดของสัญญานี้แล้วครับ\n${SHARE_OF_BILL_ANSWER}`);
+    return one(`แผน ${planLabel(plan)} เป็นแผนที่เบี้ยถูกที่สุดของสัญญานี้แล้วครับ\n${SHARE_OF_BILL_ANSWER}`);
   }
   const next = below[below.length - 1];
   return {
-    ...one(`ถ้าอยากให้เบาลง มีแผน${planLabel(next)} ครับ วงเงินน้อยกว่าแต่เบี้ยถูกกว่า อยากดูราคาไหมครับ`),
+    ...one(`ถ้าอยากให้เบาลง มีแผน ${planLabel(next)} ครับ วงเงินน้อยกว่าแต่เบี้ยถูกกว่า อยากดูราคาไหมครับ`),
     replies: [planLabel(next), SEE_OTHER_PLANS],
   };
 }
@@ -150,7 +179,7 @@ function territoryAnswer(
     return { ...one(`อาณาเขต${wanted} สัญญานี้ไม่มีให้เลือกครับ ${HEALTH_HAND_OVER}`), slots };
   }
   return {
-    ...one(`อาณาเขต${wanted} บริษัทเขียนไว้เฉพาะแผน${sold.map(planLabel).join(" กับแผน")} ครับ อยากดูราคาแผนไหนบอกได้เลย`),
+    ...one(`อาณาเขต${wanted} บริษัทเขียนไว้เฉพาะแผน ${sold.map(planLabel).join(" กับแผน ")} ครับ อยากดูราคาแผนไหนบอกได้เลย`),
     replies: sold.map(planLabel),
     slots,
   };
