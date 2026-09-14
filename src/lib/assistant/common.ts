@@ -183,9 +183,14 @@ export function recentTurns(history: ChatMessage[], count: number): ChatMessage[
  * insurer: asked "กรุงไทยแอกซ่าใช่ไหม", the model said "ใช่ครับ", which was agreement with
  * whatever name the customer happened to type, about the company that would be insuring
  * their life. A rival's name is matched too, so that guess is corrected rather than confirmed.
+ *
+ * The short forms count as the same question. Customers drop the noun — "ของอะไรครับ",
+ * "ประกันของใครคะ", "เจ้าไหน" — and mean exactly which company. Left out, those reached the
+ * model, which has no business naming one. "ที่ไหน" is deliberately absent: "ซื้อได้ที่ไหน"
+ * asks where to buy, not who sells.
  */
 const INSURER_QUESTION =
-  /บริษัท\s*(อะไร|ไหน|อะไรคะ|ไรครับ)|ของบริษัท|ผู้รับประกัน|รับประกันโดย|ค่ายไหน|แบรนด์|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential|allianz|อลิอันซ์|\bfwd\b|โตเกียว|กรุงเทพประกัน|ไทยพาณิชย์|\bscb\b/i;
+  /บริษัท\s*(อะไร|ไหน|อะไรคะ|ไรครับ)|ของบริษัท|ของอะไร|ของใคร|เจ้าไหน|ของค่าย|ผู้รับประกัน|รับประกันโดย|ค่ายไหน|แบรนด์|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential|allianz|อลิอันซ์|\bfwd\b|โตเกียว|กรุงเทพประกัน|ไทยพาณิชย์|\bscb\b/i;
 
 /**
  * Asking about the people rather than the company: a licence, a brokerage, whether any of

@@ -181,6 +181,24 @@ describe("who stands behind the policy", () => {
     expect(answer.messages[0].text).not.toMatch(/\b1[0-9]{12}\b/);
   });
 
+  it("hears the short way people actually ask it", async () => {
+    // real customers, this morning: the sentence is elliptical, the question is the same
+    for (const asked of ["ของอะไรครับ", "ประกันของใครคะ", "เจ้าไหนครับ", "ของค่ายไหน"]) {
+      routed = { intent: "other" };
+      const answer = await answerQuestion(said(asked), null);
+      expect(answer.messages[0].text, asked).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
+    }
+  });
+
+  it("does not hear a question about where to buy as a question about who sells", async () => {
+    for (const asked of ["ซื้อได้ที่ไหนครับ", "สมัครที่ไหน", "คุ้มครองอะไรบ้าง", "ต้องเตรียมอะไรบ้าง"]) {
+      routed = { intent: "plan_info" };
+      worded = "ตอบตามข้อมูลครับ";
+      const answer = await answerQuestion(said(asked), null);
+      expect(answer.messages[0].text, asked).not.toContain("กรุงไทย-แอกซ่า");
+    }
+  });
+
   it("names the insurer and leaves the licence to a person", async () => {
     routed = { intent: "other" };
     const answer = await answerQuestion(said("มีใบอนุญาตตัวแทนไหม บริษัทน่าเชื่อถือหรือเปล่า"), null);
