@@ -89,3 +89,58 @@ body:has(.ihealthy-scope) { background: #f5f2eb; }
   .ihu-section-label { display: none; }
   .ihealthy-scope #calc > div > .border { box-shadow: none; background: #fff; }
 }
+
+/* Clear cell boundaries and a comfortable reading rhythm for benefit comparisons. */
+.ihealthy-scope .ihu-benefit-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #a9b4b4;
+  border-radius: 12px;
+  --lg-panel-line: #b8c1bf;
+  --lg-gold-glow: #e4ebe8;
+  background: #fffdf8;
+}
+.ihealthy-scope .ihu-benefit-table :is(th, td) {
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #b8c1bf;
+  line-height: 1.9;
+  vertical-align: top;
+  color: #34474e;
+}
+.ihealthy-scope .ihu-benefit-table th[scope="row"] {
+  background: #f7f4ed;
+  border-right: 2px solid #a9b4b4;
+  font-weight: 400;
+}
+.ihealthy-scope .ihu-benefit-table thead th {
+  background: #e5eae7;
+  border-bottom: 2px solid #859696;
+  box-shadow: none;
+  font-weight: 600;
+}
+.ihealthy-scope .ihu-benefit-table th[scope="colgroup"] {
+  background: #dddccc;
+  border-top: 1px solid #a9b4b4;
+  border-bottom: 2px solid #a9b4b4;
+  font-weight: 600;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.ihealthy-scope .ihu-benefit-table tbody tr:last-child > * { border-bottom: 0; }
+.ihealthy-scope .ihu-benefit-table th[scope="row"] > span:last-child:not(:first-child) { line-height: 1.9; }
+@media (min-width: 640px) {
+  .ihealthy-scope .ihu-benefit-table :is(th, td) { font-size: 13px; padding-left: 16px; padding-right: 16px; }
+  .ihealthy-scope .ihu-benefit-table th[scope="row"] > span { white-space: pre-line; }
+}
+@media print {
+  .ihealthy-scope .ihu-benefit-table :is(th, td) { font-size: 9px; padding: 7px; line-height: 1.65; }
+}
+@media (min-width: 640px) {
+  .ihealthy-scope .ihu-benefit-table th[scope="colgroup"] > span {
+    width: min(560px, calc(100vw - 96px));
+    min-width: 0;
+    max-width: none;
+    padding-left: 0;
+  }
+}

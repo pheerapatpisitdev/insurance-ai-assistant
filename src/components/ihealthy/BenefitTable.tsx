@@ -167,7 +167,7 @@ export function BenefitTable(
       >
         {/* A phone gets a table sized to its box, so three plans and their titles share the
               width and the Thai wraps; a wide screen gets one sized to its content. */}
-          <table className="w-full border-collapse text-xs sm:w-max sm:min-w-full">
+          <table className="ihu-benefit-table w-full border-collapse text-xs sm:w-max sm:min-w-full">
           <caption className="sr-only">
             ตารางผลประโยชน์ iHealthy Ultra ทั้ง {plans.length} แผน
           </caption>
