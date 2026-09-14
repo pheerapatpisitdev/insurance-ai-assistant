@@ -61,7 +61,8 @@ describe("a quote", () => {
 
   it("sends a card of the same arrangement", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
-    expect(answer.messages[0].card).toBe("/api/card?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=1000000");
+    expect(answer.messages[0].card)
+      .toMatch(/^\/api\/card\?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=1000000&v=[0-9a-z]+$/);
   });
 
   it("offers the two terms it did not quote", async () => {
@@ -358,7 +359,8 @@ describe("the value table", () => {
     // the router reads the turn, but no model writes the words or the figures
     expect(chat.mock.calls.map((c) => c[0].task)).toEqual(["route"]);
     expect(answer.messages).toHaveLength(1);
-    expect(answer.messages[0].card).toBe("/api/card/table?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=1000000");
+    expect(answer.messages[0].card)
+      .toMatch(/^\/api\/card\/table\?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=1000000&v=[0-9a-z]+$/);
     expect(answer.messages[0].text).toContain("ตารางมูลค่าทุกปี");
   });
 

@@ -1,7 +1,7 @@
 import { formatBaht } from "@/calc/money";
 import type { Sex } from "@/calc/types";
 import { planLabel } from "@/lib/ihealthy-facts";
-import { queryFrom } from "@/lib/ihealthy-link";
+import { cardQuery } from "@/lib/ihealthy-link";
 import { phoneColumns } from "@/lib/ihealthy-phone";
 import { iHealthyPricing, plansFor } from "@/lib/ihealthy-quote";
 import { iHealthyTable, type IHealthyTable } from "@/lib/ihealthy-table";
@@ -72,7 +72,7 @@ export function healthMenu(age: number, sex: Sex, today: Date = new Date()): Rep
   return {
     messages: [{
       text: `${SEX_WORD[sex]} ${age} ปี เบี้ยรวมต่อปีครับ 🏥\n${lines(priced)}\n${WHAT_IS_IN_IT}`,
-      card: `/api/ihealthy-card/table?${queryFrom(table, v)}&fit=phone`,
+      card: `/api/ihealthy-card/table?${cardQuery(table, v)}&fit=phone`,
     }],
     replies: priced.map((row) => planLabel(row.code)),
   };

@@ -1,6 +1,7 @@
 import type { PayMode } from "@/calc/types";
 import type { AttachedRider } from "@/lib/ihealthy-rider-quote";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
+import { IHEALTHY_IVORY, cardPaletteVersion } from "@/lib/card-theme";
 import {
   IHEALTHY_OPENING, baseFor, resolveArrangement, sumFor, type IHealthyInitial,
 } from "@/lib/ihealthy-choice";
@@ -248,9 +249,21 @@ export function ridersFrom(raw: string[]): AttachedRider[] {
 }
 
 /**
+ * The arrangement as a card asks for it: the page's own query, plus the fingerprint of the
+ * palette the health cards are drawn in.
+ *
+ * Only the pictures carry it. `queryFrom` also writes the address bar and the link the
+ * assistant sends to the sales page, and neither is cached on its colours — a `v` there would
+ * be a parameter the reader has to look at and nothing would ever read.
+ */
+export function cardQuery(table: IHealthyTable, v: IHealthyInitial): string {
+  return `${queryFrom(table, v)}&v=${cardPaletteVersion(IHEALTHY_IVORY)}`;
+}
+
+/**
  * Where the same quote is drawn as a picture: the arrangement on screen, and the riders
  * attached to it, in one address the route can price from scratch.
  */
 export function cardPath(table: IHealthyTable, v: IHealthyInitial): string {
-  return `/api/ihealthy-card?${queryFrom(table, v)}`;
+  return `/api/ihealthy-card?${cardQuery(table, v)}`;
 }

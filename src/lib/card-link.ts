@@ -1,4 +1,5 @@
 import type { PayMode, Sex } from "@/calc/types";
+import { cardVersionFor } from "@/lib/card-theme";
 
 /**
  * What a card is asked for, and the link that asks for it.
@@ -69,6 +70,12 @@ function cardQuery(input: CardInput): string {
       sum: String(input.sumAssured),
     });
   if (input.mode) q.set("mode", input.mode);
+  /**
+   * The palette's fingerprint, so a re-coloured plan is not served from a cache keyed on an
+   * address that did not change. Last, so the readable part of the link stays readable, and
+   * ignored by the route — see cardPaletteVersion.
+   */
+  q.set("v", cardVersionFor(input));
   return q.toString();
 }
 

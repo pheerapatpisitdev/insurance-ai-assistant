@@ -34,7 +34,8 @@ describe("cardInputFrom, for a bundle", () => {
 
 describe("cardPath, for a bundle", () => {
   it("writes the arrangement into the address", () => {
-    expect(cardPath(MAN40)).toBe("/api/card?bundle=LEGACY_FAMILY&tier=1&age=40&sex=M&mode=annual");
+    expect(cardPath(MAN40))
+      .toMatch(/^\/api\/card\?bundle=LEGACY_FAMILY&tier=1&age=40&sex=M&mode=annual&v=[0-9a-z]+$/);
   });
 
   it("survives the round trip back into an input", () => {
