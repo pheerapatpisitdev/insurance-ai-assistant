@@ -46,6 +46,16 @@ describe("the facts the model is given", () => {
     expect(text).not.toContain("Platinum");
   });
 
+  it("never narrows the plans to a child's two when the age is unknown", () => {
+    // `plansFor` at the table's lowest age sells only Smart and Bronze, and a prompt built
+    // from that had the bot tell a grown customer those were the only plans there are
+    const text = healthFactsFor({ product: "ihealthy", intent: "quote" });
+    for (const name of ["Smart", "Bronze", "Silver", "Gold", "Diamond", "Platinum"]) {
+      expect(text).toContain(name);
+    }
+    expect(text).toContain("ขึ้นกับอายุ");
+  });
+
   it("carries the headline rows of the menu plans before one is chosen", () => {
     const text = healthFactsFor(WHO);
     expect(text).toContain("Bronze");

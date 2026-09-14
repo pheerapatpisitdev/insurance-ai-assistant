@@ -86,8 +86,20 @@ function rowsOf(entries: readonly (BenefitRow | { heading: string })[]): Benefit
 function benefits(slots: HealthSlots, today: Date): string {
   const facts = iHealthyFacts();
   const table = iHealthyTable(today);
+  /**
+   * Which plans exist, and — only once an age is known — which of them this customer may buy.
+   *
+   * `plansFor` needs an age, and standing in the table's lowest one is how the bot came to
+   * tell a grown customer that "แผนที่แนะนำตอนนี้มีสองแผนคือ Smart และ Bronze": at six the
+   * company writes only those two, and the model reported what it was given. With no age
+   * there is no such list, so every plan goes in and the prompt says the availability
+   * depends on an age nobody has given yet.
+   */
+  const known = slots.age !== undefined;
   const age = slots.age ?? table.ageMin;
-  const sellable = plansFor(table, age).map((p) => p.code);
+  const sellable = known
+    ? plansFor(table, age).map((p) => p.code)
+    : table.plans.map((p) => p.code);
 
   if (slots.plan && sellable.includes(slots.plan)) {
     const plan = facts.plans.find((p) => p.code === slots.plan)!;
@@ -101,7 +113,7 @@ function benefits(slots: HealthSlots, today: Date): string {
       + rows.join("\n");
   }
 
-  const shown = phoneColumns(table.plans.map((p) => p.code), sellable);
+  const shown = known ? phoneColumns(table.plans.map((p) => p.code), sellable) : sellable;
   const headline = rowsOf(facts.rows).filter((row) => row.no !== null && row.no in PHONE_ROW_LABEL);
   const head = shown.map((code) => {
     const plan = facts.plans.find((p) => p.code === code)!;
@@ -110,7 +122,11 @@ function benefits(slots: HealthSlots, today: Date): string {
     );
     return `${planLabel(code)} · วงเงิน ${plan.annualMax.toLocaleString("en-US")} บาทต่อปี · ${cells.join(" · ")}`;
   });
-  return `แผนที่เสนออยู่\n${head.join("\n")}\nยังมีแผนอื่นอีก ถ้าลูกค้าถามให้บอกว่าขอดูแผนอื่นได้`;
+  return known
+    ? `แผนที่เสนออยู่\n${head.join("\n")}\nยังมีแผนอื่นอีก ถ้าลูกค้าถามให้บอกว่าขอดูแผนอื่นได้`
+    : `แผนทั้งหมดที่บริษัทเขียน\n${head.join("\n")}\n`
+      + "แผนที่ซื้อได้จริงขึ้นกับอายุ ยังไม่ทราบอายุของลูกค้ารายนี้ "
+      + "ห้ามบอกว่ามีแค่บางแผน ห้ามบอกว่าแผนไหนซื้อได้หรือไม่ได้ ให้ขอเพศกับอายุก่อน";
 }
 
 /**
