@@ -34,6 +34,24 @@ export const FOLLOWUP_TEXT = [
  */
 export const FOLLOWUP_REPLIES = ["ขอแบบถูกลง", "ขอตารางมูลค่า", "สนใจสมัคร"];
 
+/**
+ * The second and last, sent as late in the day as the window allows.
+ *
+ * Its reader has now ignored the bot twice, so it does not ask again what the first one
+ * asked. What it does is take the pressure off and say so truthfully — two is the cap, there
+ * is no third — because the customer who is still deciding is often the one avoiding being
+ * chased. It also leaves the quotation where they can find it, and says out loud that showing
+ * it to someone at home is a normal thing to do, which for an inheritance policy it is.
+ *
+ * And a tap on any button is a reply, which opens Meta's window for another day.
+ */
+export const FOLLOWUP_LAST_TEXT = [
+  "ผมไม่รบกวนต่อแล้วนะครับ 🙏",
+  "ใบเสนอยังอยู่ในแชทนี้ เปิดดูหรือส่งให้ที่บ้านดูได้ตลอด ถ้ามีคำถามเมื่อไหร่ ทักมาได้เลยครับ",
+].join("\n");
+
+export const FOLLOWUP_LAST_REPLIES = ["ขอตารางมูลค่า", "ขอแบบถูกลง", "สนใจสมัคร"];
+
 /** How long a quotation is left to speak for itself. */
 export const SILENCE_MS = 5 * 60_000;
 
@@ -48,8 +66,9 @@ const WINDOW_HOURS = 24;
  *
  * It is the one thing about a conversation this project stores in a form it can read back,
  * and it exists for exactly one purpose: a message cannot be addressed without it. The column
- * is encrypted with the same passphrase the page token uses, emptied the moment the message
- * is claimed for sending, and the row is deleted within the day either way.
+ * is encrypted with the same passphrase the page token uses, emptied when the last of the two
+ * messages is claimed, and deleted outright the moment either party speaks — and within the
+ * day regardless.
  */
 function passphrase(): string {
   const s = process.env.ADMIN_SESSION_SECRET;
@@ -84,6 +103,15 @@ export async function dropFollowup(channel: Channel, userHash: string): Promise<
 export interface Due {
   userHash: string;
   psid: string;
+  /** 1 is the five-minute question, 2 the last one before the window shuts */
+  stage: number;
+}
+
+/** What to send at each stage, and the buttons under it. */
+export function followupMessage(stage: number): { text: string; replies: string[] } {
+  return stage >= 2
+    ? { text: FOLLOWUP_LAST_TEXT, replies: FOLLOWUP_LAST_REPLIES }
+    : { text: FOLLOWUP_TEXT, replies: FOLLOWUP_REPLIES };
 }
 
 /**
@@ -98,9 +126,9 @@ export async function claimDueFollowups(channel: Channel): Promise<Due[]> {
     p_passphrase: passphrase(),
   });
   if (error) throw new Error(`อ่านคิวติดตามไม่สำเร็จ: ${error.message}`);
-  return ((data ?? []) as { user_hash: string; psid: string }[])
+  return ((data ?? []) as { user_hash: string; psid: string; stage: number }[])
     .filter((r) => r.psid)
-    .map((r) => ({ userHash: r.user_hash, psid: r.psid }));
+    .map((r) => ({ userHash: r.user_hash, psid: r.psid, stage: r.stage ?? 1 }));
 }
 
 /** Rows past their day, sent or not. */

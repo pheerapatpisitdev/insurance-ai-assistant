@@ -8,7 +8,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   supabaseAdmin: () => ({
     rpc: async (fn: string, args: Record<string, unknown>) => {
       calls.push({ fn, args });
-      return { data: fn === "ins_claim_followups" ? [{ user_hash: "h1", psid: "psid-1" }] : null, error: null };
+      return { data: fn === "ins_claim_followups" ? [{ user_hash: "h1", psid: "psid-1", stage: 1 }] : null, error: null };
     },
     from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: secretRow }) }) }),
@@ -16,8 +16,10 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-const { armFollowup, claimDueFollowups, dropFollowup, FOLLOWUP_REPLIES, FOLLOWUP_TEXT, SILENCE_MS } =
-  await import("@/lib/chat/followup");
+const {
+  armFollowup, claimDueFollowups, dropFollowup, followupMessage,
+  FOLLOWUP_LAST_REPLIES, FOLLOWUP_LAST_TEXT, FOLLOWUP_REPLIES, FOLLOWUP_TEXT, SILENCE_MS,
+} = await import("@/lib/chat/followup");
 const { cronCallerIsOurs } = await import("@/lib/chat/cron-token");
 const { asksCheaper, wantsToBuy } = await import("@/lib/assistant/common");
 const { asksValueTable } = await import("@/lib/assistant/lifeprotect/route");
@@ -51,7 +53,7 @@ describe("the one question sent into a silence", () => {
   });
 
   it("claims what is due, which is the same statement that marks it sent", async () => {
-    expect(await claimDueFollowups("facebook")).toEqual([{ userHash: "h1", psid: "psid-1" }]);
+    expect(await claimDueFollowups("facebook")).toEqual([{ userHash: "h1", psid: "psid-1", stage: 1 }]);
     expect(calls[0].fn).toBe("ins_claim_followups");
   });
 
@@ -62,6 +64,33 @@ describe("the one question sent into a silence", () => {
       const heard = asksCheaper(title) || asksValueTable(title) || wantsToBuy(title, true);
       expect(heard, title).toBe(true);
     }
+  });
+});
+
+describe("the last question, before the window shuts", () => {
+  it("does not ask again what the first one asked", () => {
+    expect(FOLLOWUP_LAST_TEXT).not.toContain("เบี้ยเบากว่า");
+    expect(FOLLOWUP_LAST_TEXT).not.toContain("จ่ายสั้น");
+  });
+
+  it("promises the silence it can actually keep", () => {
+    // two is the cap, so saying so is true; a third message would make it a lie
+    expect(FOLLOWUP_LAST_TEXT).toContain("ไม่รบกวนต่อแล้ว");
+  });
+
+  it("offers nothing the bot cannot answer", () => {
+    for (const title of FOLLOWUP_LAST_REPLIES) {
+      expect(title.length, title).toBeLessThanOrEqual(20);
+      const heard = asksCheaper(title) || asksValueTable(title) || wantsToBuy(title, true);
+      expect(heard, title).toBe(true);
+    }
+  });
+
+  it("is what the second stage sends, and the first stage sends the first", () => {
+    expect(followupMessage(1)).toEqual({ text: FOLLOWUP_TEXT, replies: FOLLOWUP_REPLIES });
+    expect(followupMessage(2)).toEqual({ text: FOLLOWUP_LAST_TEXT, replies: FOLLOWUP_LAST_REPLIES });
+    // anything beyond two is the last message, not a new one
+    expect(followupMessage(3).text).toBe(FOLLOWUP_LAST_TEXT);
   });
 });
 

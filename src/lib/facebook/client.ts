@@ -83,7 +83,18 @@ export async function sendImage(psid: string, url: string, replies?: string[]): 
   });
 }
 
-export async function sendMessage(psid: string, text: string, replies?: string[]): Promise<void> {
+/**
+ * Why the page is writing. An answer to something the customer sent is a RESPONSE; a message
+ * the bot decided to send on its own is an UPDATE. Both are allowed inside Meta's day-long
+ * window, and saying which is which leaves nothing to interpret.
+ */
+export interface SendOptions {
+  proactive?: boolean;
+}
+
+export async function sendMessage(
+  psid: string, text: string, replies?: string[], options?: SendOptions,
+): Promise<void> {
   // parts go one after another, because Messenger shows them in the order they arrive
   const parts = toParts(text);
   for (const [i, part] of parts.entries()) {
@@ -92,7 +103,7 @@ export async function sendMessage(psid: string, text: string, replies?: string[]
     const last = i === parts.length - 1;
     await post("messages", {
       recipient: { id: psid },
-      messaging_type: "RESPONSE",
+      messaging_type: options?.proactive ? "UPDATE" : "RESPONSE",
       message: { text: part, ...(last && replies?.length ? { quick_replies: quickReplies(replies) } : {}) },
     });
   }
