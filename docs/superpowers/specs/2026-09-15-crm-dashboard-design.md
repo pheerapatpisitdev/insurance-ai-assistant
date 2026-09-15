@@ -1,7 +1,8 @@
 # หน้า CRM และ Dashboard สำหรับผู้ช่วย AI ประกัน — เอกสารออกแบบ
 
 วันที่: 2026-09-15
-สถานะ: รออนุมัติ
+สถานะ: อนุมัติแล้ว (ผู้ใช้ยืนยัน 2026-09-15)
+แก้ครั้งที่ 1: 2026-09-15 — แทนที่ส่วนที่เดาไว้ด้วยข้อเท็จจริงจาก `pg_get_functiondef` และเอกสาร Meta
 
 ## 1. เป้าหมาย
 
@@ -81,24 +82,42 @@
 | `messages` | ทุกข้อความของลูกค้า | นับเพิ่มทีละ 1 |
 | `model_calls` | ทุกครั้งที่เรียกโมเดล | นับเพิ่มทีละ 1 |
 
-### 5.2 คำศัพท์ของเหตุการณ์
+### 5.2 คำศัพท์ของเหตุการณ์ (กำหนดโดย `ins_record` แล้ว ห้ามตั้งใหม่)
 
-`ins_events(kind, product, data)` — ค่า `kind` ที่นิยามในงานนี้:
+อ่าน `pg_get_functiondef` ของ `ins_record` แล้วพบว่าค่า `kind` ถูกผูกกับพฤติกรรมไว้แล้ว
+การใช้ชื่ออื่นจะเขียนลงตารางได้แต่หมุดหมายจะไม่ถูกตั้ง:
 
-| kind | เมื่อไหร่ | data |
+| kind | ผลใน `ins_record` | ส่งเมื่อ |
 |---|---|---|
-| `open` | บทสนทนาเริ่ม | `{source, ad_id}` |
-| `ask` | ลูกค้าพิมพ์หรือกดปุ่ม | `{}` |
-| `quote` | บอทเสนอเบี้ย | `{age, sex, plan, sum, premium, mode}` |
-| `card` | ส่งรูปการ์ดราคา | `{plan}` |
-| `switch` | เปลี่ยนผลิตภัณฑ์ | `{from, to}` |
-| `wants_in` | กด "สนใจสมัคร" | `{}` |
-| `form_sent` / `form_done` | ใบสมัคร | `{}` |
-| `followup` | ส่งข้อความตาม | `{stage}` |
-| `agent` | ตัวแทนเข้ามาตอบ | `{}` |
-| `failed` | บอทตอบไม่ได้ / งบหมด | `{reason}` |
+| `message` | `messages + 1` | ลูกค้าพิมพ์หรือกดปุ่ม |
+| `routed` | `model_calls + 1` | เรียกโมเดลเพื่อแยกเจตนา |
+| `plan_info` | `model_calls + 1` | เรียกโมเดลเพื่ออธิบายแบบประกัน |
+| `small_talk` | `model_calls + 1` | เรียกโมเดลสำหรับบทสนทนาทั่วไป |
+| `quoted` | ตั้ง `priced_at` | บอทบอกเบี้ย (`answer.priced`) |
+| `form_sent` | ตั้ง `form_sent_at` | บอทส่งลิงก์ใบสมัคร |
+| `form_done` | ตั้ง `form_done_at` | ลูกค้าบอกว่ากรอกเสร็จ |
+| `agent_replied` | ตั้ง `agent_replied_at` | ตัวแทนพิมพ์เอง |
+| `stalled` | ตั้ง `stalled_at` | ส่งข้อความตามแล้วเงียบ |
+| `handover` | ตั้ง `handover_at` | ลูกค้ากด "สนใจสมัคร" |
 
-`data` ต้องไม่มีคำพูดของลูกค้าเด็ดขาด
+อีกสองค่าที่ฟังก์ชันอื่นเขียนเองโดยเราไม่ต้องส่ง:
+
+- `started` — `ins_open_conversation` เขียนให้ตอนเปิดบทสนทนา
+- `referral` — `ins_attribute` เขียนให้ตอนได้ข้อมูลโฆษณา
+
+`data` ของ `quoted` สำคัญเป็นพิเศษ: `ins_open_lead` อ่าน `data` ของ event `quoted` ล่าสุด
+ไปใส่ `ins_leads.last_quote` ตรง ๆ ฉะนั้นรูปร่างของมันคือสิ่งที่หน้า CRM จะแสดงในคอลัมน์ "เบี้ยที่เสนอ"
+กำหนดเป็น `{age, sex, plan, sum, premium, mode}` และต้องไม่มีคำพูดของลูกค้า
+
+### 5.2.1 ค่า `stage` ของ lead
+
+`ins_open_lead` รับ `p_stage` และมีกฎ `on conflict (conversation_id)` ที่เลื่อนขั้นทางเดียวเท่านั้น:
+
+- `interested` — ค่าเริ่มต้น ตั้งเมื่อกด "สนใจสมัคร"
+- `form_sent` — เลื่อนจาก `interested` ได้
+- `form_done` — เลื่อนจากอะไรก็ได้ และไม่ถอยกลับ
+
+หนึ่งบทสนทนามีได้หนึ่ง lead เท่านั้น (unique บน `conversation_id`)
 
 ### 5.3 จุดที่ต้องแก้ในโค้ด
 
@@ -119,18 +138,33 @@
 
 ## 6. ขั้นที่ 2 — ที่มาจากโฆษณา
 
-ตอนนี้ระบบรับ webhook แค่ 3 field ([`oauth.ts:28`](../../../src/lib/facebook/oauth.ts))
-และ type `Messaging` ไม่มีช่องอ่านข้อมูลโฆษณา จึงยังไม่รู้ว่าลูกค้ามาจากแอดตัวไหน
+ตรวจเอกสาร Meta แล้ว (2026-09-15) ข้อมูลโฆษณามาได้ **3 ทาง** แล้วแต่รูปแบบของแอด:
+
+| มาทาง | เกิดเมื่อ | ต้อง subscribe |
+|---|---|---|
+| `messaging.referral` | แอดที่ไม่มีปุ่ม Get Started หรือกลับเข้าแชทเดิมผ่านแอด | `messaging_referrals` |
+| `messaging.postback.referral` | แอดที่มีปุ่ม Get Started | `messaging_postbacks` (มีแล้ว) |
+| `messaging.message.referral` | ข้อความแรกจากแอด | `messages` **และ** `messaging_referrals` |
+
+**ข้อสำคัญ:** เอกสารระบุว่าการจะได้ `message.referral` ต้อง subscribe ทั้ง `messages` และ
+`messaging_referrals` ฉะนั้นการเพิ่ม `messaging_referrals` จำเป็นไม่ว่าแอดจะเป็นรูปแบบไหน
+
+รูปร่างของ `referral`:
+
+```
+{ source: "ADS" | "SHORTLINK", type: "OPEN_THREAD",
+  ref?: string, ad_id?: string,
+  ads_context_data?: { ad_title, photo_url, video_url, post_id, product_id, flow_id } }
+```
 
 ต้องทำ:
 
-1. เพิ่ม `messaging_referrals` ใน `SUBSCRIBED_FIELDS`
-2. เพิ่มช่อง `referral` และ `postback.referral` ใน type `Messaging` ([`events.ts`](../../../src/lib/facebook/events.ts))
-3. อ่าน `ref`, `ad_id`, `source` ส่งเข้า `ins_open_conversation` หรือ `ins_attribute`
-4. เพจที่เชื่อมอยู่แล้วต้อง subscribe field ใหม่ — ตรวจว่าต้องกดเชื่อมใหม่หรือเรียก API ซ้ำได้
-
-**ยังไม่ยืนยัน:** รูปแบบที่ Meta ส่งข้อมูลโฆษณามาสำหรับ Click-to-Messenger ต้องอ่านเอกสาร
-Meta ฉบับปัจจุบันก่อนเขียนโค้ด ไม่เดาจากความจำ
+1. เพิ่ม `messaging_referrals` ใน `SUBSCRIBED_FIELDS` ([`oauth.ts:28`](../../../src/lib/facebook/oauth.ts))
+2. เพิ่ม `referral`, `postback.referral`, `message.referral` ใน type `Messaging`
+   ([`events.ts`](../../../src/lib/facebook/events.ts)) และเขียน `referralOf(event)` ที่อ่านครบทั้งสามที่
+3. บทสนทนาใหม่ส่งค่าเข้า `ins_open_conversation`; บทสนทนาที่เปิดไปแล้วเรียก `ins_attribute`
+   (ฟังก์ชันใช้ `coalesce` จึงไม่ทับของเดิม — แอดแรกที่พาเขามาชนะ)
+4. เพจที่เชื่อมอยู่แล้วต้อง subscribe field ใหม่ ตรวจว่าเรียก API ซ้ำได้หรือต้องกดเชื่อมใหม่
 
 ## 7. ขั้นที่ 3 — หน้า `/admin/crm`
 
@@ -181,26 +215,55 @@ Server Component อ่าน lead จากฐานข้อมูล → ถ�
 ต้องการยอดใช้จ่ายโฆษณารายวันใน `ins_ad_daily` เพื่อคำนวณ
 `ยอดใช้จ่ายของแอด ÷ จำนวน lead จากแอดนั้น`
 
-**ติดขัด:** `SCOPES` ปัจจุบันคือ `["pages_show_list", "pages_messaging", "pages_manage_metadata"]`
+`SCOPES` ปัจจุบันคือ `["pages_show_list", "pages_messaging", "pages_manage_metadata"]`
 ([`oauth.ts:18`](../../../src/lib/facebook/oauth.ts)) ไม่มี `ads_read`
 
-ผลที่ตามมา:
+ตรวจเอกสาร Meta แล้ว (2026-09-15): แอปที่เรียก Marketing API **กับบัญชีโฆษณาของตัวเอง**
+ในฐานะ Direct Developer **ไม่ต้องขอ Advanced Access และไม่ต้องผ่าน App Review**
+App Review จำเป็นเมื่อแอปจะให้ธุรกิจอื่นใช้ ซึ่งไม่ใช่กรณีนี้
 
-- ต้องเพิ่ม scope และให้เจ้าของเพจเชื่อมบัญชีใหม่
-- อาจต้องผ่าน App Review ของ Meta — **ยังไม่ยืนยัน** ต้องตรวจเงื่อนไขปัจจุบันก่อน
-- คอมเมนต์ใน `oauth.ts` ระบุว่าตั้งใจขอสิทธิ์ให้แคบเพื่อให้ App Review เล็ก การเพิ่ม scope ขัดกับเจตนาเดิม
+จึงน่าจะทำได้ แต่ยังต้องยืนยันตอนลงมือ:
 
-จึงแยกเป็นขั้นสุดท้าย ถ้าติด App Review หน้า CRM ยังใช้งานได้เต็มที่โดยไม่มีคอลัมน์ต้นทุน
+- เจ้าของเพจต้องเชื่อมบัญชีใหม่เพื่อให้สิทธิ์ `ads_read`
+- ต้องเป็นผู้ดูแลบัญชีโฆษณาที่ยิงแอด Life Protect / iHealthy อยู่
+- Business Verification อาจถูกร้องขอ
 
-## 9. ความเป็นส่วนตัว
+ต้องทำ:
 
-- ตัวเลขสถิติเก็บตลอด ไม่มีกำหนดลบ
-- ตัวระบุตัวตนถูกล้างตามที่ `ins_prune()` กำหนดไว้แล้ว: `user_hash` 90 วัน,
-  `psid_cipher` 180 วันหลังปิดการขาย, `ins_unanswered` 30 วัน
-- ต้องตั้ง Cron เรียก `ins_prune()` เพราะตอนนี้ไม่มีอะไรเรียก
-- **ต้องแก้หน้า Privacy** ให้ตรงกับสิ่งที่ระบบเก็บจริง
-- **ข้อควรพิจารณา:** PDPA ให้สิทธิ์ลูกค้าขอลบข้อมูลของตน เฟสแรกไม่มีปุ่มลบในหน้าจอ
-  จึงต้องมีวิธีลบรายคนอย่างน้อยผ่าน SQL และบันทึกวิธีไว้
+1. เพิ่ม `ads_read` ใน `SCOPES` และเก็บ user token ที่มีสิทธิ์นี้
+2. Route ใหม่ที่ Cron เรียกวันละครั้ง ดึง Ads Insights ลง `ins_ad_daily`
+   (field: `spend, impressions, reach, clicks, inline_link_clicks, actions`)
+3. หน้า CRM join `ins_ad_daily.ad_id` กับ `ins_leads.ad_id`
+
+ถ้าขั้นนี้ติด หน้า CRM ยังใช้งานได้เต็มที่โดยไม่มีคอลัมน์ต้นทุน
+
+## 9. ความเป็นส่วนตัว และการล้างข้อมูล
+
+อ่าน `ins_prune()` แล้ว มันลบของจริงดังนี้ ซึ่ง **ไม่ตรงกับ "เก็บตลอด" ทั้งหมด**:
+
+| ตาราง | สิ่งที่ทำ |
+|---|---|
+| `ins_chat_sessions` | ลบแถวที่เก่ากว่า 24 ชม. และไม่ได้ถูก mute ค้างไว้ |
+| `ins_chat_events` | ลบที่เก่ากว่า 7 วัน |
+| `ins_conversations` | ล้าง `user_hash` เป็น null เมื่อเงียบเกิน 90 วัน (แถวยังอยู่) |
+| `ins_events` | **ลบทิ้งเมื่อเก่ากว่า 13 เดือน** |
+| `ins_unanswered` | ลบเมื่อเก่ากว่า 30 วัน |
+| `ins_leads` | ล้าง `psid_cipher` เมื่อ `closed_at` ผ่านไป 180 วัน |
+
+ผลที่ผู้ใช้ต้องรู้:
+
+- **ตัวเลขระดับบทสนทนาเก็บตลอด** (`ins_conversations` ไม่เคยถูกลบ) กราฟย้อนหลังจึงไม่หาย
+- **รายละเอียดเหตุการณ์หายหลัง 13 เดือน** ถ้าต้องการเก็บนานกว่านี้ต้องแก้ `ins_prune()`
+- **`closed_at` ไม่มีอะไรตั้งในเฟสแรก** (เฟสแรกอ่านอย่างเดียว ไม่มีปุ่มปิดการขาย)
+  แปลว่า `psid_cipher` จะไม่ถูกล้างเลย และกดเปิดแชทได้ตลอด
+  ถ้าต้องการให้ล้างตามกำหนด ต้องมีปุ่ม "ปิดการขาย" ซึ่งอยู่นอกขอบเขตเฟสแรก
+
+ต้องทำ:
+
+- ตั้ง Cron เรียก `ins_prune()` วันละครั้ง เพราะตอนนี้ไม่มีอะไรเรียก
+  ใช้กลไก token เดียวกับ `src/lib/chat/cron-token.ts` และ `api/facebook/followups`
+- **แก้หน้า Privacy** ให้ตรงกับสิ่งที่ระบบเก็บจริง
+- บันทึกวิธีลบข้อมูลรายคนด้วย SQL ไว้ใน `docs/` สำหรับคำขอตาม PDPA
 
 ## 10. การทดสอบ
 
@@ -212,13 +275,15 @@ Server Component อ่าน lead จากฐานข้อมูล → ถ�
 
 ## 11. สิ่งที่ยังยืนยันไม่ได้
 
-- รูปแบบข้อมูลโฆษณาที่ Meta ส่งมาสำหรับ Click-to-Messenger
-- เงื่อนไข App Review ของ `ads_read` ในปัจจุบัน
-- เพจที่เชื่อมอยู่แล้วต้องกดเชื่อมใหม่หรือไม่ เมื่อเพิ่ม subscribed field
-- `ins_prune()` ลบอะไรบ้างแน่ ยังไม่ได้อ่าน definition
-- ค่า `stage` ที่ `ins_open_lead` รับ มีค่าอะไรได้บ้าง
+ห้าข้อที่เคยค้างถูกตรวจแล้วเมื่อ 2026-09-15 และคำตอบถูกเขียนกลับเข้า §5.2, §6, §8 และ §9
 
-ต้องตรวจทุกข้อก่อนเขียนโค้ดส่วนที่เกี่ยวข้อง ห้ามเดา
+ที่ยังค้าง:
+
+- เพจที่เชื่อมอยู่แล้วต้องกดเชื่อมใหม่หรือไม่ เมื่อเพิ่ม `messaging_referrals`
+  (ต้องทดสอบจริงกับเพจ LuckyPlanner)
+- บัญชีโฆษณาที่ยิงแอดอยู่ เจ้าของเพจเป็นผู้ดูแลหรือไม่ — ตัดสินว่าขั้นที่ 4 ทำได้ไหม
+- Meta จะขอ Business Verification หรือไม่เมื่อเพิ่ม `ads_read`
+- `ins_conversations.product` ถูกตั้งครั้งแรกเมื่อไหร่ ในเมื่อบทสนทนาเริ่มจาก `undecided`
 
 ## 12. ลำดับงาน
 
