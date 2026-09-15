@@ -8,6 +8,8 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 interface Entry {
+  /** the Page this batch of events belongs to; ins_open_conversation wants it by name */
+  id?: string;
   messaging?: Messaging[];
 }
 
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest) {
   after(async () => {
     for (const entry of entries) {
       for (const m of entry.messaging ?? []) {
-        await handle(m).catch((e) => console.error("facebook event failed:", e));
+        await handle(m, entry.id).catch((e) => console.error("facebook event failed:", e));
       }
     }
   });

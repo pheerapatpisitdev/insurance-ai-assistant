@@ -7,7 +7,9 @@ import { answerAny } from "@/lib/assistant/dispatch";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
-import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/facebook/events";
+import { agentTyped, customerOf, eventKey, referralOf, textOf, type Messaging } from "@/lib/facebook/events";
+import { attribute, openConversation, openLead, record, type RecordedEvent } from "@/lib/chat/record";
+import { WANTS_IN } from "@/lib/assistant/common";
 
 /**
  * The answer, with one more attempt before giving up.
@@ -44,7 +46,7 @@ const BUSY = "ตอนนี้มีคำถามเข้ามาเยอ
 const BROKEN = "ขออภัยครับ ระบบขัดข้องชั่วคราว เดี๋ยวแอดมินมาตอบให้นะครับ 🙏";
 const OUT_OF_BUDGET = "ตอนนี้ระบบผู้ช่วยปิดชั่วคราวครับ รบกวนติดต่อตัวแทนโดยตรงนะครับ";
 
-export async function handle(event: Messaging): Promise<void> {
+export async function handle(event: Messaging, pageId?: string): Promise<void> {
   // on an echo the sender is the page, so the thread is named by who it was sent to
   const psid = customerOf(event);
   if (!psid) return;
@@ -59,6 +61,9 @@ export async function handle(event: Messaging): Promise<void> {
     // the thread is theirs now, so the bot's own follow-up is not wanted — and the id it was
     // holding to send it with goes with it
     await dropFollowup("facebook", userHash);
+    // a thread an agent answered by hand is not a thread the bot lost: the report should say
+    // a person stepped in, rather than showing a conversation that simply stopped
+    await record(session.conversationId, [{ kind: "agent_replied" }], null);
     return;
   }
 
@@ -74,6 +79,28 @@ export async function handle(event: Messaging): Promise<void> {
   await dropFollowup("facebook", userHash);
 
   const session = await loadSession("facebook", userHash);
+
+  /**
+   * The conversation this turn belongs to.
+   *
+   * A session gone stale comes back without one, which is the point: someone writing a week
+   * later is a second visit, and carrying the old id into it would report one arrival where
+   * there were two.
+   */
+  const referral = referralOf(event);
+  let conversationId = session.conversationId;
+  if (!conversationId) {
+    conversationId = await openConversation(
+      "facebook", pageId ?? "", userHash, referral, event.postback?.payload,
+    );
+  } else if (referral) {
+    // they came back through an advertisement mid-conversation; ins_attribute coalesces, so
+    // the advert that found them keeps them
+    await attribute(conversationId, referral);
+  }
+  const ledger: RecordedEvent[] = [{ kind: "message" }];
+  const wantsIn = text.trim() === WANTS_IN;
+
   /**
    * The agent answering by hand pauses the bot, and this message ends the pause: the customer
    * has written again, so the thread is handed back.
@@ -121,7 +148,10 @@ export async function handle(event: Messaging): Promise<void> {
     }
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
     // no mute argument: recording what was said must never clear one
-    await saveSession("facebook", userHash, [...history, { role: "assistant", content: spoken }], answer.slots);
+    await saveSession(
+      "facebook", userHash, [...history, { role: "assistant", content: spoken }],
+      answer.slots, undefined, conversationId,
+    );
     /**
      * A quotation is where the conversation used to stop, so it is where the bot now arms one
      * question five minutes out. Armed after the session is written, because the follow-up
@@ -130,10 +160,28 @@ export async function handle(event: Messaging): Promise<void> {
      * The life plan alone for now: its words offer a shorter term and a lighter sum, which
      * the health contract does not have.
      */
-    if (answer.priced && (answer.slots as { product?: string }).product === "lifeprotect") {
+    const product = (answer.slots as { product?: string }).product ?? null;
+    if (answer.priced && product === "lifeprotect") {
       await armFollowup("facebook", userHash, psid).catch((e) => console.error("followup:", e));
     }
+
+    if (answer.priced) ledger.push({ kind: "quoted", data: { ...answer.quote } });
+    if (wantsIn) ledger.push({ kind: "handover" });
+    // the form is sent once, and the turn that sends it is the one where the flag turns over
+    const formSent = Boolean((answer.slots as { formSent?: boolean }).formSent);
+    const hadForm = Boolean((session.slots as { formSent?: boolean } | null)?.formSent);
+    if (formSent && !hadForm) ledger.push({ kind: "form_sent" });
+    if (answer.formDone) ledger.push({ kind: "form_done" });
+
+    // written last, and its failure is its own: the customer has already been answered
+    await record(conversationId, ledger, product);
+    if (wantsIn || formSent || answer.formDone) {
+      const stage = answer.formDone ? "form_done" : formSent ? "form_sent" : "interested";
+      await openLead(conversationId, psid, stage, product);
+    }
   } catch (e) {
+    ledger.push({ kind: "failed" });
+    await record(conversationId, ledger, null);
     await sendMessage(psid, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);
     throw e;
   }

@@ -96,6 +96,13 @@ export interface Reply {
   /** the answer carries a premium — the moment a browser turns into someone worth calling */
   priced?: boolean;
   /**
+   * the customer has said the application form is filled in
+   *
+   * It rides here beside `priced` for the same reason that one does: the turn that knows it
+   * is inside a brain, and the only thing that needs to hear it is the recorder outside both.
+   */
+  formDone?: boolean;
+  /**
    * The figures behind that premium, for the record rather than for the customer.
    *
    * The customer is told these in words, and the words are the one thing the report may not

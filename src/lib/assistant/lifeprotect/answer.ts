@@ -74,7 +74,7 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
     return { ...one(stallReply(hasQuote(kept))), slots: kept };
   }
   // the form is out and they say it is filled in: the agent takes it from here
-  if (known.formSent && saysFormDone(asked)) return { ...one(FORM_RECEIVED), slots: known };
+  if (known.formSent && saysFormDone(asked)) return { ...one(FORM_RECEIVED), formDone: true, slots: known };
   // deciding to buy is answered with the form — unless a cheaper offer is on the table and the
   // word is a bare yes, which takes the offer first and is priced below
   if (wantsToBuy(asked, hasQuote(known)) && !(known.offer && affirms(asked))) {
