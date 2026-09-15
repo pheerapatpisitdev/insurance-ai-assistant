@@ -23,6 +23,8 @@ export interface Session {
   slots: AnySlots | null;
   /** ISO time the bot may speak again, or null when it was never asked to stop */
   mutedUntil: string | null;
+  /** the conversation row this live session is part of, or null when none has been opened */
+  conversationId: string | null;
 }
 
 /** When the bot may speak in this thread again, counted from the agent's message. */
@@ -42,16 +44,19 @@ export function isMuted(mutedUntil: string | null, now: Date = new Date()): bool
 export async function loadSession(channel: Channel, userHash: string): Promise<Session> {
   const { data } = await supabaseAdmin()
     .from("ins_chat_sessions")
-    .select("messages, slots, muted_until, updated_at")
+    .select("messages, slots, muted_until, updated_at, conversation_id")
     .eq("channel", channel)
     .eq("user_hash", userHash)
     .maybeSingle();
-  if (!data) return { messages: [], slots: null, mutedUntil: null };
+  if (!data) return { messages: [], slots: null, mutedUntil: null, conversationId: null };
 
   const fresh = new Date(data.updated_at).getTime() > Date.now() - MAX_AGE_HOURS * 3600_000;
   const stored = fresh && Array.isArray(data.messages) ? (data.messages as ChatMessage[]) : [];
   const slots = fresh && data.slots && Object.keys(data.slots).length ? (data.slots as AnySlots) : null;
-  return { messages: stored.slice(-MAX_TURNS), slots, mutedUntil: data.muted_until ?? null };
+  // a stale row is a different visit as far as the report is concerned, and a conversation
+  // carried on into it would show one arrival where there were two
+  const conversationId = fresh ? ((data.conversation_id as string | null) ?? null) : null;
+  return { messages: stored.slice(-MAX_TURNS), slots, mutedUntil: data.muted_until ?? null, conversationId };
 }
 
 /**
@@ -68,6 +73,7 @@ export async function saveSession(
   messages: ChatMessage[],
   slots: AnySlots | null,
   mutedUntil?: Date | null,
+  conversationId?: string | null,
 ): Promise<void> {
   await supabaseAdmin()
     .from("ins_chat_sessions")
@@ -78,6 +84,8 @@ export async function saveSession(
       slots: slots ?? {},
       // only the columns named here are written on conflict, so omitting this one keeps it
       ...(mutedUntil === undefined ? {} : { muted_until: mutedUntil?.toISOString() ?? null }),
+      // and the same for the conversation: a save that is not about which one this is leaves it
+      ...(conversationId === undefined ? {} : { conversation_id: conversationId }),
       updated_at: new Date().toISOString(),
     });
 }
