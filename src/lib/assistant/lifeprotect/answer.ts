@@ -12,9 +12,9 @@ import { faqAnswer } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
 import { asksPayTerm, asksValueTable, mergeSlots, PLAN_CODE, routeMessage, type Routed } from "./route";
 import {
-  aboutCompany, affirms, APPLICATION_FORM, asksAboutCompany, asksCheaper, FORM_RECEIVED,
-  handOverForm, HEALTH_DECLARATION, one, recentTurns, Reply, Said, saysFormDone, spoken,
-  stallReply, stalls, WANTS_IN, wantsToBuy,
+  aboutCompany, affirms, APPLICATION_FORM, asksAboutCompany, asksCheaper, baht, FORM_RECEIVED,
+  handOverForm, HEALTH_DECLARATION, one, type QuoteFigures, recentTurns, Reply, Said,
+  saysFormDone, spoken, stallReply, stalls, WANTS_IN, wantsToBuy,
 } from "../common";
 
 /** The package quoted when the customer has not named one: the cheapest instalment of the three. */
@@ -154,7 +154,7 @@ function quoteFor(
   table: LifeProtectTable, variant: string, who: { age: number; sex: "M" | "F" }, coverWanted: number,
   offer?: Routed["offer"],
   takenSum?: number,
-): Said {
+): Said & { figures?: QuoteFigures } {
   const { age, sex } = who;
   if (age < table.ageMin || age > table.ageMax) {
     return { text: `อายุ ${age} ปี แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
@@ -173,6 +173,7 @@ function quoteFor(
   const modes = lifeProtectModes(table, term, { sex, age, sumAssured });
   if (!modes) return { text: `อายุ ${age} ปี แบบนี้รับประกันอายุ ${table.ageMin}-${table.ageMax} ปีครับ ${HAND_OVER}` };
 
+  const annual = modes.find((m) => m.mode === "annual");
   return {
     text: lifeProtectQuoteText({
       sumAssured,
@@ -184,6 +185,7 @@ function quoteFor(
       cash: cashAt(term, sex, age, sumAssured, table.ageMin),
     }),
     card: cardPath({ kind: "plan", planCode: PLAN_CODE, variant, age, sex, sumAssured }),
+    ...(annual ? { figures: { age, sex, plan: variant, sumAssured, annual: baht(annual.total), coverWanted } } : {}),
   };
 }
 
@@ -279,7 +281,15 @@ function answerQuote(slots: Routed): Reply {
   const last = messages.map((m) => Boolean(m.card)).lastIndexOf(true);
   if (last >= 0) messages[last].text += `\n\n${otherTerms(table, variant)}`;
 
-  return { messages, priced: last >= 0, ...(last >= 0 ? { replies: quoteReplies(table, variant) } : {}) };
+  // a couple priced together is two quotations and one record; the last is the one the
+  // buttons sit under, so it is the one the lead is opened against
+  const figures = last >= 0 ? messages[last].figures : undefined;
+  return {
+    messages: messages.map(({ text, card }) => (card ? { text, card } : { text })),
+    priced: last >= 0,
+    ...(figures ? { quote: figures } : {}),
+    ...(last >= 0 ? { replies: quoteReplies(table, variant) } : {}),
+  };
 }
 
 /**

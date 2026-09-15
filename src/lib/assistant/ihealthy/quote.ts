@@ -5,7 +5,7 @@ import { IHEALTHY_OPENING, type IHealthyInitial } from "@/lib/ihealthy-choice";
 import { cardPath } from "@/lib/ihealthy-link";
 import { deathBenefitOf, iHealthyPricing, plansFor, shownAt, territoriesFor } from "@/lib/ihealthy-quote";
 import { iHealthyTable } from "@/lib/ihealthy-table";
-import { WANTS_IN, one, type Reply } from "../common";
+import { WANTS_IN, baht, one, type QuoteFigures, type Reply } from "../common";
 import type { HealthSlots } from "./route";
 
 /** What the bot says when only a person can answer. */
@@ -110,9 +110,18 @@ export function healthQuote(
     return one(`ตอนนี้ยังคิดราคาแผนนี้ให้ไม่ได้ครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HEALTH_HAND_OVER}`);
   }
 
+  const annual = priced?.total.find((m) => m.mode === "annual");
   return {
     messages: [{ text, card: `${cardPath(table, v)}&fit=phone` }],
     priced: true,
+    ...(annual
+      ? {
+          quote: {
+            age, sex, plan: chosen.code, sumAssured: v.sumAssured,
+            annual: baht(annual.total), territory: v.territory,
+          } satisfies QuoteFigures,
+        }
+      : {}),
     replies: QUOTE_REPLIES,
   };
 }

@@ -96,6 +96,15 @@ export interface Reply {
   /** the answer carries a premium — the moment a browser turns into someone worth calling */
   priced?: boolean;
   /**
+   * The figures behind that premium, for the record rather than for the customer.
+   *
+   * The customer is told these in words, and the words are the one thing the report may not
+   * keep. Carried here instead so a quotation can be written down as numbers — and so the
+   * lead's "เบี้ยที่เสนอ" is the figure the bot actually said, not one recomputed later from
+   * slots that have since moved on.
+   */
+  quote?: QuoteFigures;
+  /**
    * Buttons offered under the last thing sent.
    *
    * A quotation ends with an invitation nobody acts on — it is the last line of twenty, under
@@ -103,6 +112,36 @@ export interface Reply {
    * words themselves, so every title here is a sentence the bot already answers.
    */
   replies?: string[];
+}
+
+/**
+ * A quotation, as figures.
+ *
+ * `sumAssured` and `coverWanted` are kept apart by name for the reason the life plan's slots
+ * keep them apart: on that contract the family receives twice the sum assured before the
+ * booster age, and a report that confuses the two states a cover it never quoted.
+ *
+ * Money is in baht. The tables price in satang and this divides once, here, so that nothing
+ * downstream has to remember which it is holding.
+ */
+export interface QuoteFigures {
+  age: number;
+  sex: "M" | "F";
+  /** the package quoted: a term variant for the life plan, a plan code for the health one */
+  plan: string;
+  /** the sum assured, in baht */
+  sumAssured: number;
+  /** the yearly premium, in baht */
+  annual: number;
+  /** what the customer asked the family to receive, in baht — the life plan only */
+  coverWanted?: number;
+  /** where the health plan covers; absent on the life plan, which has no territory */
+  territory?: string;
+}
+
+/** Satang, as the tables hold it, to baht, as a person says it. */
+export function baht(satang: number): number {
+  return Math.round(satang) / 100;
 }
 
 /** The usual case: the bot says one thing. */
