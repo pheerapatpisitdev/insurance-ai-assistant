@@ -71,8 +71,10 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong>เมื่อคุณกดว่าสนใจสมัคร</strong> เราจะเก็บรหัสผู้ใช้ที่เฟซบุ๊กให้มาไว้ในรูปแบบที่เข้ารหัส
-          เพื่อให้ตัวแทนติดต่อกลับไปดูแลขั้นตอนต่อได้ เก็บไว้จนกว่าเรื่องจะจบและอีก 180 วันหลังจากนั้น
-          <strong> ขอให้ลบก่อนได้ทุกเมื่อ</strong> ตามวิธีในหัวข้อ &ldquo;สิทธิของคุณ&rdquo; ด้านล่าง
+          เพื่อให้ตัวแทนติดต่อกลับไปดูแลขั้นตอนต่อได้ <strong>รหัสนี้ไม่มีกำหนดลบอัตโนมัติ</strong>{" "}
+          — เก็บไว้ตราบที่ยังอาจต้องติดต่อคุณเรื่องการสมัครนั้น
+          <strong> ขอให้ลบเมื่อไหร่ก็ได้</strong> ตามวิธีในหัวข้อ &ldquo;สิทธิของคุณ&rdquo; ด้านล่าง
+          แล้วเราจะลบให้ภายใน 30 วัน
         </p>
         <p>
           <strong>ชื่อและรูปโปรไฟล์</strong> เราไม่ได้เก็บไว้ในระบบของเรา แต่เมื่อตัวแทนเปิดหน้าจัดการภายใน
@@ -180,7 +182,7 @@ export default function PrivacyPage() {
             brought you — with <strong>none of your words in it</strong>. Conversation-level figures are kept
             indefinitely; per-event detail is deleted after 13 months, and the one-way hash is cleared after
             90 days without contact. If you ask to apply, your page-scoped id is kept encrypted so the agent
-            can follow up. Your name and photo are never stored: the agency&rsquo;s own admin page asks
+            can follow up, with no automatic expiry — ask us and we delete it. Your name and photo are never stored: the agency&rsquo;s own admin page asks
             Facebook for them at the moment it is opened.
           </p>
           <p>
