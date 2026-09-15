@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { toParts } from "@/lib/facebook/client";
-import { agentTyped, customerOf, eventKey, textOf, type Messaging } from "@/lib/facebook/events";
+import { agentTyped, customerOf, eventKey, referralOf, textOf, type Messaging } from "@/lib/facebook/events";
+import { SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
 import { hashUserId, verifySignature, verifyTokenMatches } from "@/lib/facebook/verify";
 
 const SECRET = "test-app-secret";
@@ -111,5 +112,51 @@ describe("a long answer", () => {
   it("hard-wraps a paragraph Messenger would refuse on its own", () => {
     const parts = toParts("ก".repeat(4000));
     expect(parts.every((p) => p.length <= 1900)).toBe(true);
+  });
+});
+
+describe("where the advertisement is named", () => {
+  it("reads a referral sent on its own, which is what an ad with no button sends", () => {
+    expect(referralOf({ referral: { source: "ADS", type: "OPEN_THREAD", ad_id: "120:1" } }))
+      .toEqual({ source: "ADS", ad_id: "120:1", ref: undefined });
+  });
+
+  it("reads one riding on the Get Started button", () => {
+    expect(referralOf({ postback: { title: "เริ่ม", referral: { source: "ADS", ad_id: "120:2" } } }))
+      .toEqual({ source: "ADS", ad_id: "120:2", ref: undefined });
+  });
+
+  it("reads one riding on the first message", () => {
+    expect(referralOf({ message: { text: "สนใจ", referral: { source: "ADS", ad_id: "120:3", ref: "lp-a" } } }))
+      .toEqual({ source: "ADS", ad_id: "120:3", ref: "lp-a" });
+  });
+
+  it("keeps a shortlink referral, which carries a ref and no ad", () => {
+    expect(referralOf({ referral: { source: "SHORTLINK", type: "OPEN_THREAD", ref: "line-card" } }))
+      .toEqual({ source: "SHORTLINK", ad_id: undefined, ref: "line-card" });
+  });
+
+  it("says nothing about an ordinary message, so nothing is attributed to an ad", () => {
+    expect(referralOf({ message: { text: "สวัสดี" } })).toBeUndefined();
+    expect(referralOf({})).toBeUndefined();
+  });
+
+  it("prefers the standalone referral when an event somehow carries two", () => {
+    expect(referralOf({
+      referral: { source: "ADS", ad_id: "outer" },
+      message: { text: "hi", referral: { source: "ADS", ad_id: "inner" } },
+    })?.ad_id).toBe("outer");
+  });
+});
+
+describe("what the page is subscribed to", () => {
+  it("asks for referrals, without which an ad's first message carries no ad id", () => {
+    expect(SUBSCRIBED_FIELDS).toContain("messaging_referrals");
+  });
+
+  it("still asks for the three it already needed", () => {
+    expect(SUBSCRIBED_FIELDS).toEqual(
+      expect.arrayContaining(["messages", "messaging_postbacks", "message_echoes"]),
+    );
   });
 });

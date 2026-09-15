@@ -21,11 +21,19 @@ export const SCOPES = ["pages_show_list", "pages_messaging", "pages_manage_metad
  * The events the webhook actually handles: typed messages, taps on ice breakers or buttons,
  * and the page's own outgoing messages.
  *
- * The last of those is not about answering anyone. It is the only way to learn that the
+ * The third of those is not about answering anyone. It is the only way to learn that the
  * agent has replied by hand, which is what tells the bot to stay out of that thread — a page
  * subscribed without it has a bot that talks over its own agent.
+ *
+ * The fourth is subscribed for a copy of itself. A thread opened from an advertisement
+ * carries the ad's id on its first message, but Meta sends that copy only to a page that also
+ * subscribes to the standalone referral — so the field is asked for whether or not the event
+ * it delivers is ever read, and without it the whole question of which advert paid for a
+ * customer goes unanswered.
  */
-export const SUBSCRIBED_FIELDS = ["messages", "messaging_postbacks", "message_echoes"];
+export const SUBSCRIBED_FIELDS = [
+  "messages", "messaging_postbacks", "message_echoes", "messaging_referrals",
+];
 
 export interface FacebookPage {
   id: string;

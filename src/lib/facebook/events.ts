@@ -4,12 +4,33 @@
  * tapped — to the bot they are the same thing: words from the customer.
  */
 
+/**
+ * What Meta says about the advertisement a customer arrived through.
+ *
+ * `ads_context_data` and the rest of the object are deliberately left untyped: nothing here
+ * needs the ad's title or its video, and a shape Meta extends should not break a build.
+ */
+export interface FacebookReferral {
+  source?: string;
+  type?: string;
+  ref?: string;
+  ad_id?: string;
+}
+
 export interface Messaging {
   sender?: { id?: string };
   recipient?: { id?: string };
   timestamp?: number;
-  message?: { mid?: string; text?: string; is_echo?: boolean; app_id?: number | string };
-  postback?: { title?: string; payload?: string };
+  message?: { mid?: string; text?: string; is_echo?: boolean; app_id?: number | string; referral?: FacebookReferral };
+  postback?: { title?: string; payload?: string; referral?: FacebookReferral };
+  referral?: FacebookReferral;
+}
+
+/** What a referral is worth keeping: which advertisement, and whatever the link called itself. */
+export interface Referral {
+  source?: string;
+  ad_id?: string;
+  ref?: string;
 }
 
 const MAX_CHARS = 1000;
@@ -55,4 +76,18 @@ export function agentTyped(event: Messaging): boolean {
   if (!event.message?.is_echo) return false;
   const ours = process.env.FB_APP_ID;
   return !ours || String(event.message.app_id ?? "") !== ours;
+}
+
+/**
+ * Which advertisement brought this customer, from whichever of the three places Meta put it.
+ *
+ * A thread opened from an ad with no button arrives as a referral of its own; one with a Get
+ * Started button carries it on the postback; and the first message of a new thread carries a
+ * copy too — but only for a page subscribed to `messaging_referrals` as well as `messages`,
+ * which is why that field is asked for even though nothing reads the event it delivers.
+ */
+export function referralOf(event: Messaging): Referral | undefined {
+  const r = event.referral ?? event.postback?.referral ?? event.message?.referral;
+  if (!r) return undefined;
+  return { source: r.source, ad_id: r.ad_id, ref: r.ref };
 }
