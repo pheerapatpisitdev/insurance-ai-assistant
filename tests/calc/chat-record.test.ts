@@ -33,7 +33,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-const { openConversation, attribute, record, openLead, markStalled, prune } =
+const { openConversation, attribute, record, openLead, markStalled } =
   await import("@/lib/chat/record");
 
 beforeEach(() => {
@@ -149,17 +149,5 @@ describe("the conversation that went quiet", () => {
     foundConversation = null;
     await markStalled("facebook", "hash-1");
     expect(calls).toHaveLength(0);
-  });
-});
-
-describe("forgetting on a schedule", () => {
-  it("asks the database to run its own retention rules", async () => {
-    await expect(prune()).resolves.toBe(true);
-    expect(calls[0].fn).toBe("ins_prune");
-  });
-
-  it("reports a failure rather than throwing at the scheduler", async () => {
-    fail = true;
-    await expect(prune()).resolves.toBe(false);
   });
 });

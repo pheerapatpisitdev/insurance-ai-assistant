@@ -177,20 +177,3 @@ export async function markStalled(channel: Channel, userHash: string): Promise<v
     console.error("บันทึกบทสนทนาที่เงียบหายไม่สำเร็จ:", e);
   }
 }
-
-/**
- * Run the retention rules the tables were built with.
- *
- * `ins_prune()` has existed since the tables did and has never been called, so every promise
- * about forgetting has until now been kept by nothing at all.
- */
-export async function prune(): Promise<boolean> {
-  try {
-    const { error } = await supabaseAdmin().rpc("ins_prune", {});
-    if (error) throw new Error(error.message);
-    return true;
-  } catch (e) {
-    console.error("ล้างข้อมูลเก่าไม่สำเร็จ:", e);
-    return false;
-  }
-}
