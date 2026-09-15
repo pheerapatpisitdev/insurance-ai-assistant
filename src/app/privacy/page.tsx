@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 /** Last change to what this page describes, not to its wording. */
-const UPDATED = "13 กันยายน 2569";
+const UPDATED = "15 กันยายน 2569";
 const CONTACT = "pheerapatpisit.dev@gmail.com";
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -33,7 +33,13 @@ export default function PrivacyPage() {
       <Section id="collect" title="ข้อมูลที่เก็บ">
         <p>
           <strong>เมื่อคุณใช้หน้าคำนวณเบี้ย</strong> การคำนวณทั้งหมดเกิดขึ้นในเบราว์เซอร์ของคุณ
-          อายุ เพศ และทุนประกันที่คุณเลือกไม่ถูกส่งมาที่เซิร์ฟเวอร์และไม่ถูกบันทึก
+          อายุ เพศ และทุนประกันที่คุณเลือกไม่ถูกส่งมาที่เซิร์ฟเวอร์ และเราไม่บันทึกลงฐานข้อมูล
+        </p>
+        <p>
+          <strong>ยกเว้นเมื่อคุณกดบันทึกรูปใบเสนอ</strong> ปุ่มนั้นสร้างรูปที่ฝั่งเซิร์ฟเวอร์
+          อายุ เพศ และทุนที่เลือกจึงเดินทางไปกับลิงก์ของรูป และปรากฏอยู่ใน log ของผู้ให้บริการ
+          เซิร์ฟเวอร์ตามปกติของเว็บไซต์ทั่วไป เราไม่ได้เก็บค่าเหล่านั้นลงฐานข้อมูลของเราเอง
+          และถ้าคุณไม่กดปุ่มนั้น ตัวเลขของคุณก็ไม่ได้ออกจากเบราว์เซอร์เลย
         </p>
         <p>
           <strong>เมื่อคุณทักแชทเพจเฟซบุ๊ก</strong> เราเก็บข้อความในบทสนทนาไว้ไม่เกิน{" "}
@@ -43,12 +49,35 @@ export default function PrivacyPage() {
           เราไม่ได้เก็บชื่อ รูปโปรไฟล์ หรือรายชื่อเพื่อนของคุณ
         </p>
         <p>
-          <strong>ข้อยกเว้นเดียว</strong> เมื่อคุณได้รับใบเสนอเบี้ยประกัน เราจะเก็บรหัสผู้ใช้ที่เฟซบุ๊กให้มา
+          <strong>บันทึกว่าบทสนทนาไปถึงไหน</strong> นอกเหนือจากข้อความที่ลบใน 24 ชั่วโมง
+          เราเก็บสรุปของบทสนทนาไว้เพื่อดูว่าผู้ช่วยทำงานได้ดีแค่ไหน ได้แก่ สนใจแบบประกันใด
+          ได้รับใบเสนอหรือไม่ ตัวเลขในใบเสนอนั้น (อายุ เพศ ทุน และเบี้ย) กดขอสมัครหรือไม่
+          ตัวแทนเข้ามาตอบเองหรือไม่ และมาจากโฆษณาชิ้นใด <strong>บันทึกนี้ไม่มีข้อความของคุณอยู่เลย</strong>{" "}
+          มีแต่ประเภทของเหตุการณ์กับตัวเลข และผูกกับค่าที่เข้ารหัสทางเดียวเช่นเดิม
+          สรุประดับบทสนทนาเก็บไว้ไม่มีกำหนด ส่วนรายละเอียดรายเหตุการณ์ถูกลบเมื่อเก่ากว่า 13 เดือน
+          และค่าที่เข้ารหัสทางเดียวจะถูกล้างเมื่อไม่มีการติดต่อเกิน 90 วัน
+        </p>
+        <p>
+          <strong>คำถามที่ผู้ช่วยตอบไม่ได้</strong> ถูกเก็บไว้ 30 วันในรูปประโยคที่ระบบเรียบเรียงใหม่
+          เพื่อนำไปปรับปรุงคำตอบ โดยไม่ผูกกับตัวคุณหรือบทสนทนาใด
+        </p>
+        <p>
+          <strong>เมื่อคุณได้รับใบเสนอเบี้ยประกัน</strong> เราจะเก็บรหัสผู้ใช้ที่เฟซบุ๊กให้มา
           ไว้ชั่วคราวในรูปแบบที่เข้ารหัสไว้ เพื่อส่งข้อความติดตามให้คุณ <strong>ไม่เกินสองครั้ง</strong>{" "}
           ครั้งแรกประมาณห้านาทีหลังได้รับใบเสนอ และครั้งที่สองก่อนครบ 24 ชั่วโมง เฉพาะช่วงเวลากลางวัน
           รหัสนั้นจะถูกลบทิ้งทันทีที่ส่งข้อความครั้งที่สองแล้ว ลบทันทีถ้าคุณตอบกลับมาก่อน
           หรือถ้าตัวแทนเข้ามาตอบเอง และลบอัตโนมัติภายใน 24 ชั่วโมงไม่ว่ากรณีใด
           เราไม่ส่งข้อความติดตามเกินสองครั้ง และไม่ใช้รหัสนั้นเพื่อการอื่น
+        </p>
+        <p>
+          <strong>เมื่อคุณกดว่าสนใจสมัคร</strong> เราจะเก็บรหัสผู้ใช้ที่เฟซบุ๊กให้มาไว้ในรูปแบบที่เข้ารหัส
+          เพื่อให้ตัวแทนติดต่อกลับไปดูแลขั้นตอนต่อได้ เก็บไว้จนกว่าเรื่องจะจบและอีก 180 วันหลังจากนั้น
+          <strong> ขอให้ลบก่อนได้ทุกเมื่อ</strong> ตามวิธีในหัวข้อ &ldquo;สิทธิของคุณ&rdquo; ด้านล่าง
+        </p>
+        <p>
+          <strong>ชื่อและรูปโปรไฟล์</strong> เราไม่ได้เก็บไว้ในระบบของเรา แต่เมื่อตัวแทนเปิดหน้าจัดการภายใน
+          เพื่อดูว่ามีใครรอติดต่อกลับบ้าง หน้านั้นจะขอชื่อและรูปของคุณจากเฟซบุ๊กมาแสดงในขณะนั้น
+          แล้วไม่ได้บันทึกเก็บไว้ — เป็นข้อมูลชุดเดียวกับที่ตัวแทนเห็นอยู่แล้วในกล่องข้อความของเพจ
         </p>
         <p>
           <strong>บันทึกค่าใช้จ่ายของระบบ</strong> เก็บเพียงจำนวนคำที่ประมวลผลและค่าใช้จ่ายเป็นเงินบาท
@@ -98,10 +127,19 @@ export default function PrivacyPage() {
           ผู้ที่ใช้หน้าคำนวณเบี้ยอย่างเดียวไม่มีข้อมูลอยู่กับเราเลย จึงไม่มีอะไรให้ลบ
         </p>
         <p>
-          ผู้ที่ทักแชทเพจ บทสนทนาจะหมดอายุและถูกลบเองภายใน 24 ชั่วโมง
-          หากต้องการให้ลบก่อนหน้านั้น หรืออยากทราบว่ามีอะไรเก็บอยู่ ส่งอีเมลมาที่{" "}
+          ผู้ที่ทักแชทเพจ <strong>ข้อความ</strong>จะหมดอายุและถูกลบเองภายใน 24 ชั่วโมง
+          ส่วน<strong>สรุปว่าบทสนทนาไปถึงไหน</strong>และ<strong>รหัสที่เข้ารหัสไว้</strong>{" "}
+          อยู่นานกว่านั้นตามที่อธิบายไว้ข้างบน
+        </p>
+        <p>
+          <strong>คุณขอให้ลบได้ทุกเมื่อ</strong> ส่งอีเมลมาที่{" "}
           <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>{" "}
-          พร้อมบอกว่าทักเข้ามาจากเพจใดและเมื่อใด เราจะลบให้ทันทีที่ตรวจสอบได้
+          พร้อมบอกว่าทักเข้ามาจากเพจใดและช่วงเวลาไหน เมื่อตรวจสอบได้ว่าเป็นคุณจริง
+          เราจะลบทั้งสรุปบทสนทนา รายการเหตุการณ์ และรหัสที่เข้ารหัสไว้ทั้งหมดของคุณ ภายใน 30 วัน
+          และแจ้งกลับเมื่อทำเสร็จ การลบนี้ทำให้ตัวแทนติดต่อคุณกลับผ่านระบบนี้ไม่ได้อีก
+        </p>
+        <p>
+          คุณขอทราบได้เช่นกันว่ามีอะไรของคุณเก็บอยู่บ้าง โดยใช้วิธีติดต่อเดียวกัน
           ส่วนสำเนาข้อความที่อยู่ในระบบของเฟซบุ๊กเอง ลบได้จากหน้าแชทของคุณ
         </p>
       </Section>
@@ -132,9 +170,22 @@ export default function PrivacyPage() {
             <strong>What we keep.</strong> From the calculator, nothing: it runs in your browser, and the
             age, sex and sum assured you choose are never sent to us. There are no visitor accounts and no
             tracking cookies — the site&rsquo;s only cookie belongs to the agency&rsquo;s own admin page.
-            From a chat with the agency&rsquo;s Facebook Page, the conversation is kept for at most 24 hours
+            From a chat with the agency&rsquo;s Facebook Page, the message text is kept for at most 24 hours
             so that follow-up questions make sense, then deleted. The sender is stored only as a one-way
             hash of the page-scoped id, which cannot be turned back into a person.
+          </p>
+          <p>
+            <strong>What we keep for longer.</strong> A record of how far a conversation got — which plan,
+            whether a premium was quoted and its figures, whether you asked to apply, and which advert
+            brought you — with <strong>none of your words in it</strong>. Conversation-level figures are kept
+            indefinitely; per-event detail is deleted after 13 months, and the one-way hash is cleared after
+            90 days without contact. If you ask to apply, your page-scoped id is kept encrypted so the agent
+            can follow up. Your name and photo are never stored: the agency&rsquo;s own admin page asks
+            Facebook for them at the moment it is opened.
+          </p>
+          <p>
+            <strong>Deletion.</strong> Write to the address below from the Page you messaged, and once we can
+            confirm it is you we delete your conversation record, its events and the stored id within 30 days.
           </p>
           <p>
             <strong>Who else sees it.</strong> The site is served from Vercel, which sees the ordinary
