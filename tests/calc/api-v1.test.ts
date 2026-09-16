@@ -20,6 +20,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 const { POST } = await import("@/app/api/v1/quote/route");
 const { POST: MCP } = await import("@/app/api/v1/mcp/route");
+const { POST: MCP_PATH } = await import("@/app/api/v1/mcp/[key]/route");
 const { GET } = await import("@/app/api/v1/plans/route");
 const { DISCLAIMER } = await import("@/lib/api/respond");
 
@@ -216,5 +217,34 @@ describe("the same answers, offered to a model", () => {
 
     const { error } = await (await rpc("resources/list")).json();
     expect(error.code).toBe(-32601);
+  });
+});
+
+describe("the key in the path, for a client that cannot send a header", () => {
+  /**
+   * Claude's connector settings take a URL and nothing else: it tries OAuth with dynamic
+   * client registration and stops when the server cannot do that. So the key travels in the
+   * path for that one client — the same handler, the same refusals, the same counting.
+   */
+  const viaPath = (key: string) =>
+    MCP_PATH(
+      new Request("https://x/api/v1/mcp/" + key, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 9, method: "tools/list" }),
+      }),
+      { params: Promise.resolve({ key }) },
+    );
+
+  it("works without any header at all", async () => {
+    const { result } = await (await viaPath(KEY)).json();
+    expect(result.tools.map((t: { name: string }) => t.name)).toEqual(["list_plans", "quote_premium"]);
+  });
+
+  it("is refused exactly as a header key would be", async () => {
+    keyRow = { ok: false, reason: "disabled", client_name: "เก่า" };
+    expect((await viaPath(KEY)).status).toBe(403);
+    keyRow = { ok: false, reason: "quota_exhausted", client_name: "x" };
+    expect((await viaPath(KEY)).status).toBe(429);
   });
 });

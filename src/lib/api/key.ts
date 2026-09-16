@@ -46,8 +46,19 @@ export function keyIn(request: Request): string | undefined {
  * in each case: a key that was never issued is a mistake in their configuration, and a key
  * that has run out of its month is a decision somebody here made.
  */
-export async function authorise(request: Request): Promise<{ caller: Caller } | { refused: Refusal }> {
-  const key = keyIn(request);
+export async function authorise(
+  request: Request,
+  /**
+   * A key the caller could not put in a header.
+   *
+   * Claude's connector settings take a URL and nothing else — it negotiates its own auth and
+   * gives up when a server cannot do OAuth — so for that one client the key travels in the
+   * path instead. Passed in rather than read here, because only the route that owns such a
+   * path should be able to say so.
+   */
+  fromPath?: string,
+): Promise<{ caller: Caller } | { refused: Refusal }> {
+  const key = fromPath?.trim() || keyIn(request);
   if (!key) return { refused: "missing" };
 
   /**

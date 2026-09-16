@@ -11,7 +11,22 @@ import { Empty } from "../ui";
  * loudly is that this is the only time: the table keeps a hash, so a key closed without
  * copying is not a setting to look up again, it is a key to issue again.
  */
-export function Keys({ rows }: { rows: KeyRow[] }) {
+function Copy({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try { await navigator.clipboard.writeText(text); setDone(true); } catch { setDone(false); }
+      }}
+      className="shrink-0 rounded border border-amber-400 px-2 py-1 text-xs text-amber-900"
+    >
+      {done ? "คัดลอกแล้ว" : "คัดลอก"}
+    </button>
+  );
+}
+
+export function Keys({ rows, mcpBase }: { rows: KeyRow[]; mcpBase: string }) {
   const [name, setName] = useState("");
   const [quota, setQuota] = useState("");
   const [minted, setMinted] = useState<string>();
@@ -93,6 +108,24 @@ export function Keys({ rows }: { rows: KeyRow[] }) {
             >
               ปิด
             </button>
+          </div>
+
+          {/* the address Claude's connector settings can actually take, made here so the key
+              is never pasted together by hand in the one place a typo is silent */}
+          <div className="mt-3 border-t border-amber-200 pt-2">
+            <p className="text-xs font-medium text-amber-900">
+              สำหรับ Claude (Settings → Connectors → Add custom connector)
+            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <code className="min-w-0 flex-1 overflow-x-auto rounded bg-white px-2 py-1.5 text-xs text-slate-800">
+                {`${mcpBase}/${minted}`}
+              </code>
+              <Copy text={`${mcpBase}/${minted}`} />
+            </div>
+            <p className="mt-1 text-xs text-amber-800">
+              ที่อยู่นี้มีกุญแจอยู่ข้างใน — วางเฉพาะในช่อง connector ของ Claude
+              ห้ามส่งต่อในแชทหรือใส่ในเอกสาร ถ้าหลุดให้กดปิดกุญแจนี้แล้วสร้างใหม่
+            </p>
           </div>
         </div>
       )}

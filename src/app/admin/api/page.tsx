@@ -22,7 +22,7 @@ export default async function ApiPage() {
         title="กุญแจ API"
         hint="ให้ระบบอื่นเรียกเครื่องคิดเบี้ยของเราได้ — หนึ่งกุญแจต่อหนึ่งผู้ใช้ จะได้ปิดทีละอันและดูได้ว่าใครใช้เท่าไหร่"
       >
-        <Keys rows={rows} />
+        <Keys rows={rows} mcpBase={siteUrl("/api/v1/mcp")} />
       </Card>
 
       <Card
@@ -33,12 +33,13 @@ export default async function ApiPage() {
           <div>
             <dt className="font-medium text-slate-800">Claude — เพิ่มเป็น connector</dt>
             <dd className="mt-1 text-slate-600">
-              ใส่ที่อยู่นี้ แล้วใส่กุญแจเป็น Bearer token
+              ใช้ที่อยู่ที่มีกุญแจต่อท้าย ซึ่งจะแสดงให้ตอนสร้างกุญแจ:
               <code className="mt-1 block overflow-x-auto rounded bg-slate-100 px-2 py-1.5 text-xs text-slate-800">
-                {siteUrl("/api/v1/mcp")}
+                {siteUrl("/api/v1/mcp")}/&lt;กุญแจของคุณ&gt;
               </code>
               <span className="mt-1 block text-xs text-slate-500">
-                Claude จะเห็นเครื่องมือ 2 ตัว: ดูรายการแบบประกัน และคิดเบี้ย
+                Claude จะเห็นเครื่องมือ 2 ตัว: ดูรายการแบบประกัน และคิดเบี้ย ·
+                ช่อง connector ของ Claude รับแต่ที่อยู่ ไม่มีที่ให้ใส่กุญแจแยก กุญแจจึงอยู่ในที่อยู่
               </span>
             </dd>
           </div>
