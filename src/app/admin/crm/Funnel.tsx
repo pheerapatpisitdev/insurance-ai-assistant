@@ -34,12 +34,16 @@ export function Funnel({ counts, byProduct }: { counts: Counts; byProduct: Summa
               <div key={s.key} className="grid grid-cols-[6rem_1fr_3rem] items-center gap-2.5 sm:grid-cols-[7rem_1fr_3.5rem]">
                 <span className="text-xs text-slate-700 sm:text-sm">{s.label}</span>
                 <div className="h-6 overflow-hidden rounded-md bg-slate-100">
-                  <div
-                    className="flex h-full items-center rounded-md pl-2 text-xs font-semibold text-white"
-                    style={{ width: `${Math.max(share(n, counts.arrived), n > 0 ? 4 : 0)}%`, background: s.colour }}
-                  >
-                    {n > 0 ? n : ""}
-                  </div>
+                  {/* nothing at all rather than an empty bar: the padding on a zero-width div
+                      still draws, and a row of those reads as a little data rather than none */}
+                  {n > 0 && (
+                    <div
+                      className="flex h-full items-center rounded-md pl-2 text-xs font-semibold text-white"
+                      style={{ width: `${Math.max(share(n, counts.arrived), 4)}%`, background: s.colour }}
+                    >
+                      {n}
+                    </div>
+                  )}
                 </div>
                 <span className="text-right text-xs tabular-nums text-slate-500">
                   {share(n, counts.arrived)}%
