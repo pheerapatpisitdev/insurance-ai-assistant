@@ -5,6 +5,7 @@ import { baseSumAssuredLimits } from "@/calc/rules";
 import { valueTableCard } from "@/lib/quote-card";
 import { cardPath, valueTablePath } from "@/lib/card-link";
 import { coverIn, peopleIn } from "@/lib/assistant/common";
+import { priceFollowUps, type GuideItem, type PriceGap } from "./guide";
 
 /**
  * Premiums for the plans the Messenger brains never learned.
@@ -36,11 +37,40 @@ export function planNamedIn(text: string): { code: string; label: string } | und
   return hit ? { code: hit[0], label: hit[1] } : undefined;
 }
 
+/**
+ * The message with the plan's own name taken out of it, before the facts are read.
+ *
+ * Because a product name can contain numbers, and the readers cannot tell those from a
+ * customer's. "iSmart 80/6 ชาย 40 ทุน 1 ล้าน" was read as a six-year-old — the reader pairs a
+ * number with the sex word beside it, found "6 ชาย" first, and the quotation came back
+ * refused for an age outside the plan's range. The name is on the page, on the card and in
+ * the guide button, so it is exactly what a person types.
+ *
+ * A model number is removed only where it sits against the name it belongs to, so a sum, an
+ * age or a paying term standing on its own is never touched.
+ */
+function withoutPlanName(text: string): string {
+  let out = text;
+  for (const [, , re] of PLANS) {
+    out = out.replace(new RegExp(`(${re.source})\\s*\\d{1,3}\\s*/\\s*\\d{1,3}`, "gi"), " ");
+    out = out.replace(new RegExp(re.source, "gi"), " ");
+  }
+  return out;
+}
+
 export interface PriceReply {
   text: string;
   cards?: string[];
   /** true when a figure was produced, so the page can say it came from the engine */
   priced: boolean;
+  /**
+   * The next questions, as buttons.
+   *
+   * They matter most exactly where the answer is a refusal: being told a paying term is
+   * needed and being handed the four terms on offer are very different experiences of the
+   * same sentence.
+   */
+  guide?: GuideItem[];
 }
 
 /**
@@ -115,15 +145,18 @@ export function priceNamedPlan(text: string, code: string, label: string): Price
     };
   }
 
-  const people = peopleIn(text);
-  const sum = coverIn(text);
+  const said = withoutPlanName(text);
+  const people = peopleIn(said);
+  const sum = coverIn(said);
   const variants = plan.rates.base.variants ?? [];
   const variant = variants.length === 1
     ? variants[0]
-    : variantAskedFor(text, variants, plan.variantLabels, people[0]?.age);
+    : variantAskedFor(said, variants, plan.variantLabels, people[0]?.age);
 
   const missing: string[] = [];
-  if (people.length === 0) missing.push("อายุกับเพศ (เช่น “ชาย 35”)");
+  /** the same gaps as `missing`, named rather than written out, for the buttons that fill them */
+  const needs: PriceGap["needs"] = [];
+  if (people.length === 0) { missing.push("อายุกับเพศ (เช่น “ชาย 35”)"); needs.push("person"); }
   if (sum === undefined) {
     /**
      * The example has to be a sum this plan will actually accept. "ทุน 1 ล้าน" was the
@@ -133,15 +166,23 @@ export function priceNamedPlan(text: string, code: string, label: string): Price
     const min = baseSumAssuredLimits(plan.rules, variant ?? variants[0] ?? "").min;
     const example = min && min > 1_000_000 ? min : 1_000_000;
     missing.push(`ทุนประกัน (เช่น “ทุน ${(example / 1_000_000).toLocaleString("en-US")} ล้าน”)`);
+    needs.push("sum");
   }
   if (!variant && variants.length > 1) {
     const choices = variants.map((v) => plan.variantLabels[v] ?? v).join(" · ");
     missing.push(`ระยะเวลาชำระเบี้ย — ${label} มีให้เลือก: ${choices}`);
+    needs.push("term");
   }
   if (missing.length) {
+    const gap: PriceGap = {
+      planCode: code, planLabel: label, variant, needs,
+      ...(people[0] ? { age: people[0].age, sex: people[0].sex } : {}),
+      ...(sum === undefined ? {} : { sumAssured: sum }),
+    };
     return {
       priced: false,
       text: `คิดเบี้ย **${label}** ให้ได้ครับ ขอเพิ่มอีกนิด:\n\n${missing.map((m) => `- ${m}`).join("\n")}`,
+      guide: priceFollowUps(gap),
     };
   }
 
@@ -217,5 +258,9 @@ export function priceNamedPlan(text: string, code: string, label: string): Price
     priced: true,
     text: lines.join("\n"),
     cards: hasTable ? [cardPath(card), valueTablePath(card)] : [cardPath(card)],
+    guide: priceFollowUps({
+      planCode: code, planLabel: label, variant: variant!,
+      age: who.age, sex: who.sex, sumAssured: result.sumAssured, needs: [],
+    }),
   };
 }

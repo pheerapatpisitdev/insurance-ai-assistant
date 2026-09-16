@@ -9,6 +9,7 @@ import { asksCheaper } from "@/lib/assistant/common";
 import type { AnySlots } from "@/lib/assistant/slots";
 import { assembleKnowledge } from "./knowledge";
 import { planNamedIn, priceNamedPlan } from "./price";
+import { PRICED_FOLLOW_UPS, type GuideItem } from "./guide";
 
 /**
  * The assistant that answers out of this system's own knowledge, and out of nothing else.
@@ -87,6 +88,15 @@ export interface CopilotAnswer {
    * two cards, and keeping only the first is quietly losing one of them.
    */
   cards?: string[];
+  /**
+   * The next questions, offered as buttons under the answer.
+   *
+   * Only where they are known to lead somewhere: after a quotation, and after a refusal that
+   * named exactly what was missing. A rule answered out of the knowledge gets none, because
+   * what follows from it is the reader's business and a guessed button is a dead end with a
+   * page's authority behind it.
+   */
+  guide?: GuideItem[];
 }
 
 /** The name shown under an answer the engine produced, where a model name would go. */
@@ -123,6 +133,7 @@ export async function answerFromKnowledge(
       model: priced.priced ? ENGINE : "—",
       priced: priced.priced,
       ...(priced.cards?.length ? { cards: priced.cards } : {}),
+      ...(priced.guide?.length ? { guide: priced.guide } : {}),
       // a plan without a brain carries no conversation, so nothing is held between turns
       slots: null,
     };
@@ -139,6 +150,8 @@ export async function answerFromKnowledge(
       priced: Boolean(answer.priced),
       slots: answer.slots,
       ...(cards.length ? { cards } : {}),
+      // the brains' own recognisers match these, so they reach the engine and not a model
+      ...(answer.priced ? { guide: PRICED_FOLLOW_UPS } : {}),
     };
   }
 

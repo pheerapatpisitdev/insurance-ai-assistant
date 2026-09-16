@@ -1,4 +1,5 @@
 import { listNotes } from "./actions";
+import { openingGuide } from "@/lib/copilot/guide";
 import { Chat } from "./Chat";
 import { Notes } from "./Notes";
 
@@ -13,7 +14,8 @@ export default async function Home() {
   const notes = await listNotes();
   return (
     <div className="mx-auto max-w-3xl px-4 pb-10">
-      <Chat />
+      {/* built on the server from the plan registry, so a new plan brings its own button */}
+      <Chat guide={openingGuide()} />
       <Notes initial={notes} />
     </div>
   );

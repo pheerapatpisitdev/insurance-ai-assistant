@@ -5,21 +5,7 @@ import { askCopilot } from "./actions";
 import { useListening, useSpeaking } from "./useVoice";
 import type { ChatMessage } from "@/lib/ai/types";
 import type { AnySlots } from "@/lib/assistant/slots";
-
-/**
- * The home page: a box to ask this system what it knows.
- *
- * The suggestions are not decoration. An empty box with a cursor in it is a question about
- * what the thing can do, and these four answer it by being the four kinds of question it can
- * actually take — a rule, a pairing, a limit, and the sales knowledge the agent typed in.
- */
-const SUGGESTIONS = [
-  "DCI ซื้อได้ถึงอายุเท่าไหร่",
-  "HIC ซื้อคู่กับ MEB ได้ไหม",
-  "Life Protect ทุนขั้นต่ำเท่าไหร่",
-  "iHealthy มีระยะเวลารอคอยกี่วัน",
-  "Life Protect ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่",
-];
+import type { GuideGroup, GuideItem } from "@/lib/copilot/guide";
 
 /**
  * The two pieces of markdown a model reaches for, drawn rather than printed.
@@ -58,9 +44,35 @@ interface Turn {
   priced?: boolean;
   /** the quotation as the engine drew it — the same picture the bot sends a customer */
   cards?: string[];
+  /** what to offer next, as buttons, when the answer leads somewhere in particular */
+  guide?: GuideItem[];
 }
 
-export function Chat() {
+/**
+ * A row of questions to press.
+ *
+ * The same shape wherever it appears — under the heading before anything has been asked, and
+ * under the last answer afterwards — so that pressing a button always means the same thing.
+ */
+function Chips(
+  { items, onPick, disabled }: { items: GuideItem[]; onPick: (ask: string) => void; disabled?: boolean },
+) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((g) => (
+        <button
+          key={g.ask} type="button" disabled={disabled} onClick={() => onPick(g.ask)}
+          title={g.ask}
+          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40"
+        >
+          {g.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function Chat({ guide }: { guide: GuideGroup[] }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   /**
    * What the pricing brain knows about the person being quoted, held here between questions.
@@ -126,7 +138,7 @@ export function Chat() {
       if (reply.slots !== undefined) setSlots(reply.slots);
       setTurns((t) => [...t, {
         role: "assistant", text: reply.text, model: reply.model,
-        priced: reply.priced, cards: reply.cards,
+        priced: reply.priced, cards: reply.cards, guide: reply.guide,
       }]);
       if (handsFreeRef.current) {
         // the microphone opens again only once the voice has stopped
@@ -188,18 +200,14 @@ export function Chat() {
 
       <div className="flex-1 space-y-4">
         {turns.length === 0 && (
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="mb-3 text-sm text-slate-600">ลองถามแบบนี้ดูครับ</p>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s} type="button" onClick={() => ask(s)}
-                  className="rounded-full border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+          <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-600">ไม่รู้จะเริ่มตรงไหน กดเลือกได้เลยครับ</p>
+            {guide.map((group) => (
+              <div key={group.title}>
+                <p className="mb-2 text-xs font-medium text-slate-400">{group.title}</p>
+                <Chips items={group.items} onPick={ask} disabled={busy} />
+              </div>
+            ))}
           </div>
         )}
 
@@ -225,6 +233,14 @@ export function Chat() {
                   <span className="mt-1 block text-[0.65rem] text-slate-400">แตะเพื่อเปิดรูปเต็ม แล้วบันทึกไปส่งลูกค้าได้</span>
                 </a>
               ))}
+              {/* offered under the last answer only: older rows are history, and a page of
+                  live buttons down its whole length is a page nobody can read */}
+              {t.role === "assistant" && t.guide?.length && i === turns.length - 1 && (
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  <p className="mb-2 text-xs text-slate-400">ถามต่อได้เลย</p>
+                  <Chips items={t.guide} onPick={ask} disabled={busy} />
+                </div>
+              )}
               {t.role === "assistant" && t.model && t.model !== "—" && (
                 <p className={`mt-2 text-[0.65rem] ${t.priced ? "text-emerald-700" : "text-slate-400"}`}>
                   {t.priced ? `✓ คิดจากตารางเบี้ยจริง · ${t.model}` : `ตอบโดย ${t.model}`}
