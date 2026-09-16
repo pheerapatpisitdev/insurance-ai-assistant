@@ -1,4 +1,5 @@
 import { getPlan, listPlans, trimSuffix } from "@/calc/plans/registry";
+import { pricedHere } from "./price";
 import { FAQ as LIFE_FAQ } from "@/lib/assistant/lifeprotect/faq";
 import { FAQ as HEALTH_FAQ } from "@/lib/assistant/ihealthy/faq";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -24,21 +25,29 @@ import type { PlanRules } from "@/calc/types";
 const money = (n: number) => n.toLocaleString("en-US");
 
 /**
- * The two the dispatcher speaks for, and therefore the two this chat can put a price on.
+ * Which plans this chat can put a price on — asked of the code that does the pricing.
  *
- * Every other plan here has rules and no brain. Saying so inside the knowledge is not a
- * detail: without it the assistant lists five plans as though they were five things it could
- * quote, and a customer who takes it at its word asks for a premium it cannot produce.
+ * Saying so inside the knowledge is not a detail in either direction. Claim too much and a
+ * customer asks for a premium the assistant cannot produce; claim too little and it sends
+ * them to another page for a figure it could have given them in the next sentence. It did
+ * exactly that for a while: this was a hand-kept list of one, and stayed at one after the
+ * chat learned to price three more.
+ *
+ * ไลฟ์ โพรเทค+ is added by hand because it is not priced by ./price at all — it has the
+ * dispatcher, which is a different road to the same figure.
  */
-const PRICEABLE = new Set(["LIFEPROTECT"]);
+const PRICEABLE = new Set([...pricedHere(), "LIFEPROTECT"]);
 
 /** One plan's rules as sentences. The shapes are the workbook's; the wording is for reading. */
 function planSection(code: string, name: string, rules: PlanRules): string {
   const lines: string[] = [
     `## ${trimSuffix(name)} (รหัส ${code})`,
     PRICEABLE.has(code)
-      ? "- คิดเบี้ยในแชทนี้ได้"
-      : "- **คิดเบี้ยในแชทนี้ไม่ได้** ตอบเรื่องเงื่อนไขได้อย่างเดียว เบี้ยต้องไปที่หน้าแบบประกันอื่นๆ (/other-plans)",
+      ? "- คิดเบี้ยในแชทนี้ได้ — บอกอายุ เพศ ทุนประกัน (และระยะเวลาชำระเบี้ยถ้าแบบนี้มีให้เลือก)"
+      : getPlan(code)?.rules.base.premiumBasis
+        // its figures run the other way: a premium in, a sum assured back
+        ? "- **แชทนี้คิดให้ไม่ได้** เพราะแบบนี้กรอกเบี้ยที่อยากจ่ายแล้วได้ทุนกลับมา ไม่ใช่กรอกทุน ใช้ที่หน้าแบบประกันอื่นๆ (/other-plans)"
+        : "- **คิดเบี้ยในแชทนี้ไม่ได้** ตอบเรื่องเงื่อนไขได้อย่างเดียว เบี้ยต้องไปที่หน้าแบบประกันอื่นๆ (/other-plans)",
   ];
   const b = rules.base;
 

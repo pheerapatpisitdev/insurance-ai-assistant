@@ -32,6 +32,19 @@ const PLANS: [code: string, label: string, re: RegExp][] = [
   ["ISHIELD", "iShield", /i\s*-?\s*shield|ไอ\s*ชิลด์/i],
 ];
 
+/**
+ * The plans this file will put a figure on, asked rather than listed.
+ *
+ * The knowledge base has to tell the model which plans the chat can price, and the first
+ * version of that was a hand-kept list holding one plan. It stayed at one after this file
+ * taught the chat three more — so the assistant spent a while telling customers to go to
+ * another page for a premium it could have produced in the next sentence. A list that can
+ * disagree with the code will.
+ */
+export function pricedHere(): Set<string> {
+  return new Set(PLANS.filter(([code]) => !getPlan(code)?.rules.base.premiumBasis).map(([code]) => code));
+}
+
 export function planNamedIn(text: string): { code: string; label: string } | undefined {
   const hit = PLANS.find(([, , re]) => re.test(text));
   return hit ? { code: hit[0], label: hit[1] } : undefined;

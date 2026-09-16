@@ -157,3 +157,27 @@ describe("the buttons offered after an answer", () => {
     }
   });
 });
+
+describe("what the knowledge tells the model it can do", () => {
+  it("names exactly the plans the chat can actually price", async () => {
+    /**
+     * The knowledge and the pricing path have to agree. They disagreed for a while — the
+     * knowledge was a hand-kept list of one plan and stayed at one after three more learned
+     * to price — so the assistant sent customers to another page for figures it could have
+     * given them in the next sentence.
+     */
+    const { pricedHere } = await import("@/lib/copilot/price");
+    const canPrice = pricedHere();
+    expect([...canPrice].sort()).toEqual(["ISMART", "LIFETREASURE", "PLB"]);
+
+    for (const code of canPrice) {
+      const label = openingGuide()[0].items.find((i) => planNamedIn(i.ask)?.code === code)!;
+      const reply = priceNamedPlan(label.ask, code, planNamedIn(label.ask)!.label);
+      expect(reply.priced, code).toBe(true);
+    }
+
+    // and the one it names as the exception really is the other way round
+    expect(getPlan("ISHIELD")?.rules.base.premiumBasis).toBe(true);
+    expect(canPrice.has("ISHIELD")).toBe(false);
+  });
+});
