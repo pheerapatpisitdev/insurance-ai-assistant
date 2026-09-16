@@ -207,8 +207,16 @@ export function BenefitTable(
                         whole table is organised around, and four columns of six lose it at a
                         child age. The six are read across the row against one another, which
                         is the one place in the table where the digits line up. */}
-                    <span className="mt-0.5 hidden text-[0.65rem] font-normal tabular-nums opacity-80 sm:block">
-                      {(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน
+                    {/* And it is the loudest thing in the header, because it is the thing
+                        being bought: the adverts sell these plans by their ceiling —
+                        "เหมาจ่าย 10 ล้าน" — where "Bronze" is a word the reader has to
+                        translate first. It was the quietest: 10.4px and 400 and faded to
+                        80%, under a name at 13px and 600. The unit stays small so the digits
+                        carry it, and the colour is left alone — the table sets one on every
+                        cell from its own stylesheet, and that rule outranks a utility class. */}
+                    <span className="mt-1 hidden font-bold tabular-nums sm:block sm:text-[0.95rem] sm:leading-tight">
+                      {(p.annualMax / 1_000_000).toLocaleString("en-US")}
+                      <span className="ml-1 text-[0.62rem] font-normal opacity-70">ล้าน</span>
                     </span>
                     {/* The column out of play is dimmed in its cells, not here: this line is
                         the only place the reader is told why, and faded to match the dashes
