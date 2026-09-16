@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { signIn } from "./actions";
 
 export function LoginForm({ configured }: { configured: boolean }) {
@@ -10,6 +11,7 @@ export function LoginForm({ configured }: { configured: boolean }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-6">
       <div className="rounded-lg border bg-white p-6">
+        <Image src="/brand/advisortool-robot-avst-clean.png" alt="AVST" width={46} height={73} className="mx-auto mb-2 h-16 w-auto" />
         <h1 className="text-center text-xl font-semibold">หลังบ้าน</h1>
         <p className="mt-1 text-center text-sm text-slate-500">กรอกรหัส 6 หลัก</p>
 

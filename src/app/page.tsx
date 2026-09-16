@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { quote } from "@/calc/quote";
 import { getPlan, listPlans } from "@/calc/plans/registry";
@@ -144,9 +145,12 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
-      <div className="mb-1 flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
-        <span className="flex gap-4 text-sm text-slate-500">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Image src="/brand/advisortool-robot-avst-clean.png" alt="AVST" width={42} height={67} priority className="h-14 w-auto" />
+          <h1 className="text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
+        </div>
+        <span className="ml-auto flex gap-4 text-sm text-slate-500">
           <Link href="/admin" className="underline">หลังบ้าน</Link>
           <Link href="/privacy" className="underline">ความเป็นส่วนตัว</Link>
         </span>
