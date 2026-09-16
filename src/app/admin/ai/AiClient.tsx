@@ -3,8 +3,35 @@ import { useState, useTransition } from "react";
 import { Card, Empty } from "../ui";
 import {
   checkKeys, saveApiKey, setModelEnabled, saveSettings,
-  type KeyRow, type ModelRow, type ProviderCheck, type Settings,
+  type KeyRow, type ModelRow, type ProviderCheck, type ProviderSpend, type Settings,
 } from "./actions";
+
+/**
+ * What this provider has cost since the first of the month.
+ *
+ * A bar as well as a number: five figures in a column are five figures to compare by
+ * reading, and the whole question here is which one is the expensive one.
+ */
+function Spend({ spend, top }: { spend?: ProviderSpend; top: number }) {
+  if (!spend || spend.calls === 0) {
+    return <span className="w-36 text-xs text-slate-300">ยังไม่มีค่าใช้จ่าย</span>;
+  }
+  const per = spend.baht / spend.calls;
+  return (
+    <span className="w-36 shrink-0" title={`${spend.calls} ครั้ง · ${spend.tasks.join(", ")}`}>
+      <span className="flex items-baseline gap-1.5">
+        <span className="text-sm font-semibold tabular-nums">฿{spend.baht.toFixed(2)}</span>
+        <span className="text-[0.65rem] text-slate-400">{spend.calls} ครั้ง</span>
+      </span>
+      <span className="mt-0.5 block h-1 w-full overflow-hidden rounded-full bg-slate-100">
+        <span className="block h-full rounded-full bg-slate-400" style={{ width: `${(spend.baht / top) * 100}%` }} />
+      </span>
+      <span className="mt-0.5 block text-[0.65rem] text-slate-400">
+        ครั้งละ ฿{per < 0.01 ? "<0.01" : per.toFixed(2)}
+      </span>
+    </span>
+  );
+}
 
 /**
  * The result of the last test, or a space where one has not been run.
@@ -40,8 +67,9 @@ const PROVIDER_LABEL: Record<string, string> = {
   anthropic: "Anthropic (Claude)", openai: "OpenAI (GPT)", google: "Google (Gemini)", xai: "xAI (Grok)", zai: "Z.ai (GLM)",
 };
 
-export function AiClient({ keys, models, settings, providers, spentThisMonth }: {
-  keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[]; spentThisMonth: number;
+export function AiClient({ keys, models, settings, providers, spentThisMonth, spend }: {
+  keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[];
+  spentThisMonth: number; spend: ProviderSpend[];
 }) {
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -55,6 +83,10 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth }: 
   const [checks, setChecks] = useState<ProviderCheck[]>();
   const [testing, setTesting] = useState(false);
   const checkOf = (p: string) => checks?.find((c) => c.provider === p);
+  const spendOf = (p: string) => spend.find((s) => s.provider === p);
+  /** the busiest line, so the others can be drawn as a share of it */
+  const topSpend = Math.max(...spend.map((s) => s.baht), 0.0001);
+  const baht = (n: number) => n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const textModels = models.filter((m) => m.kind === "text");
 
   const run = (fn: () => Promise<void>, ok: string) =>
@@ -95,6 +127,12 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth }: 
               ? `ตอบได้ ${checks.filter((c) => c.state === "ok").length} จาก ${checks.length} ค่าย`
               : "ส่งคำถามสั้นๆ ไปทุกค่ายเพื่อดูว่ากุญแจไหนยังใช้ได้ — ราคาไม่ถึงหนึ่งสตางค์"}
           </span>
+          <span className="ml-auto text-xs text-slate-500">
+            เดือนนี้ใช้ไป <b className="text-sm tabular-nums text-slate-900">฿{baht(spentThisMonth)}</b>
+            {settings?.monthly_budget_thb
+              ? <> จากงบ ฿{baht(Number(settings.monthly_budget_thb))} ({Math.round((spentThisMonth / Number(settings.monthly_budget_thb)) * 100)}%)</>
+              : " (ยังไม่ได้ตั้งงบ)"}
+          </span>
         </div>
         <div className="space-y-2">
           {providers.map((p) => (
@@ -102,6 +140,7 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth }: 
               <span className="w-44 text-sm">{PROVIDER_LABEL[p] ?? p}</span>
               <span className="w-24 text-xs text-slate-500">{tailOf(p) ? `••••${tailOf(p)}` : "ยังไม่ได้ตั้ง"}</span>
               <Status check={checkOf(p)} />
+              <Spend spend={spendOf(p)} top={topSpend} />
               <input
                 type="password" placeholder="วางกุญแจใหม่" autoComplete="off"
                 className="min-w-48 flex-1 rounded border px-2 py-1 text-sm"
