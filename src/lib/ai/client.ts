@@ -192,6 +192,17 @@ export interface ProviderCheck {
 const CHECK_TIMEOUT_MS = 15_000;
 
 /**
+ * Output tokens the check allows itself.
+ *
+ * One was the obvious answer and it was wrong: a reasoning model spends its output budget
+ * thinking before it writes anything, so GPT-5 hit the ceiling before its first character
+ * and returned 400 — "max_tokens or model output limit was reached". The check then reported
+ * a perfectly good key as a dead provider, which is the one mistake a health check must not
+ * make. Sixteen is enough for every provider here to finish, and still costs nothing.
+ */
+const CHECK_MAX_TOKENS = 16;
+
+/**
  * Anything in an error that looks like a credential, taken out before it reaches a screen.
  *
  * Providers do not normally quote the key back, but this text is written by five different
@@ -212,7 +223,7 @@ function scrub(message: string): string {
  * healthy and simply never reached — and a key that expired this morning looks identical to
  * one that has been fine all year until something actually asks it.
  *
- * So this asks. One token of output each, which is thousandths of a satang, and only when
+ * So this asks. A few tokens of output each, which is thousandths of a satang, and only when
  * somebody presses the button. The result is not written to the usage ledger: it is a
  * diagnostic about the keys, not work done for a customer.
  */
@@ -234,7 +245,7 @@ export async function testProviders(providers: string[]): Promise<ProviderCheck[
       await call({
         apiKey, model: model.model_name,
         messages: [{ role: "user", content: "ping" }],
-        maxTokens: 1,
+        maxTokens: CHECK_MAX_TOKENS,
         signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
       });
       return { provider, state: "ok", ms: Date.now() - began, model: model.model_name };
