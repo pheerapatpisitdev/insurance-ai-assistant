@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "@/lib/assistant/lifeprotect/prompts";
+import { VOICE } from "@/lib/assistant/prompts";
 
 /**
  * The prompts are the only place the model is allowed to speak from, so what they forbid is
@@ -47,4 +48,35 @@ describe("what the model is told", () => {
       expect(prompt).toContain("ห้ามบอกว่าตัวเองเป็นคน");
     });
   }
+});
+
+describe("plain language, and where it has to stop", () => {
+  /**
+   * Telling the assistant to speak like a person was right and nearly cost a contract answer.
+   *
+   * The instruction included "ห้ามไล่รหัสสัญญาอย่าง IHU MEB MEX ให้เรียกด้วยชื่อที่คนเข้าใจ".
+   * The model obeyed: it renamed MEB "แบบประกันคุ้มครองโรคร้ายแรง", which MEB is not, and then
+   * answered "HIC ซื้อคู่กับ MEB ได้ไหม" with "ซื้อคู่กันได้ครับ" — the opposite of the rule,
+   * in the voice of somebody who had checked. It had answered the same question correctly that
+   * morning.
+   *
+   * A name is an identifier, not a word to be translated. These lines are what stands between
+   * the plain voice and the contract, and this is what holds them there.
+   */
+  for (const [what, needle] of [
+    ["rider names are quoted, never invented", "ห้ามตั้งชื่อไทยขึ้นเอง"],
+    ["and never guessed at from the code", "ห้ามเดาว่ารหัสไหนคุ้มครองอะไร"],
+    ["a pairing rule is repeated, not summarised", "ห้ามสรุปใหม่ ห้ามอนุมานจากชื่อ"],
+    ["and a refusal is never softened", "ต้องตอบว่าไม่ได้ ห้ามอ่อนข้อให้"],
+    ["figures are carried across as they are", "ห้ามปัดเศษหรือเล่าใหม่"],
+  ] as const) {
+    it(what, () => {
+      expect(VOICE).toContain(needle);
+    });
+  }
+
+  it("still asks for the customer's own words everywhere else", () => {
+    expect(VOICE).toContain("พูดแบบคนทั่วไป");
+    expect(VOICE).toContain("วงเงินคุ้มครอง (ทุนประกัน)");
+  });
 });
