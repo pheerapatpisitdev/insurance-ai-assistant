@@ -122,7 +122,8 @@ export async function answerFromKnowledge(
    */
   if (forTheEngine(question) || slots) {
     const turns: ChatMessage[] = [...history.slice(-6), { role: "user", content: question }];
-    const answer = await answerAny(turns, slots);
+    // said outright, because the wording depends on it: this side renders markdown
+    const answer = await answerAny(turns, slots, "web");
     const text = answer.messages.map((m) => m.text).filter(Boolean).join("\n\n");
     const cards = answer.messages.map((m) => m.card).filter((c): c is string => Boolean(c));
     return {

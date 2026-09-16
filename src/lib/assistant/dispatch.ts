@@ -8,6 +8,7 @@ import type { Routed } from "./lifeprotect/route";
 import type { AnySlots, Undecided } from "./slots";
 import { planNamedIn, priceNamedPlan } from "@/lib/copilot/price";
 import type { GuideItem } from "@/lib/copilot/guide";
+import { writtenFor, type Channel } from "./channel";
 import { answerFromLibrary } from "@/lib/copilot/library";
 
 /** One answer, and everything the bot should remember about this customer next turn. */
@@ -86,7 +87,9 @@ function personIn(slots: AnySlots | null): Person {
  * settle one that has not begun; and where neither says anything, the customer is asked with
  * two buttons rather than guessed at.
  */
-export async function answerAny(history: ChatMessage[], stored: AnySlots | null): Promise<AnyAnswer> {
+export async function answerAny(
+  history: ChatMessage[], stored: AnySlots | null, channel: Channel = "web",
+): Promise<AnyAnswer> {
   const asked = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
   const now = settled(stored);
   const named = productNamedIn(asked);
@@ -112,7 +115,8 @@ export async function answerAny(history: ChatMessage[], stored: AnySlots | null)
     const priced = priceNamedPlan(asked, other.code, other.label);
     return {
       messages: [
-        { text: priced.text, ...(priced.cards?.[0] ? { card: priced.cards[0] } : {}) },
+        // the same words, written for wherever they are about to be read
+        { text: writtenFor(channel, priced.text), ...(priced.cards?.[0] ? { card: priced.cards[0] } : {}) },
         ...(priced.cards?.slice(1) ?? []).map((card) => ({ text: "", card })),
       ],
       priced: priced.priced,
@@ -154,7 +158,7 @@ export async function answerAny(history: ChatMessage[], stored: AnySlots | null)
    * asks which insurer, and the library would spend a model call arriving somewhere worse.
    */
   if (!lead && ASKS_SOMETHING.test(asked)) {
-    const answer = await answerFromLibrary(history, asked);
+    const answer = await answerFromLibrary(history, asked, channel);
     if (answer) {
       return { messages: [{ text: answer }], replies: askWhich().replies, slots: undecided, fromLibrary: true };
     }

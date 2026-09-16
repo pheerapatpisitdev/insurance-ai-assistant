@@ -103,3 +103,50 @@ describe("a question about a rule, asked in the page's inbox", () => {
     expect(chat).not.toHaveBeenCalled();
   });
 });
+
+describe("which door the message came through", () => {
+  /**
+   * The answer is the same answer. It is not written the same way twice: the website renders
+   * markdown and resolves a path of its own, and a page's inbox renders neither — so sharing
+   * the wording without saying which side asked is how a customer who arrived through an
+   * advertisement came to be shown "**iSmart 80/6**" and a link they could not press.
+   */
+  const ask = "iShield ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่";
+
+  it("writes markdown for the website, which draws it", async () => {
+    const a = await answerAny(said(ask), null, "web");
+    expect(a.messages[0].text).toContain("**iShield**");
+    expect(a.messages[0].text).toContain("](/other-plans)");
+  });
+
+  it("writes plain words and a whole address for the inbox, which draws neither", async () => {
+    const a = await answerAny(said(ask), null, "facebook");
+    const text = a.messages[0].text;
+    expect(text).toContain("iShield");
+    expect(text).not.toContain("**");
+    expect(text).not.toMatch(/\]\(/);
+    // a relative path means nothing to someone reading it in Messenger
+    expect(text).toMatch(/https?:\/\/\S+\/other-plans/);
+  });
+
+  it("keeps a quotation's figures identical either way", async () => {
+    const money = /💰 เบี้ยปีละ \*?\*?([\d,]+) บาท/;
+    const web = await answerAny(said("PLB ชาย 35 ทุน 1 ล้าน จ่าย 10 ปี เบี้ยเท่าไหร่"), null, "web");
+    const fb = await answerAny(said("PLB ชาย 35 ทุน 1 ล้าน จ่าย 10 ปี เบี้ยเท่าไหร่"), null, "facebook");
+    expect(fb.messages[0].text.match(money)![1]).toBe(web.messages[0].text.match(money)![1]);
+    // and the same picture, which the inbox turns into a whole address of its own
+    expect(fb.messages[0].card).toBe(web.messages[0].card);
+  });
+
+  it("tells a model writing into the inbox not to use markdown", async () => {
+    await answerAny(said("HIC ซื้อคู่กับ MEB ได้ไหม"), null, "facebook");
+    const system = chat.mock.calls.at(-1)![0].messages[0].content as string;
+    expect(system).toContain("ห้ามใช้มาร์กดาวน์");
+    expect(system).toMatch(/https?:\/\/\S+\/other-plans/);
+
+    chat.mockClear();
+    await answerAny(said("HIC ซื้อคู่กับ MEB ได้ไหม"), null, "web");
+    const web = chat.mock.calls.at(-1)![0].messages[0].content as string;
+    expect(web).not.toContain("ห้ามใช้มาร์กดาวน์");
+  });
+});

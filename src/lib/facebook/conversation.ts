@@ -19,11 +19,11 @@ import { WANTS_IN } from "@/lib/assistant/common";
  */
 async function answered(history: ChatMessage[], slots: Parameters<typeof answerAny>[1]) {
   try {
-    return await answerAny(history, slots);
+    return await answerAny(history, slots, "facebook");
   } catch (e) {
     if (e instanceof BudgetExceeded) throw e;
     console.error("answer failed, trying once more:", e);
-    return await answerAny(history, slots);
+    return await answerAny(history, slots, "facebook");
   }
 }
 

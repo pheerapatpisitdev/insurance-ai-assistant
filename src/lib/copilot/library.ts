@@ -1,5 +1,6 @@
 import { chat } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
+import { formattingRule, type Channel } from "@/lib/assistant/channel";
 import { assembleKnowledge } from "./knowledge";
 
 /**
@@ -43,7 +44,7 @@ export interface LibraryAnswer {
  * anyway, not break the conversation.
  */
 export async function askLibrary(
-  history: ChatMessage[], question: string,
+  history: ChatMessage[], question: string, channel: Channel = "web",
 ): Promise<LibraryAnswer | undefined> {
   try {
     const knowledge = await assembleKnowledge(question);
@@ -52,7 +53,7 @@ export async function askLibrary(
       task: "library",
       maxTokens: 900,
       messages: [
-        { role: "system", content: `${SYSTEM}\n\n---\n\n${knowledge}` },
+        { role: "system", content: `${SYSTEM}${formattingRule(channel)}\n\n---\n\n${knowledge}` },
         ...history.slice(-6),
         { role: "user", content: question },
       ],
@@ -66,8 +67,8 @@ export async function askLibrary(
 
 /** The text alone, for the caller that has no use for the model's name. */
 export async function answerFromLibrary(
-  history: ChatMessage[], question: string,
+  history: ChatMessage[], question: string, channel: Channel = "web",
 ): Promise<string | undefined> {
-  const answer = await askLibrary(history, question);
+  const answer = await askLibrary(history, question, channel);
   return answer?.text;
 }
