@@ -186,9 +186,22 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
                   <Chips items={t.guide} onPick={ask} disabled={busy} />
                 </div>
               )}
-              {t.role === "assistant" && t.model && t.model !== "—" && (
-                <p className={`mt-2 text-[0.65rem] ${t.priced ? "text-[var(--hm-live)]" : "text-[var(--hm-mute)]"}`}>
-                  {t.priced ? `✓ คิดจากตารางเบี้ยจริง · ${t.model}` : `ตอบโดย ${t.model}`}
+              {/**
+                * Only the line that means something to whoever is reading.
+                *
+                * Every answer used to be signed with the model that wrote it — "ตอบโดย
+                * gemini-3.1-flash-lite" — which was worth seeing while this page was the
+                * agent's own bench and they were choosing between models. To a customer it is
+                * a stranger's name under a sentence about their own money.
+                *
+                * What stays is the claim a customer has a use for: this figure came out of the
+                * company's rate tables and not out of a model. The model's name comes off even
+                * there, because the point of the line is the opposite — that no model touched
+                * the number.
+                */}
+              {t.role === "assistant" && t.priced && (
+                <p className="mt-2 text-[0.65rem] text-[var(--hm-live)]">
+                  {"✓ คิดจากตารางเบี้ยจริง"}
                 </p>
               )}
             </div>
