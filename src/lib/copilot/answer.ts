@@ -176,7 +176,16 @@ export async function answerFromKnowledge(
     }
   }
 
-  const knowledge = await assembleKnowledge();
+  /**
+   * The question chooses what it is answered from.
+   *
+   * Everything a wrong answer could come from still travels every time — the plan rules, the
+   * pairing rules, and how many illnesses each rider covers. What is fetched rather than sent
+   * is the material whose absence the assistant reports instead of papering over: the
+   * illness names, and the standard answers. Half the prompt, and nothing that can turn a
+   * refusal into a confident mistake.
+   */
+  const knowledge = await assembleKnowledge(question);
   const messages: ChatMessage[] = [
     { role: "system", content: `${SYSTEM}\n\n---\n\n${knowledge}` },
     ...history.slice(-6),

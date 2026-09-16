@@ -112,61 +112,118 @@ function planSection(code: string, name: string, rules: PlanRules): string {
 }
 
 /**
- * The illnesses the critical-illness riders name, one line each.
+ * The illness lists, and which question reaches which of them.
  *
- * They were in the repository and not in here, so the assistant answered "DCI คุ้มครองกี่โรค"
- * with "ข้อมูลนี้ไม่มีในระบบ" — which was true of what it could see and false of the system,
- * and it is one of the questions an agent is asked most. Thirty-one names and seventy cost
- * about four kilobytes, against a knowledge base that already sends everything it has.
- *
- * The names only, never the definitions: what counts as the illness is the policy's wording,
- * and a model summarising that sentence is a model rewriting the contract.
+ * Every list declares the words that call it. That is a deliberate choice against searching
+ * by similarity: the vocabulary here is closed — five plans and thirteen riders, all named —
+ * so a declared index is testable where a nearest-neighbour is only inspectable. Every route
+ * in this table has a test that presses it.
  */
-function diseaseSection(): string {
-  /** One rider, however its own file happens to be shaped, as the same few lines. */
-  const block = (
-    name: string, note: string, groups: { title: string; diseases: string[] }[],
-  ): string[] => {
-    const total = groups.reduce((n, g) => n + g.diseases.length, 0);
-    const heading = groups.length === 1
-      ? `### ${name} — ${total} โรค`
-      : `### ${name} — รวม ${total} โรค (${groups.map((g) => `${g.title} ${g.diseases.length}`).join(", ")})`;
-    return [heading, `- ${note}`, ...groups.map((g) => `- ${g.title}: ${g.diseases.join(" / ")}`)];
-  };
+interface DiseaseList {
+  name: string;
+  note: string;
+  groups: { title: string; diseases: string[] }[];
+  /** the words that name this rider in particular */
+  re: RegExp;
+}
 
-  const out: string[] = ["## โรคร้ายแรงที่สัญญาเพิ่มเติมคุ้มครอง (ชื่อโรคตามกรมธรรม์)"];
+/** A question about illnesses that names no rider — then every list is sent, because guessing which is worse. */
+const ANY_DISEASE = /โรคร้าย|ร้ายแรง|กี่โรค|ชื่อโรค|รายชื่อโรค|โรคอะไร|คุ้มครองโรค|ครอบคลุมโรค|มะเร็ง|critical\s*illness/i;
 
+function diseaseLists(): DiseaseList[] {
   const dci = riderDiseases("DCI");
-  if (dci) out.push(...block(dci.name, dci.note, [{ title: "รายชื่อ", diseases: dci.diseases }]));
-
   const shield = ishieldDiseases as { note: string; early: string[]; major: string[] };
-  out.push(...block("iShield", shield.note, [
-    { title: "ระยะเริ่มต้น", diseases: shield.early },
-    { title: "ระยะรุนแรง", diseases: shield.major },
-  ]));
+  const ci = ci123Diseases as { name: string; note: string; groups: { title: string; diseases: string[] }[] };
+  const rrss = rrssDiseases as { name: string; note: string; groups: { title: string; diseases: string[] }[] };
+  return [
+    ...(dci ? [{
+      name: dci.name, note: dci.note, re: /\bdci\b|ดีซีไอ/i,
+      groups: [{ title: "รายชื่อ", diseases: dci.diseases }],
+    }] : []),
+    {
+      name: "iShield", note: shield.note, re: /i\s*-?\s*shield|ไอ\s*ชิลด์/i,
+      groups: [
+        { title: "ระยะเริ่มต้น", diseases: shield.early },
+        { title: "ระยะรุนแรง", diseases: shield.major },
+      ],
+    },
+    { name: ci.name, note: ci.note, groups: ci.groups, re: /\bci\s*-?\s*123\b|ซีไอ\s*123/i },
+    { name: rrss.name, note: rrss.note, groups: rrss.groups, re: /\brrss\b|\bmci\b|โซชิลด์/i },
+  ];
+}
 
-  for (const r of [ci123Diseases, rrssDiseases] as {
-    name: string; note: string; groups: { title: string; diseases: string[] }[];
-  }[]) {
-    out.push(...block(r.name, r.note, r.groups));
-  }
+const listTotal = (l: DiseaseList) => l.groups.reduce((n, g) => n + g.diseases.length, 0);
 
-  out.push("- คำนิยามของแต่ละโรคเป็นไปตามที่ระบุในกรมธรรม์ ห้ามสรุปหรือย่อคำนิยามเอง");
-  return out.join("\n");
+/** The heading every list keeps in the knowledge whether or not its names are sent with it. */
+function listHeading(l: DiseaseList): string {
+  const total = listTotal(l);
+  return l.groups.length === 1
+    ? `### ${l.name} — ${total} โรค`
+    : `### ${l.name} — รวม ${total} โรค (${l.groups.map((g) => `${g.title} ${g.diseases.length}`).join(", ")})`;
+}
+
+/**
+ * What every question carries: how many illnesses each rider covers, and the groups they fall
+ * into. It is the answer to the question people actually ask — "กี่โรค" — and it costs a few
+ * hundred characters rather than ten thousand.
+ *
+ * The last line is the reason this can be split at all. Without it, a question whose names
+ * were not fetched would be answered "ข้อมูลนี้ไม่มีในระบบ", which is a lie about a system
+ * that has them. With it, the assistant knows the list exists and offers to fetch it.
+ */
+function diseaseSummary(lists: DiseaseList[]): string {
+  return [
+    "## โรคร้ายแรงที่สัญญาเพิ่มเติมคุ้มครอง — สรุปจำนวน",
+    ...lists.map((l) => `- ${listHeading(l).replace(/^### /, "")}`),
+    "- ชื่อโรคทุกโรคมีอยู่ในระบบ ถ้าผู้ใช้ขอรายชื่อเต็มแต่ไม่เห็นรายชื่อด้านล่าง ให้บอกว่า “ขอรายชื่อเต็มได้ครับ ระบุสัญญาที่ต้องการ” — ห้ามบอกว่าไม่มีในระบบ",
+  ].join("\n");
+}
+
+/** The names themselves, for the lists this question actually asked about. */
+function diseaseDetail(lists: DiseaseList[]): string {
+  if (!lists.length) return "";
+  return [
+    "## รายชื่อโรค (ชื่อตามกรมธรรม์)",
+    ...lists.flatMap((l) => [
+      listHeading(l),
+      `- ${l.note}`,
+      ...l.groups.map((g) => `- ${g.title}: ${g.diseases.join(" / ")}`),
+    ]),
+    "- คำนิยามของแต่ละโรคเป็นไปตามที่ระบุในกรมธรรม์ ห้ามสรุปหรือย่อคำนิยามเอง",
+  ].join("\n");
+}
+
+/**
+ * Which lists this question opens. A named rider opens its own and nothing else; a question
+ * about illnesses that names none opens them all, because choosing one for the asker is the
+ * guess this design exists to avoid. A question about neither opens none.
+ */
+export function listsFor(question: string): DiseaseList[] {
+  const all = diseaseLists();
+  if (!question) return all;
+  const named = all.filter((l) => l.re.test(question));
+  if (named.length) return named;
+  return ANY_DISEASE.test(question) ? all : [];
 }
 
 /** The answers the agency already gives by hand, which are the house's own words. */
-function faqSection(): string {
+function faqSection(question: string): string {
+  /**
+   * Each entry carries the pattern that summons it — written by whoever wrote the answer,
+   * and the same one the Messenger bot matches on to serve it. Asking that pattern is how
+   * this stays in step: a rewritten answer brings its own new trigger with it, and there is
+   * no second list of keywords here to fall out of date.
+   */
   const all = [
-    ...LIFE_FAQ.map((f): { plan: string; key: string; answer: string } =>
-      ({ plan: "Life Protect x 2", key: f.key, answer: f.answer })),
+    ...LIFE_FAQ.map((f) => ({ plan: "Life Protect x 2", key: f.key, match: f.match, answer: f.answer })),
     // the health entries hold a function, because two of them are read off the contract
     // sheet at the moment they are asked rather than typed into the file
-    ...HEALTH_FAQ.map((f): { plan: string; key: string; answer: string } =>
-      ({ plan: "iHealthy Ultra", key: f.key, answer: f.answer() })),
+    ...HEALTH_FAQ.map((f) => ({ plan: "iHealthy Ultra", key: f.key, match: f.match, answer: f.answer() })),
   ];
+  const wanted = question ? all.filter((f) => f.match.test(question)) : all;
+  if (!wanted.length) return "";
   return ["## คำตอบมาตรฐานที่เอเจนซี่ใช้อยู่",
-    ...all.map((f) => `- [${f.plan} · ${f.key}] ${f.answer.replace(/\n+/g, " ")}`)].join("\n");
+    ...wanted.map((f) => `- [${f.plan} · ${f.key}] ${f.answer.replace(/\n+/g, " ")}`)].join("\n");
 }
 
 /** What the agent has typed in for themselves: objections, comparisons, anything else. */
@@ -203,12 +260,16 @@ export function knowledgePlans(): { code: string; name: string }[] {
  * Pure but for the one database read, and that read fails soft: the rules are the part that
  * must never be missing and they come from files in this repository, not from a table.
  */
-export async function assembleKnowledge(): Promise<string> {
+export async function assembleKnowledge(question = ""): Promise<string> {
   const plans = knowledgePlans()
     .map((p) => planSection(p.code, p.name, getPlan(p.code)!.rules))
     .join("\n\n");
   const notes = await ownNotesSection();
-  return [
+  const all = diseaseLists();
+  const opened = listsFor(question);
+  const faq = faqSection(question);
+
+  const text = [
     "# คลังความรู้ของระบบนี้",
     "ทุกอย่างด้านล่างมาจากไฟล์กฎและตารางของระบบนี้เอง ไม่ได้มาจากที่อื่น",
     "",
@@ -222,9 +283,20 @@ export async function assembleKnowledge(): Promise<string> {
     "",
     plans,
     "",
-    diseaseSection(),
-    "",
-    faqSection(),
+    diseaseSummary(all),
+    ...(opened.length ? ["", diseaseDetail(opened)] : []),
+    ...(faq ? ["", faq] : []),
     ...(notes ? ["", notes] : []),
   ].join("\n");
+
+  /**
+   * What was sent, in one line. A route that quietly fetches the wrong thing is the failure
+   * this design can have, and the only way to find it is to be able to read afterwards which
+   * blocks a question opened.
+   */
+  console.info(
+    `[knowledge] ${text.length} ตัวอักษร · โรค: ${opened.length ? opened.map((l) => l.name.slice(0, 18)).join("+") : "สรุปเท่านั้น"}`
+    + ` · faq: ${faq ? faq.split("\n").length - 1 : 0}`,
+  );
+  return text;
 }
