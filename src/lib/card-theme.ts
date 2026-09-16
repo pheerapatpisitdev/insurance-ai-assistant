@@ -97,30 +97,21 @@ const SATIN_ROSE: CardPalette = {
 };
 
 /**
- * /ihealthy-ultra: deep teal on ivory. Drawn by its own route rather than this one, and
- * exported for it — the palettes belong together even when the drawing does not.
+ * /ihealthy-ultra: the rose satin, because that is what the page wears now.
+ *
+ * Drawn by its own route rather than this one, and exported for it — the palettes belong
+ * together even when the drawing does not.
+ *
+ * Everything is SATIN_ROSE's except the grey. This card fades some cells to 85% — the ceiling
+ * row, whose figures sit in a column the age cannot buy but which are real figures all the
+ * same — and the satin's own #635553 comes out of that fade at 4.5:1 on the lightest ground
+ * and 4.1:1 at the deep end of the wash, which is under the bar on a picture the reader
+ * cannot zoom out of. At this value the faded cells hold 5.5:1 and 5.0:1. The difference is
+ * invisible at full strength and is the whole point at 85%.
  */
-export const IHEALTHY_IVORY: CardPalette = {
-  ground: "#f7f4ee",
-  groundDeep: "#eee9dd",
-  accent: "#304b59",
-  figure: "#253d4b",
-  ink: "#293e48",
-  /**
-   * Darker than the page's own quiet grey, because this card fades some cells to 85% — the
-   * ceiling row, whose figures sit in a column the age cannot buy but which are real figures
-   * all the same. That fade was set against the charcoal and costs about 1.4 of contrast; the
-   * page's #626e70 would come out of it at 3.6:1. At this value the faded cells still clear
-   * 4.9:1, in a picture the reader cannot zoom out of.
-   */
-  mute: "#4d5857",
-  hair: "#a8a08e",
-  rule: "#9b9483",
-  glow: "rgba(48,75,89,0.08)",
-  stripe: "rgba(41,62,72,0.035)",
-  grid: "rgba(155,148,131,0.35)",
-  tint: "rgba(48,75,89,0.08)",
-  line: { cash: "#304b59", premium: "#8a8275", cover: "#9c9487" },
+export const IHEALTHY_SATIN: CardPalette = {
+  ...SATIN_ROSE,
+  mute: "#524645",
 };
 
 /**

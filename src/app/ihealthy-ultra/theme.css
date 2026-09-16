@@ -1,128 +1,90 @@
-/* Health-specific palette: shared sales components inherit these tokens. */
-.ihealthy-scope .theme-legacy {
-  color-scheme: light;
-  --lg-ground: #f5f2eb;
-  --lg-ground-deep: #f5f2eb;
-  --lg-ground-lit: #fffdf8;
-  --lg-raise: #fffdf8;
-  --lg-ink: #fffdf8;
-  --lg-gold: #304b59;
-  --lg-gold-deep: #253d4b;
-  --lg-gold-lit: #304b59;
-  --lg-gold-glow: #e9e4d9;
-  --lg-hair: #d8cebd;
-  --lg-white: #293e48;
-  --lg-mute: #626e70;
-  --lg-panel: #fffdf8;
-  --lg-panel-line: #dedbd1;
-  background: #f5f2eb;
-  font-weight: 400;
+/* iHealthy Ultra wears the rose satin, the same as /plb and /legacy — the layout wraps the
+   page in .satin-rose, which brings the palette, the fabric, the engraved rule, the metal
+   lettering and the print block with it.
+
+   What is left here is the page's own furniture: a hero this plan alone has, and the six-plan
+   benefit table, which is the reason this file did not simply disappear. Everything in it is
+   drawn from the satin tokens rather than from colours of its own, so re-tinting the satin
+   re-tints the table with it.
+
+   The exception is the table's two rules, which are darker than any token. The table is a
+   six-column comparison read across, where the gridline is what keeps a figure attached to
+   its plan — so both are picked to clear 3:1 against every surface they touch, the blush
+   colgroup band included, and --lg-panel-line does not (1.97:1 on that band). */
+.ihealthy-scope {
+  /* the table's structural rules: outline, row-header edge, band borders */
+  --ihu-rule: #756563;
+  /* the quieter separator between one benefit row and the next */
+  --ihu-hairline: #938482;
+  /* the two header bands, deepening as they rise: rows, then plans, then the group above them */
+  --ihu-head: #e7dbd6;
+  --ihu-group: #dbc9c3;
 }
-body:has(.ihealthy-scope) { background: #f5f2eb; }
-.ihealthy-scope .theme-legacy::before,
-.ihealthy-scope .theme-legacy::after { display: none; }
-.ihealthy-scope .theme-legacy h1,
-.ihealthy-scope .theme-legacy h2,
-.ihealthy-scope .lg-figure { font-family: var(--lg-font-body), sans-serif; }
-.ihealthy-scope .lg-metal-text { background: none; color: var(--lg-gold); }
-.ihealthy-scope .lg-metal-face {
-  background: linear-gradient(135deg, #4d6570, #293e48);
-  color: #fff;
-  box-shadow: 0 4px 12px #304b5915;
-}
-.ihealthy-scope .lg-sheen::after { display: none; }
-.ihealthy-scope .lg-rule { background: #dedbd1; }
-.ihealthy-scope .rounded-sm { border-radius: 12px; }
-.ihealthy-scope button,
-.ihealthy-scope a,
-.ihealthy-scope select { transition: background-color .18s, box-shadow .18s, border-color .18s; }
-.ihealthy-scope button:not(:disabled),
-.ihealthy-scope summary { cursor: pointer; }
-.ihealthy-scope button:hover:not(:disabled),
-.ihealthy-scope a:hover { box-shadow: 0 3px 14px #293e4816; }
-.ihealthy-scope :is(button, a, select, input, summary):focus-visible {
-  outline: 3px solid #9d8766;
-  outline-offset: 3px;
-}
-.ihealthy-scope select {
-  background-color: #f7f5ef;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23626e70' stroke-width='1.5'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-}
-.ihealthy-scope #calc > div > .border {
-  border-radius: 22px;
-  padding: 24px;
-  box-shadow: 0 8px 32px #4e493512, inset 0 1px 0 #ffffff;
-}
-.ihealthy-scope #calc > div > .border:nth-of-type(3) {
-  border-top: 4px solid #9d8766;
-  background: linear-gradient(135deg, #fff, #e9eeeb);
-}
+
 .ihu-hero { padding: 36px 0 20px; }
-.ihu-eyebrow svg { color: #9d8766; }
+.ihu-eyebrow svg { color: var(--lg-gold-lit); }
 .ihu-eyebrow {
   display: flex; align-items: center; gap: 9px;
-  color: #304b59; font-size: 12px; font-weight: 500;
+  color: var(--lg-gold); font-size: 12px; font-weight: 500;
   margin-bottom: 30px;
 }
 .ihu-title-label { display: block; font-size: 20px; font-weight: 400; margin-bottom: 8px; }
 .ihu-title-name { display: block; font-size: clamp(40px, 8vw, 60px); font-weight: 600; line-height: 1.15; letter-spacing: -2px; }
-.ihu-title-name > span { color: #73898b; }
-.ihu-intro { margin-top: 20px; max-width: 510px; font-size: 15px; line-height: 1.95; color: #626e70; }
+.ihu-title-name > span { color: var(--lg-mute); }
+.ihu-intro { margin-top: 20px; max-width: 510px; font-size: 15px; line-height: 1.95; color: var(--lg-mute); }
 .ihu-highlights { display: grid; grid-template-columns: 1.2fr 1fr 1fr; padding: 24px 0; margin-top: 8px; }
-.ihu-highlights > div { padding-left: 20px; border-left: 1px solid #d8cebd; }
+.ihu-highlights > div { padding-left: 20px; border-left: 1px solid var(--lg-hair); }
 .ihu-highlights > div:first-child { padding-left: 0; border-left: 0; }
-.ihu-highlights span { display: block; font-size: 11px; color: #626e70; margin-bottom: 4px; }
-.ihu-highlights strong { font-size: 30px; font-weight: 500; color: #304b59; }
+.ihu-highlights span { display: block; font-size: 11px; color: var(--lg-mute); margin-bottom: 4px; }
+.ihu-highlights strong { font-size: 30px; font-weight: 500; color: var(--lg-gold); }
 .ihu-highlights small { font-size: 12px; font-weight: 400; }
-.ihu-section-label { display: flex; justify-content: space-between; padding-top: 24px; border-top: 1px solid #d8cebd; margin-top: 4px; font-size: 14px; font-weight: 500; }
+.ihu-section-label {
+  display: flex; justify-content: space-between; padding-top: 24px;
+  border-top: 1px solid var(--lg-hair); margin-top: 4px; font-size: 14px; font-weight: 500;
+}
 @media (max-width: 420px) {
   .ihu-highlights > div { padding-left: 12px; }
   .ihu-highlights strong { font-size: 26px; }
-  .ihealthy-scope #calc > div > .border { padding: 20px; }
 }
 @media print {
-  .ihealthy-scope .theme-legacy { background: #fff; --lg-mute: #333; --lg-ink: #111; }
   .ihu-hero { padding-top: 0; }
   .ihu-section-label { display: none; }
-  .ihealthy-scope #calc > div > .border { box-shadow: none; background: #fff; }
 }
 
 /* Clear cell boundaries and a comfortable reading rhythm for benefit comparisons. */
 .ihealthy-scope .ihu-benefit-table {
   border-collapse: separate;
   border-spacing: 0;
-  border: 1px solid #a9b4b4;
+  border: 1px solid var(--ihu-rule);
   border-radius: 12px;
-  --lg-panel-line: #b8c1bf;
-  --lg-gold-glow: #e4ebe8;
-  background: #fffdf8;
+  --lg-panel-line: var(--ihu-hairline);
+  --lg-gold-glow: var(--ihu-head);
+  background: var(--lg-panel);
 }
 .ihealthy-scope .ihu-benefit-table :is(th, td) {
   padding-top: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #b8c1bf;
+  border-bottom: 1px solid var(--ihu-hairline);
   line-height: 1.9;
   vertical-align: top;
-  color: #34474e;
+  /* the ink, not the aside: a figure in this table is the thing being compared */
+  color: var(--lg-white);
 }
 .ihealthy-scope .ihu-benefit-table th[scope="row"] {
-  background: #f7f4ed;
-  border-right: 2px solid #a9b4b4;
+  background: var(--lg-ground);
+  border-right: 2px solid var(--ihu-rule);
   font-weight: 400;
 }
 .ihealthy-scope .ihu-benefit-table thead th {
-  background: #e5eae7;
-  border-bottom: 2px solid #859696;
+  background: var(--ihu-head);
+  border-bottom: 2px solid var(--ihu-rule);
   box-shadow: none;
   font-weight: 600;
 }
 .ihealthy-scope .ihu-benefit-table th[scope="colgroup"] {
-  background: #dddccc;
-  border-top: 1px solid #a9b4b4;
-  border-bottom: 2px solid #a9b4b4;
+  background: var(--ihu-group);
+  border-top: 1px solid var(--ihu-rule);
+  border-bottom: 2px solid var(--ihu-rule);
   font-weight: 600;
   padding-top: 12px;
   padding-bottom: 12px;

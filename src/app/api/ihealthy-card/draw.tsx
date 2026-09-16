@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { CardCell, CardColumn, CardTableRow } from "@/lib/ihealthy-card";
-import { IHEALTHY_IVORY } from "@/lib/card-theme";
+import { IHEALTHY_SATIN } from "@/lib/card-theme";
 
 /**
  * The ink both health pictures are drawn with: the palette, the bands, and the three
@@ -22,16 +22,16 @@ import { IHEALTHY_IVORY } from "@/lib/card-theme";
  * the scale they sit at — on the ivory the premium is the darkest thing on the card, not the
  * brightest. The registry names them `figure` and `ink` for that reason.
  */
-export const GROUND = IHEALTHY_IVORY.ground;
-export const GROUND_DEEP = IHEALTHY_IVORY.groundDeep;
-export const GOLD = IHEALTHY_IVORY.accent;
-export const GOLD_LIT = IHEALTHY_IVORY.figure;
-export const WHITE = IHEALTHY_IVORY.ink;
-export const MUTE = IHEALTHY_IVORY.mute;
-export const RULE = IHEALTHY_IVORY.rule;
-export const GRID = IHEALTHY_IVORY.grid;
+export const GROUND = IHEALTHY_SATIN.ground;
+export const GROUND_DEEP = IHEALTHY_SATIN.groundDeep;
+export const GOLD = IHEALTHY_SATIN.accent;
+export const GOLD_LIT = IHEALTHY_SATIN.figure;
+export const WHITE = IHEALTHY_SATIN.ink;
+export const MUTE = IHEALTHY_SATIN.mute;
+export const RULE = IHEALTHY_SATIN.rule;
+export const GRID = IHEALTHY_SATIN.grid;
 /** the chosen plan's column, laid over the ground rather than instead of it */
-export const TINT = IHEALTHY_IVORY.tint;
+export const TINT = IHEALTHY_SATIN.tint;
 
 /**
  * The canvas, and the table drawn on it.

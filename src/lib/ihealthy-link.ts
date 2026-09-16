@@ -1,7 +1,7 @@
 import type { PayMode } from "@/calc/types";
 import type { AttachedRider } from "@/lib/ihealthy-rider-quote";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
-import { IHEALTHY_IVORY, cardPaletteVersion } from "@/lib/card-theme";
+import { IHEALTHY_SATIN, cardPaletteVersion } from "@/lib/card-theme";
 import {
   IHEALTHY_OPENING, baseFor, resolveArrangement, sumFor, type IHealthyInitial,
 } from "@/lib/ihealthy-choice";
@@ -257,7 +257,7 @@ export function ridersFrom(raw: string[]): AttachedRider[] {
  * be a parameter the reader has to look at and nothing would ever read.
  */
 export function cardQuery(table: IHealthyTable, v: IHealthyInitial): string {
-  return `${queryFrom(table, v)}&v=${cardPaletteVersion(IHEALTHY_IVORY)}`;
+  return `${queryFrom(table, v)}&v=${cardPaletteVersion(IHEALTHY_SATIN)}`;
 }
 
 /**
