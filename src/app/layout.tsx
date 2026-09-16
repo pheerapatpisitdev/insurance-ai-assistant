@@ -1,9 +1,36 @@
 import type { Metadata } from "next";
+import { siteOrigin } from "@/lib/site-url";
 import "./globals.css";
 
+/**
+ * What this app is called, and what it looks like when it leaves the browser.
+ *
+ * The icons beside this file are picked up by name — `icon.png` for the tab, `apple-icon.png`
+ * for a phone's home screen, `opengraph-image.png` for a link pasted into LINE or Messenger —
+ * so none of them is listed here. What has to be here is `metadataBase`: without it Next
+ * writes the share image as a relative path, and LINE fetches images from its own servers,
+ * where a relative path resolves to nothing. It reads the same setting the cards read rather
+ * than a second copy that could drift from it.
+ */
 export const metadata: Metadata = {
+  metadataBase: new URL(siteOrigin()),
   title: "คำนวณเบี้ยประกัน",
   description: "โปรแกรมคำนวณเบี้ยประกันสำหรับตัวแทน",
+  /**
+   * No title or description here on purpose.
+   *
+   * Setting them at the root sets them for every page, and the sales pages have titles
+   * written to be shared — "Protection Life — ทุนหลักล้านด้วยเบี้ยที่จ่ายไหว" is a headline,
+   * and replacing it with the site's name on the one surface a customer sees before
+   * clicking throws away the better sentence. Left out, each page's own title and
+   * description carry into the share card; what belongs to the whole site stays here.
+   */
+  openGraph: {
+    siteName: "advisortool.app",
+    locale: "th_TH",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
