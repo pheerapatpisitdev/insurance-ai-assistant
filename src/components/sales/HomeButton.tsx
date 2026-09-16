@@ -31,7 +31,7 @@ export function HomeButton() {
     <div className="relative">
         <Link
         href="/"
-        aria-label="กลับไปหน้าคำนวณเบี้ยประกัน"
+        aria-label="กลับไปหน้าแรก"
         className="
           fixed right-3 top-3 z-40 flex items-center gap-1.5 rounded-full
           border border-[var(--lg-panel-line)] bg-[var(--lg-panel)] px-3 py-1.5
