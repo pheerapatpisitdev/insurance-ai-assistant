@@ -208,7 +208,7 @@ export default function PrivacyPage() {
       </section>
 
       <p className="mt-10 text-sm">
-        <Link href="/" className="text-slate-500 underline">กลับไปหน้าคำนวณเบี้ย</Link>
+        <Link href="/other-plans" className="text-slate-500 underline">ไปหน้าคำนวณเบี้ย</Link>
       </p>
     </main>
   );

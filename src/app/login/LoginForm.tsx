@@ -39,7 +39,7 @@ export function LoginForm({ configured }: { configured: boolean }) {
         )}
 
         {error && <p className="mt-3 text-center text-sm text-red-600">{error}</p>}
-        <Link href="/" className="mt-6 block text-center text-sm text-slate-500 underline">กลับไปหน้าคำนวณเบี้ย</Link>
+        <Link href="/" className="mt-6 block text-center text-sm text-slate-500 underline">กลับไปหน้าแรก</Link>
       </div>
     </main>
   );

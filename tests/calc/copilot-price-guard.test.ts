@@ -1,0 +1,98 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * Which of the two machines a question is handed to.
+ *
+ * That decision is the whole of what this module owns. Whether the premium is right is the
+ * dispatcher's own business and its own tests; what matters here is that a question about
+ * money reaches the engine and never a model, and that a question about a rule does not get
+ * sent down the pricing path because it happened to contain the word "เท่าไหร่".
+ */
+
+const asked = { dispatch: 0, model: 0 };
+let lastSlots: unknown;
+
+vi.mock("@/lib/assistant/dispatch", () => ({
+  answerAny: async (_history: unknown, slots: unknown) => {
+    asked.dispatch += 1;
+    lastSlots = slots;
+    return {
+      messages: [{ text: "เบี้ยปีละ 23,400 บาท", card: "/api/card?x=1" }],
+      priced: true,
+      slots: { product: "lifeprotect", age: 35, sex: "M" },
+    };
+  },
+}));
+vi.mock("@/lib/ai/client", () => ({
+  chat: async () => { asked.model += 1; return { text: "ตอบจากคลัง", model: "test-model" }; },
+  BudgetExceeded: class extends Error {},
+}));
+vi.mock("@/lib/supabase/admin", () => ({
+  supabaseAdmin: () => ({
+    from: () => ({ select: () => ({ eq: () => ({ limit: async () => ({ data: [], error: null }) }) }) }),
+  }),
+}));
+
+const { answerFromKnowledge } = await import("@/lib/copilot/answer");
+
+beforeEach(() => {
+  asked.dispatch = 0;
+  asked.model = 0;
+  lastSlots = undefined;
+});
+
+describe("a question about money", () => {
+  for (const q of [
+    "ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่",
+    "Life Protect ราคาเท่าไหร่",
+    "จ่ายเดือนละกี่บาท",
+    "ค่างวดรายปีเท่าไร",
+    "คิดให้หน่อย ชาย 40 ทุน 2 ล้าน",
+    "what is the premium for age 40",
+  ]) {
+    it(`sends "${q}" to the engine and not to a model`, async () => {
+      const a = await answerFromKnowledge(q);
+      expect(asked.dispatch).toBe(1);
+      expect(asked.model).toBe(0);
+      expect(a.priced).toBe(true);
+      expect(a.text).toContain("23,400");
+    });
+  }
+
+  it("carries the picture the engine drew", async () => {
+    expect((await answerFromKnowledge("เบี้ยเท่าไหร่")).card).toBe("/api/card?x=1");
+  });
+
+  it("hands back what the engine now knows, so the next question continues the quotation", async () => {
+    const a = await answerFromKnowledge("ชาย 35 เบี้ยเท่าไหร่");
+    expect(a.slots).toMatchObject({ product: "lifeprotect", age: 35 });
+  });
+});
+
+describe("a question asked while a quotation is half-built", () => {
+  it("goes to the engine even with no money word in it at all", async () => {
+    // "ทุน 1 ล้าน" after "Life Protect ชาย 35" names no price and is entirely about one
+    await answerFromKnowledge("ทุน 1 ล้าน", [], { product: "lifeprotect", age: 35, sex: "M" } as never);
+    expect(asked.dispatch).toBe(1);
+    expect(asked.model).toBe(0);
+    expect(lastSlots).toMatchObject({ age: 35 });
+  });
+});
+
+describe("a question about a rule", () => {
+  for (const q of [
+    "DCI ซื้อได้ถึงอายุเท่าไหร่",
+    "Life Protect ทุนขั้นต่ำเท่าไหร่",
+    "iHealthy มีระยะเวลารอคอยกี่วัน",
+    "HIC ซื้อคู่กับ MEB ได้ไหม",
+    "รับประกันถึงอายุเท่าไร",
+  ]) {
+    it(`answers "${q}" from the knowledge, not the engine`, async () => {
+      const a = await answerFromKnowledge(q);
+      expect(asked.model).toBe(1);
+      expect(asked.dispatch).toBe(0);
+      expect(a.priced).toBeFalsy();
+      expect(a.model).toBe("test-model");
+    });
+  }
+});

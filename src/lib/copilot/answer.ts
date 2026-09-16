@@ -1,0 +1,97 @@
+import { chat } from "@/lib/ai/client";
+import type { ChatMessage } from "@/lib/ai/types";
+import { answerAny } from "@/lib/assistant/dispatch";
+import type { AnySlots } from "@/lib/assistant/slots";
+import { assembleKnowledge } from "./knowledge";
+
+/**
+ * The assistant that answers out of this system's own knowledge, and out of nothing else.
+ *
+ * Two things can be asked of it and they are answered by two different machines.
+ *
+ * A question about money goes to `answerAny` — the same dispatcher the Messenger bot runs on,
+ * which reads the message, fills what it can, asks for what it cannot, and prices through the
+ * engine. Reusing it rather than calling `quote()` here is the whole point: the figure this
+ * page gives and the figure the bot gives are then the same figure by construction, and the
+ * trap that lies between them is not stepped in — on the life plan "ทุน 1 ล้าน" is what the
+ * family receives and the sum assured behind it is half that before the booster age, a
+ * distinction that doubles a premium if it is got wrong.
+ *
+ * A question about a rule goes to a model with every rule in the system in front of it. That
+ * model is told, at length, that it may claim nothing which is not there.
+ */
+
+const SYSTEM = `คุณคือผู้ช่วยของตัวแทนประกันชีวิต ตอบคำถามจากคลังความรู้ด้านล่างเท่านั้น
+
+กฎที่ห้ามฝ่าฝืน:
+1. ตอบเฉพาะสิ่งที่มีอยู่ในคลังความรู้ ถ้าไม่มีให้บอกตรงๆ ว่า "ข้อมูลนี้ไม่มีในระบบ" แล้วแนะนำให้ถามบริษัท
+   ห้ามเดา ห้ามเติมจากความรู้ทั่วไปของคุณเอง แม้จะมั่นใจแค่ไหนก็ตาม
+2. ห้ามคิดหรือคาดเดาตัวเลขเบี้ยประกันเด็ดขาด ถ้าถูกถามเรื่องเบี้ย ให้บอกว่าพิมพ์ อายุ เพศ แบบประกัน และทุน
+   มาได้เลย ระบบจะคิดให้จากตารางจริง — ห้ามให้ตัวเลขประมาณการใดๆ ทั้งสิ้น
+3. บอกที่มาของคำตอบทุกครั้ง เช่น "จากกฎของ Life Protect" หรือ "จากบันทึกของตัวแทน"
+4. ถ้าคำตอบมาจาก "บันทึกของตัวแทนเอง" ต้องบอกให้ชัดว่าเป็นบันทึกภายใน ไม่ใช่เอกสารบริษัท
+5. ห้ามรับรองผลการพิจารณารับประกัน เรื่องนั้นเป็นคำตอบของผู้พิจารณาเท่านั้น
+6. ตอบเป็นภาษาไทย สั้น ตรงประเด็น ใช้หัวข้อย่อยเมื่อมีหลายข้อ`;
+
+/**
+ * Words that mean the question is about money.
+ *
+ * "เท่าไหร่" was in this list and had to come out. It is the Thai for "how much" of anything
+ * at all — how old, how large a sum, how many days — so the very first suggestion on the
+ * page, "DCI ซื้อได้ถึงอายุเท่าไหร่", was sent down the pricing path. A money word has to be
+ * present: the question is about the premium or it is not.
+ */
+const ASKS_PRICE = /เบี้ย|ราคา|กี่บาท|ค่างวด|จ่ายเดือนละ|จ่ายปีละ|จ่ายเท่าไหร่|คิดให้|premium/i;
+
+export interface CopilotAnswer {
+  text: string;
+  /** which model answered, or the engine's own name when no model was asked */
+  model: string;
+  /** the premium came from the engine, so the page may say so */
+  priced?: boolean;
+  /**
+   * What the pricing brain now knows about this person, handed back so the next question can
+   * carry on from it — "ชาย 35" and then "ทุน 1 ล้าน" is two messages about one quotation.
+   */
+  slots?: AnySlots | null;
+  /** a picture of the quotation the engine drew, where it drew one */
+  card?: string;
+}
+
+/** The name shown under an answer the engine produced, where a model name would go. */
+const ENGINE = "เครื่องคิดเบี้ยของระบบ";
+
+export async function answerFromKnowledge(
+  question: string,
+  history: ChatMessage[] = [],
+  slots: AnySlots | null = null,
+): Promise<CopilotAnswer> {
+  /**
+   * Anything about money, and anything asked while a quotation is already half-built.
+   *
+   * The second half matters: after "Life Protect ชาย 35" the next message is "ทุน 1 ล้าน",
+   * which names no money word at all and would otherwise be read as a question about rules.
+   */
+  if (ASKS_PRICE.test(question) || slots) {
+    const turns: ChatMessage[] = [...history.slice(-6), { role: "user", content: question }];
+    const answer = await answerAny(turns, slots);
+    const text = answer.messages.map((m) => m.text).join("\n\n");
+    const card = answer.messages.find((m) => m.card)?.card;
+    return {
+      text,
+      model: answer.priced ? ENGINE : ENGINE,
+      priced: Boolean(answer.priced),
+      slots: answer.slots,
+      ...(card ? { card } : {}),
+    };
+  }
+
+  const knowledge = await assembleKnowledge();
+  const messages: ChatMessage[] = [
+    { role: "system", content: `${SYSTEM}\n\n---\n\n${knowledge}` },
+    ...history.slice(-6),
+    { role: "user", content: question },
+  ];
+  const reply = await chat({ tier: "large", task: "copilot", messages, maxTokens: 900 });
+  return { text: reply.text, model: reply.model };
+}
