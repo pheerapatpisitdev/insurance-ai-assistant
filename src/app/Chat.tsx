@@ -134,12 +134,19 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
   return (
     <main className="flex min-h-[70vh] flex-col py-6 sm:py-10">
       <header className="mb-6 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/mark.png" alt="" width={40} height={40}
+            className="mt-0.5 h-10 w-10 shrink-0 rounded-lg"
+          />
         <div>
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">ถามเรื่องแบบประกัน</h1>
           <p className="mt-1 text-sm text-[var(--hm-mute)]">
             ถามเงื่อนไขก็ได้ ขอเบี้ยก็ได้ — เบี้ยคิดจากตารางจริง ตัวเดียวกับที่บอทและหน้าขายใช้ ·{" "}
             <Link href="/other-plans" className="underline underline-offset-2">แบบประกันอื่นๆ</Link>
           </p>
+        </div>
         </div>
         {/* only once there is something to clear: a button that undoes nothing is a button
             somebody has to think about every time they look at the page */}
@@ -187,12 +194,23 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         )}
 
         {turns.map((t, i) => (
-          <div key={i} className={t.role === "user" ? "flex justify-end" : ""}>
+          <div key={i} className={t.role === "user" ? "flex justify-end" : "flex items-start gap-2.5"}>
+            {/* The mark beside what the assistant says, and nothing beside what the reader
+                says — an avatar on both sides is two faces in a conversation with one.
+                Decorative, so it carries no alt text for a screen reader to read out on
+                every single turn. */}
+            {t.role === "assistant" && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src="/mark.png" alt="" width={28} height={28}
+                className="mt-1 h-7 w-7 shrink-0 rounded-md"
+              />
+            )}
             <div
               className={
                 t.role === "user"
                   ? "max-w-[85%] rounded-2xl rounded-br-sm bg-[var(--hm-solid)] px-4 py-2.5 text-sm text-[var(--hm-solid-ink)]"
-                  : "max-w-[92%] rounded-2xl rounded-bl-sm border border-[var(--hm-line)] bg-[var(--hm-panel)] px-4 py-3 text-sm leading-relaxed text-[var(--hm-ink)]"
+                  : "min-w-0 max-w-[92%] rounded-2xl rounded-bl-sm border border-[var(--hm-line)] bg-[var(--hm-panel)] px-4 py-3 text-sm leading-relaxed text-[var(--hm-ink)]"
               }
             >
               {t.role === "assistant" ? <Rich text={t.text} /> : <p className="whitespace-pre-wrap">{t.text}</p>}

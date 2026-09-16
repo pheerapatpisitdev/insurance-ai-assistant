@@ -4,6 +4,7 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { cardInputFrom, valueTableCard, type ValueTableCard, type ValueTableRow } from "@/lib/quote-card";
 import { cardPaletteFor, type CardPalette } from "@/lib/card-theme";
+import { SIGNATURE_HEIGHT, SIGNATURE_TEXT, markDataUri } from "@/lib/card-signature";
 
 export const runtime = "nodejs";
 /** The figures come from a dated rate table, so a day of caching is as far as it can go. */
@@ -188,7 +189,8 @@ function heightOf(card: ValueTableCard): number {
     + H.gap + H.hairline + H.afterHairline
     + H.caption + H.head + perHalf * H.row
     + H.gap + H.hairline + H.afterHairline
-    + card.notes.length * H.note;
+    + card.notes.length * H.note
+    + SIGNATURE_HEIGHT;
 }
 
 /**
@@ -224,6 +226,8 @@ export async function GET(req: NextRequest) {
 
   const cut = Math.ceil(card.rows.length / 2);
   const { cols, half, width } = layoutFor(card);
+  const mark = await markDataUri();
+
   return new ImageResponse(
     (
       <div
@@ -260,6 +264,12 @@ export async function GET(req: NextRequest) {
         <div style={spacer(H.gap)} />
         <div style={spacer(H.hairline, p.rule)} />
         <div style={spacer(H.afterHairline)} />
+        {/* where it came from, on the thing that travels furthest from here */}
+        <div style={{ ...band(SIGNATURE_HEIGHT), alignItems: "flex-end", gap: 12 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={mark} width={30} height={30} alt="" style={{ borderRadius: 7 }} />
+          <span style={{ fontSize: 20, color: p.mute }}>{SIGNATURE_TEXT}</span>
+        </div>
         {card.notes.map((n) => (
           <div key={n} style={{ ...band(H.note), fontSize: 20, color: p.ink }}>{n}</div>
         ))}
