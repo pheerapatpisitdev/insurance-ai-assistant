@@ -19,12 +19,16 @@ vi.mock("@/lib/ai/client", async () => {
 
 /** the advertisement figures Meta sends back, where an advertisement carries its own name */
 let adRows: { ad_name?: string; adset_name?: string; campaign_name?: string }[] = [];
+/** and what was said by hand about an advertisement, at /admin/ads */
+let paired: { product: string }[] = [];
 vi.mock("@/lib/supabase/admin", () => ({
   supabaseAdmin: () => ({
-    from: () => ({
+    from: (table: string) => ({
       select: () => ({
-        eq: () => ({ order: () => ({ limit: async () => ({ data: adRows, error: null }) }) }),
-        limit: async () => ({ data: [], error: null }),
+        eq: () => ({
+          order: () => ({ limit: async () => ({ data: adRows, error: null }) }),
+          limit: async () => ({ data: table === "ins_ad_products" ? paired : [], error: null }),
+        }),
       }),
     }),
   }),
@@ -34,7 +38,7 @@ const { productFromAd } = await import("@/lib/facebook/from-ad");
 const { answerAny } = await import("@/lib/assistant/dispatch");
 const said = (content: string) => [{ role: "user" as const, content }];
 
-beforeEach(() => { chat.mockClear(); routed = { intent: "other" }; adRows = []; });
+beforeEach(() => { chat.mockClear(); routed = { intent: "other" }; adRows = []; paired = []; });
 
 describe("what the advertisement was selling", () => {
   it("is read from the link's own ref, which the agency writes", async () => {
@@ -90,5 +94,23 @@ describe("the first reply to someone who came from an advertisement", () => {
     // they came back through the advertisement mid-quotation; the quotation continues
     const a = await answerAny(said("ทุน 1 ล้าน"), { product: "ihealthy" } as never, "facebook", "lifeprotect");
     expect(a.slots.product).toBe("ihealthy");
+  });
+});
+
+describe("an advertisement paired by hand at /admin/ads", () => {
+  it("outranks everything read off a name", async () => {
+    // the point of the page: an advertisement the readings get wrong can be corrected, and
+    // the correction is about this advertisement and nothing else
+    paired = [{ product: "ihealthy" }];
+    adRows = [{ ad_name: "ประกันชีวิต มรดก" }];
+    expect(await productFromAd({ ad_id: "120288776655443322", ref: "lifeprotect" }, undefined))
+      .toEqual({ product: "ihealthy", from: "paired" });
+  });
+
+  it("gives the other readings their turn when nothing was paired", async () => {
+    paired = [];
+    adRows = [{ ad_name: "ประกันสุขภาพ เหมาจ่าย" }];
+    expect(await productFromAd({ ad_id: "nope" }, undefined))
+      .toEqual({ product: "ihealthy", from: "ad_name" });
   });
 });
