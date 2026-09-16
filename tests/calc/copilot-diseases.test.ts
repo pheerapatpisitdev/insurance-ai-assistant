@@ -89,12 +89,30 @@ describe("which question opens which list", () => {
     }
   });
 
-  it("opens every list when illnesses are asked about and no rider is named", async () => {
-    // choosing one for the asker is the guess this design exists to avoid
-    const k = await assembleKnowledge("โรคร้ายแรงคุ้มครองอะไรบ้าง");
-    for (const name of [dci.diseases[0], ishield.early[0], ci123.groups[0].diseases[0], rrss.groups[0].diseases[0]]) {
-      expect(k).toContain(name);
+  it("answers “โรคร้ายแรงมีอะไรบ้าง” with the products, not with 239 diagnoses", async () => {
+    /**
+     * The question a customer is actually asking there is which contracts cover critical
+     * illness. It used to open all four name lists — twelve thousand characters, and the
+     * wrong answer besides.
+     */
+    for (const q of ["โรคร้ายแรงมีอะไรบ้าง", "โรคร้ายแรงมีแบบไหนบ้าง", "อยากได้ประกันโรคร้ายแรง"]) {
+      const k = await assembleKnowledge(q);
+      expect(k, q).toContain("## คุ้มครองโรคร้ายแรง");
+      expect(k, q).not.toContain("## รายชื่อโรค");
+      // the four products are named, with what each one is
+      expect(k, q).toContain("iShield");
+      expect(k, q).toContain("(DCI)");
+      expect(k, q).toContain("(CI 123)");
+      expect(k, q).toContain("โรคร้ายโซชิลด์");
+      expect(k.length, q).toBeLessThan(11000);
     }
+  });
+
+  it("names which plans each rider is sold with, so the answer can be acted on", async () => {
+    const k = await assembleKnowledge("โรคร้ายแรงมีแบบไหนบ้าง");
+    expect(k).toContain("ซื้อพ่วงกับ Life Protect x 1.5 / x 2, iSmart 80/6, Life Treasure");
+    // and iShield is not described as a rider, because it is a plan
+    expect(k).toContain("**iShield** — เป็น**แบบประกันหลัก** ไม่ใช่สัญญาเพิ่มเติม");
   });
 
   it("opens none of them for a question about something else", async () => {

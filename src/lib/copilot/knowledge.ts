@@ -127,9 +127,6 @@ interface DiseaseList {
   re: RegExp;
 }
 
-/** A question about illnesses that names no rider — then every list is sent, because guessing which is worse. */
-const ANY_DISEASE = /โรคร้าย|ร้ายแรง|กี่โรค|ชื่อโรค|รายชื่อโรค|โรคอะไร|คุ้มครองโรค|ครอบคลุมโรค|มะเร็ง|critical\s*illness/i;
-
 function diseaseLists(): DiseaseList[] {
   const dci = riderDiseases("DCI");
   const shield = ishieldDiseases as { note: string; early: string[]; major: string[] };
@@ -194,16 +191,75 @@ function diseaseDetail(lists: DiseaseList[]): string {
 }
 
 /**
- * Which lists this question opens. A named rider opens its own and nothing else; a question
- * about illnesses that names none opens them all, because choosing one for the asker is the
- * guess this design exists to avoid. A question about neither opens none.
+ * Which lists this question opens: the rider it names, and nothing otherwise.
+ *
+ * "โรคร้ายแรงมีอะไรบ้าง" used to open all four, twelve thousand characters of illness names —
+ * and it was the wrong answer as well as the expensive one. A customer asking that is asking
+ * which products cover critical illness, not for two hundred and thirty-nine diagnoses; the
+ * owner had to point this out, having watched it happen. That question is now answered by
+ * the options table above, which travels on every question and costs a few hundred
+ * characters.
+ *
+ * So the names come out only for a named contract. Someone who does want them says which —
+ * and if they do not, the summary's own line tells the assistant to ask, which it has to do
+ * regardless: there are four different lists and no way to guess which one is meant.
  */
 export function listsFor(question: string): DiseaseList[] {
   const all = diseaseLists();
   if (!question) return all;
-  const named = all.filter((l) => l.re.test(question));
-  if (named.length) return named;
-  return ANY_DISEASE.test(question) ? all : [];
+  return all.filter((l) => l.re.test(question));
+}
+
+/**
+ * What the agency sells against critical illness, as products rather than as diagnoses.
+ *
+ * Built from the rules and the lists themselves, so a rider that gains a plan or changes its
+ * ages is described correctly here without anyone remembering to come back.
+ */
+function criticalIllnessSection(lists: DiseaseList[]): string {
+  const count = (re: RegExp) => {
+    const hit = lists.find((l) => re.test(l.name) || re.test(l.re.source));
+    return hit ? listTotal(hit) : undefined;
+  };
+  /** the plans that sell a rider, by the name a person would say */
+  const soldWith = (code: string) => knowledgePlans()
+    .filter((p) => getPlan(p.code)?.rules.riders?.[code])
+    .map((p) => trimSuffix(p.name))
+    .join(", ");
+
+  const lines = ["## คุ้มครองโรคร้ายแรง — มีอะไรให้เลือกบ้าง (ตอบคำถามแนว “โรคร้ายแรงมีแบบไหนบ้าง”)"];
+
+  const ishield = getPlan("ISHIELD");
+  if (ishield) {
+    const b = ishield.rules.base;
+    lines.push(
+      `- **iShield** — เป็น**แบบประกันหลัก** ไม่ใช่สัญญาเพิ่มเติม คุ้มครองโรคร้ายแรง ${count(/iShield/) ?? "?"} โรค`
+      + ` (ระยะเริ่มต้นจ่าย 25% ของทุนต่อโรค ระยะรุนแรงสูงสุด 100%) · อายุ ${b.ageMin}–${b.ageMax} ปี`
+      + " · แบบนี้กรอกเบี้ยที่อยากจ่ายแล้วได้ทุนกลับมา",
+    );
+  }
+
+  for (const [code, extra] of [
+    ["DCI", "จ่ายทั้งกรณีเสียชีวิตและกรณีเจ็บป่วยด้วยโรคร้ายแรง"],
+    ["CI123", "แบ่งจ่ายตามระยะของโรค ตั้งแต่ระยะก่อนเริ่มต้นถึงระยะรุนแรง"],
+    ["RRSS", "เป็นค่ารักษาพยาบาลสำหรับโรคร้ายแรง ไม่ใช่เงินก้อน"],
+  ] as const) {
+    const rules = knowledgePlans().map((p) => getPlan(p.code)?.rules.riders?.[code]).find(Boolean);
+    if (!rules) continue;
+    const total = count(code === "RRSS" ? /โซชิลด์|MCI/ : new RegExp(code === "CI123" ? "CI\\s*123" : code, "i"));
+    const limits = [
+      `อายุ ${rules.ageMin}–${rules.ageMax} ปี`,
+      ...(rules.coverToAge ? [`คุ้มครองถึงอายุ ${rules.coverToAge}`] : []),
+      ...(rules.saMin ? [`ทุนขั้นต่ำ ${money(rules.saMin)}`] : []),
+    ].join(" · ");
+    lines.push(
+      `- **${rules.name}** — สัญญาเพิ่มเติม ซื้อพ่วงกับ ${soldWith(code)}`
+      + `${total ? ` · คุ้มครอง ${total} โรค` : ""} · ${limits} · ${extra}`,
+    );
+  }
+
+  lines.push("- ถ้าลูกค้าถามว่า “โรคร้ายแรงมีอะไรบ้าง” ให้ตอบด้วยรายการนี้ก่อน แล้วค่อยถามว่าอยากดูรายชื่อโรคของตัวไหน");
+  return lines.join("\n");
 }
 
 /** The answers the agency already gives by hand, which are the house's own words. */
@@ -282,6 +338,8 @@ export async function assembleKnowledge(question = ""): Promise<string> {
     "แบบที่ไม่อยู่ในรายการนี้ ตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
     "",
     plans,
+    "",
+    criticalIllnessSection(all),
     "",
     diseaseSummary(all),
     ...(opened.length ? ["", diseaseDetail(opened)] : []),
