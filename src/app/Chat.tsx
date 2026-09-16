@@ -83,7 +83,28 @@ export function Chat() {
    * better one than reading the numbers back would be, because the words are on the screen
    * and can be corrected rather than merely agreed with.
    */
-  const heard = useListening((text) => setDraft((d) => (d ? `${d} ${text}` : text)));
+  /**
+   * Hands free: speak, and it answers, and then it listens again.
+   *
+   * The loop has one rule that is not obvious — the microphone stays shut until the voice has
+   * finished. Open it any earlier and the assistant hears its own answer and replies to
+   * itself, which is a conversation nobody is in.
+   *
+   * What is given up is the press that used to be the confirmation. What replaces it is the
+   * answer itself: a quotation restates the age, the sex and the sum it was given, and in
+   * this mode it is read out loud, so a misheard "สามสิบห้า" comes back as a spoken "อายุ
+   * สามสิบห้า" and is caught in the same breath. Reading aloud is therefore not optional here.
+   */
+  const [handsFree, setHandsFree] = useState(false);
+  const handsFreeRef = useRef(false);
+  handsFreeRef.current = handsFree;
+
+  const heard = useListening((text) => {
+    if (handsFreeRef.current) { setDraft(text); void ask(text); return; }
+    setDraft((d) => (d ? `${d} ${text}` : text));
+  });
+  const heardRef = useRef(heard);
+  heardRef.current = heard;
 
   useEffect(() => {
     if (turns.length) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -102,7 +123,12 @@ export function Chat() {
       const reply = await askCopilot(asked, history, slots);
       if (reply.slots !== undefined) setSlots(reply.slots);
       setTurns((t) => [...t, { role: "assistant", text: reply.text, model: reply.model, priced: reply.priced }]);
-      if (readAloud) speech.speak(reply.text);
+      if (handsFreeRef.current) {
+        // the microphone opens again only once the voice has stopped
+        speech.speak(reply.text, () => { if (handsFreeRef.current) heardRef.current.start(); });
+      } else if (readAloud) {
+        speech.speak(reply.text);
+      }
     } catch {
       setTurns((t) => [...t, { role: "assistant", text: "ขออภัยครับ ระบบขัดข้อง ลองใหม่อีกครั้งนะครับ" }]);
     } finally {
@@ -118,7 +144,24 @@ export function Chat() {
           ถามเงื่อนไขก็ได้ ขอเบี้ยก็ได้ — เบี้ยคิดจากตารางจริง ตัวเดียวกับที่บอทและหน้าขายใช้ ·{" "}
           <Link href="/other-plans" className="underline underline-offset-2">แบบประกันอื่นๆ</Link>
         </p>
-        {speech.supported && (
+        {heard.supported && speech.supported && (
+          <button
+            type="button"
+            onClick={() => {
+              const next = !handsFree;
+              setHandsFree(next);
+              if (next) { setReadAloud(true); heard.start(); }
+              else { heard.stop(); speech.cancel(); }
+            }}
+            aria-pressed={handsFree}
+            className={`mr-2 mt-2 rounded-full border px-3 py-1 text-xs ${
+              handsFree ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {handsFree ? "⏹ ออกจากโหมดสนทนา" : "💬 โหมดสนทนา — พูดแล้วตอบเลย"}
+          </button>
+        )}
+        {speech.supported && !handsFree && (
           <button
             type="button"
             onClick={() => { const next = !readAloud; setReadAloud(next); if (!next) speech.cancel(); }}
@@ -214,9 +257,12 @@ export function Chat() {
         </button>
       </form>
 
-      {(heard.listening || heard.interim || heard.error) && (
+      {(heard.listening || heard.interim || heard.error || (handsFree && speech.speaking)) && (
         <p className={`-mt-2 pb-2 text-center text-xs ${heard.error ? "text-red-600" : "text-slate-500"}`} aria-live="polite">
-          {heard.error ?? (heard.interim ? `กำลังฟัง… "${heard.interim}"` : "กำลังฟัง… พูดได้เลยครับ")}
+          {heard.error
+            ?? (speech.speaking ? "🔊 กำลังตอบ… รอสักครู่แล้วพูดต่อได้เลย"
+              : heard.interim ? `กำลังฟัง… "${heard.interim}"`
+              : "กำลังฟัง… พูดได้เลยครับ")}
         </p>
       )}
 

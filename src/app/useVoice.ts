@@ -127,7 +127,7 @@ export interface Speaking {
   speaking: boolean;
   /** the Thai voice being used, for the label that names it */
   voiceName: string | null;
-  speak(text: string): void;
+  speak(text: string, onDone?: () => void): void;
   cancel(): void;
 }
 
@@ -159,20 +159,24 @@ export function useSpeaking(): Speaking {
     setSpeaking(false);
   }, []);
 
-  const speak = useCallback((text: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const speak = useCallback((text: string, onDone?: () => void) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) { onDone?.(); return; }
     speechSynthesis.cancel();
     const plain = text
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")   // a link is read as its words
       .replace(/[*_#`>]/g, "")                    // and the marks around them are not read
       .replace(/^\s*[-•]\s*/gm, "")
       .trim();
-    if (!plain) return;
+    if (!plain) { onDone?.(); return; }
     const u = new SpeechSynthesisUtterance(plain);
     if (voice) u.voice = voice;
     u.lang = "th-TH";
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
+    /**
+     * The hand-back matters in the hands-free loop: the microphone must not open again until
+     * the voice has stopped, or the assistant hears itself and answers its own answer.
+     */
+    u.onend = () => { setSpeaking(false); onDone?.(); };
+    u.onerror = () => { setSpeaking(false); onDone?.(); };
     speechSynthesis.speak(u);
     setSpeaking(true);
   }, [voice]);
