@@ -86,6 +86,24 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Start again, and mean it.
+   *
+   * The visible half is the conversation; the half that has to go with it is `slots` — what
+   * the pricing brain worked out about whoever was being quoted. Clearing the bubbles and
+   * leaving that behind is the worse bug of the two: the screen looks new, and the next
+   * question is answered about the last customer's age and sum without saying so.
+   *
+   * An agent showing this to one person after another is the reason it exists.
+   */
+  function startOver() {
+    setTurns([]);
+    setSlots(null);
+    setDraft("");
+    setMore(false);
+  }
+
   useEffect(() => {
     if (turns.length) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns]);
@@ -115,12 +133,24 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
 
   return (
     <main className="flex min-h-[70vh] flex-col py-6 sm:py-10">
-      <header className="mb-6">
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">ถามเรื่องแบบประกัน</h1>
-        <p className="mt-1 text-sm text-[var(--hm-mute)]">
-          ถามเงื่อนไขก็ได้ ขอเบี้ยก็ได้ — เบี้ยคิดจากตารางจริง ตัวเดียวกับที่บอทและหน้าขายใช้ ·{" "}
-          <Link href="/other-plans" className="underline underline-offset-2">แบบประกันอื่นๆ</Link>
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">ถามเรื่องแบบประกัน</h1>
+          <p className="mt-1 text-sm text-[var(--hm-mute)]">
+            ถามเงื่อนไขก็ได้ ขอเบี้ยก็ได้ — เบี้ยคิดจากตารางจริง ตัวเดียวกับที่บอทและหน้าขายใช้ ·{" "}
+            <Link href="/other-plans" className="underline underline-offset-2">แบบประกันอื่นๆ</Link>
+          </p>
+        </div>
+        {/* only once there is something to clear: a button that undoes nothing is a button
+            somebody has to think about every time they look at the page */}
+        {turns.length > 0 && (
+          <button
+            type="button" onClick={startOver} disabled={busy}
+            className="shrink-0 rounded-full border border-[var(--hm-line)] px-3 py-1.5 text-xs text-[var(--hm-mute)] hover:bg-[var(--hm-panel)] disabled:opacity-40"
+          >
+            เริ่มใหม่
+          </button>
+        )}
       </header>
 
       <div className="flex-1 space-y-4">
