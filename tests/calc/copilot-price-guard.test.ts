@@ -99,10 +99,15 @@ describe("a question asked while a quotation is half-built", () => {
 });
 
 describe("a question about a rule", () => {
+  /**
+   * These name no plan, so no brain owns them and the library answers directly.
+   *
+   * The ones that do name a plan go to that plan's brain instead — the dispatcher's own first
+   * test, and the page asks it too so that the two doors cannot answer the same question
+   * differently. See `tests/calc/one-library.test.ts`.
+   */
   for (const q of [
     "DCI ซื้อได้ถึงอายุเท่าไหร่",
-    "Life Protect ทุนขั้นต่ำเท่าไหร่",
-    "iHealthy มีระยะเวลารอคอยกี่วัน",
     "HIC ซื้อคู่กับ MEB ได้ไหม",
     "รับประกันถึงอายุเท่าไร",
   ]) {
@@ -145,5 +150,21 @@ describe("a plan without a brain", () => {
     await answerFromKnowledge("Life Protect ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่");
     expect(asked.dispatch).toBe(1);
     expect(asked.model).toBe(0);
+  });
+
+  it("hands a plan's own question to that plan, money or no money", async () => {
+    /**
+     * "มีประกันสุขภาพไหม" was answered here out of the library, which listed the rider codes
+     * with their age ranges — true, and a catalogue. The inbox answered the same question
+     * with "ขออายุกับเพศหน่อยครับ เดี๋ยวดูเบี้ยให้เลย". One question, two doors, two kinds of
+     * reply, because this gate only ever asked about money.
+     */
+    for (const q of ["มีประกันสุขภาพไหม", "Life Protect ทุนขั้นต่ำเท่าไหร่", "iHealthy มีระยะเวลารอคอยกี่วัน"]) {
+      asked.dispatch = 0;
+      asked.model = 0;
+      await answerFromKnowledge(q);
+      expect(asked.dispatch, q).toBe(1);
+      expect(asked.model, q).toBe(0);
+    }
   });
 });

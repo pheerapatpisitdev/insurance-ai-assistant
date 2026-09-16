@@ -1,6 +1,7 @@
 import { chat } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { answerAny } from "@/lib/assistant/dispatch";
+import { productNamedIn } from "@/lib/assistant/choose";
 import {
   asksAboutDeathBenefit, asksForPrice, asksPayTerm, asksValueTable,
 } from "@/lib/assistant/lifeprotect/route";
@@ -120,7 +121,19 @@ export async function answerFromKnowledge(
    * same figure from the same code and the same words from the same library. This file no
    * longer knows anything the bot does not.
    */
-  if (forTheEngine(question) || slots) {
+  /**
+   * A message that names a plan belongs to that plan's brain, money or no money.
+   *
+   * "มีประกันสุขภาพไหม" was answered here out of the library, which listed the rider codes —
+   * IHU, MEB, MEX, HIC — with their age ranges. True, and a catalogue: the same question in
+   * the page's inbox got "ขออายุกับเพศหน่อยครับ เดี๋ยวดูเบี้ยให้เลย", which is an answer that
+   * goes somewhere. Two doors, one question, two different kinds of reply — the split the
+   * owner asked to be rid of, still standing because this gate only ever asked about money.
+   *
+   * It is the dispatcher's own first test, so asking it here makes the two doors agree by
+   * construction rather than by both being kept in step.
+   */
+  if (forTheEngine(question) || productNamedIn(question) || slots) {
     const turns: ChatMessage[] = [...history.slice(-6), { role: "user", content: question }];
     // said outright, because the wording depends on it: this side renders markdown
     const answer = await answerAny(turns, slots, "web");
