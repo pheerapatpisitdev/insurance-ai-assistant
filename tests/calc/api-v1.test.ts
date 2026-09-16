@@ -140,11 +140,39 @@ describe("the list a caller reads first", () => {
     expect(plb).toMatchObject({ ageMin: 20, ageMax: 59, quotable: true, premiumBasis: false });
   });
 
-  it("warns that iShield is asked the other way round", async () => {
+  it("warns that iShield is normally asked the other way round, but still prices it", async () => {
     const body = await (await plans()).json();
     const shield = body.plans.find((p: { code: string }) => p.code === "ISHIELD");
+    // the sales page asks for a premium and answers with a sum assured, which is worth saying
     expect(shield.premiumBasis).toBe(true);
-    expect(shield.quotable).toBe(false);
+    // but the engine prices it sum-assured-first perfectly well, and the catalogue used to
+    // claim otherwise — a model that believed it refused a quotation it could have given
+    expect(shield.quotable).toBe(true);
+    expect((await ask({ plan: "ISHIELD", variant: "WLCI10", age: 35, sex: "F", sumAssured: 1_000_000 })).status).toBe(200);
+  });
+
+  it("marks a package it cannot price, and says which tool can", async () => {
+    const body = await (await plans()).json();
+    const lp = body.plans.find((p: { code: string }) => p.code === "LIFEPROTECT");
+    const health = lp.packages.find((v: { variant: string }) => v.variant === "WLF99HX");
+    const plain = lp.packages.find((v: { variant: string }) => v.variant === "WLF09H");
+
+    expect(plain.quotable).toBe(true);
+    expect(plain.useInstead).toBeUndefined();
+    // health cover is a rider on a life contract and needs a plan chosen; this door has
+    // nowhere to put one, so it must say so rather than let the attempt fail at the engine
+    expect(health.quotable).toBe(false);
+    expect(health.useInstead).toBe("quote_health");
+  });
+
+  it("turns a health package away with the way forward, not with the engine's words", async () => {
+    const r = await ask({ plan: "LIFEPROTECT", variant: "WLF99HX", age: 35, sex: "M", sumAssured: 50_000 });
+    expect(r.status).toBe(400);
+    const out = await r.json();
+    expect(out.message).toContain("quote_health");
+    // the old answer was "กรุณาเลือกแผน iHealthy Ultra": true, unanswerable here, and the
+    // point at which a model stopped asking and invented an explanation for the customer
+    expect(out.message).not.toContain("กรุณาเลือกแผน");
   });
 
   it("reports the earliest expiry of all the tables it spans", async () => {
@@ -177,13 +205,47 @@ describe("the same answers, offered to a model", () => {
     expect((await rpc("initialize")).status).toBe(429);
   });
 
-  it("offers exactly the two tools, and tells the model what not to do with them", async () => {
+  it("offers exactly the four tools, and tells the model what not to do with them", async () => {
     const { result } = await (await rpc("tools/list")).json();
-    expect(result.tools.map((t: { name: string }) => t.name)).toEqual(["list_plans", "quote_premium"]);
+    expect(result.tools.map((t: { name: string }) => t.name))
+      .toEqual(["list_plans", "quote_premium", "quote_health", "list_health_plans"]);
     const quoteTool = result.tools.find((t: { name: string }) => t.name === "quote_premium");
     expect(quoteTool.description).toContain("ห้ามปัดเศษ");
     expect(quoteTool.description).toContain("disclaimer");
     expect(quoteTool.inputSchema.required).toEqual(["plan", "age", "sex", "sumAssured"]);
+
+    // the health tool has to send the model away from the other one by name, because the
+    // two are told apart by what the customer asked for and not by anything in the arguments
+    const healthTool = result.tools.find((t: { name: string }) => t.name === "quote_health");
+    expect(healthTool.description).toContain("ห้ามใช้ quote_premium");
+    expect(healthTool.inputSchema.required).toEqual(["age", "sex", "plan"]);
+  });
+
+  it("prices health as the whole arrangement, and says what is in the price", async () => {
+    const { payload, isError } = await toolText(await rpc("tools/call", {
+      name: "quote_health",
+      arguments: { age: 35, sex: "M", plan: "GOLD" },
+    }));
+    expect(isError).toBe(false);
+    expect(payload.premium.annual).toBeGreaterThan(0);
+    // a total handed over without its parts is read as the price of health cover alone
+    expect(payload.partsOfPremium.health).toBeGreaterThan(0);
+    expect(payload.partsOfPremium.lifeBase).toBeGreaterThan(0);
+    expect(payload.arrangement.sumAssured).toBe(50_000);
+    expect(payload.disclaimer).toBe(DISCLAIMER);
+  });
+
+  it("hands back the plans on sale rather than letting a plan code be guessed", async () => {
+    const { payload } = await toolText(await rpc("tools/call", {
+      name: "list_health_plans", arguments: { age: 35 },
+    }));
+    expect(payload.plans.map((p: { code: string }) => p.code)).toContain("GOLD");
+
+    const { isError, payload: bad } = await toolText(await rpc("tools/call", {
+      name: "quote_health", arguments: { age: 35, sex: "M", plan: "PLATINUM_DELUXE" },
+    }));
+    expect(isError).toBe(true);
+    expect(bad.message).toContain("GOLD");
   });
 
   it("hands back the engine's figure, with the table and the warning inside the payload", async () => {
@@ -238,7 +300,8 @@ describe("the key in the path, for a client that cannot send a header", () => {
 
   it("works without any header at all", async () => {
     const { result } = await (await viaPath(KEY)).json();
-    expect(result.tools.map((t: { name: string }) => t.name)).toEqual(["list_plans", "quote_premium"]);
+    expect(result.tools.map((t: { name: string }) => t.name))
+      .toEqual(["list_plans", "quote_premium", "quote_health", "list_health_plans"]);
   });
 
   it("is refused exactly as a header key would be", async () => {

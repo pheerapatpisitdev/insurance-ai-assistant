@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { authorise } from "@/lib/api/key";
 import { DISCLAIMER } from "@/lib/api/respond";
-import { planCatalogue, quotePremium, tablesMeta, type QuoteAsk } from "@/lib/api/service";
+import {
+  healthCatalogue, planCatalogue, quoteHealth, quotePremium, tablesMeta,
+  type HealthAsk, type QuoteAsk,
+} from "@/lib/api/service";
 
 /**
  * The same two answers, offered to a model as tools it can pick up.
@@ -47,6 +50,48 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "quote_health",
+    description:
+      "คิดเบี้ยประกันสุขภาพ ไอเฮลท์ตี้ อัลตร้า (iHealthy Ultra) — ใช้เครื่องมือนี้ทุกครั้งที่ถามถึงประกันสุขภาพ "
+      + "ห้ามใช้ quote_premium กับแพ็กเกจสุขภาพ เพราะสุขภาพเป็นสัญญาเพิ่มเติม ซื้อเดี่ยวไม่ได้ ต้องมีสัญญาหลักเสมอ "
+      + "ตัวเลขที่ได้เป็นราคาของทั้งชุด (สัญญาหลัก + ค่ารักษา + ค่าชดเชยรายวัน) ไม่ใช่ค่าสุขภาพอย่างเดียว "
+      + "ต้องบอกผู้ใช้ด้วยว่าในราคานี้มีอะไรบ้าง โดยดูจาก field arrangement และ partsOfPremium "
+      + "ห้ามปัดเศษ ห้ามคำนวณต่อ และต้องแสดง disclaimer ให้ผู้ใช้เห็นทุกครั้ง",
+    inputSchema: {
+      type: "object",
+      properties: {
+        age: { type: "integer", minimum: 0, maximum: 99, description: "อายุผู้ทำประกัน" },
+        sex: { type: "string", enum: ["M", "F"], description: "M ชาย / F หญิง" },
+        plan: {
+          type: "string",
+          description:
+            "รหัสแผนความคุ้มครอง เช่น GOLD, SMART, BRONZE — ถ้าไม่รู้ว่ามีแผนอะไรบ้าง "
+            + "ให้เรียก list_health_plans ก่อน ห้ามเดารหัสเอง",
+        },
+        territory: {
+          type: "string",
+          description: "พื้นที่ความคุ้มครอง เว้นว่างได้ ค่าเริ่มต้นคือประเทศไทย (ดูจาก list_health_plans)",
+        },
+      },
+      required: ["age", "sex", "plan"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_health_plans",
+    description:
+      "แผนความคุ้มครองของประกันสุขภาพ ไอเฮลท์ตี้ อัลตร้า ที่อายุนี้ซื้อได้ พร้อมวงเงินค่ารักษาต่อปีและค่าใช้จ่ายส่วนแรก "
+      + "เรียกอันนี้ก่อน quote_health ถ้ายังไม่รู้ว่ามีแผนอะไรบ้าง — ห้ามเดารหัสแผนเอง "
+      + "แต่ละอายุซื้อได้ไม่เท่ากัน จึงควรใส่อายุลูกค้าไปด้วย",
+    inputSchema: {
+      type: "object",
+      properties: {
+        age: { type: "integer", minimum: 0, maximum: 99, description: "อายุลูกค้า ใส่ไว้จะได้เห็นเฉพาะแผนที่อายุนี้ซื้อได้" },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 /** JSON-RPC says an error is an object with a number; these are the two this can raise. */
@@ -68,24 +113,45 @@ const content = (payload: unknown, isError = false) => ({
   ...(isError ? { isError: true } : {}),
 });
 
-async function callTool(name: string, args: QuoteAsk) {
+/** The two refusals, worded once, because a model must read them the same way from either tool. */
+function refusal(outcome: { kind: "unreadable"; message: string; field?: string } | { kind: "not_issuable"; reasons: string[] }) {
+  if (outcome.kind === "unreadable") {
+    return content({ error: "bad_request", message: outcome.message, field: outcome.field }, true);
+  }
+  return content({
+    error: "not_issuable",
+    message: "บริษัทไม่รับประกันตามเงื่อนไขนี้ จึงไม่มีเบี้ยให้ ให้บอกเหตุผลด้านล่างกับผู้ใช้ตรงๆ",
+    reasons: outcome.reasons,
+  }, true);
+}
+
+async function callTool(name: string, args: QuoteAsk & HealthAsk) {
   const meta = tablesMeta();
   const envelope = { ...meta, disclaimer: DISCLAIMER };
 
   if (name === "list_plans") return content({ plans: planCatalogue(), ...envelope });
 
+  if (name === "list_health_plans") {
+    const age = Number.isInteger(args?.age) ? (args.age as number) : undefined;
+    const c = healthCatalogue(age);
+    return content({
+      ...c,
+      note:
+        "ราคาที่ quote_health คืนมาเป็นราคาของทั้งชุด — สัญญาหลักทุน 50,000 บาท + ค่ารักษา + ค่าชดเชยรายวัน "
+        + "เพราะประกันสุขภาพซื้อเดี่ยวไม่ได้ ต้องมีสัญญาหลักเสมอ",
+      disclaimer: DISCLAIMER,
+    });
+  }
+
   if (name === "quote_premium") {
     const outcome = quotePremium(args ?? {});
-    if (outcome.kind === "unreadable") {
-      return content({ error: "bad_request", message: outcome.message, field: outcome.field }, true);
-    }
-    if (outcome.kind === "not_issuable") {
-      return content({
-        error: "not_issuable",
-        message: "บริษัทไม่รับประกันตามเงื่อนไขนี้ จึงไม่มีเบี้ยให้ ให้บอกเหตุผลด้านล่างกับผู้ใช้ตรงๆ",
-        reasons: outcome.reasons,
-      }, true);
-    }
+    if (outcome.kind !== "ok") return refusal(outcome);
+    return content({ ...outcome.quote, ...outcome.meta, disclaimer: DISCLAIMER });
+  }
+
+  if (name === "quote_health") {
+    const outcome = quoteHealth(args ?? {});
+    if (outcome.kind !== "ok") return refusal(outcome);
     return content({ ...outcome.quote, ...outcome.meta, disclaimer: DISCLAIMER });
   }
 
