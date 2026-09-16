@@ -1,6 +1,7 @@
 import { chat } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { formattingRule, type Channel } from "@/lib/assistant/channel";
+import { VOICE } from "@/lib/assistant/prompts";
 import { assembleKnowledge } from "./knowledge";
 
 /**
@@ -18,17 +19,28 @@ import { assembleKnowledge } from "./knowledge";
  * and what they reasonably assumed was already true.
  */
 
-const SYSTEM = `คุณคือผู้ช่วยของตัวแทนประกันชีวิต ตอบคำถามจากคลังความรู้ด้านล่างเท่านั้น
+/**
+ * The library speaks the way the brains speak.
+ *
+ * It had a voice of its own and it was a documentation voice: it cited its source in every
+ * answer, laid everything out in headed bullets, and passed the contract's own vocabulary
+ * straight through. Asked "มีประกันสุขภาพไหม" it returned a list of rider codes and their age
+ * ranges — accurate, and nothing a customer would read. The same question in the page's inbox
+ * got a sentence. One assistant should not have two manners depending on which file answered.
+ *
+ * So the shared voice carries the manner, and what is left here is what only this side needs:
+ * the rules about not inventing, which are the reason the library exists.
+ */
+const SYSTEM = `${VOICE}
 
-กฎที่ห้ามฝ่าฝืน:
-1. ตอบเฉพาะสิ่งที่มีอยู่ในคลังความรู้ ถ้าไม่มีให้บอกตรงๆ ว่า "ข้อมูลนี้ไม่มีในระบบ" แล้วแนะนำให้ถามบริษัท
+ตอบจากคลังความรู้ด้านล่างเท่านั้น
+1. ถ้าคลังไม่มีข้อมูลนั้น ให้บอกตรงๆ ว่าไม่มีในระบบ แล้วแนะนำให้ถามบริษัท
    ห้ามเดา ห้ามเติมจากความรู้ทั่วไปของคุณเอง แม้จะมั่นใจแค่ไหนก็ตาม
-2. ห้ามคิดหรือคาดเดาตัวเลขเบี้ยประกันเด็ดขาด ถ้าถูกถามเรื่องเบี้ย ให้บอกว่าพิมพ์ อายุ เพศ แบบประกัน และทุน
-   มาได้เลย ระบบจะคิดให้จากตารางจริง — ห้ามให้ตัวเลขประมาณการใดๆ ทั้งสิ้น
-3. บอกที่มาของคำตอบทุกครั้ง เช่น "จากกฎของ Life Protect" หรือ "จากบันทึกของตัวแทน"
-4. ถ้าคำตอบมาจาก "บันทึกของตัวแทนเอง" ต้องบอกให้ชัดว่าเป็นบันทึกภายใน ไม่ใช่เอกสารบริษัท
-5. ห้ามรับรองผลการพิจารณารับประกัน เรื่องนั้นเป็นคำตอบของผู้พิจารณาเท่านั้น
-6. ตอบเป็นภาษาไทย สั้น ตรงประเด็น ใช้หัวข้อย่อยเมื่อมีหลายข้อ`;
+2. ห้ามคิดหรือคาดเดาตัวเลขค่าเบี้ยเด็ดขาด ถ้าถูกถามเรื่องค่าเบี้ย ให้ขอ อายุ เพศ แบบประกัน และวงเงินคุ้มครอง
+   ระบบจะคิดให้จากตารางจริง — ห้ามให้ตัวเลขประมาณการใดๆ ทั้งสิ้น
+3. ถ้าคำตอบมาจาก "บันทึกของตัวแทนเอง" ต้องบอกให้ชัดว่าเป็นบันทึกภายใน ไม่ใช่เอกสารบริษัท
+   นอกจากกรณีนี้ ไม่ต้องขึ้นต้นว่าข้อมูลมาจากไหน ตอบเนื้อหาไปเลย
+4. ห้ามรับรองผลการตรวจสุขภาพก่อนรับทำประกัน เรื่องนั้นเป็นคำตอบของบริษัทเท่านั้น`;
 
 export interface LibraryAnswer {
   text: string;
