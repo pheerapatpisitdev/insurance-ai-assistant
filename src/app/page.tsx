@@ -1,3 +1,4 @@
+import "./home-theme.css";
 import { listNotes } from "./actions";
 import { openingGuide } from "@/lib/copilot/guide";
 import { Chat } from "./Chat";
@@ -13,10 +14,12 @@ export const metadata = {
 export default async function Home() {
   const notes = await listNotes();
   return (
-    <div className="mx-auto max-w-3xl px-4 pb-10">
-      {/* built on the server from the plan registry, so a new plan brings its own button */}
-      <Chat guide={openingGuide()} />
-      <Notes initial={notes} />
+    <div className="home-chat">
+      <div className="mx-auto max-w-3xl px-4 pb-10">
+        {/* built on the server from the plan registry, so a new plan brings its own button */}
+        <Chat guide={openingGuide()} />
+        <Notes initial={notes} />
+      </div>
     </div>
   );
 }

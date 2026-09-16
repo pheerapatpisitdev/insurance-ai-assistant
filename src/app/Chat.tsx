@@ -63,7 +63,7 @@ function Chips(
         <button
           key={g.ask} type="button" disabled={disabled} onClick={() => onPick(g.ask)}
           title={g.ask}
-          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40"
+          className="rounded-full border border-[var(--hm-line)] bg-[var(--hm-panel)] px-3 py-1.5 text-sm text-[var(--hm-ink)] hover:border-[var(--hm-line-strong)] hover:bg-[var(--hm-ground)] disabled:opacity-40"
         >
           {g.label}
         </button>
@@ -83,6 +83,8 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
    */
   const [slots, setSlots] = useState<AnySlots | null>(null);
   const [draft, setDraft] = useState("");
+  /** whether the guide's other groups are open; closed until asked for */
+  const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   /** whether an answer is read out loud; off until asked for, because a page that talks
@@ -157,7 +159,7 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
     <main className="flex min-h-[70vh] flex-col py-6 sm:py-10">
       <header className="mb-6">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">ถามเรื่องแบบประกัน</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-[var(--hm-mute)]">
           ถามเงื่อนไขก็ได้ ขอเบี้ยก็ได้ — เบี้ยคิดจากตารางจริง ตัวเดียวกับที่บอทและหน้าขายใช้ ·{" "}
           <Link href="/other-plans" className="underline underline-offset-2">แบบประกันอื่นๆ</Link>
         </p>
@@ -172,7 +174,7 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
             }}
             aria-pressed={handsFree}
             className={`mr-2 mt-2 rounded-full border px-3 py-1 text-xs ${
-              handsFree ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 text-slate-600 hover:bg-slate-50"
+              handsFree ? "border-[var(--hm-live)] bg-[var(--hm-live)] text-[var(--hm-solid-ink)]" : "border-[var(--hm-line)] text-[var(--hm-mute)] hover:bg-[var(--hm-ground)]"
             }`}
           >
             {handsFree ? "⏹ ออกจากโหมดสนทนา" : "💬 โหมดสนทนา — พูดแล้วตอบเลย"}
@@ -184,7 +186,7 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
             onClick={() => { const next = !readAloud; setReadAloud(next); if (!next) speech.cancel(); }}
             aria-pressed={readAloud}
             className={`mt-2 rounded-full border px-3 py-1 text-xs ${
-              readAloud ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 text-slate-600 hover:bg-slate-50"
+              readAloud ? "border-[var(--hm-solid)] bg-[var(--hm-solid)] text-[var(--hm-solid-ink)]" : "border-[var(--hm-line)] text-[var(--hm-mute)] hover:bg-[var(--hm-ground)]"
             }`}
           >
             {readAloud ? `🔊 อ่านออกเสียง${speech.voiceName ? ` · ${speech.voiceName}` : ""}` : "🔈 อ่านคำตอบออกเสียง"}
@@ -192,7 +194,7 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         )}
         {speech.speaking && (
           <button type="button" onClick={speech.cancel}
-                  className="ml-2 mt-2 rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-600">
+                  className="ml-2 mt-2 rounded-full border border-[var(--hm-line)] px-3 py-1 text-xs text-[var(--hm-mute)]">
             หยุดอ่าน
           </button>
         )}
@@ -200,14 +202,34 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
 
       <div className="flex-1 space-y-4">
         {turns.length === 0 && (
-          <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-sm text-slate-600">ไม่รู้จะเริ่มตรงไหน กดเลือกได้เลยครับ</p>
-            {guide.map((group) => (
-              <div key={group.title}>
-                <p className="mb-2 text-xs font-medium text-slate-400">{group.title}</p>
-                <Chips items={group.items} onPick={ask} disabled={busy} />
-              </div>
-            ))}
+          /**
+           * The first group only, and the rest behind a press.
+           *
+           * All three at once came to eleven buttons, which on a phone pushed the box you type
+           * in off the bottom of the screen — a guide that hides the thing it is guiding you
+           * to. The prices stay open because that is what people come to ask.
+           */
+          <div className="space-y-4 rounded-xl border border-[var(--hm-line)] bg-[var(--hm-panel)] p-4">
+            <p className="text-sm text-[var(--hm-mute)]">ไม่รู้จะเริ่มตรงไหน กดเลือกได้เลยครับ</p>
+            <div>
+              <p className="mb-2 text-xs font-medium text-[var(--hm-mute)]">{guide[0]?.title}</p>
+              <Chips items={guide[0]?.items ?? []} onPick={ask} disabled={busy} />
+            </div>
+            {more
+              ? guide.slice(1).map((group) => (
+                <div key={group.title}>
+                  <p className="mb-2 text-xs font-medium text-[var(--hm-mute)]">{group.title}</p>
+                  <Chips items={group.items} onPick={ask} disabled={busy} />
+                </div>
+              ))
+              : guide.length > 1 && (
+                <button
+                  type="button" onClick={() => setMore(true)}
+                  className="text-sm text-[var(--hm-accent)] underline underline-offset-2"
+                >
+                  ถามเรื่องเงื่อนไขและสัญญาเพิ่มเติม
+                </button>
+              )}
           </div>
         )}
 
@@ -216,8 +238,8 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
             <div
               className={
                 t.role === "user"
-                  ? "max-w-[85%] rounded-2xl rounded-br-sm bg-slate-900 px-4 py-2.5 text-sm text-white"
-                  : "max-w-[92%] rounded-2xl rounded-bl-sm border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-800"
+                  ? "max-w-[85%] rounded-2xl rounded-br-sm bg-[var(--hm-solid)] px-4 py-2.5 text-sm text-[var(--hm-solid-ink)]"
+                  : "max-w-[92%] rounded-2xl rounded-bl-sm border border-[var(--hm-line)] bg-[var(--hm-panel)] px-4 py-3 text-sm leading-relaxed text-[var(--hm-ink)]"
               }
             >
               {t.role === "assistant" ? <Rich text={t.text} /> : <p className="whitespace-pre-wrap">{t.text}</p>}
@@ -228,21 +250,21 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={card} alt="การ์ดสรุปเบี้ยประกัน" loading="lazy"
-                    className="w-full rounded-lg border border-slate-200"
+                    className="w-full rounded-lg border border-[var(--hm-line)]"
                   />
-                  <span className="mt-1 block text-[0.65rem] text-slate-400">แตะเพื่อเปิดรูปเต็ม แล้วบันทึกไปส่งลูกค้าได้</span>
+                  <span className="mt-1 block text-[0.65rem] text-[var(--hm-mute)]">แตะเพื่อเปิดรูปเต็ม แล้วบันทึกไปส่งลูกค้าได้</span>
                 </a>
               ))}
               {/* offered under the last answer only: older rows are history, and a page of
                   live buttons down its whole length is a page nobody can read */}
               {t.role === "assistant" && t.guide?.length && i === turns.length - 1 && (
-                <div className="mt-3 border-t border-slate-100 pt-3">
-                  <p className="mb-2 text-xs text-slate-400">ถามต่อได้เลย</p>
+                <div className="mt-3 border-t border-[var(--hm-hair)] pt-3">
+                  <p className="mb-2 text-xs text-[var(--hm-mute)]">ถามต่อได้เลย</p>
                   <Chips items={t.guide} onPick={ask} disabled={busy} />
                 </div>
               )}
               {t.role === "assistant" && t.model && t.model !== "—" && (
-                <p className={`mt-2 text-[0.65rem] ${t.priced ? "text-emerald-700" : "text-slate-400"}`}>
+                <p className={`mt-2 text-[0.65rem] ${t.priced ? "text-[var(--hm-live)]" : "text-[var(--hm-mute)]"}`}>
                   {t.priced ? `✓ คิดจากตารางเบี้ยจริง · ${t.model}` : `ตอบโดย ${t.model}`}
                 </p>
               )}
@@ -251,21 +273,21 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         ))}
 
         {busy && (
-          <p className="text-sm text-slate-400" aria-live="polite">กำลังค้นในระบบ…</p>
+          <p className="text-sm text-[var(--hm-mute)]" aria-live="polite">กำลังค้นในระบบ…</p>
         )}
         <div ref={endRef} />
       </div>
 
       <form
         onSubmit={(e) => { e.preventDefault(); ask(draft); }}
-        className="sticky bottom-0 mt-6 flex gap-2 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent pb-4 pt-3"
+        className="sticky bottom-0 mt-6 flex gap-2 bg-gradient-to-t from-[var(--hm-ground)] via-[var(--hm-ground)] to-transparent pb-4 pt-3"
       >
         <input
           value={draft} onChange={(e) => setDraft(e.target.value)}
           disabled={busy} maxLength={500} autoComplete="off"
           placeholder="พิมพ์คำถามเรื่องแบบประกัน…"
           aria-label="คำถามของคุณ"
-          className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
+          className="flex-1 rounded-xl border border-[var(--hm-line)] bg-[var(--hm-panel)] px-4 py-3 text-sm outline-none focus:border-[var(--hm-accent)]"
         />
         {heard.supported && (
           <button
@@ -275,8 +297,8 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
             aria-pressed={heard.listening}
             className={`rounded-xl border px-4 py-3 text-lg leading-none transition-colors ${
               heard.listening
-                ? "animate-pulse border-red-300 bg-red-50 text-red-600"
-                : "border-slate-300 bg-white text-slate-500 hover:bg-slate-50"
+                ? "animate-pulse border-[var(--hm-alert-line)] bg-[var(--hm-alert-bg)] text-[var(--hm-alert)]"
+                : "border-[var(--hm-line)] bg-[var(--hm-panel)] text-[var(--hm-mute)] hover:bg-[var(--hm-ground)]"
             }`}
           >
             🎤
@@ -284,14 +306,14 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         )}
         <button
           type="submit" disabled={busy || !draft.trim()}
-          className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:opacity-40"
+          className="rounded-xl bg-[var(--hm-solid)] px-5 py-3 text-sm font-medium text-[var(--hm-solid-ink)] disabled:opacity-40"
         >
           ถาม
         </button>
       </form>
 
       {(heard.listening || heard.interim || heard.error || (handsFree && speech.speaking)) && (
-        <p className={`-mt-2 pb-2 text-center text-xs ${heard.error ? "text-red-600" : "text-slate-500"}`} aria-live="polite">
+        <p className={`-mt-2 pb-2 text-center text-xs ${heard.error ? "text-[var(--hm-alert)]" : "text-[var(--hm-mute)]"}`} aria-live="polite">
           {heard.error
             ?? (speech.speaking ? "🔊 กำลังตอบ… รอสักครู่แล้วพูดต่อได้เลย"
               : heard.interim ? `กำลังฟัง… "${heard.interim}"`
@@ -299,7 +321,7 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         </p>
       )}
 
-      <p className="pb-2 text-center text-xs text-slate-400">
+      <p className="pb-2 text-center text-xs text-[var(--hm-mute)]">
         เบี้ยเป็นตัวเลขประมาณการจากตารางของบริษัท ไม่ใช่ใบเสนอราคา ·{" "}
         <Link href="/privacy" className="underline">ความเป็นส่วนตัว</Link>
       </p>

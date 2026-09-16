@@ -42,22 +42,22 @@ export function Notes({ initial }: { initial: Note[] }) {
   };
 
   return (
-    <section className="mt-8 rounded-xl border border-slate-200 bg-white">
+    <section className="mt-8 rounded-xl border border-[var(--hm-line)] bg-[var(--hm-panel)]">
       <button
         type="button" onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
-        <span className="text-sm font-medium text-slate-800">
+        <span className="text-sm font-medium text-[var(--hm-ink)]">
           สอนอะไรเพิ่มให้ผู้ช่วย
-          <span className="ml-2 font-normal text-slate-400">{notes.length} บันทึก</span>
+          <span className="ml-2 font-normal text-[var(--hm-mute)]">{notes.length} บันทึก</span>
         </span>
-        <span className="text-slate-400">{open ? "−" : "+"}</span>
+        <span className="text-[var(--hm-mute)]">{open ? "−" : "+"}</span>
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 px-4 py-4">
-          <p className="mb-3 text-xs leading-relaxed text-slate-500">
+        <div className="border-t border-[var(--hm-hair)] px-4 py-4">
+          <p className="mb-3 text-xs leading-relaxed text-[var(--hm-mute)]">
             ใช้เก็บสิ่งที่ไม่มีในกฎของบริษัท เช่น วิธีตอบลูกค้าที่บอกว่าแพงไป หรือจุดที่แบบของเราต่างจากคู่แข่ง
             ผู้ช่วยจะบอกทุกครั้งว่าคำตอบนี้มาจากบันทึกที่ผู้ใช้เพิ่ม ไม่ใช่เอกสารบริษัท
           </p>
@@ -66,30 +66,30 @@ export function Notes({ initial }: { initial: Note[] }) {
             <input
               value={q} onChange={(e) => setQ(e.target.value)} maxLength={200}
               placeholder="เมื่อลูกค้าถามว่า… เช่น ทำไมแพงกว่าเจ้าอื่น"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+              className="w-full rounded-lg border border-[var(--hm-line)] px-3 py-2 text-sm outline-none focus:border-[var(--hm-accent)]"
             />
             <textarea
               value={a} onChange={(e) => setA(e.target.value)} maxLength={2000} rows={3}
               placeholder="ให้ตอบว่า…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+              className="w-full rounded-lg border border-[var(--hm-line)] px-3 py-2 text-sm outline-none focus:border-[var(--hm-accent)]"
             />
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error && <p className="text-xs text-[var(--hm-alert)]">{error}</p>}
             <button
               type="button" onClick={submit} disabled={pending || !q.trim() || !a.trim()}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-40"
+              className="rounded-lg bg-[var(--hm-solid)] px-4 py-2 text-sm text-[var(--hm-solid-ink)] disabled:opacity-40"
             >
               {pending ? "กำลังบันทึก…" : "เพิ่มความรู้"}
             </button>
           </div>
 
           {notes.length > 0 && (
-            <ul className="mt-5 divide-y divide-slate-100 border-t border-slate-100">
+            <ul className="mt-5 divide-y divide-[var(--hm-hair)] border-t border-[var(--hm-hair)]">
               {notes.map((n) => (
                 <li key={n.id} className="flex items-start gap-3 py-3">
                   <div className={`min-w-0 flex-1 ${n.enabled ? "" : "opacity-45"}`}>
-                    <p className="text-sm font-medium text-slate-800">{n.question}</p>
-                    <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-600">{n.answer}</p>
-                    <p className="mt-1 text-[0.65rem] text-slate-400">
+                    <p className="text-sm font-medium text-[var(--hm-ink)]">{n.question}</p>
+                    <p className="mt-0.5 whitespace-pre-wrap text-sm text-[var(--hm-mute)]">{n.answer}</p>
+                    <p className="mt-1 text-[0.65rem] text-[var(--hm-mute)]">
                       เพิ่มเมื่อ {when(n.updatedAt)}{n.enabled ? "" : " · ปิดใช้งานอยู่"}
                     </p>
                   </div>
@@ -100,7 +100,7 @@ export function Notes({ initial }: { initial: Note[] }) {
                         await setNoteEnabled(n.id, !n.enabled);
                         setNotes((list) => list.map((x) => (x.id === n.id ? { ...x, enabled: !x.enabled } : x)));
                       })}
-                      className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                      className="rounded border border-[var(--hm-line)] px-2 py-1 text-xs text-[var(--hm-mute)] hover:bg-[var(--hm-ground)]"
                     >
                       {n.enabled ? "ปิด" : "เปิด"}
                     </button>
@@ -110,7 +110,7 @@ export function Notes({ initial }: { initial: Note[] }) {
                         await deleteNote(n.id);
                         setNotes((list) => list.filter((x) => x.id !== n.id));
                       })}
-                      className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                      className="rounded border border-[var(--hm-alert-line)] px-2 py-1 text-xs text-[var(--hm-alert)] hover:bg-[var(--hm-alert-bg)]"
                     >
                       ลบ
                     </button>
