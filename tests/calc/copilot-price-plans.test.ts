@@ -42,11 +42,11 @@ describe("iSmart, which has one package and needs no choosing", () => {
     expect(reply.text).toContain(baht(expected.totalAnnual));
   });
 
-  it("draws both pictures, the quote and the year-by-year table", () => {
+  it("draws the quote card — and not a value table, which iSmart has no sheet for", () => {
     const reply = priceNamedPlan("iSmart ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่", "ISMART", "iSmart 80/6");
+    expect(reply.cards).toHaveLength(1);
     expect(reply.cards?.[0]).toContain("/api/card?");
     expect(reply.cards?.[0]).toContain("plan=ISMART");
-    expect(reply.cards?.[1]).toContain("/api/card/table?");
   });
 });
 
@@ -117,5 +117,83 @@ describe("an arrangement the plan will not write", () => {
     const reply = priceNamedPlan("iSmart ชาย 5 ทุน 1 ล้าน เบี้ยเท่าไหร่", "ISMART", "iSmart 80/6");
     expect(reply.priced).toBe(false);
     expect(reply.text).not.toMatch(/💰/);
+  });
+});
+
+/**
+ * What a sweep across every plan, every package and every age turned up.
+ *
+ * Each of these was a real answer this page gave before it was fixed, and each of them
+ * looked completely ordinary on the way out — which is why they are pinned here by name.
+ */
+describe("bugs the sweep found", () => {
+  it("offers the value table only for the plans whose benefit sheet has been read", () => {
+    // PLB and iSmart have no benefit sheet, so /api/card/table answers 400 for them and the
+    // customer was sent a broken picture
+    const withTable = priceNamedPlan(
+      "Life Treasure ชาย 40 ทุน 10 ล้าน จ่าย 6 ปี เบี้ยเท่าไหร่", "LIFETREASURE", "Life Treasure",
+    );
+    expect(withTable.cards).toHaveLength(2);
+    expect(withTable.cards?.[1]).toContain("/api/card/table");
+
+    for (const [text, code, label] of [
+      ["PLB ชาย 35 ทุน 1 ล้าน จ่าย 10 ปี เบี้ยเท่าไหร่", "PLB", "Protection Life (PLB)"],
+      ["iSmart ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่", "ISMART", "iSmart 80/6"],
+    ] as const) {
+      const reply = priceNamedPlan(text, code, label);
+      expect(reply.priced, label).toBe(true);
+      expect(reply.cards, label).toHaveLength(1);
+      expect(reply.cards?.[0], label).not.toContain("/api/card/table");
+    }
+  });
+
+  it("never quotes an instalment below the company's floor", () => {
+    // a million of PLB comes to 462 a month, which no branch will accept, and every
+    // calculator on the site drops it
+    const reply = priceNamedPlan("PLB ชาย 35 ทุน 1 ล้าน จ่าย 10 ปี เบี้ยเท่าไหร่", "PLB", "Protection Life (PLB)");
+    expect(reply.text).toContain("ราย 6 เดือน");
+    expect(reply.text).not.toContain("รายเดือน");
+    expect(reply.text).not.toContain("ต่ำกว่าขั้นต่ำ");
+  });
+
+  it("gives an example sum the plan will actually accept", () => {
+    // "ทุน 1 ล้าน" was the example for every plan, and Life Treasure starts at ten million
+    const reply = priceNamedPlan("Life Treasure เบี้ยเท่าไหร่", "LIFETREASURE", "Life Treasure");
+    expect(reply.text).toContain("ทุน 10 ล้าน");
+    const askedFor = priceNamedPlan("Life Treasure ชาย 40 ทุน 10 ล้าน จ่าย 6 ปี", "LIFETREASURE", "Life Treasure");
+    expect(askedFor.priced).toBe(true);
+  });
+
+  it("reads the paying term even when it is written bare", () => {
+    // "PLB หญิง 30 ทุน 5 แสน 15 ปี" says everything; asking again for the term is rude
+    const bare = priceNamedPlan("PLB หญิง 30 ทุน 500,000 15 ปี เบี้ย", "PLB", "Protection Life (PLB)");
+    const said = priceNamedPlan("PLB หญิง 30 ทุน 500,000 ผ่อน 15 ปี เบี้ย", "PLB", "Protection Life (PLB)");
+    expect(bare.priced).toBe(true);
+    expect(bare.text).toBe(said.text);
+  });
+
+  it("does not mistake an age for a paying term", () => {
+    // Life Treasure sells an eighteen-year package, and this is an eighteen-year-old
+    const young = priceNamedPlan("Life Treasure ชาย 18 ปี ทุน 10 ล้าน เบี้ยเท่าไหร่", "LIFETREASURE", "Life Treasure");
+    expect(young.priced).toBe(false);
+    expect(young.text).toContain("ระยะเวลาชำระเบี้ย");
+
+    // and someone who is both says so, and is understood
+    const both = priceNamedPlan("Life Treasure ชาย 18 ปี ทุน 10 ล้าน จ่าย 18 ปี", "LIFETREASURE", "Life Treasure");
+    expect(both.priced).toBe(true);
+    expect(both.text).toContain("ชำระเบี้ย 18 ปี");
+    expect(both.text).toContain("อายุ 18 ปี");
+  });
+
+  it("knows the Thai spellings people type", () => {
+    for (const [text, code] of [
+      ["พีแอลบี เบี้ยเท่าไหร่", "PLB"],
+      ["ไลฟ์ ทรีเชอร์ เบี้ย", "LIFETREASURE"],
+      ["ไลฟ์เทรเชอร์ เบี้ย", "LIFETREASURE"],
+      ["ไอ สมาร์ท เบี้ย", "ISMART"],
+      ["ไอ ชิลด์ เบี้ย", "ISHIELD"],
+    ] as const) {
+      expect(planNamedIn(text)?.code, text).toBe(code);
+    }
   });
 });

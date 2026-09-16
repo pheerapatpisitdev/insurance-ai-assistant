@@ -1,6 +1,8 @@
 import { quote } from "@/calc/quote";
 import { quoteModePremiums } from "@/calc/mode-premiums";
 import { getPlan } from "@/calc/plans/registry";
+import { baseSumAssuredLimits } from "@/calc/rules";
+import { valueTableCard } from "@/lib/quote-card";
 import { cardPath, valueTablePath } from "@/lib/card-link";
 import { coverIn, peopleIn } from "@/lib/assistant/common";
 
@@ -23,10 +25,10 @@ const money = (satang: number) => Math.round(satang / 100).toLocaleString("en-US
 
 /** The plans this can price, by the names a person writes. Life Protect is not here — it has a brain. */
 const PLANS: [code: string, label: string, re: RegExp][] = [
-  ["PLB", "Protection Life (PLB)", /protection\s*life|\bplb\b|โพรเทคชั่น\s*ไลฟ์/i],
-  ["ISMART", "iSmart 80/6", /i\s*-?\s*smart|ไอสมาร์ท|ไอ\s*สมาร์ท/i],
-  ["LIFETREASURE", "Life Treasure", /life\s*treasure|ไลฟ์\s*เทรเชอร์|ไลฟ์เทรเชอร์/i],
-  ["ISHIELD", "iShield", /i\s*-?\s*shield|ไอชิลด์|ไอ\s*ชิลด์/i],
+  ["PLB", "Protection Life (PLB)", /protection\s*life|\bplb\b|โพรเทคชั่น\s*ไลฟ์|พีแอลบี/i],
+  ["ISMART", "iSmart 80/6", /i\s*-?\s*smart|ไอ\s*สมาร์ท/i],
+  ["LIFETREASURE", "Life Treasure", /life\s*treasure|ไลฟ์\s*(?:เทรเชอร์|ทรีเชอร์|เทรชเชอร์)/i],
+  ["ISHIELD", "iShield", /i\s*-?\s*shield|ไอ\s*ชิลด์/i],
 ];
 
 export function planNamedIn(text: string): { code: string; label: string } | undefined {
@@ -54,14 +56,35 @@ function yearsOf(label: string | undefined): number | undefined {
   return m ? Number(m[1]) : undefined;
 }
 
-/** Which package the message asked for, when it named a paying term. */
+/**
+ * Which package the message asked for, when it named a paying term.
+ *
+ * "จ่าย 10 ปี" is unambiguous and is read first. A bare "10 ปี" is read too, because that is
+ * how the term is usually written once the plan has been named — "PLB หญิง 30 ทุน 5 แสน 15
+ * ปี" says everything, and asking again for something already in the message is the rudest
+ * thing a form can do.
+ *
+ * The bare reading is fenced twice, because the same words carry an age. A number is taken
+ * only when some package is actually sold for that many years, and never when it is this
+ * person's age or is written behind อายุ: "ไลฟ์ เทรเชอร์ ชาย 18 ปี" is an eighteen-year-old,
+ * not the eighteen-year package. Someone who is both says "จ่าย 18 ปี" and is understood.
+ */
 function variantAskedFor(
-  text: string, variants: string[], labels: Record<string, string>,
+  text: string, variants: string[], labels: Record<string, string>, age?: number,
 ): string | undefined {
-  const asked = text.match(/(?:จ่าย|ชำระ|ผ่อน)\s*(?:เบี้ย)?\s*(\d{1,2})\s*ปี/);
-  if (!asked) return undefined;
-  const years = Number(asked[1]);
-  return variants.find((v) => yearsOf(labels[v]) === years);
+  const byTerm = (years: number) => variants.find((v) => yearsOf(labels[v]) === years);
+
+  const said = text.match(/(?:จ่าย|ชำระ|ผ่อน)\s*(?:เบี้ย)?\s*(\d{1,2})\s*ปี/);
+  if (said) return byTerm(Number(said[1]));
+
+  for (const m of text.matchAll(/(อายุ\s*)?(\d{1,2})\s*ปี/g)) {
+    if (m[1]) continue;
+    const years = Number(m[2]);
+    if (years === age) continue;
+    const hit = byTerm(years);
+    if (hit) return hit;
+  }
+  return undefined;
 }
 
 /**
@@ -97,11 +120,20 @@ export function priceNamedPlan(text: string, code: string, label: string): Price
   const variants = plan.rates.base.variants ?? [];
   const variant = variants.length === 1
     ? variants[0]
-    : variantAskedFor(text, variants, plan.variantLabels);
+    : variantAskedFor(text, variants, plan.variantLabels, people[0]?.age);
 
   const missing: string[] = [];
   if (people.length === 0) missing.push("อายุกับเพศ (เช่น “ชาย 35”)");
-  if (sum === undefined) missing.push("ทุนประกัน (เช่น “ทุน 1 ล้าน”)");
+  if (sum === undefined) {
+    /**
+     * The example has to be a sum this plan will actually accept. "ทุน 1 ล้าน" was the
+     * example for every plan, and Life Treasure starts at ten million — so the one customer
+     * who did exactly as they were asked got told their sum was too small.
+     */
+    const min = baseSumAssuredLimits(plan.rules, variant ?? variants[0] ?? "").min;
+    const example = min && min > 1_000_000 ? min : 1_000_000;
+    missing.push(`ทุนประกัน (เช่น “ทุน ${(example / 1_000_000).toLocaleString("en-US")} ล้าน”)`);
+  }
   if (!variant && variants.length > 1) {
     const choices = variants.map((v) => plan.variantLabels[v] ?? v).join(" · ");
     missing.push(`ระยะเวลาชำระเบี้ย — ${label} มีให้เลือก: ${choices}`);
@@ -152,12 +184,16 @@ export function priceNamedPlan(text: string, code: string, label: string): Price
     "",
     `💰 เบี้ยปีละ **${money(result.totalAnnual)} บาท**`,
   ];
+  /**
+   * Only instalments that can be bought. `quoteModePremiums` divides the year up whatever the
+   * figure comes to, and on a small PLB the monthly share lands under the company's floor —
+   * every calculator on the site drops those, and a chat that prints "รายเดือน 462 บาท" is
+   * quoting an instalment no branch will accept.
+   */
   const half = per("semi");
   const monthly = per("monthly");
-  if (half) lines.push(`ราย 6 เดือน ${money(half.total)} บาท`);
-  if (monthly) {
-    lines.push(`รายเดือน ${money(monthly.total)} บาท${monthly.belowMinimum ? " (ต่ำกว่าขั้นต่ำของแบบนี้)" : ""}`);
-  }
+  if (half && !half.belowMinimum) lines.push(`ราย 6 เดือน ${money(half.total)} บาท`);
+  if (monthly && !monthly.belowMinimum) lines.push(`รายเดือน ${money(monthly.total)} บาท`);
   if (result.deathBenefit) lines.push("", "👪 ความคุ้มครองชีวิตเป็นไปตามตารางผลประโยชน์ของแบบนี้");
   if (result.meta.expired) {
     lines.push("", `⚠️ ตารางเบี้ยชุดนี้ (${result.meta.version}) หมดอายุ ${result.meta.expiresOn} แล้ว — ขอราคาปัจจุบันจากบริษัทก่อนใช้`);
@@ -165,13 +201,21 @@ export function priceNamedPlan(text: string, code: string, label: string): Price
     lines.push("", `เบี้ยมาตรฐาน ตารางเวอร์ชัน ${result.meta.version} · อาจต่างไปตามผลพิจารณารับประกัน`);
   }
 
+  /**
+   * The value table is offered only where the engine can draw one.
+   *
+   * It needs the plan's benefit sheet, and two of these four have not had theirs read — so
+   * the link this used to attach unconditionally answered 400, and the customer was sent a
+   * broken picture. Asking the drawing function itself, rather than repeating its condition
+   * here, is what keeps the two from drifting apart.
+   */
   const who2 = { age: who.age, sex: who.sex, sumAssured: result.sumAssured };
+  const card = { kind: "plan" as const, planCode: code, variant: variant!, ...who2 };
+  const hasTable = Boolean(valueTableCard(card));
+
   return {
     priced: true,
     text: lines.join("\n"),
-    cards: [
-      cardPath({ kind: "plan", planCode: code, variant: variant!, ...who2 }),
-      valueTablePath({ kind: "plan", planCode: code, variant: variant!, ...who2 }),
-    ],
+    cards: hasTable ? [cardPath(card), valueTablePath(card)] : [cardPath(card)],
   };
 }
