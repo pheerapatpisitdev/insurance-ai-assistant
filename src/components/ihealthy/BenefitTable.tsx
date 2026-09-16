@@ -115,8 +115,15 @@ function grouped(value: string): string {
  * Narrower on a phone, where three plans and a title have to share 375 points: at the wide
  * width the table would be 561 and would scroll sideways, which is the thing the phone
  * table exists to avoid.
+ *
+ * Wider again on a desktop, where the proportions were the wrong way round. The titles are
+ * whole sentences of the company's own Thai and had 224 points to wrap in — eight lines of
+ * it — while six columns holding "1,500 ต่อวัน" were handed two hundred points each by a
+ * table told to fill the window. The first row alone stood 180 points tall on that
+ * arithmetic, and the whole table 4,832.
  */
-const TITLE_W = "w-28 min-w-28 max-w-28 sm:w-56 sm:min-w-56 sm:max-w-56";
+const TITLE_W =
+  "w-28 min-w-28 max-w-28 sm:w-56 sm:min-w-56 sm:max-w-56 lg:w-72 lg:min-w-72 lg:max-w-72 xl:w-[25rem] xl:min-w-[25rem] xl:max-w-[25rem]";
 /** The pinned row-title column. Opaque, or the rows scroll visibly through their own titles. */
 const PIN = `sticky left-0 print:static ${TITLE_W} border-r border-[var(--lg-panel-line)] bg-[var(--lg-ground-deep)] px-3 text-left`;
 /**
@@ -167,7 +174,11 @@ export function BenefitTable(
       >
         {/* A phone gets a table sized to its box, so three plans and their titles share the
               width and the Thai wraps; a wide screen gets one sized to its content. */}
-          <table className="ihu-benefit-table w-full border-collapse text-xs sm:w-max sm:min-w-full">
+          {/* Filling the window is right up to the point where the window is wider than the
+              table has anything to say. Past that the columns are padded out with nothing and
+              the reader's eye has further to travel between a benefit and its figure, so from
+              the extra-wide breakpoint the table stops growing and centres instead. */}
+          <table className="ihu-benefit-table w-full border-collapse text-xs sm:w-max sm:min-w-full xl:mx-auto xl:min-w-0 xl:max-w-[66rem]">
           <caption className="sr-only">
             ตารางผลประโยชน์ iHealthy Ultra ทั้ง {plans.length} แผน
           </caption>
