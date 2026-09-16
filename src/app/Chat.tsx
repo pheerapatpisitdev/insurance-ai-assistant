@@ -137,8 +137,8 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         <div className="flex items-start gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/mark.png" alt="" width={40} height={40}
-            className="mt-0.5 h-10 w-10 shrink-0 rounded-lg"
+            src="/mark.png" alt="" width={32} height={40}
+            className="mt-0.5 h-10 w-auto shrink-0"
           />
         <div>
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">ถามเรื่องแบบประกัน</h1>
@@ -202,8 +202,8 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
             {t.role === "assistant" && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src="/mark.png" alt="" width={28} height={28}
-                className="mt-1 h-7 w-7 shrink-0 rounded-md"
+                src="/mark.png" alt="" width={22} height={28}
+                className="mt-1 h-7 w-auto shrink-0"
               />
             )}
             <div

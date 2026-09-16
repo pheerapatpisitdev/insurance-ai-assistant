@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
           {/* where it came from, on the thing that travels furthest from here */}
           <div style={{ ...band(SIGNATURE_HEIGHT), alignItems: "flex-end", gap: 12 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={mark} width={30} height={30} alt="" style={{ borderRadius: 7 }} />
+            <img src={mark} height={34} alt="" />
             <span style={{ fontSize: 21, color: MUTE }}>{SIGNATURE_TEXT}</span>
           </div>
           {card.notes.map((n) => (
