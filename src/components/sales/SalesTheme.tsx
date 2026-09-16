@@ -1,4 +1,5 @@
 import { IBM_Plex_Sans_Thai, Trirong } from "next/font/google";
+import { HomeButton } from "./HomeButton";
 
 /**
  * Trirong is a Thai serif: it has the weight of something printed and kept, which is what a
@@ -29,6 +30,11 @@ export function SalesTheme({ children }: { children: React.ReactNode }) {
   return (
     <div className={`${display.variable} ${body.variable} theme-legacy min-h-screen`}>
       {children}
+      {/* last, not first: `.theme-legacy > *` in globals.css sets z-index 1 on every direct
+          child, and it ties a Tailwind z utility on specificity — so the order these are
+          painted in is the order they are written in, and the way home has to come after the
+          page it sits over. */}
+      <HomeButton />
     </div>
   );
 }
