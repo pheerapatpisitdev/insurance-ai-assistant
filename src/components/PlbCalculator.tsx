@@ -7,7 +7,7 @@ import { PER, displayPremium, perDayText } from "@/lib/legacy-cta";
 import type { PlbTable } from "@/lib/plb-table";
 import { coverEndsAt, perMillion, plbModes, termAt, totalPaid } from "@/lib/plb-quote";
 import { plbMessage, plbQuoteText, type PlbAge } from "@/lib/plb-cta";
-import { cardPath } from "@/lib/card-link";
+import { cardPath, valueTablePath } from "@/lib/card-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
@@ -71,6 +71,14 @@ export function PlbCalculator({ table, sticky = false }: PlbCalculatorProps) {
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
   const card = who && headline
     ? cardPath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured, mode: headline.mode })
+    : undefined;
+  /**
+   * The year-by-year sheet, which for this plan is a table of cover rather than of value:
+   * PLB is protection only, so what it has to show is the premium, the cover, and the year
+   * the contract ends.
+   */
+  const tableCard = who
+    ? valueTablePath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured })
     : undefined;
   const quoteText = who && headline && annual
     ? plbQuoteText({
@@ -249,11 +257,11 @@ export function PlbCalculator({ table, sticky = false }: PlbCalculatorProps) {
         </div>
       )}
 
-      <ContactButtons message={message} copyText={quoteText} cardPath={card} />
+      <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} tableLabel={{ full: "บันทึกตารางความคุ้มครอง", compact: "ตาราง" }} />
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={card} compact />
+          <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} tableLabel={{ full: "บันทึกตารางความคุ้มครอง", compact: "ตาราง" }} compact />
         </div>
       )}
     </div>

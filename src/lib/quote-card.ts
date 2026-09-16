@@ -5,7 +5,7 @@ import { getPlan, type PlanBundle } from "@/calc/plans/registry";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleModePremiums, quoteBundle } from "@/calc/bundles/quote";
 import { formatBaht } from "@/calc/money";
-import { PAY_MODE_LABEL, type DeathBenefit, type PayMode, type QuoteInput, type Sex } from "@/calc/types";
+import { PAY_MODE_LABEL, type DeathBenefit, type PayMode, type QuoteInput, type QuoteResult, type Sex } from "@/calc/types";
 import type { BundleCardInput, CardInput, PlanCardInput } from "@/lib/card-link";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import { cashProjection, type Projection } from "@/lib/cash-projection";
@@ -438,7 +438,8 @@ export interface ValueTableRow {
   due: string;
   /** every premium paid up to and including this year; null when no price may be shown */
   paid: string | null;
-  cash: string;
+  /** what surrendering returns; absent for a plan whose surrender table the company has not published */
+  cash?: string;
   cover: string;
   /** the money handed back that year, for a plan that pays one; absent elsewhere */
   payout?: string;
@@ -461,6 +462,14 @@ export interface ValueTableCard {
 /** The same headings as the table on the sales page, in the same order. */
 const VALUE_COLUMNS = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"];
 /**
+ * A plan that is protection and nothing else, which has no surrender column to show.
+ *
+ * PLB is the one here: its cover runs exactly as long as its premium is paid, five, ten,
+ * twelve or fifteen years, and then it is over. What the customer needs from a table of it
+ * is not what it is worth — it is what they pay, what it covers, and the year it ends.
+ */
+const COVER_COLUMNS = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "คุ้มครอง"];
+/**
  * The same table for a plan that pays money back while it runs.
  *
  * The payout goes next to the premium rather than at the end, because the two are read
@@ -469,6 +478,63 @@ const VALUE_COLUMNS = ["ปีที่", "อายุ", "เบี้ย/ป�
 const PAYOUT_COLUMNS = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "จ่ายคืน", "เวนคืนได้", "คุ้มครอง"];
 
 const baht = (satang: number) => money(Math.round(satang / 100));
+
+/**
+ * The same contract for a plan that is protection and nothing else.
+ *
+ * PLB has no surrender column because PLB has no surrender value — คุ้มครองล้วน ไม่มีมูลค่า
+ * เวนคืนและไม่มีเงินคืนเมื่อครบสัญญา, which is the note the quote card has carried all along.
+ * Its workbook is no help either: the CV sheets in that file belong to PR60, a retirement
+ * plan it was copied from, and the summary sheet still answers #REF! where PR60's savings
+ * figures used to be. Borrowing a neighbouring product's numbers to fill the column is the
+ * one thing that must never happen here.
+ *
+ * What the table has instead is the thing customers of a term plan most often get wrong: the
+ * year the cover stops. สรุปผลประโยชน์!D36 and E36 are the same formula, so cover and premium
+ * run together — five, ten, twelve or fifteen years, and then it is over.
+ */
+function coverTableCard(
+  plan: PlanBundle, input: PlanCardInput, result: QuoteResult, today: Date,
+): ValueTableCard | undefined {
+  const years = plan.rates.base.coverTerm?.[input.variant];
+  if (!years) return undefined;
+
+  const annual = quoteModePremiums(quoteInput(input, "annual"), today)?.find((m) => m.mode === "annual");
+  const annualSatang = result.meta.expired || !annual ? null : annual.total;
+  const payYears = payYearsFor(plan, input.variant, input.age);
+  const cover = (result.deathBenefit?.sumFrom ?? result.sumAssured) * 100;
+
+  let paid = 0;
+  const rows: ValueTableRow[] = Array.from({ length: years }, (_, i) => {
+    const due = annualSatang === null ? null : i < payYears ? annualSatang : 0;
+    if (due !== null) paid += due;
+    return {
+      year: i + 1,
+      age: input.age + i,
+      due: due ? baht(due) : "—",
+      paid: due === null ? null : baht(paid),
+      cover: baht(cover),
+    };
+  });
+
+  const variantLabel = plan.variantLabels[input.variant];
+  const planLabel = plan.planLabel ?? result.meta.planName;
+  return {
+    planLine: variantLabel.includes("·") ? variantLabel : `${planLabel} · ${variantLabel}`,
+    insuredLine: `${SEX_WORD[input.sex]} ${input.age} ปี · ทุน ${money(result.sumAssured)} บาท`,
+    premiumLine: annualSatang === null
+      ? "ขอราคาปัจจุบันได้ทางแชท"
+      : `เบี้ย ${baht(annualSatang)} บาทต่อปี · ชำระ ${payYears} ปี`,
+    columns: COVER_COLUMNS,
+    rows,
+    notes: [
+      `คุ้มครอง ${years} ปี ถึงอายุ ${input.age + years} ปี แล้วสัญญาสิ้นสุด`,
+      // and why there is no surrender column at all comes from planNotes, which has said it
+      // since the quote card was first drawn
+      ...cardNotes(result.meta.expired, result.meta.version, "เบี้ยมาตรฐานโดยประมาณ", planNotes(input)),
+    ],
+  };
+}
 
 /**
  * Every year of the contract as a picture: what has been paid in by then, what surrendering
@@ -484,7 +550,7 @@ const baht = (satang: number) => money(Math.round(satang / 100));
  */
 export function valueTableCard(input: PlanCardInput, today: Date = new Date()): ValueTableCard | undefined {
   const plan = getPlan(input.planCode);
-  if (!plan?.coverTopUp) return undefined;
+  if (!plan) return undefined;
 
   const result = quote(quoteInput(input, "annual"), today);
   const base = result.items[0];
@@ -492,7 +558,7 @@ export function valueTableCard(input: PlanCardInput, today: Date = new Date()): 
   if (result.warnings.some((w) => w.level === "error")) return undefined;
 
   const factors = cashValueSchedule(input.planCode, input.variant, input.sex, input.age, 1000).map((r) => r.amount);
-  if (factors.length < 2) return undefined;
+  if (!plan.coverTopUp || factors.length < 2) return coverTableCard(plan, input, result, today);
 
   const annual = quoteModePremiums(quoteInput(input, "annual"), today)?.find((m) => m.mode === "annual");
   const annualSatang = result.meta.expired || !annual ? null : annual.total;

@@ -60,9 +60,17 @@ def meb_table(ws, header_row, first_row, last_row):
 
 
 # --------------------------------------------------------------------------- PLB
+def _plb_terms(formula):
+    """The years out of สรุปผลประโยชน์'s nested IF: IF(D19="PLB05",5,IF(...,"PLB10",10,...))."""
+    pairs = re.findall(r'"(PLB\d\d)"\s*,\s*(\d+)', formula or "")
+    assert len(pairs) == 4, f"expected four packages in {formula!r}, found {pairs}"
+    return {code: int(years) for code, years in pairs}
+
+
 def extract_plb():
     src = XLSX_DIR / "Protection Life (PLB)_A2026-1_01042026.xlsx"
     wb = openpyxl.load_workbook(src, data_only=True)
+    wb_formulas = openpyxl.load_workbook(src, data_only=False)
     inp, cal, pm = wb["กรอกข้อมูล"], wb["Cal"], wb["Premium&Maturity"]
     variants = ["PLB05", "PLB10", "PLB12", "PLB15"]
     meta = {
@@ -88,6 +96,17 @@ def extract_plb():
                     table[str(r)] = val
             assert len(table) == 40, f"{v}{sex}: expected 40 ages, got {len(table)}"
             rates[v][sex] = table
+    # How long each package covers, and how long it is paid for — read out of the workbook's
+    # own formula rather than off the product codes, so a company that renames or re-terms a
+    # package breaks this instead of quietly shipping the old number.
+    #
+    # สรุปผลประโยชน์!D36 is ระยะเวลาคุ้มครอง and E36 is ระยะเวลาชำระเบี้ย, and both are the same
+    # nested IF over the package code: PLB covers exactly as long as it is paid for.
+    terms = wb_formulas["สรุปผลประโยชน์"]
+    cover_term = _plb_terms(terms["D36"].value)
+    pay_term = _plb_terms(terms["E36"].value)
+    assert cover_term == pay_term == {v: int(v[3:]) for v in variants}, (cover_term, pay_term)
+
     # discount: Cal A27:K31
     disc_header = {cell(cal, 27, c): c for c in range(2, 12)}
     thresholds = [cell(cal, r, 1) for r in range(28, 32)]
@@ -99,7 +118,7 @@ def extract_plb():
     out = {
         **meta,
         "modeFactors": mode_factors(cal),
-        "base": {"variants": variants, "rates": rates},
+        "base": {"variants": variants, "payTerm": pay_term, "coverTerm": cover_term, "rates": rates},
         "discount": {"thresholds": thresholds, "byVariant": by_variant},
         "riders": {
             "AP": {"kind": "ratePerThousandByAgeClass", "rates": ap},

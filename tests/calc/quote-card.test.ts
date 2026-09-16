@@ -205,7 +205,7 @@ describe("the value table card", () => {
   it("marks the year the policy is first worth what has gone into it", () => {
     const marked = valueTableCard(NINE_YEARS, WHILE_CURRENT)!.rows.filter((r) => r.breakEven);
     expect(marked).toHaveLength(1);
-    expect(Number(marked[0].cash.replace(/,/g, ""))).toBeGreaterThanOrEqual(Number(marked[0].paid!.replace(/,/g, "")));
+    expect(Number(marked[0].cash!.replace(/,/g, ""))).toBeGreaterThanOrEqual(Number(marked[0].paid!.replace(/,/g, "")));
   });
 });
 

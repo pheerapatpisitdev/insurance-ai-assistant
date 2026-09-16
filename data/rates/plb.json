@@ -17,6 +17,18 @@
    "PLB12",
    "PLB15"
   ],
+  "payTerm": {
+   "PLB05": 5,
+   "PLB10": 10,
+   "PLB12": 12,
+   "PLB15": 15
+  },
+  "coverTerm": {
+   "PLB05": 5,
+   "PLB10": 10,
+   "PLB12": 12,
+   "PLB15": 15
+  },
   "rates": {
    "PLB05": {
     "M": {

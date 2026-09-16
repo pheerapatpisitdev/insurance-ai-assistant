@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { quote } from "@/calc/quote";
 import { planNamedIn, priceNamedPlan } from "@/lib/copilot/price";
+import { valueTableCard } from "@/lib/quote-card";
 
 /**
  * The figures this page gives against the figures the engine gives.
@@ -128,22 +129,31 @@ describe("an arrangement the plan will not write", () => {
  * looked completely ordinary on the way out — which is why they are pinned here by name.
  */
 describe("bugs the sweep found", () => {
-  it("offers the value table only for the plans whose benefit sheet has been read", () => {
-    // /api/card/table answers 400 for a plan without one, and the customer was sent a broken
-    // picture; PLB's sheet is still the one that has not been read
+  it("offers the table only where the engine can actually draw one", () => {
+    /**
+     * /api/card/table answers 400 for an arrangement it cannot draw, and the customer is sent
+     * a broken picture — so the link is offered on the drawing function's own say-so rather
+     * than on a list of plans kept here. Every plan has a table today; the guard is what stops
+     * the next one added from shipping the bug again.
+     */
     for (const [text, code, label] of [
       ["Life Treasure ชาย 40 ทุน 10 ล้าน จ่าย 6 ปี เบี้ยเท่าไหร่", "LIFETREASURE", "Life Treasure"],
       ["iSmart ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่", "ISMART", "iSmart 80/6"],
+      ["PLB ชาย 35 ทุน 1 ล้าน จ่าย 10 ปี เบี้ยเท่าไหร่", "PLB", "Protection Life (PLB)"],
     ] as const) {
       const reply = priceNamedPlan(text, code, label);
-      expect(reply.cards, label).toHaveLength(2);
-      expect(reply.cards?.[1], label).toContain("/api/card/table");
+      expect(reply.priced, label).toBe(true);
+      const drawn = valueTableCard({
+        kind: "plan",
+        planCode: code,
+        variant: new URL(`https://x${reply.cards![0]}`).searchParams.get("variant")!,
+        age: 35,
+        sex: "M",
+        sumAssured: code === "LIFETREASURE" ? 10_000_000 : 1_000_000,
+      });
+      expect(reply.cards, label).toHaveLength(drawn ? 2 : 1);
+      if (drawn) expect(reply.cards?.[1], label).toContain("/api/card/table");
     }
-
-    const plb = priceNamedPlan("PLB ชาย 35 ทุน 1 ล้าน จ่าย 10 ปี เบี้ยเท่าไหร่", "PLB", "Protection Life (PLB)");
-    expect(plb.priced).toBe(true);
-    expect(plb.cards).toHaveLength(1);
-    expect(plb.cards?.[0]).not.toContain("/api/card/table");
   });
 
   it("never quotes an instalment below the company's floor", () => {

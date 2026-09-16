@@ -99,6 +99,11 @@ export interface PlanRates {
     variants: string[];
     /** variant → premium-paying term in years (needed by premium-based riders) */
     payTerm?: Record<string, number>;
+    /**
+     * How many years each package covers, where the plan states it per package rather than
+     * to an age. PLB's cover runs exactly as long as its premium is paid.
+     */
+    coverTerm?: Record<string, number>;
     /** variant → the age premiums are paid to, when the term is "to age N" rather than fixed */
     payTermToAge?: Record<string, number>;
     /** the W family sells packages: each variant carries its own issue-age range and label */

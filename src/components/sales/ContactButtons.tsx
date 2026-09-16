@@ -11,8 +11,13 @@ import { CardButton } from "./CardButton";
  * The message is prepared, never sent: pressing send stays the customer's own act.
  */
 export function ContactButtons(
-  { message, copyText, cardPath, tableCardPath, compact = false }:
-    { message: string; copyText?: string; cardPath?: string; tableCardPath?: string; compact?: boolean },
+  { message, copyText, cardPath, tableCardPath, tableLabel, compact = false }:
+    {
+      message: string; copyText?: string; cardPath?: string; tableCardPath?: string;
+      /** what the table's button says, for a plan whose table is not a table of values */
+      tableLabel?: { full: string; compact: string };
+      compact?: boolean;
+    },
 ) {
   const shape = compact
     ? "rounded-sm px-3 py-2.5 text-center text-sm font-medium"
@@ -35,7 +40,7 @@ export function ContactButtons(
           path={tableCardPath}
           compact={compact}
           filename="value-table.png"
-          label={{ full: "บันทึกตารางมูลค่า", compact: "ตาราง" }}
+          label={tableLabel ?? { full: "บันทึกตารางมูลค่า", compact: "ตาราง" }}
           className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`}
         />
       )}

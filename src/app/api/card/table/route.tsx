@@ -42,6 +42,8 @@ const H = {
 };
 
 const CAPTION = "มูลค่าทุกปี ตั้งแต่ปีแรกจนครบสัญญา";
+/** A plan with no surrender column is not showing a value, it is showing a term. */
+const COVER_CAPTION = "ความคุ้มครองทุกปี ตั้งแต่ปีแรกจนครบสัญญา";
 
 /**
  * The five columns, and how each sits in its own half.
@@ -58,6 +60,20 @@ const COLS = [
   { w: HALF - 60 - 60 - 136 - 152 - 152, align: "flex-end" as const },
 ];
 
+/**
+ * And the layout for a plan with no surrender column, which is one narrower.
+ *
+ * The room the missing column frees goes to the two money columns rather than to the margin:
+ * a five-column table stretched across the same canvas would be mostly rule and air.
+ */
+const COVER_COLS = [
+  { w: 66, align: "flex-start" as const },
+  { w: 66, align: "flex-start" as const },
+  { w: 176, align: "flex-end" as const },
+  { w: 200, align: "flex-end" as const },
+  { w: HALF - 66 - 66 - 176 - 200, align: "flex-end" as const },
+];
+
 /** The same layout with the payout column, in the wider canvas that makes room for it. */
 const PAYOUT_HALF = halfOf(WIDTH_WITH_PAYOUT);
 const PAYOUT_COLS = [
@@ -71,9 +87,11 @@ const PAYOUT_COLS = [
 ];
 
 /** Which layout a card is drawn in, decided by the columns it carries. */
-const layoutFor = (card: ValueTableCard) => (card.columns.length > 6
-  ? { cols: PAYOUT_COLS, half: PAYOUT_HALF, width: WIDTH_WITH_PAYOUT }
-  : { cols: COLS, half: HALF, width: WIDTH });
+function layoutFor(card: ValueTableCard) {
+  if (card.columns.length > 6) return { cols: PAYOUT_COLS, half: PAYOUT_HALF, width: WIDTH_WITH_PAYOUT };
+  if (card.columns.length < 6) return { cols: COVER_COLS, half: HALF, width: WIDTH };
+  return { cols: COLS, half: HALF, width: WIDTH };
+}
 
 /** Air either side of a figure, so no column ever touches the rule beside it. */
 const CELL_PAD = 11;
@@ -138,9 +156,16 @@ function Half(
          * hard to read.
          */
         const ink = r.breakEven ? p.figure : p.ink;
-        const cells = r.payout === undefined
-          ? [String(r.year), String(r.age), r.due, r.paid ?? "—", r.cash, r.cover]
-          : [String(r.year), String(r.age), r.due, r.paid ?? "—", r.payout, r.cash, r.cover];
+        /**
+         * Built from the columns the row actually carries, so the three shapes of this table
+         * — with a payout, with a surrender value, with neither — all draw from one path.
+         */
+        const cells = [
+          String(r.year), String(r.age), r.due, r.paid ?? "—",
+          ...(r.payout === undefined ? [] : [r.payout]),
+          ...(r.cash === undefined ? [] : [r.cash]),
+          r.cover,
+        ];
         return (
           <div
             key={r.year}
@@ -222,7 +247,9 @@ export async function GET(req: NextRequest) {
         <div style={spacer(H.gap)} />
         <div style={spacer(H.hairline, p.hair)} />
         <div style={spacer(H.afterHairline)} />
-        <div style={{ ...band(H.caption), fontSize: 25, color: p.accent }}>{CAPTION}</div>
+        <div style={{ ...band(H.caption), fontSize: 25, color: p.accent }}>
+          {card.columns.includes("เวนคืนได้") ? CAPTION : COVER_CAPTION}
+        </div>
 
         <div style={{ display: "flex", width: width - PAD * 2, flexShrink: 0 }}>
           <Half columns={card.columns} rows={card.rows.slice(0, cut)} p={p} cols={cols} half={half} />

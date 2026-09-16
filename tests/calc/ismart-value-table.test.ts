@@ -87,7 +87,7 @@ describe("the table iSmart is drawn as", () => {
     expect(marked).toHaveLength(1);
     expect(marked[0]).toMatchObject({ year: 16, age: 59 });
 
-    const surrenderOnly = card.rows.find((r) => Number(r.cash.replace(/,/g, "")) >= 1_722_000)!;
+    const surrenderOnly = card.rows.find((r) => Number((r.cash ?? "0").replace(/,/g, "")) >= 1_722_000)!;
     expect(surrenderOnly.year).toBeGreaterThan(marked[0].year);
   });
 });
