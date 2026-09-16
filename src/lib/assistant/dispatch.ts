@@ -89,6 +89,15 @@ function personIn(slots: AnySlots | null): Person {
  */
 export async function answerAny(
   history: ChatMessage[], stored: AnySlots | null, channel: Channel = "web",
+  /**
+   * What the advertisement that sent this customer was selling, where one did.
+   *
+   * The weakest of the three signals on purpose, and last of them: what the customer says now
+   * outranks what they clicked, and a subject they raise outranks it too. Someone who came
+   * through a Life Protect advertisement and opens with "ค่าห้องเท่าไหร่" is asking about
+   * health cover, whatever they pressed to get here.
+   */
+  cameFor?: Product,
 ): Promise<AnyAnswer> {
   const asked = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
   const now = settled(stored);
@@ -126,8 +135,8 @@ export async function answerAny(
     };
   }
 
-  // nothing settled yet: the name first, then the subject
-  const product = named ?? productByTopic(asked);
+  // nothing settled yet: the name first, then the subject, then the advertisement they came through
+  const product = named ?? productByTopic(asked) ?? cameFor;
   if (product) return run(product, history, personIn(stored), true);
 
   // the customer has not said, so the customer is asked — and what they did say is kept,

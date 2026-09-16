@@ -8,6 +8,7 @@ import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { agentTyped, customerOf, eventKey, referralOf, textOf, type Messaging } from "@/lib/facebook/events";
+import { productFromAd } from "@/lib/facebook/from-ad";
 import { attribute, openConversation, openLead, record, type RecordedEvent } from "@/lib/chat/record";
 import { WANTS_IN } from "@/lib/assistant/common";
 
@@ -17,13 +18,16 @@ import { WANTS_IN } from "@/lib/assistant/common";
  * The failures that reach a customer are transient — a key table that could not be read on a
  * cold start, a provider refusing one call. A second try costs a second and saves the lead.
  */
-async function answered(history: ChatMessage[], slots: Parameters<typeof answerAny>[1]) {
+async function answered(
+  history: ChatMessage[], slots: Parameters<typeof answerAny>[1],
+  cameFor: Parameters<typeof answerAny>[3],
+) {
   try {
-    return await answerAny(history, slots, "facebook");
+    return await answerAny(history, slots, "facebook", cameFor);
   } catch (e) {
     if (e instanceof BudgetExceeded) throw e;
     console.error("answer failed, trying once more:", e);
-    return await answerAny(history, slots, "facebook");
+    return await answerAny(history, slots, "facebook", cameFor);
   }
 }
 
@@ -121,9 +125,21 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
 
   const history: ChatMessage[] = [...session.messages, { role: "user", content: text }];
 
+  /**
+   * The plan the advertisement was about, worked out once and only while it can still matter.
+   *
+   * Looked up only on a turn that carries a referral — the first message of a conversation
+   * that began at an advertisement — because after that the conversation itself is the better
+   * evidence of what the customer wants.
+   */
+  const cameFor = referral || event.postback?.payload
+    ? await productFromAd(referral, event.postback?.payload)
+    : undefined;
+  if (cameFor) console.info(`[ad] ${userHash.slice(0, 8)} มาจากโฆษณา ${cameFor.product} (${cameFor.from})`);
+
   await showTyping(psid).catch(() => {});
   try {
-    const answer = await answered(history, session.slots);
+    const answer = await answered(history, session.slots, cameFor?.product);
     // the model takes seconds, and an agent watching the thread answers inside them. Their
     // words are already in the customer's phone by now, so the bot says nothing and records
     // nothing — a mark that was not there when this answer began is theirs, just now.
