@@ -8,6 +8,7 @@ import { asksFullTable, asksOtherPlans, asksShareOfBill } from "@/lib/assistant/
 import { asksCheaper } from "@/lib/assistant/common";
 import type { AnySlots } from "@/lib/assistant/slots";
 import { assembleKnowledge } from "./knowledge";
+import { planNamedIn, priceNamedPlan } from "./price";
 
 /**
  * The assistant that answers out of this system's own knowledge, and out of nothing else.
@@ -92,37 +93,13 @@ export interface CopilotAnswer {
 const ENGINE = "เครื่องคิดเบี้ยของระบบ";
 
 /**
- * The plans this chat knows about but cannot price, by the names a person calls them.
+ * The plans without a brain are priced by `./price`, not turned away.
  *
- * The dispatcher speaks for two products. The knowledge describes five, because the rule
- * files describe five — and that combination quotes the wrong plan with total confidence:
- * "iShield ทุน 1 ล้าน เบี้ยเท่าไหร่" carries no name the router recognises, but "1 ล้าน" is
- * in Life Protect's subject list, so the question came back priced as Life Protect with a
- * Life Protect card attached. A different contract, a different table, and nothing on screen
- * to say so.
- *
- * Recognised here and stopped here. A page that says it cannot do this is worth any number
- * of pages that do it wrongly.
+ * For a while the gap was answered by refusing: a question about iShield was stopped rather
+ * than quoted as Life Protect, which it had been. Refusing was right and was not the end of
+ * it — `quote()` prices every plan in the registry and `/api/card` draws every one, so what
+ * was missing was wiring and not ability.
  */
-const CANNOT_PRICE: [string, RegExp][] = [
-  ["iShield", /i\s*-?\s*shield|ไอชิลด์|ไอ\s*ชิลด์/i],
-  ["iSmart", /i\s*-?\s*smart|ไอสมาร์ท|ไอ\s*สมาร์ท/i],
-  ["Life Treasure", /life\s*treasure|ไลฟ์\s*เทรเชอร์|ไลฟ์เทรเชอร์/i],
-  ["Protection Life (PLB)", /protection\s*life|\bplb\b|โพรเทคชั่น\s*ไลฟ์/i],
-];
-
-function namedButUnpriceable(text: string): string | undefined {
-  return CANNOT_PRICE.find(([, re]) => re.test(text))?.[0];
-}
-
-const elsewhere = (plan: string) => `แบบ **${plan}** ผมคิดเบี้ยให้ในแชทนี้ยังไม่ได้ครับ
-
-แชทนี้คิดเบี้ยได้สองแบบ — **Life Protect x 2** กับ **iHealthy Ultra**
-
-${plan} คิดได้ที่ [หน้าแบบประกันอื่นๆ](/other-plans) ซึ่งใช้ตารางเบี้ยชุดเดียวกัน
-
-ส่วนเรื่องเงื่อนไขของ ${plan} เช่น ช่วงอายุ ทุนขั้นต่ำ หรือสัญญาเพิ่มเติมที่ซื้อคู่ได้ ถามผมได้เลยครับ ผมมีข้อมูลครบ`;
-
 export async function answerFromKnowledge(
   question: string,
   history: ChatMessage[] = [],
@@ -138,9 +115,17 @@ export async function answerFromKnowledge(
    * Checked before the engine, not after: the harm is done the moment the dispatcher is
    * handed a question about a contract it does not sell.
    */
-  const unpriceable = namedButUnpriceable(question);
-  if (unpriceable && (forTheEngine(question) || slots)) {
-    return { text: elsewhere(unpriceable), model: "—" };
+  const named = planNamedIn(question);
+  if (named && forTheEngine(question)) {
+    const priced = priceNamedPlan(question, named.code, named.label);
+    return {
+      text: priced.text,
+      model: priced.priced ? ENGINE : "—",
+      priced: priced.priced,
+      ...(priced.cards?.length ? { cards: priced.cards } : {}),
+      // a plan without a brain carries no conversation, so nothing is held between turns
+      slots: null,
+    };
   }
 
   if (forTheEngine(question) || slots) {
