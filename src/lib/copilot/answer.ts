@@ -92,6 +92,18 @@ export async function answerFromKnowledge(
     ...history.slice(-6),
     { role: "user", content: question },
   ];
-  const reply = await chat({ tier: "large", task: "copilot", messages, maxTokens: 900 });
+  /**
+   * The cheap tier, which is the right one for the work.
+   *
+   * This asks a model to read rules it has just been handed and say what they mean — no
+   * arithmetic, no long chain of reasoning, and nothing it has to know on its own. The
+   * expensive tier was the first choice and the ledger showed what that costs: Anthropic
+   * took two thirds of a month's spending on five per cent of its calls, forty-four times
+   * the price each, while the bot answered six hundred customers on the cheap tier for half
+   * as much. A public page on the expensive one fills the month's budget in forty questions
+   * a day — and the budget it fills is the one the Messenger bot answers advertisements out
+   * of.
+   */
+  const reply = await chat({ tier: "small", task: "copilot", messages, maxTokens: 900 });
   return { text: reply.text, model: reply.model };
 }
