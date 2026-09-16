@@ -1,10 +1,20 @@
+import { listNotes } from "./actions";
 import { Chat } from "./Chat";
+import { Notes } from "./Notes";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "ถามเรื่องแบบประกัน | advisortool",
-  description: "ถามเงื่อนไขแบบประกัน สัญญาเพิ่มเติม และกฎการซื้อคู่ ตอบจากข้อมูลในระบบเท่านั้น",
+  description: "ถามเงื่อนไขแบบประกันและคิดเบี้ยจากตารางจริง ตอบจากข้อมูลในระบบเท่านั้น",
 };
 
-export default function Home() {
-  return <Chat />;
+export default async function Home() {
+  const notes = await listNotes();
+  return (
+    <div className="mx-auto max-w-3xl px-4 pb-10">
+      <Chat />
+      <Notes initial={notes} />
+    </div>
+  );
 }

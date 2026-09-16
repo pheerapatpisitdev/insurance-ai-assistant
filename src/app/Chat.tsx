@@ -96,7 +96,7 @@ export function Chat() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-6 sm:py-10">
+    <main className="flex min-h-[70vh] flex-col py-6 sm:py-10">
       <header className="mb-6">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">ถามเรื่องแบบประกัน</h1>
         <p className="mt-1 text-sm text-slate-500">
