@@ -17,6 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/knowledge" className="text-slate-700 underline-offset-4 hover:underline">สอน AI</Link>
           <Link href="/admin/ads" className="text-slate-700 underline-offset-4 hover:underline">โฆษณา</Link>
           <Link href="/admin/crm" className="text-slate-700 underline-offset-4 hover:underline">CRM</Link>
+          <Link href="/admin/api" className="text-slate-700 underline-offset-4 hover:underline">API</Link>
         </nav>
         <div className="ml-auto flex items-center gap-3 text-sm text-slate-500">
           <Link href="/other-plans" className="underline">หน้าคำนวณ</Link>
