@@ -1,5 +1,7 @@
 import { listAds } from "./actions";
 import { AdTable, AddAd } from "./AdTable";
+import { RefLinks } from "./RefLinks";
+import { pageConnection } from "@/lib/facebook/connection";
 import { Card } from "../ui";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +15,7 @@ export const dynamic = "force-dynamic";
  * week asking its own customers which plan they came about.
  */
 export default async function AdsPage() {
-  const rows = await listAds();
+  const [rows, connection] = await Promise.all([listAds(), pageConnection()]);
   const paired = rows.filter((r) => r.paired).length;
   const unread = rows.filter((r) => !r.paired && !r.read).length;
 
@@ -40,13 +42,22 @@ export default async function AdsPage() {
         <AddAd />
       </Card>
 
-      <Card title="วิธีที่ไม่ต้องมาตั้งค่าเลย" hint="ใช้ได้กับโฆษณาแบบส่งข้อความทุกตัว">
-        <p className="text-sm leading-relaxed text-slate-700">
-          ใส่ <code className="rounded bg-slate-100 px-1">?ref=lifeprotect</code> หรือ{" "}
-          <code className="rounded bg-slate-100 px-1">?ref=ihealthy</code> ต่อท้ายลิงก์ m.me ของโฆษณา
-          เช่น <code className="rounded bg-slate-100 px-1">m.me/ชื่อเพจของคุณ?ref=lifeprotect</code>{" "}
-          — บอทจะรู้ทันทีตั้งแต่ข้อความแรก โดยไม่ต้องรอสถิติและไม่ต้องมาจับคู่ในหน้านี้
-        </p>
+      <Card
+        title="ลิงก์พร้อมใช้ของเพจคุณ"
+        hint="ก๊อปไปวางได้เลย บอทจะรู้ตั้งแต่ข้อความแรกว่าลูกค้ามาเรื่องแบบไหน โดยไม่ต้องจับคู่ในหน้านี้"
+      >
+        <RefLinks pageId={connection?.pageId ?? null} />
+        <div className="mt-4 border-t pt-3 text-sm leading-relaxed text-slate-700">
+          <p className="font-medium">วางที่ไหนได้บ้าง</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-slate-600">
+            <li>ปุ่ม “ส่งข้อความ” บนหน้าเพจ · ลิงก์ในไบโอ · โพสต์ · QR code — ใช้ได้ทันที</li>
+            <li>
+              โฆษณาแบบ “ส่งข้อความ” (Click to Messenger): ฟอร์มใน Ads Manager
+              <strong> มักไม่มีช่องให้ใส่ ref</strong> — กรณีนี้ Facebook จะส่ง <em>รหัสโฆษณา</em> มาแทน
+              ให้ใช้การจับคู่ด้านบน หรือตั้งชื่อโฆษณาให้มีชื่อแบบประกันอยู่ในนั้น
+            </li>
+          </ul>
+        </div>
       </Card>
     </>
   );
