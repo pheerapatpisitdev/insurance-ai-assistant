@@ -121,6 +121,32 @@ describe("the answers it gives without paying a model", () => {
     expect(chat).not.toHaveBeenCalled();
   });
 
+  /**
+   * A customer asking whether there is a picture must never be told there is not.
+   *
+   * There is: the plans side by side, which the bot sends unprompted the moment it knows an
+   * age and a sex. But "มีรูปตารางไหม" matched nothing — the full-sheet pattern wants
+   * เต็ม/ทั้งหมด/ครบ after ตาราง — so the turn fell through to the model, which knows nothing
+   * about what this system can draw and answered "ผมไม่มีรูปภาพตารางส่งให้นะครับ". The
+   * agency's own chat denying it has the thing it sends every day.
+   *
+   * So the model must not be reached at all for this, which is what `chat` asserts.
+   */
+  for (const asked of ["มีรูปตารางไหม", "ขอรูปหน่อย", "มีภาพเปรียบเทียบไหม", "ขอการ์ด", "ส่งรูปตารางมาหน่อย"]) {
+    it(`answers "${asked}" with the picture rather than with the model`, async () => {
+      const answer = await answerHealth(said(asked), quoted);
+      expect(answer.messages.some((m) => m.card)).toBe(true);
+      expect(chat).not.toHaveBeenCalled();
+    });
+  }
+
+  it("still treats a request for the whole sheet as the page, not the picture", async () => {
+    // the picture carries the headline rows; the sheet has twenty-three categories and is a
+    // web page, so asking for everything must not be answered with the smaller thing
+    const answer = await answerHealth(said("ขอตารางผลประโยชน์ทั้งหมด"), quoted);
+    expect(answer.messages.map((m) => m.text).join("\n")).toContain("/ihealthy-ultra?");
+  });
+
   it("hands over the form when the customer decides", async () => {
     const answer = await answerHealth(said("สมัครยังไง"), quoted);
     expect(answer.messages.some((m) => m.text.includes("ktaxaform"))).toBe(true);

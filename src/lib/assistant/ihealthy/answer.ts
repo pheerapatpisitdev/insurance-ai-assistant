@@ -19,7 +19,7 @@ import {
   HEALTH_HAND_OVER, SEE_OTHER_PLANS, THIS_PLAN_BENEFITS, arrangementFor, hasHealthQuote, healthQuote,
 } from "./quote";
 import {
-  asksFullTable, asksOtherPlans, asksShareOfBill, planNamedIn, routeHealth, territoryNamedIn,
+  asksForPicture, asksFullTable, asksOtherPlans, asksShareOfBill, planNamedIn, routeHealth, territoryNamedIn,
   type HealthSlots,
 } from "./route";
 
@@ -102,6 +102,19 @@ export async function answerHealth(
 
   if (known.age !== undefined && known.sex !== undefined) {
     const who = { ...known, age: known.age, sex: known.sex };
+    /**
+     * A picture asked for by name, before the sheet is considered.
+     *
+     * Where a plan is already on the table the quotation is redrawn, because that is the
+     * picture that conversation is about; otherwise it is the plans side by side. Either way
+     * the answer is a picture, which is what was asked for — and never the model, which does
+     * not know these exist and has said so to a customer.
+     */
+    if (asksForPicture(asked)) {
+      return known.plan
+        ? { ...healthQuote({ ...who, plan: known.plan }), slots: known }
+        : { ...healthMenu(who.age, who.sex), slots: known };
+    }
     if (asksFullTable(asked)) return { ...fullTableLink(who), slots: known };
     if (asksOtherPlans(asked) || asked === SEE_OTHER_PLANS) {
       return { ...otherPlansReply(who.age, who.sex), slots: known };

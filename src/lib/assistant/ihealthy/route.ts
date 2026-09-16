@@ -103,6 +103,24 @@ export function asksFullTable(text: string): boolean {
   return FULL_TABLE.test(text);
 }
 
+/**
+ * Asking for the picture — which exists, and which the bot sends unprompted.
+ *
+ * Separate from the sheet above, and necessary because of what happened without it. The
+ * full-sheet pattern wants เต็ม, ทั้งหมด or ครบ after ตาราง, so "มีรูปตารางไหม" matched
+ * nothing and the turn went to the model. The model knows what the plans cost; it does not
+ * know this system draws pictures, so it said there were none — the agency's own chat denying
+ * it has the thing it sends to customers every day.
+ *
+ * A picture word is required rather than a bare ตาราง, because ตาราง on its own is as likely
+ * to mean the benefit sheet, which is a page with twenty-three categories on it and not
+ * something the smaller picture can stand in for.
+ */
+const WANTS_PICTURE = /รูป|ภาพ|การ์ด|แคป|infographic|image|picture/i;
+export function asksForPicture(text: string): boolean {
+  return WANTS_PICTURE.test(text);
+}
+
 /** Asking what else there is besides the ones already on the table. */
 const OTHER_PLANS = /แผนอื่น|แบบอื่น|อันอื่น|มีอีกไหม|ตัวอื่น|ที่เหลือ/;
 export function asksOtherPlans(text: string): boolean {
