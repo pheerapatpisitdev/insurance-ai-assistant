@@ -1,6 +1,11 @@
 import { chat } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { answerAny } from "@/lib/assistant/dispatch";
+import {
+  asksAboutDeathBenefit, asksForPrice, asksPayTerm, asksValueTable,
+} from "@/lib/assistant/lifeprotect/route";
+import { asksFullTable, asksOtherPlans, asksShareOfBill } from "@/lib/assistant/ihealthy/route";
+import { asksCheaper } from "@/lib/assistant/common";
 import type { AnySlots } from "@/lib/assistant/slots";
 import { assembleKnowledge } from "./knowledge";
 
@@ -34,7 +39,7 @@ const SYSTEM = `คุณคือผู้ช่วยของตัวแท�
 6. ตอบเป็นภาษาไทย สั้น ตรงประเด็น ใช้หัวข้อย่อยเมื่อมีหลายข้อ`;
 
 /**
- * Words that mean the question is about money.
+ * Money words, as a net under the brains' own readers.
  *
  * "เท่าไหร่" was in this list and had to come out. It is the Thai for "how much" of anything
  * at all — how old, how large a sum, how many days — so the very first suggestion on the
@@ -42,6 +47,26 @@ const SYSTEM = `คุณคือผู้ช่วยของตัวแท�
  * present: the question is about the premium or it is not.
  */
 const ASKS_PRICE = /เบี้ย|ราคา|กี่บาท|ค่างวด|จ่ายเดือนละ|จ่ายปีละ|จ่ายเท่าไหร่|คิดให้|premium/i;
+
+/**
+ * Whether the dispatcher should take this, rather than a model with the rule book.
+ *
+ * The brains already know how to recognise what they answer, and asking them is the only way
+ * this stays right as they grow. Hand-rolling the test here got the premium and missed
+ * everything else the engine draws: "ขอดูตารางมูลค่า" went to a model with no ability to
+ * draw a table, and the customer got prose where the bot would have sent the picture.
+ */
+function forTheEngine(text: string): boolean {
+  return asksForPrice(text)
+    || asksValueTable(text)
+    || asksPayTerm(text)
+    || asksAboutDeathBenefit(text)
+    || asksFullTable(text)
+    || asksOtherPlans(text)
+    || asksShareOfBill(text)
+    || asksCheaper(text)
+    || ASKS_PRICE.test(text);
+}
 
 export interface CopilotAnswer {
   text: string;
@@ -77,7 +102,7 @@ export async function answerFromKnowledge(
    * The second half matters: after "Life Protect ชาย 35" the next message is "ทุน 1 ล้าน",
    * which names no money word at all and would otherwise be read as a question about rules.
    */
-  if (ASKS_PRICE.test(question) || slots) {
+  if (forTheEngine(question) || slots) {
     const turns: ChatMessage[] = [...history.slice(-6), { role: "user", content: question }];
     const answer = await answerAny(turns, slots);
     const text = answer.messages.map((m) => m.text).join("\n\n");

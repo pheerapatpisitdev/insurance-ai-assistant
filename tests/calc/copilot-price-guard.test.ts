@@ -73,6 +73,21 @@ describe("a question about money", () => {
   });
 });
 
+describe("a question the engine draws a picture for", () => {
+  for (const q of [
+    "ขอดูตารางมูลค่าหน่อย",
+    "ขอตารางผลประโยชน์",
+    "มีแบบถูกกว่านี้ไหม",
+    "จ่ายกี่ปี",
+  ]) {
+    it(`sends "${q}" to the engine — a model cannot draw a table`, async () => {
+      await answerFromKnowledge(q);
+      expect(asked.dispatch).toBe(1);
+      expect(asked.model).toBe(0);
+    });
+  }
+});
+
 describe("a question asked while a quotation is half-built", () => {
   it("goes to the engine even with no money word in it at all", async () => {
     // "ทุน 1 ล้าน" after "Life Protect ชาย 35" names no price and is entirely about one
