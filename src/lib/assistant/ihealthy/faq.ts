@@ -21,7 +21,7 @@ interface Entry {
  * Order matters: the declaration is first because a message that mentions a condition and
  * asks a price is, above everything else, a message that must not be told it will be accepted.
  */
-const FAQ: Entry[] = [
+export const FAQ: Entry[] = [
   { key: "health", match: HEALTH_QUESTION, answer: () => HEALTH_DECLARATION },
   {
     key: "tax",
