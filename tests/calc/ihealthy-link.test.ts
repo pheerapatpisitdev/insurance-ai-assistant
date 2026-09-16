@@ -47,8 +47,12 @@ describe("a link the page wrote", () => {
   });
 
   it("says the same thing as saying nothing, for the arrangement the page opens on", () => {
+    // spelled out, because the order and the empty values are the thing being pinned — the
+    // arrangement itself comes from IHEALTHY_OPENING so that changing it changes this once
     expect(queryFrom(table, IHEALTHY_OPENING)).toBe(
-      "age=35&sex=F&base=WLF99H&sa=150000&plan=GOLD&area=&cover=&mode=annual",
+      `age=${IHEALTHY_OPENING.age}&sex=${IHEALTHY_OPENING.sex}`
+      + `&base=${IHEALTHY_OPENING.base}&sa=${IHEALTHY_OPENING.sumAssured}`
+      + `&plan=${IHEALTHY_OPENING.plan}&area=&cover=&mode=${IHEALTHY_OPENING.mode}`,
     );
     expect(initialFrom(table, queryOf(queryFrom(table, IHEALTHY_OPENING)))).toEqual(IHEALTHY_OPENING);
   });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { iHealthyCard, iHealthyTableCard } from "@/lib/ihealthy-card";
+import { IHEALTHY_OPENING } from "@/lib/ihealthy-choice";
 
 const query = (extra: Record<string, string> = {}) =>
   new URLSearchParams({ age: "35", sex: "F", plan: "GOLD", fit: "phone", ...extra });
@@ -9,7 +10,7 @@ describe("the comparison table on its own", () => {
     const card = iHealthyTableCard(query());
     expect(card.headLine).toBe("iHealthy Ultra · เปรียบเทียบแผน");
     expect(card.insuredLine).toContain("หญิง 35 ปี");
-    expect(card.insuredLine).toContain("150,000");
+    expect(card.insuredLine).toContain(IHEALTHY_OPENING.sumAssured.toLocaleString("en-US"));
     expect(card.insuredLine).toContain("ประเทศไทย");
   });
 

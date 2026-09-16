@@ -4,12 +4,19 @@ import { formatBaht } from "@/calc/money";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import { iHealthyPricing } from "@/lib/ihealthy-quote";
 import { initialFrom } from "@/lib/ihealthy-link";
+import { IHEALTHY_OPENING } from "@/lib/ihealthy-choice";
 
-/** The engine's own answer, so the menu is asserted against it rather than against a figure. */
+/**
+ * The engine's own answer, so the menu is asserted against it rather than against a figure.
+ *
+ * The arrangement comes from the page's own opening rather than a copy of it kept here. It
+ * was a copy, and the day the opening changed base this test failed for the one reason a test
+ * must never fail: it was asserting yesterday's arrangement against today's menu.
+ */
 const priceOf = (plan: string, age = 35, sex: "M" | "F" = "F") => {
   const table = iHealthyTable();
   const priced = iHealthyPricing(table, {
-    base: "WLF99H", sex, age, sumAssured: 150_000,
+    base: IHEALTHY_OPENING.base, sex, age, sumAssured: IHEALTHY_OPENING.sumAssured,
     plan, territory: "ประเทศไทย", coverage: "Full Coverage",
   })!;
   return formatBaht(priced.total.find((m) => m.mode === "annual")!.total);

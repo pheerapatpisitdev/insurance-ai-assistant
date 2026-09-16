@@ -39,10 +39,23 @@ export interface IHealthyInitial {
 /**
  * What a visitor arriving from an ad is shown before touching anything.
  *
- * The sum is the smallest the company will write the base for. This page sells the health
- * rider and the base plan is the vehicle it must ride on — a million of life cover on top
- * would add more to the total than the health cover the customer came to price, which is
- * the same reason the Health Ultra Package pins its own sum at fifty thousand.
+ * iHealthy Ultra is a rider and cannot be issued on its own, so a quotation of it is always a
+ * quotation of something else as well. The vehicle is therefore the cheapest one the company
+ * writes: the Health Ultra Package, whose sum is pinned at fifty thousand and which exists for
+ * exactly this — it cannot be bought without the health cover on it.
+ *
+ * It opened on ไลฟ์ โพรเทค+ x 2 at a hundred and fifty thousand, which is the smallest that
+ * base can be written for and is not the smallest vehicle there is. For a woman of 35 on โกลด์
+ * that was 2,130 a year against 710 — fourteen hundred a year of life cover added to a price
+ * the customer asked for as a health price. The owner chose the cheaper vehicle when the two
+ * were put side by side.
+ *
+ * What is given up is life cover: a hundred thousand before sixty rather than three hundred,
+ * and a sum that cannot be raised without changing the base. Both are one tap away — the
+ * other base is the second button, and it is the right answer for a customer who wants any
+ * life cover at all. What is not given up is anything about the health cover itself: the same
+ * plans, the same ceilings, the same riders at the same prices, and the same ages, since the
+ * package starts at six and so does the rider.
  *
  * โกลด์ rather than the ceiling: the plan buttons carry their own ceilings and are one tap
  * away, so opening in the middle shows a real premium instead of the largest one.
@@ -54,8 +67,8 @@ export interface IHealthyInitial {
 export const IHEALTHY_OPENING: IHealthyInitial = {
   age: 35,
   sex: "F",
-  base: "WLF99H",
-  sumAssured: 150_000,
+  base: "WLF99HX",
+  sumAssured: 50_000,
   plan: "GOLD",
   territory: "ประเทศไทย",
   coverage: "Full Coverage",

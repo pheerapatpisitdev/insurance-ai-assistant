@@ -5,6 +5,7 @@ import { iHealthyFacts, planLabel } from "@/lib/ihealthy-facts";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import { deathBenefitOf, iHealthyPricing, shownAt } from "@/lib/ihealthy-quote";
 import { initialFrom } from "@/lib/ihealthy-link";
+import { IHEALTHY_OPENING } from "@/lib/ihealthy-choice";
 
 const WHO = { product: "ihealthy" as const, intent: "quote" as const, age: 35, sex: "F" as const, plan: "GOLD" };
 
@@ -15,7 +16,7 @@ describe("the quotation the bot sends", () => {
     const facts = iHealthyFacts();
     const plan = facts.plans.find((p) => p.code === "GOLD")!;
     const priced = iHealthyPricing(table, {
-      base: "WLF99H", sex: "F", age: 35, sumAssured: 150_000,
+      base: IHEALTHY_OPENING.base, sex: "F", age: 35, sumAssured: IHEALTHY_OPENING.sumAssured,
       plan: "GOLD", territory: "ประเทศไทย", coverage: "Full Coverage",
     })!;
     const expected = iHealthyQuoteText({
@@ -25,9 +26,9 @@ describe("the quotation the bot sends", () => {
       },
       copayPercent: facts.copayPercent,
       age: 35, sex: "F",
-      baseLabel: table.bases.find((b) => b.variant === "WLF99H")!.label,
-      sumAssured: 150_000,
-      death: deathBenefitOf(table, "WLF99H", 35, 150_000),
+      baseLabel: table.bases.find((b) => b.variant === IHEALTHY_OPENING.base)!.label,
+      sumAssured: IHEALTHY_OPENING.sumAssured,
+      death: deathBenefitOf(table, IHEALTHY_OPENING.base, 35, IHEALTHY_OPENING.sumAssured),
       mode: "annual",
       minMonthly: table.minMonthly,
       shown: shownAt(priced, "annual"),

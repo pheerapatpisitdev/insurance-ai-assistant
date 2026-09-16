@@ -262,7 +262,19 @@ describe("shownAt", () => {
  */
 describe("what the card shows", () => {
   it("prices the arrangement the page opens on", () => {
-    expect(baht({ ...IHEALTHY_OPENING, base: "WLF99H" }))
+    // the package, which is the cheapest vehicle the health cover can ride on
+    expect(baht(IHEALTHY_OPENING))
+      .toEqual({ base: "710", rider: "43,800", standard: "1,300", total: "45,810" });
+  });
+
+  it("prices the other vehicle, which costs more and covers more life", () => {
+    /**
+     * ไลฟ์ โพรเทค+ x 2 is the second button, and the sum travels with it: this base is not
+     * written below a hundred and fifty thousand, so changing one without the other is an
+     * arrangement the company would refuse — and the page walks it somewhere sellable rather
+     * than pricing it, which is what made the old form of this test quietly meaningless.
+     */
+    expect(baht({ ...IHEALTHY_OPENING, base: "WLF99H", sumAssured: 150_000 }))
       .toEqual({ base: "2,130", rider: "43,800", standard: "1,300", total: "47,230" });
   });
 
