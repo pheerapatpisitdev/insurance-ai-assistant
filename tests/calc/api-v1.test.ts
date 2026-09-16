@@ -91,14 +91,24 @@ describe("a premium", () => {
     expect(monthly.belowMinimum).toBe(true);
   });
 
-  it("carries the pictures, and only the ones that can be drawn", async () => {
-    const plb = await (await ask(QUOTE)).json();
-    expect(plb.images.quote).toMatch(/^https?:\/\/\S+\/api\/card\?/);
-    // PLB has no surrender schedule, so there is no value table to offer
-    expect(plb.images.valueTable).toBeUndefined();
-
-    const lt = await (await ask({ plan: "LIFETREASURE", variant: "H99F06A", age: 40, sex: "M", sumAssured: 10_000_000 })).json();
-    expect(lt.images.valueTable).toContain("/api/card/table?");
+  it("carries both pictures, for every plan that can draw them", async () => {
+    /**
+     * The card and the table travel together or the answer is half an answer: the card says
+     * what it costs, the table says what it is worth in the year the customer is thinking
+     * about. This used to ask `coverTopUp`, which is the rule for a surrender schedule and
+     * not the rule for a table — so PLB, which draws a cover table on the sales page every
+     * day, reported no table at all through the API.
+     */
+    for (const body of [
+      QUOTE,
+      { plan: "LIFETREASURE", variant: "H99F06A", age: 40, sex: "M", sumAssured: 10_000_000 },
+      { plan: "ISMART", variant: "W80F06", age: 40, sex: "M", sumAssured: 1_000_000 },
+      { plan: "ISHIELD", variant: "WLCI10", age: 35, sex: "F", sumAssured: 1_000_000 },
+    ]) {
+      const out = await (await ask(body)).json();
+      expect(out.images.quote, JSON.stringify(body)).toMatch(/^https?:\/\/\S+\/api\/card\?/);
+      expect(out.images.valueTable, JSON.stringify(body)).toMatch(/^https?:\/\/\S+\/api\/card\/table\?/);
+    }
   });
 });
 

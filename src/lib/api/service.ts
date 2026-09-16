@@ -4,13 +4,14 @@ import { getPlan, listPlans } from "@/calc/plans/registry";
 import { baseAgeRange, baseSumAssuredLimits, packageSeq, requiredRiders } from "@/calc/rules";
 import { hasExpired } from "@/calc/calendar";
 import { cardUrl, valueTablePath } from "@/lib/card-link";
+import { valueTableCard } from "@/lib/quote-card";
 import { siteUrl } from "@/lib/site-url";
 import { pricedHere } from "@/lib/copilot/price";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import { iHealthyPricing, plansFor, territoriesFor } from "@/lib/ihealthy-quote";
 import { IHEALTHY_OPENING, type IHealthyInitial } from "@/lib/ihealthy-choice";
 import { arrangementFor } from "@/lib/assistant/ihealthy/quote";
-import { cardPath, queryFrom } from "@/lib/ihealthy-link";
+import { cardPath, cardQuery, queryFrom } from "@/lib/ihealthy-link";
 import { planLabel } from "@/lib/ihealthy-facts";
 import type { PayMode, Sex } from "@/calc/types";
 
@@ -154,10 +155,21 @@ function shape(
       },
     } : {}),
     ...(result.maturityBenefit ? { maturityBenefit: result.maturityBenefit } : {}),
-    /** the same pictures the bot sends a customer, ready to embed */
+    /**
+     * The same two pictures the bot sends a customer, ready to embed.
+     *
+     * Both, every time one can be drawn. The card says what it costs and the table says what
+     * it is worth in the year the customer is thinking about, and a price with no table is
+     * the half of the answer that sells nothing.
+     *
+     * The guard is `valueTableCard`, which is what the sales page and the Messenger bot ask.
+     * This used to ask `plan.coverTopUp` — the rule for a surrender schedule, not the rule
+     * for a table — so PLB and iShield, which draw a cover table every day, reported through
+     * this door that they had none.
+     */
     images: {
       quote: cardUrl(siteUrl(""), card),
-      ...(plan.coverTopUp ? { valueTable: siteUrl(valueTablePath(card)) } : {}),
+      ...(valueTableCard(card) ? { valueTable: siteUrl(valueTablePath(card)) } : {}),
     },
   };
 }
@@ -321,7 +333,17 @@ function shapeHealth(
       lifeBase: at(priced.base),
       ...(priced.standard ? { dailyCash: at(priced.standard.premiums) } : {}),
     },
-    images: { quote: siteUrl(cardPath(table, v)) },
+    /**
+     * Both pictures, as with every other quotation.
+     *
+     * Health has no surrender value, so the second one is not a value table but the plans
+     * side by side — which is the picture the Messenger bot already sends, and the answer to
+     * the question that follows every health price: and what do the others cost.
+     */
+    images: {
+      quote: siteUrl(cardPath(table, v)),
+      valueTable: siteUrl(`/api/ihealthy-card/table?${cardQuery(table, v)}&fit=phone`),
+    },
     page: siteUrl(`/ihealthy-ultra?${queryFrom(table, v)}`),
   };
 }

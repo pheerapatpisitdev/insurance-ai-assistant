@@ -21,6 +21,22 @@ import {
 
 const PROTOCOL = "2025-06-18";
 
+/**
+ * Said in both quoting tools, in the same words.
+ *
+ * A model handed two links and no instruction shows one and mentions the other, or mentions
+ * neither and offers to fetch them if wanted. Neither is any use to an agent, who is going to
+ * forward both to a customer: the card is the price and the table is what it is worth in the
+ * year they are thinking about, and a price on its own is the half of the answer that sells
+ * nothing. So the instruction is explicit about the markdown, because "แสดงรูป" on its own is
+ * satisfied by a bare URL.
+ */
+const SHOW_BOTH_IMAGES =
+  "ต้องแสดงรูปทั้งสองใบใน field images ทุกครั้งที่ตอบ โดยเขียนเป็น markdown ![](url) ทั้งคู่ "
+  + "ใบแรก images.quote คือการ์ดสรุปเบี้ย ใบที่สอง images.valueTable คือตาราง "
+  + "ห้ามแสดงใบเดียว ห้ามใส่แค่ลิงก์เฉยๆ และห้ามละเพราะคิดว่าผู้ใช้ไม่ได้ขอ "
+  + "เพราะตัวแทนต้องส่งต่อให้ลูกค้าทั้งสองใบ ";
+
 const TOOLS = [
   {
     name: "list_plans",
@@ -35,6 +51,7 @@ const TOOLS = [
       "คิดเบี้ยประกันจากตารางเบี้ยจริงของบริษัท ไม่ใช่การประมาณ "
       + "ตัวเลขที่ได้ต้องนำไปใช้ตามที่ได้มาเท่านั้น: ห้ามปัดเศษ ห้ามคำนวณต่อ ห้ามรวมกับแบบอื่นเอง "
       + "และต้องแสดงข้อความใน field disclaimer ให้ผู้ใช้เห็นทุกครั้งที่บอกตัวเลข "
+      + SHOW_BOTH_IMAGES
       + "ถ้าบริษัทไม่รับประกันตามเงื่อนไขที่ถาม จะได้ not_issuable พร้อมเหตุผล — ให้บอกเหตุผลนั้นตรงๆ ห้ามเสนอตัวเลขอื่นแทน",
     inputSchema: {
       type: "object",
@@ -57,7 +74,9 @@ const TOOLS = [
       + "ห้ามใช้ quote_premium กับแพ็กเกจสุขภาพ เพราะสุขภาพเป็นสัญญาเพิ่มเติม ซื้อเดี่ยวไม่ได้ ต้องมีสัญญาหลักเสมอ "
       + "ตัวเลขที่ได้เป็นราคาของทั้งชุด (สัญญาหลัก + ค่ารักษา + ค่าชดเชยรายวัน) ไม่ใช่ค่าสุขภาพอย่างเดียว "
       + "ต้องบอกผู้ใช้ด้วยว่าในราคานี้มีอะไรบ้าง โดยดูจาก field arrangement และ partsOfPremium "
-      + "ห้ามปัดเศษ ห้ามคำนวณต่อ และต้องแสดง disclaimer ให้ผู้ใช้เห็นทุกครั้ง",
+      + "ห้ามปัดเศษ ห้ามคำนวณต่อ และต้องแสดง disclaimer ให้ผู้ใช้เห็นทุกครั้ง "
+      + SHOW_BOTH_IMAGES
+      + "(ของสุขภาพ images.valueTable คือตารางเปรียบเทียบทุกแผน)",
     inputSchema: {
       type: "object",
       properties: {

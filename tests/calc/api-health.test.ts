@@ -85,10 +85,17 @@ describe("a health premium", () => {
     expect(out.quote.arrangement.baseLabel).toBeTruthy();
   });
 
-  it("carries the picture and the page, the same ones a customer is sent", () => {
+  it("carries both pictures and the page, the same ones a customer is sent", () => {
     const out = quoteHealth({ age: 35, sex: "F", plan: "GOLD" });
     if (out.kind !== "ok") throw new Error("expected a quote");
     expect(out.quote.images.quote).toMatch(/^https?:\/\/\S+\/api\/ihealthy-card\?/);
+    /**
+     * Health has no surrender value, so its second picture is the one the bot actually
+     * sends: the plans side by side. It answers the question that follows every health
+     * quotation — "and what do the other plans cost" — which is why it travels with the
+     * card rather than waiting to be asked for.
+     */
+    expect(out.quote.images.valueTable).toMatch(/^https?:\/\/\S+\/api\/ihealthy-card\/table\?/);
     expect(out.quote.page).toMatch(/^https?:\/\/\S+\/ihealthy-ultra\?/);
   });
 
