@@ -9,10 +9,15 @@ import path from "node:path";
  * that third person's chat for months. Until now nothing on them said where they came from:
  * no mark, no address, no way for the person holding one to find their way back.
  *
- * The mark keeps its own dark ground rather than being keyed out. The six themes run from
- * black-and-gold to warm cream, and a rendered metal object has soft edges — cut out of its
- * background it would carry a dark fringe that looks like a mistake on the pale ones. A small
- * dark tile reads as a badge on all six, which is what it is.
+ * The mark sits on whatever is behind it. It was drawn on a dark tile at first, because the
+ * artwork then supplied had no alpha at all and its ground was the same #26272A as the dark
+ * blocks on the letter itself — a colour key put holes through the N, a border flood ate the
+ * two diagonal bands, and a close brought them back with debris stuck to the sides. The owner
+ * supplied a version with real transparency, so the tile is gone and nothing is interposed
+ * between the mark and the card it is printed on.
+ *
+ * Its height is what is fixed, not a square box: the mark is half again as tall as it is
+ * wide, and a square sets it in a column of air.
  *
  * Read once per process, not once per request: an ImageResponse is rendered on every card and
  * this file does not change between them.
