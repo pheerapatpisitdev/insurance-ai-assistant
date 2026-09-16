@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { askCopilot } from "./actions";
+import { useListening, useSpeaking } from "./useVoice";
 import type { ChatMessage } from "@/lib/ai/types";
 import type { AnySlots } from "@/lib/assistant/slots";
 
@@ -70,6 +71,19 @@ export function Chat() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  /** whether an answer is read out loud; off until asked for, because a page that talks
+      the moment it is opened is a page people close */
+  const [readAloud, setReadAloud] = useState(false);
+  const speech = useSpeaking();
+  /**
+   * What was heard goes into the box, not down the wire.
+   *
+   * Speech mishears digits and on this site a misheard digit is a wrong premium — "สามสิบห้า"
+   * can arrive as 3 5, "หนึ่งล้าน" as 1. Pressing send is the confirmation, and it is a
+   * better one than reading the numbers back would be, because the words are on the screen
+   * and can be corrected rather than merely agreed with.
+   */
+  const heard = useListening((text) => setDraft((d) => (d ? `${d} ${text}` : text)));
 
   useEffect(() => {
     if (turns.length) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -88,6 +102,7 @@ export function Chat() {
       const reply = await askCopilot(asked, history, slots);
       if (reply.slots !== undefined) setSlots(reply.slots);
       setTurns((t) => [...t, { role: "assistant", text: reply.text, model: reply.model, priced: reply.priced }]);
+      if (readAloud) speech.speak(reply.text);
     } catch {
       setTurns((t) => [...t, { role: "assistant", text: "ขออภัยครับ ระบบขัดข้อง ลองใหม่อีกครั้งนะครับ" }]);
     } finally {
@@ -103,6 +118,24 @@ export function Chat() {
           ถามเงื่อนไขก็ได้ ขอเบี้ยก็ได้ — เบี้ยคิดจากตารางจริง ตัวเดียวกับที่บอทและหน้าขายใช้ ·{" "}
           <Link href="/other-plans" className="underline underline-offset-2">แบบประกันอื่นๆ</Link>
         </p>
+        {speech.supported && (
+          <button
+            type="button"
+            onClick={() => { const next = !readAloud; setReadAloud(next); if (!next) speech.cancel(); }}
+            aria-pressed={readAloud}
+            className={`mt-2 rounded-full border px-3 py-1 text-xs ${
+              readAloud ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {readAloud ? `🔊 อ่านออกเสียง${speech.voiceName ? ` · ${speech.voiceName}` : ""}` : "🔈 อ่านคำตอบออกเสียง"}
+          </button>
+        )}
+        {speech.speaking && (
+          <button type="button" onClick={speech.cancel}
+                  className="ml-2 mt-2 rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-600">
+            หยุดอ่าน
+          </button>
+        )}
       </header>
 
       <div className="flex-1 space-y-4">
@@ -158,6 +191,21 @@ export function Chat() {
           aria-label="คำถามของคุณ"
           className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
         />
+        {heard.supported && (
+          <button
+            type="button" disabled={busy}
+            onClick={() => (heard.listening ? heard.stop() : heard.start())}
+            aria-label={heard.listening ? "หยุดฟัง" : "พูดคำถาม"}
+            aria-pressed={heard.listening}
+            className={`rounded-xl border px-4 py-3 text-lg leading-none transition-colors ${
+              heard.listening
+                ? "animate-pulse border-red-300 bg-red-50 text-red-600"
+                : "border-slate-300 bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            🎤
+          </button>
+        )}
         <button
           type="submit" disabled={busy || !draft.trim()}
           className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:opacity-40"
@@ -165,6 +213,12 @@ export function Chat() {
           ถาม
         </button>
       </form>
+
+      {(heard.listening || heard.interim || heard.error) && (
+        <p className={`-mt-2 pb-2 text-center text-xs ${heard.error ? "text-red-600" : "text-slate-500"}`} aria-live="polite">
+          {heard.error ?? (heard.interim ? `กำลังฟัง… "${heard.interim}"` : "กำลังฟัง… พูดได้เลยครับ")}
+        </p>
+      )}
 
       <p className="pb-2 text-center text-xs text-slate-400">
         เบี้ยเป็นตัวเลขประมาณการจากตารางของบริษัท ไม่ใช่ใบเสนอราคา ·{" "}
