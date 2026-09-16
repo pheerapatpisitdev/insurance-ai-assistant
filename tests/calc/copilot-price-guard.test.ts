@@ -115,3 +115,29 @@ describe("a question about a rule", () => {
     });
   }
 });
+
+describe("a plan the engine cannot route", () => {
+  for (const [ask, plan] of [
+    ["iShield ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่", "iShield"],
+    ["PLB ทุน 1 ล้าน เบี้ยเท่าไหร่", "Protection Life (PLB)"],
+    ["Life Treasure ชาย 40 เบี้ยเท่าไหร่", "Life Treasure"],
+    ["iSmart 80/6 เบี้ยเท่าไหร่", "iSmart"],
+  ] as const) {
+    it(`refuses to price "${ask}" rather than quoting the wrong contract`, async () => {
+      const a = await answerFromKnowledge(ask);
+      // "iShield ทุน 1 ล้าน" used to come back priced as Life Protect, card and all
+      expect(asked.dispatch).toBe(0);
+      expect(asked.model).toBe(0);
+      expect(a.priced).toBeFalsy();
+      expect(a.cards).toBeUndefined();
+      expect(a.text).toContain(plan);
+      expect(a.text).toContain("/other-plans");
+      expect(a.text).not.toMatch(/\d[\d,]{3,}\s*บาท/);
+    });
+  }
+
+  it("still prices the two it does sell", async () => {
+    await answerFromKnowledge("Life Protect ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่");
+    expect(asked.dispatch).toBe(1);
+  });
+});

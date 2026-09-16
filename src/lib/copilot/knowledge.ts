@@ -23,9 +23,23 @@ import type { PlanRules } from "@/calc/types";
 
 const money = (n: number) => n.toLocaleString("en-US");
 
+/**
+ * The two the dispatcher speaks for, and therefore the two this chat can put a price on.
+ *
+ * Every other plan here has rules and no brain. Saying so inside the knowledge is not a
+ * detail: without it the assistant lists five plans as though they were five things it could
+ * quote, and a customer who takes it at its word asks for a premium it cannot produce.
+ */
+const PRICEABLE = new Set(["LIFEPROTECT"]);
+
 /** One plan's rules as sentences. The shapes are the workbook's; the wording is for reading. */
 function planSection(code: string, name: string, rules: PlanRules): string {
-  const lines: string[] = [`## ${trimSuffix(name)} (รหัส ${code})`];
+  const lines: string[] = [
+    `## ${trimSuffix(name)} (รหัส ${code})`,
+    PRICEABLE.has(code)
+      ? "- คิดเบี้ยในแชทนี้ได้"
+      : "- **คิดเบี้ยในแชทนี้ไม่ได้** ตอบเรื่องเงื่อนไขได้อย่างเดียว เบี้ยต้องไปที่หน้าแบบประกันอื่นๆ (/other-plans)",
+  ];
   const b = rules.base;
 
   lines.push(`- อายุที่รับประกัน: ${b.ageMin}–${b.ageMax} ปี`);
@@ -135,6 +149,9 @@ export async function assembleKnowledge(): Promise<string> {
   return [
     "# คลังความรู้ของระบบนี้",
     "ทุกอย่างด้านล่างมาจากไฟล์กฎและตารางของระบบนี้เอง ไม่ได้มาจากที่อื่น",
+    "",
+    "**สำคัญ:** แชทนี้คิดเบี้ยได้เฉพาะ Life Protect x 2 และ iHealthy Ultra เท่านั้น",
+    "แบบอื่นตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
     "",
     plans,
     "",

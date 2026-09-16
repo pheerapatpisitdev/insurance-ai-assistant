@@ -91,6 +91,38 @@ export interface CopilotAnswer {
 /** The name shown under an answer the engine produced, where a model name would go. */
 const ENGINE = "เครื่องคิดเบี้ยของระบบ";
 
+/**
+ * The plans this chat knows about but cannot price, by the names a person calls them.
+ *
+ * The dispatcher speaks for two products. The knowledge describes five, because the rule
+ * files describe five — and that combination quotes the wrong plan with total confidence:
+ * "iShield ทุน 1 ล้าน เบี้ยเท่าไหร่" carries no name the router recognises, but "1 ล้าน" is
+ * in Life Protect's subject list, so the question came back priced as Life Protect with a
+ * Life Protect card attached. A different contract, a different table, and nothing on screen
+ * to say so.
+ *
+ * Recognised here and stopped here. A page that says it cannot do this is worth any number
+ * of pages that do it wrongly.
+ */
+const CANNOT_PRICE: [string, RegExp][] = [
+  ["iShield", /i\s*-?\s*shield|ไอชิลด์|ไอ\s*ชิลด์/i],
+  ["iSmart", /i\s*-?\s*smart|ไอสมาร์ท|ไอ\s*สมาร์ท/i],
+  ["Life Treasure", /life\s*treasure|ไลฟ์\s*เทรเชอร์|ไลฟ์เทรเชอร์/i],
+  ["Protection Life (PLB)", /protection\s*life|\bplb\b|โพรเทคชั่น\s*ไลฟ์/i],
+];
+
+function namedButUnpriceable(text: string): string | undefined {
+  return CANNOT_PRICE.find(([, re]) => re.test(text))?.[0];
+}
+
+const elsewhere = (plan: string) => `แบบ **${plan}** ผมคิดเบี้ยให้ในแชทนี้ยังไม่ได้ครับ
+
+แชทนี้คิดเบี้ยได้สองแบบ — **Life Protect x 2** กับ **iHealthy Ultra**
+
+${plan} คิดได้ที่ [หน้าแบบประกันอื่นๆ](/other-plans) ซึ่งใช้ตารางเบี้ยชุดเดียวกัน
+
+ส่วนเรื่องเงื่อนไขของ ${plan} เช่น ช่วงอายุ ทุนขั้นต่ำ หรือสัญญาเพิ่มเติมที่ซื้อคู่ได้ ถามผมได้เลยครับ ผมมีข้อมูลครบ`;
+
 export async function answerFromKnowledge(
   question: string,
   history: ChatMessage[] = [],
@@ -102,6 +134,15 @@ export async function answerFromKnowledge(
    * The second half matters: after "Life Protect ชาย 35" the next message is "ทุน 1 ล้าน",
    * which names no money word at all and would otherwise be read as a question about rules.
    */
+  /**
+   * Checked before the engine, not after: the harm is done the moment the dispatcher is
+   * handed a question about a contract it does not sell.
+   */
+  const unpriceable = namedButUnpriceable(question);
+  if (unpriceable && (forTheEngine(question) || slots)) {
+    return { text: elsewhere(unpriceable), model: "—" };
+  }
+
   if (forTheEngine(question) || slots) {
     const turns: ChatMessage[] = [...history.slice(-6), { role: "user", content: question }];
     const answer = await answerAny(turns, slots);
