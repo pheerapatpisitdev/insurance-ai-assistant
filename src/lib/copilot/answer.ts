@@ -54,8 +54,13 @@ export interface CopilotAnswer {
    * carry on from it — "ชาย 35" and then "ทุน 1 ล้าน" is two messages about one quotation.
    */
   slots?: AnySlots | null;
-  /** a picture of the quotation the engine drew, where it drew one */
-  card?: string;
+  /**
+   * The pictures the engine drew, in the order it drew them.
+   *
+   * A list rather than one: a couple priced together — "ผญ 32 ผช 33" — is two quotations and
+   * two cards, and keeping only the first is quietly losing one of them.
+   */
+  cards?: string[];
 }
 
 /** The name shown under an answer the engine produced, where a model name would go. */
@@ -76,13 +81,13 @@ export async function answerFromKnowledge(
     const turns: ChatMessage[] = [...history.slice(-6), { role: "user", content: question }];
     const answer = await answerAny(turns, slots);
     const text = answer.messages.map((m) => m.text).join("\n\n");
-    const card = answer.messages.find((m) => m.card)?.card;
+    const cards = answer.messages.map((m) => m.card).filter((c): c is string => Boolean(c));
     return {
       text,
       model: answer.priced ? ENGINE : ENGINE,
       priced: Boolean(answer.priced),
       slots: answer.slots,
-      ...(card ? { card } : {}),
+      ...(cards.length ? { cards } : {}),
     };
   }
 

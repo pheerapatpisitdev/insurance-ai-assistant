@@ -56,6 +56,8 @@ interface Turn {
   model?: string;
   /** the figure came from the engine, which is worth saying out loud */
   priced?: boolean;
+  /** the quotation as the engine drew it — the same picture the bot sends a customer */
+  cards?: string[];
 }
 
 export function Chat() {
@@ -122,7 +124,10 @@ export function Chat() {
     try {
       const reply = await askCopilot(asked, history, slots);
       if (reply.slots !== undefined) setSlots(reply.slots);
-      setTurns((t) => [...t, { role: "assistant", text: reply.text, model: reply.model, priced: reply.priced }]);
+      setTurns((t) => [...t, {
+        role: "assistant", text: reply.text, model: reply.model,
+        priced: reply.priced, cards: reply.cards,
+      }]);
       if (handsFreeRef.current) {
         // the microphone opens again only once the voice has stopped
         speech.speak(reply.text, () => { if (handsFreeRef.current) heardRef.current.start(); });
@@ -208,6 +213,18 @@ export function Chat() {
               }
             >
               {t.role === "assistant" ? <Rich text={t.text} /> : <p className="whitespace-pre-wrap">{t.text}</p>}
+              {/* the picture the engine drew, which is the thing an agent forwards to a
+                  customer — drawn server-side from the same figures the words above carry */}
+              {t.cards?.map((card) => (
+                <a key={card} href={card} target="_blank" rel="noreferrer" className="mt-3 block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={card} alt="การ์ดสรุปเบี้ยประกัน" loading="lazy"
+                    className="w-full rounded-lg border border-slate-200"
+                  />
+                  <span className="mt-1 block text-[0.65rem] text-slate-400">แตะเพื่อเปิดรูปเต็ม แล้วบันทึกไปส่งลูกค้าได้</span>
+                </a>
+              ))}
               {t.role === "assistant" && t.model && t.model !== "—" && (
                 <p className={`mt-2 text-[0.65rem] ${t.priced ? "text-emerald-700" : "text-slate-400"}`}>
                   {t.priced ? `✓ คิดจากตารางเบี้ยจริง · ${t.model}` : `ตอบโดย ${t.model}`}

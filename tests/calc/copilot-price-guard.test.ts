@@ -17,7 +17,10 @@ vi.mock("@/lib/assistant/dispatch", () => ({
     asked.dispatch += 1;
     lastSlots = slots;
     return {
-      messages: [{ text: "เบี้ยปีละ 23,400 บาท", card: "/api/card?x=1" }],
+      messages: [
+        { text: "เบี้ยปีละ 23,400 บาท", card: "/api/card?x=1" },
+        { text: "อีกท่านปีละ 19,100 บาท", card: "/api/card?x=2" },
+      ],
       priced: true,
       slots: { product: "lifeprotect", age: 35, sex: "M" },
     };
@@ -59,8 +62,9 @@ describe("a question about money", () => {
     });
   }
 
-  it("carries the picture the engine drew", async () => {
-    expect((await answerFromKnowledge("เบี้ยเท่าไหร่")).card).toBe("/api/card?x=1");
+  it("carries every picture the engine drew, not only the first", async () => {
+    // a couple priced together is two quotations and two cards
+    expect((await answerFromKnowledge("เบี้ยเท่าไหร่")).cards).toEqual(["/api/card?x=1", "/api/card?x=2"]);
   });
 
   it("hands back what the engine now knows, so the next question continues the quotation", async () => {
