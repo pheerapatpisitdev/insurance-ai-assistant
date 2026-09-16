@@ -2,7 +2,9 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin/guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { clearAiConfigCache } from "@/lib/ai/client";
+import { clearAiConfigCache, testProviders, type ProviderCheck } from "@/lib/ai/client";
+
+export type { ProviderCheck } from "@/lib/ai/client";
 
 const PROVIDERS = ["anthropic", "openai", "google", "xai", "zai"] as const;
 export type Provider = (typeof PROVIDERS)[number];
@@ -17,10 +19,17 @@ function passphrase(): string {
   return s;
 }
 
-/** Never returns a whole key: the page only ever sees the last four characters. */
+/**
+ * Never returns a whole key: the page only ever sees the last four characters.
+ *
+ * Guarded here and not only by the layout. A server action is a network entry point of its
+ * own — the layout protects the page's HTML, not the function — and this one reads key tails,
+ * model settings and the month's spend. It was the P1 filed against this file.
+ */
 export async function loadAiPage(): Promise<{
   keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[]; spentThisMonth: number;
 }> {
+  await requireAdmin();
   const supabase = supabaseAdmin();
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const [keys, models, prefs, settings, spend] = await Promise.all([
@@ -43,7 +52,17 @@ export async function loadAiPage(): Promise<{
 export async function saveApiKey(provider: string, key: string) {
   await requireAdmin();
   if (!PROVIDERS.includes(provider as Provider)) throw new Error("ค่ายไม่ถูกต้อง");
-  const value = key.trim();
+  /**
+   * Everything a key is not.
+   *
+   * An API key is printable ASCII by construction, and `trim()` only cleans the ends. One
+   * arrived here with U+2028 — a line separator, invisible, picked up from a copied web page
+   * — ninety characters in, and every xAI call then died building its own HTTP header:
+   * "character at index 91 has a value of 8232". On the page that reads as the provider
+   * being down, which it was not, and no amount of re-reading the provider's status would
+   * ever have said so.
+   */
+  const value = key.replace(/[^\x21-\x7e]/g, "");
   if (value.length < 8) throw new Error("กุญแจสั้นเกินไป");
   const { error } = await supabaseAdmin().rpc("ins_set_api_key", {
     p_provider: provider, p_key: value, p_passphrase: passphrase(),
@@ -71,4 +90,15 @@ export async function saveSettings(smallModel: string, largeModel: string, month
   if (error) throw new Error(error.message);
   clearAiConfigCache();
   revalidatePath("/admin/ai");
+}
+
+/**
+ * Which providers are answering right now.
+ *
+ * On demand rather than on load: it costs a token per provider, which is nothing, but a
+ * page that spends money every time it is opened is a page nobody should have written.
+ */
+export async function checkKeys(): Promise<ProviderCheck[]> {
+  await requireAdmin();
+  return testProviders([...PROVIDERS]);
 }

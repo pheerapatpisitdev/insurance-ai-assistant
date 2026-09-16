@@ -1,7 +1,40 @@
 "use client";
 import { useState, useTransition } from "react";
 import { Card, Empty } from "../ui";
-import { saveApiKey, setModelEnabled, saveSettings, type KeyRow, type ModelRow, type Settings } from "./actions";
+import {
+  checkKeys, saveApiKey, setModelEnabled, saveSettings,
+  type KeyRow, type ModelRow, type ProviderCheck, type Settings,
+} from "./actions";
+
+/**
+ * The result of the last test, or a space where one has not been run.
+ *
+ * The reason a failure gives is shown rather than summarised. "ตัวไหนหยุดทำงาน" is only half
+ * the question — a key that has expired and a provider that is briefly down want different
+ * things done about them, and only the provider's own words tell them apart.
+ */
+function Status({ check }: { check?: ProviderCheck }) {
+  if (!check) return <span className="w-28 text-xs text-slate-300">ยังไม่ได้ทดสอบ</span>;
+  const chip = "inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap";
+  if (check.state === "ok") {
+    return (
+      <span className="flex w-28 items-baseline gap-1.5">
+        <span className={`${chip} bg-emerald-100 text-emerald-800`}>ใช้ได้</span>
+        <span className="text-[0.65rem] tabular-nums text-slate-400">{(check.ms / 1000).toFixed(1)}s</span>
+      </span>
+    );
+  }
+  if (check.state === "no-key") return <span className="w-28 text-xs text-slate-400">ยังไม่ได้ตั้งกุญแจ</span>;
+  if (check.state === "no-model") {
+    return <span className={`${chip} w-28 bg-amber-100 text-amber-800`}>ไม่มีโมเดล</span>;
+  }
+  return (
+    <span className="flex w-28 flex-col gap-0.5">
+      <span className={`${chip} self-start bg-red-100 text-red-700`}>หยุดทำงาน</span>
+      {check.error && <span className="break-words text-[0.65rem] leading-tight text-red-600">{check.error}</span>}
+    </span>
+  );
+}
 
 const PROVIDER_LABEL: Record<string, string> = {
   anthropic: "Anthropic (Claude)", openai: "OpenAI (GPT)", google: "Google (Gemini)", xai: "xAI (Grok)", zai: "Z.ai (GLM)",
@@ -14,6 +47,14 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth }: 
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string>();
   const tailOf = (p: string) => keys.find((k) => k.provider === p)?.tail;
+  /**
+   * What the last test said, until the page is reloaded. Nothing is shown before one is run:
+   * a key's health is not knowable without asking, and a guess dressed as a status is worse
+   * than an empty column.
+   */
+  const [checks, setChecks] = useState<ProviderCheck[]>();
+  const [testing, setTesting] = useState(false);
+  const checkOf = (p: string) => checks?.find((c) => c.provider === p);
   const textModels = models.filter((m) => m.kind === "text");
 
   const run = (fn: () => Promise<void>, ok: string) =>
@@ -31,11 +72,36 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth }: 
       {message && <p className="mb-4 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-900">{message}</p>}
 
       <Card title="กุญแจ API" hint="เก็บแยกจากระบบอื่น เข้ารหัสไว้ในฐานข้อมูล แสดงเฉพาะ 4 ตัวท้าย">
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <button
+            type="button" disabled={testing}
+            className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            onClick={async () => {
+              setTesting(true);
+              setMessage(undefined);
+              try {
+                setChecks(await checkKeys());
+              } catch (err) {
+                setMessage(err instanceof Error ? err.message : "ทดสอบไม่สำเร็จ");
+              } finally {
+                setTesting(false);
+              }
+            }}
+          >
+            {testing ? "กำลังทดสอบ…" : "ทดสอบกุญแจทั้งหมด"}
+          </button>
+          <span className="text-xs text-slate-500">
+            {checks
+              ? `ตอบได้ ${checks.filter((c) => c.state === "ok").length} จาก ${checks.length} ค่าย`
+              : "ส่งคำถามสั้นๆ ไปทุกค่ายเพื่อดูว่ากุญแจไหนยังใช้ได้ — ราคาไม่ถึงหนึ่งสตางค์"}
+          </span>
+        </div>
         <div className="space-y-2">
           {providers.map((p) => (
             <div key={p} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
               <span className="w-44 text-sm">{PROVIDER_LABEL[p] ?? p}</span>
               <span className="w-24 text-xs text-slate-500">{tailOf(p) ? `••••${tailOf(p)}` : "ยังไม่ได้ตั้ง"}</span>
+              <Status check={checkOf(p)} />
               <input
                 type="password" placeholder="วางกุญแจใหม่" autoComplete="off"
                 className="min-w-48 flex-1 rounded border px-2 py-1 text-sm"

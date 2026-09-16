@@ -173,3 +173,77 @@ export function parseJsonReply<T>(text: string): T | null {
     return null;
   }
 }
+
+/** Why a provider is or is not answering right now. */
+export type ProviderState = "ok" | "failed" | "no-key" | "no-model";
+
+export interface ProviderCheck {
+  provider: string;
+  state: ProviderState;
+  /** how long the provider took to answer or to refuse, in milliseconds */
+  ms: number;
+  /** the model the question was put to */
+  model?: string;
+  /** what the provider said when it refused, trimmed and with anything key-shaped removed */
+  error?: string;
+}
+
+/** Long enough for a cold provider, short enough that five of them do not hang the page. */
+const CHECK_TIMEOUT_MS = 15_000;
+
+/**
+ * Anything in an error that looks like a credential, taken out before it reaches a screen.
+ *
+ * Providers do not normally quote the key back, but this text is written by five different
+ * companies and read in a browser, and the cost of being wrong once is a key in a screenshot.
+ */
+function scrub(message: string): string {
+  return message
+    .replace(/\b(sk|xai|gsk)-[A-Za-z0-9_-]{8,}/g, "[คีย์]")
+    .replace(/\b[A-Za-z0-9_-]{32,}\b/g, "[คีย์]")
+    .slice(0, 200);
+}
+
+/**
+ * Ask every provider one question, and report which of them answered.
+ *
+ * There is no way to read this off the usage history. The chat call tries providers in
+ * order and stops at the first that answers, so a provider with no usage may be perfectly
+ * healthy and simply never reached — and a key that expired this morning looks identical to
+ * one that has been fine all year until something actually asks it.
+ *
+ * So this asks. One token of output each, which is thousandths of a satang, and only when
+ * somebody presses the button. The result is not written to the usage ledger: it is a
+ * diagnostic about the keys, not work done for a customer.
+ */
+export async function testProviders(providers: string[]): Promise<ProviderCheck[]> {
+  const config = await loadConfig();
+  return Promise.all(providers.map(async (provider): Promise<ProviderCheck> => {
+    const apiKey = config.keys[provider];
+    if (!apiKey) return { provider, state: "no-key", ms: 0 };
+
+    // an enabled model first, because that is what the bot would actually reach for; a
+    // disabled one still proves the key, which is the question being asked
+    const models = config.models.filter((m) => m.provider === provider && m.kind === "text");
+    const model = models.find((m) => m.enabled) ?? models[0];
+    const call = CALLERS[provider];
+    if (!model || !call) return { provider, state: "no-model", ms: 0 };
+
+    const began = Date.now();
+    try {
+      await call({
+        apiKey, model: model.model_name,
+        messages: [{ role: "user", content: "ping" }],
+        maxTokens: 1,
+        signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
+      });
+      return { provider, state: "ok", ms: Date.now() - began, model: model.model_name };
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      return {
+        provider, state: "failed", ms: Date.now() - began, model: model.model_name,
+        error: scrub(raw.includes("timeout") || raw.includes("abort") ? `ไม่ตอบภายใน ${CHECK_TIMEOUT_MS / 1000} วินาที` : raw),
+      };
+    }
+  }));
+}
