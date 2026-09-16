@@ -782,6 +782,107 @@ def extract_ishield_diseases():
     })
 
 
+# ---------------------------------------------------------------------------
+# The illnesses the other two critical-illness riders name
+# ---------------------------------------------------------------------------
+
+# CI 123 lists its illnesses on a sheet of its own, in sections — the major stage, the
+# children's list, and the three bands the endorsement adds — each a run of numbered cells
+# dealt across four columns. RRSS writes its names inside the definitions instead, one
+# paragraph per illness, so the name is whatever stands before "หมายถึง".
+CI123_SHEET = "รายชื่อโรค CI 123"
+CI123_HEAD = re.compile(r"^(โรคร้ายแรง|ความคุ้มครองกรณีวิกฤต)")
+CI123_ITEM = re.compile(r"^(\d{1,3})[.\s]\s*(.+)$", re.S)
+# what each section should hold, so a workbook that drops or renumbers one is caught here
+CI123_COUNTS = [53, 2, 17, 6, 42, 4]
+
+RRSS_SHEET = "นิยามโรค Roke Rai So Shield"
+RRSS_ITEM = re.compile(r"^(\d+)\.(\d+)\s+(.+)$", re.S)
+RRSS_GROUPS = {"1": "ผู้ใหญ่", "2": "เด็ก (อายุ 1 เดือน – 10 ปี)"}
+
+
+def _flat(v):
+    return re.sub(r"\s+", " ", str(v)).strip()
+
+
+def extract_ci123_diseases():
+    filename = W_FAMILY["ISMART"]
+    wb = openpyxl.load_workbook(XLSX_DIR / filename, data_only=True)
+    ws = wb[CI123_SHEET]
+
+    groups, cur = [], None
+    for row in ws.iter_rows(min_row=4, max_row=52, max_col=6, values_only=True):
+        cells = [_flat(v) for v in row if v is not None and _flat(v)]
+        if not cells:
+            continue
+        if len(cells) == 1 and CI123_HEAD.match(cells[0]):
+            cur = {"title": cells[0], "numbered": []}
+            groups.append(cur)
+            continue
+        if cur is None:
+            continue
+        for c in cells:
+            m = CI123_ITEM.match(c)
+            if m:
+                cur["numbered"].append((int(m.group(1)), m.group(2).strip()))
+
+    out = []
+    for g in groups:
+        # the columns are read across, so the numbers arrive shuffled; the sheet's own
+        # numbering is the order, and a gap in it means a cell was missed
+        names = [n for _, n in sorted(g["numbered"], key=lambda x: x[0])]
+        numbers = sorted(n for n, _ in g["numbered"])
+        assert numbers == list(range(1, len(names) + 1)), f"{g['title']}: {numbers}"
+        out.append({"title": g["title"], "diseases": names})
+
+    assert [len(g["diseases"]) for g in out] == CI123_COUNTS, [len(g["diseases"]) for g in out]
+
+    write_json(OUT_DIR.parent / "riders" / "ci123-diseases.json", {
+        "code": "CI123",
+        "name": "สัญญาเพิ่มเติมคุ้มครองโรคร้ายแรง (CI 123)",
+        "source": filename,
+        "note": "ชื่อโรคตามรายชื่อในกรมธรรม์ คำนิยามของแต่ละโรคเป็นไปตามที่ระบุในกรมธรรม์",
+        "groups": out,
+    })
+
+
+def extract_rrss_diseases():
+    filename = W_FAMILY["ISMART"]
+    wb = openpyxl.load_workbook(XLSX_DIR / filename, data_only=True)
+    ws = wb[RRSS_SHEET]
+
+    found = {}
+    for row in ws.iter_rows(max_col=13, values_only=True):
+        for v in row:
+            if not isinstance(v, str):
+                continue
+            m = RRSS_ITEM.match(_flat(v))
+            if not m:
+                continue
+            group, index = m.group(1), int(m.group(2))
+            if group not in RRSS_GROUPS:
+                continue
+            # the definition follows the name; the contract's wording is not summarised here
+            found.setdefault(group, []).append((index, re.split(r"\s+หมายถึง", m.group(3))[0].strip()))
+
+    groups = []
+    for key, title in RRSS_GROUPS.items():
+        items = sorted(found.get(key, []), key=lambda x: x[0])
+        assert [i for i, _ in items] == list(range(1, len(items) + 1)), f"{title}: {[i for i, _ in items]}"
+        assert items, f"{title}: nothing found"
+        groups.append({"title": title, "diseases": [n for _, n in items]})
+
+    assert [len(g["diseases"]) for g in groups] == [10, 4], [len(g["diseases"]) for g in groups]
+
+    write_json(OUT_DIR.parent / "riders" / "rrss-diseases.json", {
+        "code": "RRSS",
+        "name": "สัญญาเพิ่มเติมค่ารักษาพยาบาลโรคร้ายโซชิลด์ (MCI)",
+        "source": filename,
+        "note": "ชื่อโรคตามคำนิยามในกรมธรรม์ คำนิยามเต็มอยู่ในกรมธรรม์",
+        "groups": groups,
+    })
+
+
 EXTRACTORS = {
     "plb": extract_plb,
     "ishield": extract_ishield,
@@ -794,6 +895,8 @@ EXTRACTORS = {
     "ismart-cv": extract_ismart_cash_values,
     "ishield-diseases": extract_ishield_diseases,
     "dci-diseases": extract_dci_diseases,
+    "ci123-diseases": extract_ci123_diseases,
+    "rrss-diseases": extract_rrss_diseases,
     "ihealthy-ultra": extract_ihu_benefits,
 }
 

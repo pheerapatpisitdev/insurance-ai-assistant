@@ -1,0 +1,32 @@
+{
+ "code": "RRSS",
+ "name": "สัญญาเพิ่มเติมค่ารักษาพยาบาลโรคร้ายโซชิลด์ (MCI)",
+ "source": "ไอสมาร์ท 80-6_A2026-1.xlsx",
+ "note": "ชื่อโรคตามคำนิยามในกรมธรรม์ คำนิยามเต็มอยู่ในกรมธรรม์",
+ "groups": [
+  {
+   "title": "ผู้ใหญ่",
+   "diseases": [
+    "โรคมะเร็ง (Cancer)",
+    "โรคหลอดเลือดสมองที่ได้รับการรักษาโดยวิธีใส่สายสวนเส้นเลือดบริเวณคอ (Stroke Treatment by Carotid Angioplasty and Stent Placement)",
+    "โรคหลอดเลือดสมองโป่งพองที่ต้องรักษาโดยการผ่าตัด (Cerebral Aneurysm Requiring Brain Surgery)",
+    "โรคหลอดเลือดสมองแตกหรืออุดตัน (Major Stroke)",
+    "การผ่าตัดเส้นเลือดแดงใหญ่เอออร์ต้า (Surgery to Aorta)",
+    "การผ่าตัดเส้นเลือดเลี้ยงกล้ามเนื้อหัวใจ (Coronary Artery By-pass Surgery)",
+    "โรคกล้ามเนื้อหัวใจตายเฉียบพลัน (Acute Myocardial Infarction)",
+    "การผ่าตัดลิ้นหัวใจโดยวิธีการเปิดหัวใจ (Open Heart Surgery for the Heart Valve)",
+    "โรคแรงดันในหลอด เลือดแดงปอดสูงแบบปฐมภูมิ (Primary Pulmonary Arterial Hypertension)",
+    "การผ่าตัดเปลี่ยนอวัยวะหรือปลูกถ่ายไขกระดูก (Major Organs Transplantation or Bone Marrow Transplantation)"
+   ]
+  },
+  {
+   "title": "เด็ก (อายุ 1 เดือน – 10 ปี)",
+   "diseases": [
+    "โรคเบาหวานในเด็ก ชนิดที่ 1 (Juvenile Diabetes Mellitus Type 1)",
+    "โรคคาวาซากิ (Kawasaki Diseases)",
+    "ไข้รูห์มาติกและลิ้นหัวใจรั่ว (Rheumatic Fever with Valvular Impairment)",
+    "โรคพิษสุนัขบ้า (Rabies)"
+   ]
+  }
+ ]
+}

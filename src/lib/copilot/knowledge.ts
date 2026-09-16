@@ -1,6 +1,8 @@
 import { getPlan, listPlans, trimSuffix } from "@/calc/plans/registry";
 import { riderDiseases } from "@/calc/riders/diseases";
 import ishieldDiseases from "../../../data/riders/ishield-diseases.json";
+import ci123Diseases from "../../../data/riders/ci123-diseases.json";
+import rrssDiseases from "../../../data/riders/rrss-diseases.json";
 import { pricedHere } from "./price";
 import { FAQ as LIFE_FAQ } from "@/lib/assistant/lifeprotect/faq";
 import { FAQ as HEALTH_FAQ } from "@/lib/assistant/ihealthy/faq";
@@ -121,24 +123,33 @@ function planSection(code: string, name: string, rules: PlanRules): string {
  * and a model summarising that sentence is a model rewriting the contract.
  */
 function diseaseSection(): string {
+  /** One rider, however its own file happens to be shaped, as the same few lines. */
+  const block = (
+    name: string, note: string, groups: { title: string; diseases: string[] }[],
+  ): string[] => {
+    const total = groups.reduce((n, g) => n + g.diseases.length, 0);
+    const heading = groups.length === 1
+      ? `### ${name} — ${total} โรค`
+      : `### ${name} — รวม ${total} โรค (${groups.map((g) => `${g.title} ${g.diseases.length}`).join(", ")})`;
+    return [heading, `- ${note}`, ...groups.map((g) => `- ${g.title}: ${g.diseases.join(" / ")}`)];
+  };
+
   const out: string[] = ["## โรคร้ายแรงที่สัญญาเพิ่มเติมคุ้มครอง (ชื่อโรคตามกรมธรรม์)"];
 
   const dci = riderDiseases("DCI");
-  if (dci) {
-    out.push(
-      `### ${dci.name} — ${dci.diseases.length} โรค`,
-      `- ${dci.note}`,
-      `- รายชื่อ: ${dci.diseases.join(" / ")}`,
-    );
-  }
+  if (dci) out.push(...block(dci.name, dci.note, [{ title: "รายชื่อ", diseases: dci.diseases }]));
 
   const shield = ishieldDiseases as { note: string; early: string[]; major: string[] };
-  out.push(
-    `### iShield — ระยะเริ่มต้น ${shield.early.length} โรค, ระยะรุนแรง ${shield.major.length} โรค`,
-    `- ${shield.note}`,
-    `- ระยะเริ่มต้น: ${shield.early.join(" / ")}`,
-    `- ระยะรุนแรง: ${shield.major.join(" / ")}`,
-  );
+  out.push(...block("iShield", shield.note, [
+    { title: "ระยะเริ่มต้น", diseases: shield.early },
+    { title: "ระยะรุนแรง", diseases: shield.major },
+  ]));
+
+  for (const r of [ci123Diseases, rrssDiseases] as {
+    name: string; note: string; groups: { title: string; diseases: string[] }[];
+  }[]) {
+    out.push(...block(r.name, r.note, r.groups));
+  }
 
   out.push("- คำนิยามของแต่ละโรคเป็นไปตามที่ระบุในกรมธรรม์ ห้ามสรุปหรือย่อคำนิยามเอง");
   return out.join("\n");
