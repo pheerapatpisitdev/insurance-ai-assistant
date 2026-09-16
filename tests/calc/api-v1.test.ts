@@ -19,6 +19,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 const { POST } = await import("@/app/api/v1/quote/route");
+const { POST: MCP } = await import("@/app/api/v1/mcp/route");
 const { GET } = await import("@/app/api/v1/plans/route");
 const { DISCLAIMER } = await import("@/lib/api/respond");
 
@@ -149,5 +150,71 @@ describe("the list a caller reads first", () => {
     const body = await (await plans()).json();
     expect(body.expiresOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(body.disclaimer).toBe(DISCLAIMER);
+  });
+});
+
+describe("the same answers, offered to a model", () => {
+  /**
+   * MCP is the third door onto the two questions the other two ask. What matters here is not
+   * the protocol — three methods and a JSON body — but that a model is handed the same figure
+   * and the same warnings as everybody else, and that a refusal reaches it as a refusal.
+   */
+  const rpc = (method: string, params?: unknown, key: string | null = KEY) =>
+    MCP(new Request("https://x/api/v1/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(key ? { authorization: `Bearer ${key}` } : {}) },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    }));
+  const toolText = async (r: Response) => {
+    const body = await r.json();
+    return { isError: Boolean(body.result?.isError), payload: JSON.parse(body.result.content[0].text) };
+  };
+
+  it("asks for a key before it speaks the protocol at all", async () => {
+    expect((await rpc("initialize", {}, null)).status).toBe(401);
+    keyRow = { ok: false, reason: "quota_exhausted", client_name: "x" };
+    expect((await rpc("initialize")).status).toBe(429);
+  });
+
+  it("offers exactly the two tools, and tells the model what not to do with them", async () => {
+    const { result } = await (await rpc("tools/list")).json();
+    expect(result.tools.map((t: { name: string }) => t.name)).toEqual(["list_plans", "quote_premium"]);
+    const quoteTool = result.tools.find((t: { name: string }) => t.name === "quote_premium");
+    expect(quoteTool.description).toContain("ห้ามปัดเศษ");
+    expect(quoteTool.description).toContain("disclaimer");
+    expect(quoteTool.inputSchema.required).toEqual(["plan", "age", "sex", "sumAssured"]);
+  });
+
+  it("hands back the engine's figure, with the table and the warning inside the payload", async () => {
+    const { isError, payload } = await toolText(await rpc("tools/call", {
+      name: "quote_premium",
+      arguments: { plan: "PLB", variant: "PLB10", age: 35, sex: "M", sumAssured: 1_000_000 },
+    }));
+    const rest = await (await ask(QUOTE)).json();
+    expect(isError).toBe(false);
+    // the same number the REST door gives, because both ask the same function
+    expect(payload.premium.annual).toBe(rest.premium.annual);
+    expect(payload.version).toBe(rest.version);
+    expect(payload.disclaimer).toBe(DISCLAIMER);
+  });
+
+  it("marks a refusal as an error, so a model cannot read it as a quotation", async () => {
+    const { isError, payload } = await toolText(await rpc("tools/call", {
+      name: "quote_premium",
+      arguments: { plan: "PLB", variant: "PLB10", age: 70, sex: "M", sumAssured: 1_000_000 },
+    }));
+    expect(isError).toBe(true);
+    expect(payload.error).toBe("not_issuable");
+    expect(payload.reasons[0]).toContain("อายุรับประกัน");
+    expect(JSON.stringify(payload)).not.toMatch(/"premium"/);
+  });
+
+  it("says so plainly when asked for something it does not have", async () => {
+    const { isError, payload } = await toolText(await rpc("tools/call", { name: "delete_everything", arguments: {} }));
+    expect(isError).toBe(true);
+    expect(payload.error).toBe("unknown_tool");
+
+    const { error } = await (await rpc("resources/list")).json();
+    expect(error.code).toBe(-32601);
   });
 });

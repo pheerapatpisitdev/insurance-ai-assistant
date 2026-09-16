@@ -25,7 +25,44 @@ export default async function ApiPage() {
         <Keys rows={rows} />
       </Card>
 
-      <Card title="เรียกยังไง" hint="ส่งกุญแจใน header ทุกครั้ง">
+      <Card
+        title="ต่อกับ Claude หรือ ChatGPT"
+        hint="กุญแจเดียวกัน ใช้ได้ทั้งสองทาง — ตัวเลขที่ได้เป็นตัวเลขเดียวกับที่หน้าเว็บคิด"
+      >
+        <dl className="space-y-3 text-sm">
+          <div>
+            <dt className="font-medium text-slate-800">Claude — เพิ่มเป็น connector</dt>
+            <dd className="mt-1 text-slate-600">
+              ใส่ที่อยู่นี้ แล้วใส่กุญแจเป็น Bearer token
+              <code className="mt-1 block overflow-x-auto rounded bg-slate-100 px-2 py-1.5 text-xs text-slate-800">
+                {siteUrl("/api/v1/mcp")}
+              </code>
+              <span className="mt-1 block text-xs text-slate-500">
+                Claude จะเห็นเครื่องมือ 2 ตัว: ดูรายการแบบประกัน และคิดเบี้ย
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium text-slate-800">ChatGPT — สร้าง Custom GPT แล้วเพิ่ม Action</dt>
+            <dd className="mt-1 text-slate-600">
+              วางที่อยู่นี้ในช่อง schema แล้วตั้ง Authentication เป็น API Key แบบ Bearer
+              <code className="mt-1 block overflow-x-auto rounded bg-slate-100 px-2 py-1.5 text-xs text-slate-800">
+                {siteUrl("/api/v1/openapi.json")}
+              </code>
+              <span className="mt-1 block text-xs text-slate-500">
+                ที่อยู่นี้เปิดอ่านได้โดยไม่ต้องใช้กุญแจ เพราะเป็นแค่คำอธิบาย ไม่มีข้อมูล — ตัว API ยังต้องใช้กุญแจเหมือนเดิม
+              </span>
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+          คำอธิบายเครื่องมือสั่ง AI ไว้แล้วว่า <strong>ห้ามปัดเศษ ห้ามคำนวณต่อ</strong> และ
+          <strong> ต้องแสดงคำกำกับให้ผู้ใช้เห็นทุกครั้ง</strong> — และถ้าบริษัทไม่รับประกันตามเงื่อนไขที่ถาม
+          AI จะได้รับเป็น &ldquo;ข้อผิดพลาด&rdquo; พร้อมเหตุผล ไม่ใช่ตัวเลข จะได้ไม่เอาไปเสนอเป็นราคา
+        </p>
+      </Card>
+
+      <Card title="เรียกตรงๆ ด้วย HTTP" hint="ส่งกุญแจใน header ทุกครั้ง">
         <pre className="overflow-x-auto rounded bg-slate-900 p-3 text-xs leading-relaxed text-slate-100">
 {`# แบบประกันทั้งหมด + ช่วงอายุ + ทุนขั้นต่ำ
 curl ${base}/plans \\
