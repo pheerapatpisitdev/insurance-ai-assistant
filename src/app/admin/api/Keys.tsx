@@ -45,12 +45,16 @@ export function Keys({ rows, mcpBase }: { rows: KeyRow[]; mcpBase: string }) {
 
   return (
     <div className="space-y-5">
+      {/* The name is required and the button stays grey until it is filled, so the label has to
+          say plainly that it is a name. "ใครใช้กุญแจนี้" reads as a question somebody might be
+          allowed to skip, and a dead button beside it looks like a broken page rather than a
+          field waiting to be typed in. */}
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs text-slate-500">
-          ใครใช้กุญแจนี้
+          ชื่อกุญแจ <span className="text-slate-400">— ตั้งเองได้ ไว้ดูว่าใครใช้</span>
           <input
             value={name} onChange={(e) => setName(e.target.value)}
-            placeholder="LINE OA ของทีม"
+            placeholder="เช่น Claude ของบอส"
             className="mt-1 block w-56 rounded border px-2 py-1.5 text-sm text-slate-800"
           />
         </label>
@@ -64,6 +68,7 @@ export function Keys({ rows, mcpBase }: { rows: KeyRow[]; mcpBase: string }) {
         </label>
         <button
           type="button" disabled={pending || !name.trim()}
+          title={name.trim() ? undefined : "ตั้งชื่อกุญแจก่อน ปุ่มถึงจะกดได้"}
           onClick={() => run(async () => {
             const { key } = await createKey(name, quota ? Number(quota) : null);
             setMinted(key);
@@ -75,6 +80,12 @@ export function Keys({ rows, mcpBase }: { rows: KeyRow[]; mcpBase: string }) {
           {pending ? "กำลังสร้าง…" : "สร้างกุญแจ"}
         </button>
       </div>
+
+      {/* said on screen, not only in a tooltip: a phone has no hover, and this is the page
+          somebody reaches on a phone */}
+      {!name.trim() && !pending && (
+        <p className="text-xs text-slate-400">ตั้งชื่อกุญแจก่อน ปุ่ม “สร้างกุญแจ” ถึงจะกดได้</p>
+      )}
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
