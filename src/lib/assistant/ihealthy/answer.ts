@@ -1,5 +1,6 @@
 import { chat } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
+import { assembleKnowledge } from "@/lib/copilot/knowledge";
 import type { Sex } from "@/calc/types";
 import { planLabel } from "@/lib/ihealthy-facts";
 import { queryFrom } from "@/lib/ihealthy-link";
@@ -206,12 +207,18 @@ function fullTableLink(slots: HealthSlots & { age: number; sex: Sex }): Reply {
 }
 
 async function planInfo(history: ChatMessage[], slots: HealthSlots): Promise<Reply> {
+  // the health sheet for the contract in hand, and the library for everything else — see the
+  // note on the life brain's own plan_info for why both travel
+  const asked = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
   const r = await chat({
     tier: "small",
     task: "plan_info_health",
     maxTokens: 400,
     messages: [
-      { role: "system", content: `${HEALTH_PLAN_INFO_SYSTEM}${healthFactsFor(slots)}` },
+      {
+        role: "system",
+        content: `${HEALTH_PLAN_INFO_SYSTEM}${healthFactsFor(slots)}\n\n---\n\n${await assembleKnowledge(asked)}`,
+      },
       ...recentTurns(history, 6),
     ],
   });

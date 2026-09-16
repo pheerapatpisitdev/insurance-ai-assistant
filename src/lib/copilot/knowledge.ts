@@ -71,7 +71,14 @@ function planSection(code: string, name: string, rules: PlanRules): string {
   if (b.extraDeathBenefitBeforeAge) {
     lines.push(`- เสียชีวิตก่อนอายุ ${b.extraDeathBenefitBeforeAge} ปี ได้รับเพิ่มจากทุนประกันตามตัวคูณของแบบนั้น`);
   }
-  if (rules.minMonthlyTotal) lines.push(`- เบี้ยรายเดือนขั้นต่ำรวมทุกสัญญา: ${money(rules.minMonthlyTotal)} บาท`);
+  /**
+   * Worded away from the word "เบี้ย" on purpose. It is a floor on what may be paid monthly,
+   * not a price, and a model that finds "เบี้ย… 1,000 บาท" in its prompt has been handed a
+   * premium to read out — which is the one thing every prompt in this system forbids.
+   */
+  if (rules.minMonthlyTotal) {
+    lines.push(`- ยอดชำระขั้นต่ำต่อเดือน รวมทุกสัญญา (เป็นข้อจำกัดการชำระ ไม่ใช่ราคาของแบบนี้): ${money(rules.minMonthlyTotal)} บาท`);
+  }
 
   const riders = Object.entries(rules.riders ?? {});
   if (riders.length) {

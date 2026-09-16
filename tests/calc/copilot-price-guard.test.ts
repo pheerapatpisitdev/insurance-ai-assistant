@@ -118,13 +118,15 @@ describe("a question about a rule", () => {
 
 describe("a plan without a brain", () => {
   /**
-   * These four have no Messenger brain, and for a while that meant they were refused. Refusing
-   * was only ever half right: it stopped "iShield ทุน 1 ล้าน" coming back priced as Life
-   * Protect, card and all, but it also turned away four products the engine can price
-   * perfectly well. What is still non-negotiable is the half that was right — the dispatcher
-   * must never be handed a contract it does not sell, and no model may ever invent a premium.
+   * These four used to be priced by this page, before the dispatcher was asked. They are
+   * priced inside the dispatcher now, so that the page's inbox gets the same figure from the
+   * same code — which is what `tests/calc/one-library.test.ts` presses, against the real one.
+   *
+   * What is left to prove here is the half that was always non-negotiable and is easy to lose
+   * in a move: the question reaches the engine, and never a model. "iShield ทุน 1 ล้าน" came
+   * back once priced as Life Protect, card and all, because a model was asked to place it.
    */
-  it("never hands them to the dispatcher, and never to a model", async () => {
+  it("goes to the engine, and never to a model", async () => {
     for (const ask of [
       "iShield ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่",
       "PLB ทุน 1 ล้าน เบี้ยเท่าไหร่",
@@ -134,47 +136,14 @@ describe("a plan without a brain", () => {
       asked.dispatch = 0;
       asked.model = 0;
       await answerFromKnowledge(ask);
-      expect(asked.dispatch, ask).toBe(0);
+      expect(asked.dispatch, ask).toBe(1);
       expect(asked.model, ask).toBe(0);
     }
   });
 
-  it("prices one when the message carries everything it needs", async () => {
-    const a = await answerFromKnowledge("iSmart ชาย 35 ทุน 1 ล้าน จ่าย 6 ปี เบี้ยเท่าไหร่");
-    expect(a.priced).toBe(true);
-    expect(a.text).toContain("iSmart");
-    // the quote card, and the year-by-year table beside it
-    expect(a.cards).toHaveLength(2);
-    expect(a.cards?.[0]).toContain("plan=ISMART");
-  });
-
-  it("asks for the paying term rather than choosing one", async () => {
-    // six years and eighteen are the same contract at very different money
-    const a = await answerFromKnowledge("Life Treasure ชาย 40 ทุน 10 ล้าน เบี้ยเท่าไหร่");
-    expect(a.priced).toBeFalsy();
-    expect(a.text).toContain("ชำระเบี้ย");
-    expect(a.text).not.toMatch(/\d[\d,]{3,}\s*บาท/);
-  });
-
-  it("says what is missing instead of guessing it", async () => {
-    const a = await answerFromKnowledge("PLB เบี้ยเท่าไหร่");
-    expect(a.priced).toBeFalsy();
-    expect(a.text).toContain("Protection Life");
-    expect(a.text).not.toMatch(/\d[\d,]{3,}\s*บาท/);
-  });
-
-  it("sends iShield to the calculator, because it is asked for a premium and not a sum", async () => {
-    // "ทุน 1 ล้าน" means the sum for every other plan here, and the premium for this one
-    const a = await answerFromKnowledge("iShield ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่");
-    expect(a.priced).toBeFalsy();
-    expect(a.cards).toBeUndefined();
-    expect(a.text).toContain("iShield");
-    expect(a.text).toContain("/other-plans");
-    expect(a.text).not.toMatch(/\d[\d,]{3,}\s*บาท/);
-  });
-
-  it("still prices the two it does sell through the dispatcher", async () => {
+  it("still prices the two it does sell", async () => {
     await answerFromKnowledge("Life Protect ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่");
     expect(asked.dispatch).toBe(1);
+    expect(asked.model).toBe(0);
   });
 });

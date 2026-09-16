@@ -636,7 +636,12 @@ describe("everything else", () => {
     await answerQuestion(said("คุ้มครองยังไง"), { intent: "quote", coverWanted: 2_000_000 });
     const system = chat.mock.calls[1][0].messages[0].content as string;
     expect(system).toContain("ห้ามตอบตัวเลขเบี้ยเอง");
-    expect(system).not.toContain("รายเดือน");
+    /**
+     * No premium in the prompt for a model to read out. Written as the shape of one rather
+     * than as the word "รายเดือน": the library travels with this prompt now, and it names the
+     * floor on a monthly instalment — a limit on paying, not a price, and worded so.
+     */
+    expect(system).not.toMatch(/เบี้ย[^\n]{0,40}\d{1,3},\d{3}/);
   });
 
   it("asks only for the gaps when the customer is half known", async () => {

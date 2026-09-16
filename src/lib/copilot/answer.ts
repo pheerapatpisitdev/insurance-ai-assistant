@@ -7,7 +7,7 @@ import {
 import { asksFullTable, asksOtherPlans, asksShareOfBill } from "@/lib/assistant/ihealthy/route";
 import { asksCheaper } from "@/lib/assistant/common";
 import type { AnySlots } from "@/lib/assistant/slots";
-import { assembleKnowledge } from "./knowledge";
+import { askLibrary } from "./library";
 import { planNamedIn, priceNamedPlan } from "./price";
 import { PRICED_FOLLOW_UPS, type GuideItem } from "./guide";
 
@@ -28,17 +28,8 @@ import { PRICED_FOLLOW_UPS, type GuideItem } from "./guide";
  * model is told, at length, that it may claim nothing which is not there.
  */
 
-const SYSTEM = `คุณคือผู้ช่วยของตัวแทนประกันชีวิต ตอบคำถามจากคลังความรู้ด้านล่างเท่านั้น
-
-กฎที่ห้ามฝ่าฝืน:
-1. ตอบเฉพาะสิ่งที่มีอยู่ในคลังความรู้ ถ้าไม่มีให้บอกตรงๆ ว่า "ข้อมูลนี้ไม่มีในระบบ" แล้วแนะนำให้ถามบริษัท
-   ห้ามเดา ห้ามเติมจากความรู้ทั่วไปของคุณเอง แม้จะมั่นใจแค่ไหนก็ตาม
-2. ห้ามคิดหรือคาดเดาตัวเลขเบี้ยประกันเด็ดขาด ถ้าถูกถามเรื่องเบี้ย ให้บอกว่าพิมพ์ อายุ เพศ แบบประกัน และทุน
-   มาได้เลย ระบบจะคิดให้จากตารางจริง — ห้ามให้ตัวเลขประมาณการใดๆ ทั้งสิ้น
-3. บอกที่มาของคำตอบทุกครั้ง เช่น "จากกฎของ Life Protect" หรือ "จากบันทึกของตัวแทน"
-4. ถ้าคำตอบมาจาก "บันทึกของตัวแทนเอง" ต้องบอกให้ชัดว่าเป็นบันทึกภายใน ไม่ใช่เอกสารบริษัท
-5. ห้ามรับรองผลการพิจารณารับประกัน เรื่องนั้นเป็นคำตอบของผู้พิจารณาเท่านั้น
-6. ตอบเป็นภาษาไทย สั้น ตรงประเด็น ใช้หัวข้อย่อยเมื่อมีหลายข้อ`;
+/** What the customer sees when even the library cannot be reached. */
+const BROKEN = "ขออภัยครับ ระบบขัดข้องชั่วคราว ลองถามใหม่อีกครั้งนะครับ";
 
 /**
  * Money words, as a net under the brains' own readers.
@@ -101,6 +92,8 @@ export interface CopilotAnswer {
 
 /** The name shown under an answer the engine produced, where a model name would go. */
 const ENGINE = "เครื่องคิดเบี้ยของระบบ";
+/** and where the library wrote it but the model's own name did not come back with it */
+const LIBRARY = "คลังความรู้ของระบบ";
 
 /**
  * The plans without a brain are priced by `./price`, not turned away.
@@ -120,89 +113,38 @@ export async function answerFromKnowledge(
    *
    * The second half matters: after "Life Protect ชาย 35" the next message is "ทุน 1 ล้าน",
    * which names no money word at all and would otherwise be read as a question about rules.
+   *
+   * A plan with no brain — PLB, iSmart, Life Treasure — used to be priced here, by this page,
+   * before the dispatcher was asked, and a question the dispatcher could not place was
+   * answered here too. Both happen inside the dispatcher now, so the page's inbox gets the
+   * same figure from the same code and the same words from the same library. This file no
+   * longer knows anything the bot does not.
    */
-  /**
-   * Checked before the engine, not after: the harm is done the moment the dispatcher is
-   * handed a question about a contract it does not sell.
-   */
-  const named = planNamedIn(question);
-  if (named && forTheEngine(question)) {
-    const priced = priceNamedPlan(question, named.code, named.label);
-    return {
-      text: priced.text,
-      model: priced.priced ? ENGINE : "—",
-      priced: priced.priced,
-      ...(priced.cards?.length ? { cards: priced.cards } : {}),
-      ...(priced.guide?.length ? { guide: priced.guide } : {}),
-      // a plan without a brain carries no conversation, so nothing is held between turns
-      slots: null,
-    };
-  }
-
-  /** what the pricing brain worked out about this person, to hand back whatever answers */
-  let carried: AnySlots | null = slots;
-
   if (forTheEngine(question) || slots) {
     const turns: ChatMessage[] = [...history.slice(-6), { role: "user", content: question }];
     const answer = await answerAny(turns, slots);
-    carried = answer.slots;
-    /**
-     * "undecided" is the dispatcher saying it could not tell what the message is about, and
-     * its reply is then "สวัสดีครับ สนใจแบบไหนครับ" — the right answer on Messenger, where
-     * that greeting opens a conversation, and the wrong one here.
-     *
-     * "ประกันรถยนต์ชั้น 1 เบี้ยเท่าไหร่" carries a money word, so it reached the dispatcher,
-     * which sells no motor insurance and greeted the asker instead. It invented no premium,
-     * which was the thing that mattered — but being asked "which plan are you interested in"
-     * reads as though there were one. The knowledge has the better answer to that question,
-     * and to a bare "เบี้ยเท่าไหร่" as well: it names what to type.
-     *
-     * Whatever it worked out about the person is kept either way, so "ชาย 35" said before
-     * the plan was named is not lost by taking the other road.
-     */
-    const undecided = (answer.slots as { product?: string } | null)?.product === "undecided";
-    if (!undecided) {
-      const text = answer.messages.map((m) => m.text).join("\n\n");
-      const cards = answer.messages.map((m) => m.card).filter((c): c is string => Boolean(c));
-      return {
-        text,
-        model: ENGINE,
-        priced: Boolean(answer.priced),
-        slots: answer.slots,
-        ...(cards.length ? { cards } : {}),
-        // the brains' own recognisers match these, so they reach the engine and not a model
-        ...(answer.priced ? { guide: PRICED_FOLLOW_UPS } : {}),
-      };
-    }
+    const text = answer.messages.map((m) => m.text).filter(Boolean).join("\n\n");
+    const cards = answer.messages.map((m) => m.card).filter((c): c is string => Boolean(c));
+    return {
+      text,
+      // an answer the library wrote is not the engine's, and the line under it should not say so
+      model: answer.fromLibrary ? LIBRARY : ENGINE,
+      priced: Boolean(answer.priced),
+      slots: answer.slots,
+      ...(cards.length ? { cards } : {}),
+      /**
+       * The plan's own next questions where the dispatcher sent some — the other paying
+       * terms of the contract just quoted — and otherwise the two the brains recognise.
+       * Offering a brain's questions after a PLB quotation would be offering buttons that
+       * lead back to a plan the customer did not ask about.
+       */
+      ...(answer.guide?.length
+        ? { guide: answer.guide }
+        : answer.priced ? { guide: PRICED_FOLLOW_UPS } : {}),
+    };
   }
 
-  /**
-   * The question chooses what it is answered from.
-   *
-   * Everything a wrong answer could come from still travels every time — the plan rules, the
-   * pairing rules, and how many illnesses each rider covers. What is fetched rather than sent
-   * is the material whose absence the assistant reports instead of papering over: the
-   * illness names, and the standard answers. Half the prompt, and nothing that can turn a
-   * refusal into a confident mistake.
-   */
-  const knowledge = await assembleKnowledge(question);
-  const messages: ChatMessage[] = [
-    { role: "system", content: `${SYSTEM}\n\n---\n\n${knowledge}` },
-    ...history.slice(-6),
-    { role: "user", content: question },
-  ];
-  /**
-   * The cheap tier, which is the right one for the work.
-   *
-   * This asks a model to read rules it has just been handed and say what they mean — no
-   * arithmetic, no long chain of reasoning, and nothing it has to know on its own. The
-   * expensive tier was the first choice and the ledger showed what that costs: Anthropic
-   * took two thirds of a month's spending on five per cent of its calls, forty-four times
-   * the price each, while the bot answered six hundred customers on the cheap tier for half
-   * as much. A public page on the expensive one fills the month's budget in forty questions
-   * a day — and the budget it fills is the one the Messenger bot answers advertisements out
-   * of.
-   */
-  const reply = await chat({ tier: "small", task: "copilot", messages, maxTokens: 900 });
-  return { text: reply.text, model: reply.model, slots: carried };
+  const reply = await askLibrary(history, question);
+  if (!reply) return { text: BROKEN, model: "—", slots };
+  return { text: reply.text, model: reply.model, slots };
 }

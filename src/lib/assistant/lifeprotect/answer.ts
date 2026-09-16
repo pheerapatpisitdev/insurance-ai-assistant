@@ -1,5 +1,6 @@
 import { chat } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
+import { assembleKnowledge } from "@/lib/copilot/knowledge";
 import { getPlan } from "@/calc/plans/registry";
 import { baseSumAssuredLimits } from "@/calc/rules";
 import { formatBaht } from "@/calc/money";
@@ -462,6 +463,15 @@ function quotedFigures(slots: Routed, table: LifeProtectTable): string | undefin
 }
 
 async function answerPlanInfo(history: ChatMessage[], slots: Routed): Promise<Reply> {
+  /**
+   * This plan's own sheet first, then the whole library.
+   *
+   * The sheet says what this conversation is about and is worded for it; the library is
+   * every plan's rules, the illness lists and the agent's own notes. Both, because a
+   * customer in a Life Protect conversation still asks "DCI คุ้มครองกี่โรค", and until this
+   * was here the bot could not say — while the website could, out of the same files.
+   */
+  const asked = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
   const r = await chat({
     tier: "small",
     task: "plan_info",
@@ -469,7 +479,8 @@ async function answerPlanInfo(history: ChatMessage[], slots: Routed): Promise<Re
     messages: [
       {
         role: "system",
-        content: `${PLAN_INFO_SYSTEM}\n\nข้อมูลแบบประกัน\n${planInfoText()}${knownSoFar(slots, lifeProtectTable())}`,
+        content: `${PLAN_INFO_SYSTEM}\n\nข้อมูลแบบประกัน\n${planInfoText()}${knownSoFar(slots, lifeProtectTable())}`
+          + `\n\n---\n\n${await assembleKnowledge(asked)}`,
       },
       ...recentTurns(history, 6),
     ],

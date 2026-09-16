@@ -6,9 +6,38 @@ import type { HealthSlots } from "./ihealthy/route";
 import { answerQuestion } from "./lifeprotect/answer";
 import type { Routed } from "./lifeprotect/route";
 import type { AnySlots, Undecided } from "./slots";
+import { planNamedIn, priceNamedPlan } from "@/lib/copilot/price";
+import type { GuideItem } from "@/lib/copilot/guide";
+import { answerFromLibrary } from "@/lib/copilot/library";
 
 /** One answer, and everything the bot should remember about this customer next turn. */
-export type AnyAnswer = Reply & { slots: AnySlots };
+export type AnyAnswer = Reply & {
+  slots: AnySlots;
+  /**
+   * Set when the words came out of the library rather than a brain.
+   *
+   * It saves the website asking the same question twice: it used to answer anything the
+   * dispatcher could not place by calling the library itself, which is now where the
+   * dispatcher sends it too — so without this the question would be paid for twice and
+   * answered once.
+   */
+  fromLibrary?: true;
+  /**
+   * What to offer next, for the plans priced here rather than by a brain.
+   *
+   * The page draws them as buttons and the inbox has no use for them, but they belong to the
+   * answer rather than to the page: it is this code that knows a PLB quotation has three
+   * other paying terms worth comparing, and the page that used to know it no longer prices
+   * anything itself.
+   */
+  guide?: GuideItem[];
+};
+
+/** A message that asks something, as against one that announces an interest. */
+const ASKS_SOMETHING = /ไหม|มั้ย|หรือเปล่า|รึเปล่า|อะไร|เท่าไหร่|เท่าไร|กี่|ยังไง|อย่างไร|ทำไม|ที่ไหน|\?/;
+
+/** Words that make a question about a plan a question about its price. */
+const asksAboutMoney = (text: string) => /เบี้ย|ราคา|กี่บาท|ค่างวด|จ่ายเดือนละ|จ่ายปีละ|จ่ายเท่าไหร่|คิดให้|premium/i.test(text);
 
 /** What of a person is worth carrying from one contract to the other: not much, and not more. */
 interface Person {
@@ -69,6 +98,30 @@ export async function answerAny(history: ChatMessage[], stored: AnySlots | null)
     return run(now, history, stored, false);
   }
 
+  /**
+   * A plan with no brain, named outright and asked about money.
+   *
+   * It lives here rather than in the page that first needed it, because the answer must not
+   * depend on which door the customer came through: the same question about a PLB premium
+   * gets the same figure from the website and from the page's inbox, drawn on the same card.
+   * Checked before the topic, since "PLB ทุน 1 ล้าน" reads as a life-insurance subject and
+   * would otherwise be quoted as the plan that owns that subject.
+   */
+  const other = planNamedIn(asked);
+  if (other && asksAboutMoney(asked)) {
+    const priced = priceNamedPlan(asked, other.code, other.label);
+    return {
+      messages: [
+        { text: priced.text, ...(priced.cards?.[0] ? { card: priced.cards[0] } : {}) },
+        ...(priced.cards?.slice(1) ?? []).map((card) => ({ text: "", card })),
+      ],
+      priced: priced.priced,
+      ...(priced.guide?.length ? { guide: priced.guide } : {}),
+      // a plan without a brain carries no conversation, so nothing is held between turns
+      slots: { product: "undecided", ...personIn(stored) },
+    };
+  }
+
   // nothing settled yet: the name first, then the subject
   const product = named ?? productByTopic(asked);
   if (product) return run(product, history, personIn(stored), true);
@@ -82,8 +135,31 @@ export async function answerAny(history: ChatMessage[], stored: AnySlots | null)
       ? { age: here[0].age, sex: here[0].sex, ...(here.length > 1 ? { people: here } : {}) }
       : personIn(stored)),
   };
-  // and a question they asked on the way in is answered before the question they are asked back
+  /**
+   * A question the dispatcher cannot place, but the library can answer.
+   *
+   * "HIC ซื้อคู่กับ MEB ได้ไหม" names no plan and is about no one plan's subject, so this used
+   * to be met with "สวัสดีครับ สนใจแบบไหนครับ" — a question answered with a question, in an
+   * inbox paid for by advertising. The rules of all five plans are in the library, so it is
+   * asked before the customer is.
+   *
+   * Only for something actually asked. "สนใจประกันชีวิต" is a lead, not a question, and the
+   * two buttons are the right answer to it — which is why they are still attached below.
+   */
+  // a question they asked on the way in is answered before the question they are asked back
   const lead = asksAboutCompany(asked) ? aboutCompany(asked) : undefined;
+
+  /**
+   * Checked after the company's own answer, which is free and is the better one: "ของอะไร"
+   * asks which insurer, and the library would spend a model call arriving somewhere worse.
+   */
+  if (!lead && ASKS_SOMETHING.test(asked)) {
+    const answer = await answerFromLibrary(history, asked);
+    if (answer) {
+      return { messages: [{ text: answer }], replies: askWhich().replies, slots: undecided, fromLibrary: true };
+    }
+  }
+
   return { ...askWhich(lead), slots: undecided };
 }
 
