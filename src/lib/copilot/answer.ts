@@ -1,4 +1,3 @@
-import { chat } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { answerAny } from "@/lib/assistant/dispatch";
 import { productNamedIn } from "@/lib/assistant/choose";
@@ -9,7 +8,6 @@ import { asksFullTable, asksOtherPlans, asksShareOfBill } from "@/lib/assistant/
 import { asksCheaper } from "@/lib/assistant/common";
 import type { AnySlots } from "@/lib/assistant/slots";
 import { askLibrary } from "./library";
-import { planNamedIn, priceNamedPlan } from "./price";
 import { PRICED_FOLLOW_UPS, type GuideItem } from "./guide";
 
 /**

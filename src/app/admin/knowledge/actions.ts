@@ -1,0 +1,81 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/admin/guard";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+
+/**
+ * What the assistant knows on top of the plan rules.
+ *
+ * The box lived on the home page and was open to anyone, which was the owner's decision when
+ * that page was the agent's own. It is a customer's page now — and since the notes reach the
+ * Messenger bot as well, a stranger typing into it would be typing into what the page says to
+ * people who arrived through an advertisement. So it sits behind the PIN, and these actions
+ * ask for it: they never did, which meant the delete button was a public one.
+ */
+
+/** the same caps the box enforces on screen, kept here because the browser is not the guard */
+const MAX_Q = 200;
+const MAX_A = 2000;
+
+export interface Note {
+  id: string;
+  question: string;
+  answer: string;
+  enabled: boolean;
+  updatedAt: string;
+}
+
+export async function listNotes(): Promise<Note[]> {
+  await requireAdmin();
+  try {
+    const { data, error } = await supabaseAdmin()
+      .from("ins_faq").select("id, question, answer, enabled, updated_at")
+      .order("updated_at", { ascending: false }).limit(200);
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id), question: String(r.question), answer: String(r.answer),
+      enabled: Boolean(r.enabled), updatedAt: String(r.updated_at),
+    }));
+  } catch (e) {
+    console.error("อ่านบันทึกไม่สำเร็จ:", e);
+    return [];
+  }
+}
+
+export async function addNote(question: string, answer: string): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  const q = question.trim().slice(0, MAX_Q);
+  const a = answer.trim().slice(0, MAX_A);
+  if (q.length < 4 || a.length < 4) return { ok: false, error: "พิมพ์คำถามและคำตอบให้ยาวกว่านี้หน่อยครับ" };
+  try {
+    const { error } = await supabaseAdmin().from("ins_faq").insert({ question: q, answer: a, enabled: true });
+    if (error) throw new Error(error.message);
+    revalidatePath("/admin/knowledge");
+    return { ok: true };
+  } catch (e) {
+    console.error("เพิ่มบันทึกไม่สำเร็จ:", e);
+    return { ok: false, error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
+  }
+}
+
+export async function setNoteEnabled(id: string, enabled: boolean): Promise<void> {
+  await requireAdmin();
+  try {
+    const { error } = await supabaseAdmin().from("ins_faq").update({ enabled }).eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/admin/knowledge");
+  } catch (e) {
+    console.error("เปิด/ปิดบันทึกไม่สำเร็จ:", e);
+  }
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  await requireAdmin();
+  try {
+    const { error } = await supabaseAdmin().from("ins_faq").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/admin/knowledge");
+  } catch (e) {
+    console.error("ลบบันทึกไม่สำเร็จ:", e);
+  }
+}

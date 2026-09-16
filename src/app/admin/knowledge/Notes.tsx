@@ -3,18 +3,18 @@ import { useState, useTransition } from "react";
 import { addNote, deleteNote, setNoteEnabled, type Note } from "./actions";
 
 /**
- * What the assistant knows on top of the plan rules, and the box anyone may add to.
+ * What the assistant knows on top of the plan rules, and the box to add to it.
  *
- * Open to every visitor by the owner's decision. The two things that make that survivable
- * are here rather than a lock: every note shows when it arrived, and every note has a delete
- * beside it. A note nobody can see is a note nobody can take back.
+ * It opens on the list rather than folded away: this is the whole of its own page now, and a
+ * page whose only content is hidden behind a summary is a page that looks empty.
  *
- * Folded away by default. Most people who open this page came to ask something, and a form
- * for editing the assistant's memory is not what they are looking at.
+ * What survives from when it sat in public: every note shows when it arrived and has a delete
+ * beside it. A note nobody can see is a note nobody can take back — and these are read by the
+ * bot answering advertisements, which makes that worth keeping even behind a PIN.
  */
 export function Notes({ initial }: { initial: Note[] }) {
   const [notes, setNotes] = useState(initial);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [q, setQ] = useState("");
   const [a, setA] = useState("");
   const [error, setError] = useState<string>();

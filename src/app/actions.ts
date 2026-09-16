@@ -1,6 +1,5 @@
 "use server";
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { answerFromKnowledge, type CopilotAnswer } from "@/lib/copilot/answer";
 import { allow } from "@/lib/assistant/rate-limit";
@@ -63,64 +62,3 @@ export async function askCopilot(
 
 const MAX_Q = 200;
 const MAX_A = 2000;
-
-export interface Note {
-  id: string;
-  question: string;
-  answer: string;
-  enabled: boolean;
-  updatedAt: string;
-}
-
-export async function listNotes(): Promise<Note[]> {
-  try {
-    const { data, error } = await supabaseAdmin()
-      .from("ins_faq").select("id, question, answer, enabled, updated_at")
-      .order("updated_at", { ascending: false }).limit(200);
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
-      id: String(r.id), question: String(r.question), answer: String(r.answer),
-      enabled: Boolean(r.enabled), updatedAt: String(r.updated_at),
-    }));
-  } catch (e) {
-    console.error("อ่านบันทึกไม่สำเร็จ:", e);
-    return [];
-  }
-}
-
-export async function addNote(question: string, answer: string): Promise<{ ok: boolean; error?: string }> {
-  const q = question.trim().slice(0, MAX_Q);
-  const a = answer.trim().slice(0, MAX_A);
-  if (q.length < 4 || a.length < 4) return { ok: false, error: "พิมพ์คำถามและคำตอบให้ยาวกว่านี้หน่อยครับ" };
-  // the same burst limit the chat uses: not a gate, it only stops a script
-  if (!allow(`note:${await caller()}`)) return { ok: false, error: BUSY };
-  try {
-    const { error } = await supabaseAdmin().from("ins_faq").insert({ question: q, answer: a, enabled: true });
-    if (error) throw new Error(error.message);
-    revalidatePath("/");
-    return { ok: true };
-  } catch (e) {
-    console.error("เพิ่มบันทึกไม่สำเร็จ:", e);
-    return { ok: false, error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
-  }
-}
-
-export async function setNoteEnabled(id: string, enabled: boolean): Promise<void> {
-  try {
-    const { error } = await supabaseAdmin().from("ins_faq").update({ enabled }).eq("id", id);
-    if (error) throw new Error(error.message);
-    revalidatePath("/");
-  } catch (e) {
-    console.error("เปิด/ปิดบันทึกไม่สำเร็จ:", e);
-  }
-}
-
-export async function deleteNote(id: string): Promise<void> {
-  try {
-    const { error } = await supabaseAdmin().from("ins_faq").delete().eq("id", id);
-    if (error) throw new Error(error.message);
-    revalidatePath("/");
-  } catch (e) {
-    console.error("ลบบันทึกไม่สำเร็จ:", e);
-  }
-}
