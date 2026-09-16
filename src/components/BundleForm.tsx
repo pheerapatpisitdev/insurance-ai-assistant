@@ -26,7 +26,7 @@ export function BundleForm({ state, bundle, plans, bundles, onChange, onPlanChan
         <div className="mt-1">
           <PlanSelect value={`bundle:${bundle.code}`} plans={plans} bundles={bundles} onChange={onPlanChange} />
         </div>
-        <select className="mt-2 w-full rounded border px-3 py-2" value={state.tier}
+        <select className="mt-2 w-full rounded border border-[var(--op-line)] px-3 py-2" value={state.tier}
                 onChange={(e) => onChange({ ...state, tier: Number(e.target.value) })}>
           {bundle.tiers.map((t) => <option key={t.no} value={t.no}>{describeTier(bundle, t.no)}</option>)}
         </select>
@@ -38,7 +38,7 @@ export function BundleForm({ state, bundle, plans, bundles, onChange, onPlanChan
         onChange={(patch) => onChange({ ...state, ...patch })}
       />
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-[var(--op-mute)]">
         ชุดนี้กำหนดทุนและสัญญาเพิ่มเติมไว้แล้ว แก้ไม่ได้ — ดูรายการที่คุ้มครองได้จากตารางด้านขวา
       </p>
     </form>

@@ -14,7 +14,7 @@ export interface PlanSelectProps {
 
 export function PlanSelect({ value, plans, bundles, onChange }: PlanSelectProps) {
   return (
-    <select className="w-full rounded border px-3 py-2" value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="w-full rounded border border-[var(--op-line)] px-3 py-2" value={value} onChange={(e) => onChange(e.target.value)}>
       {bundles.length > 0 && (
         <optgroup label="ชุดจัดเอง">
           {bundles.map((b) => <option key={b.code} value={`${BUNDLE_PREFIX}${b.code}`}>{b.name}</option>)}

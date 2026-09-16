@@ -74,7 +74,7 @@ export function QuoteForm({ state, plan, plans, availability, bundles, onChange,
         <div className="mt-1">
           <PlanSelect value={state.planCode} plans={plans} bundles={bundles} onChange={onPlanChange} />
         </div>
-        <select className="mt-2 w-full rounded border px-3 py-2" value={state.variant} onChange={(e) => set({ variant: e.target.value })}>
+        <select className="mt-2 w-full rounded border border-[var(--op-line)] px-3 py-2" value={state.variant} onChange={(e) => set({ variant: e.target.value })}>
           {plan.rates.base.variants.map((v) => <option key={v} value={v}>{plan.variantLabels[v] ?? v}</option>)}
         </select>
       </div>
@@ -100,13 +100,13 @@ export function QuoteForm({ state, plan, plans, availability, bundles, onChange,
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <label className="block text-sm font-medium">เบี้ยประกันภัยที่ต้องการชำระ</label>
-            <MoneyInput className="mt-1 w-full rounded border px-3 py-2" value={state.targetPremium}
+            <MoneyInput className="mt-1 w-full rounded border border-[var(--op-line)] px-3 py-2" value={state.targetPremium}
                         onChange={(targetPremium) => set({ targetPremium })}
                         hint="ระบบจะหาทุนประกันสูงสุดที่เบี้ยนี้ซื้อได้" />
           </div>
           <div>
             <label className="block text-sm font-medium">ต่องวด</label>
-            <select className="mt-1 w-full rounded border px-3 py-2" value={state.mode}
+            <select className="mt-1 w-full rounded border border-[var(--op-line)] px-3 py-2" value={state.mode}
                     onChange={(e) => set({ mode: e.target.value as PayMode })}>
               {(Object.keys(PAY_MODE_LABEL) as PayMode[]).map((m) => <option key={m} value={m}>{PAY_MODE_LABEL[m]}</option>)}
             </select>
@@ -116,7 +116,7 @@ export function QuoteForm({ state, plan, plans, availability, bundles, onChange,
         <div>
           <label className="block text-sm font-medium">จำนวนเงินเอาประกันภัย (สัญญาหลัก)</label>
           <MoneyInput
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="mt-1 w-full rounded border border-[var(--op-line)] px-3 py-2"
             value={state.sumAssured}
             onChange={(sumAssured) => set({ sumAssured })}
             hint={saExact

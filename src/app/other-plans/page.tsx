@@ -147,14 +147,14 @@ export default function Home() {
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
       <div className="mb-1 flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
-        <span className="flex gap-4 text-sm text-slate-500">
+        <span className="flex gap-4 text-sm text-[var(--op-mute)]">
           <Link href="/admin" className="underline">หลังบ้าน</Link>
           <Link href="/privacy" className="underline">ความเป็นส่วนตัว</Link>
         </span>
       </div>
-      <p className="text-sm text-slate-500">{bundle ? `ชุด${bundle.name}` : plan.planLabel ?? plan.rates.planName}</p>
+      <p className="text-sm text-[var(--op-mute)]">{bundle ? `ชุด${bundle.name}` : plan.planLabel ?? plan.rates.planName}</p>
       {/* the calculator is the agent's tool; these are the pages an agent sends a customer to */}
-      <p className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-slate-500">
+      <p className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-[var(--op-mute)]">
         <span>หน้าขายสำหรับลูกค้า</span>
         {SALES_PAGES.map((page) => (
           <Link key={page.href} href={page.href} target="_blank" rel="noreferrer" className="underline">
@@ -164,7 +164,7 @@ export default function Home() {
       </p>
       <ExpiryBanner expired={result?.meta.expired ?? false} expiresOn={plan.rates.expiresOn} />
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border bg-white p-4">
+        <div className="rounded-lg border border-[var(--op-line)] bg-[var(--op-panel)] p-4">
           {bundle ? (
             <BundleForm state={state} bundle={bundle} plans={listPlans()} bundles={listBundles()}
                         onChange={setState} onPlanChange={onPlanChange} />
@@ -173,12 +173,12 @@ export default function Home() {
                        availability={availability} onChange={setState} onPlanChange={onPlanChange} />
           )}
         </div>
-        <div className="rounded-lg border bg-white p-4">
+        <div className="rounded-lg border border-[var(--op-line)] bg-[var(--op-panel)] p-4">
           {result && input ? (
             <QuoteResultPanel result={result} mode={input.mode}
                               derivedSumAssured={input.basis === "premium"} modePremiums={modePremiums} />
           ) : (
-            <p className="text-sm text-slate-500">กรอกอายุและจำนวนเงินเอาประกันภัย (หรือเบี้ยที่ต้องการ) เพื่อคำนวณ</p>
+            <p className="text-sm text-[var(--op-mute)]">กรอกอายุและจำนวนเงินเอาประกันภัย (หรือเบี้ยที่ต้องการ) เพื่อคำนวณ</p>
           )}
         </div>
       </div>

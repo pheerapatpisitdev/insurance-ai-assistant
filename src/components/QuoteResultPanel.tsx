@@ -23,17 +23,17 @@ function Diseases({ code, riderName }: { code: string; riderName: string }) {
   const info = riderDiseases(code);
   if (!info) return null;
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <div className="text-sm font-medium text-slate-700">
+    <div className="rounded-lg border border-[var(--op-line)] bg-[var(--op-ground)] p-4">
+      <div className="text-sm font-medium text-[var(--op-ink)]">
         {riderName} คุ้มครอง {info.diseases.length} โรค
       </div>
-      <p className="mt-0.5 text-xs text-slate-600">{info.note}</p>
+      <p className="mt-0.5 text-xs text-[var(--op-mute)]">{info.note}</p>
       {/* newspaper columns rather than a grid: the numbers should read down the first
           column and continue at the top of the second, not left to right in pairs */}
-      <ol className="mt-2 text-xs text-slate-700 sm:columns-2 sm:gap-x-6">
+      <ol className="mt-2 text-xs text-[var(--op-ink)] sm:columns-2 sm:gap-x-6">
         {info.diseases.map((d, i) => (
           <li key={d} className="flex gap-1.5 break-inside-avoid pb-0.5">
-            <span className="shrink-0 tabular-nums text-slate-400">{i + 1}.</span>
+            <span className="shrink-0 tabular-nums text-[var(--op-mute)]">{i + 1}.</span>
             <span>{d}</span>
           </li>
         ))}
@@ -65,17 +65,17 @@ export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-slate-500">
+            <tr className="border-b border-[var(--op-line)] text-left text-[var(--op-mute)]">
               <th className="py-2">รายการ</th>
               <th className="py-2 pl-3 text-right whitespace-nowrap">ทุนประกัน</th>
             </tr>
           </thead>
           <tbody>
             {result.items.map((it) => (
-              <tr key={it.code} className="border-b">
+              <tr key={it.code} className="border-b border-[var(--op-line)]">
                 <td className="py-2">
                   {it.name}
-                  {it.message && <div className="text-xs text-red-600">{it.message}</div>}
+                  {it.message && <div className="text-xs text-[var(--op-error)]">{it.message}</div>}
                 </td>
                 <td className="py-2 pl-3 text-right whitespace-nowrap">{it.amountLabel ?? it.amount.toLocaleString("en-US")}</td>
               </tr>
@@ -85,21 +85,21 @@ export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums
       </div>
 
       {incomplete ? (
-        <div className="rounded-lg bg-red-50 p-4">
-          <div className="text-lg font-semibold text-red-900">เสนอแบบนี้ไม่ได้</div>
-          <div className="mt-1 text-sm text-red-800">{incomplete.message}</div>
+        <div className="rounded-lg bg-[var(--op-error-bg)] p-4">
+          <div className="text-lg font-semibold text-[var(--op-error-strong)]">เสนอแบบนี้ไม่ได้</div>
+          <div className="mt-1 text-sm text-[var(--op-error)]">{incomplete.message}</div>
         </div>
       ) : modePremiums ? (
-        <div className="rounded-lg bg-emerald-50 p-4">
-          <div className="text-sm text-emerald-800">เบี้ยประกันที่ต้องชำระ</div>
+        <div className="rounded-lg bg-[var(--op-figure-bg)] p-4">
+          <div className="text-sm text-[var(--op-accent)]">เบี้ยประกันที่ต้องชำระ</div>
           <dl className="mt-2 space-y-1">
             {modePremiums.map((m) => (
               <div key={m.mode} className="flex items-baseline justify-between gap-3">
-                <dt className={`text-sm ${m.mode === mode ? "font-semibold text-emerald-900" : "text-emerald-800"}`}>
+                <dt className={`text-sm ${m.mode === mode ? "font-semibold text-[var(--op-figure)]" : "text-[var(--op-accent)]"}`}>
                   {PAY_MODE_LABEL[m.mode]}
-                  {m.belowMinimum && <span className="ml-1 text-xs text-emerald-700">(ต่ำกว่าขั้นต่ำ {result.meta.minMonthlyTotal.toLocaleString("en-US")} บาท)</span>}
+                  {m.belowMinimum && <span className="ml-1 text-xs text-[var(--op-mute)]">(ต่ำกว่าขั้นต่ำ {result.meta.minMonthlyTotal.toLocaleString("en-US")} บาท)</span>}
                 </dt>
-                <dd className={`tabular-nums ${m.mode === mode ? "text-2xl font-semibold text-emerald-900" : "text-emerald-800"}`}>
+                <dd className={`tabular-nums ${m.mode === mode ? "text-2xl font-semibold text-[var(--op-figure)]" : "text-[var(--op-accent)]"}`}>
                   {formatBaht(m.total)} บาท
                 </dd>
               </div>
@@ -107,19 +107,19 @@ export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums
           </dl>
         </div>
       ) : (
-        <div className="rounded-lg bg-emerald-50 p-4">
-          <div className="text-sm text-emerald-800">รวมเบี้ยต่องวด ({PAY_MODE_LABEL[mode]})</div>
-          <div className="text-3xl font-semibold tabular-nums text-emerald-900">{formatBaht(result.totalModal)} บาท</div>
-          <div className="mt-1 text-sm text-emerald-800">รวมเบี้ยรายปี {formatBaht(result.totalAnnual)} บาท</div>
+        <div className="rounded-lg bg-[var(--op-figure-bg)] p-4">
+          <div className="text-sm text-[var(--op-accent)]">รวมเบี้ยต่องวด ({PAY_MODE_LABEL[mode]})</div>
+          <div className="text-3xl font-semibold tabular-nums text-[var(--op-figure)]">{formatBaht(result.totalModal)} บาท</div>
+          <div className="mt-1 text-sm text-[var(--op-accent)]">รวมเบี้ยรายปี {formatBaht(result.totalAnnual)} บาท</div>
         </div>
       )}
 
       {result.deathBenefit && !incomplete && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
-          <div className="font-medium text-slate-700">ผลประโยชน์กรณีเสียชีวิต</div>
+        <div className="rounded-lg border border-[var(--op-line)] bg-[var(--op-ground)] p-4 text-sm">
+          <div className="font-medium text-[var(--op-ink)]">ผลประโยชน์กรณีเสียชีวิต</div>
           {deathBenefitRows(result.deathBenefit).map((row) => (
             <div key={row.label} className="mt-1 flex justify-between gap-3">
-              <span className="text-slate-600">{row.label}</span>
+              <span className="text-[var(--op-mute)]">{row.label}</span>
               <span className="font-semibold tabular-nums">{row.amount.toLocaleString("en-US")} บาท</span>
             </div>
           ))}
@@ -127,10 +127,10 @@ export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums
       )}
 
       {result.maturityBenefit && !incomplete && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
-          <div className="font-medium text-slate-700">ผลประโยชน์ครบสัญญา</div>
+        <div className="rounded-lg border border-[var(--op-line)] bg-[var(--op-ground)] p-4 text-sm">
+          <div className="font-medium text-[var(--op-ink)]">ผลประโยชน์ครบสัญญา</div>
           <div className="mt-1 flex justify-between gap-3">
-            <span className="text-slate-600">ครบสัญญาอายุ {result.maturityBenefit.age} ปี</span>
+            <span className="text-[var(--op-mute)]">ครบสัญญาอายุ {result.maturityBenefit.age} ปี</span>
             <span className="font-semibold tabular-nums">
               {result.maturityBenefit.amount.toLocaleString("en-US")} บาท
             </span>
@@ -138,13 +138,13 @@ export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums
           {result.maturityBenefit.survivalTotal !== undefined && (
             <>
               <div className="mt-0.5 flex justify-between gap-3">
-                <span className="text-slate-600">เงินจ่ายคืนระหว่างสัญญา รวม</span>
+                <span className="text-[var(--op-mute)]">เงินจ่ายคืนระหว่างสัญญา รวม</span>
                 <span className="font-semibold tabular-nums">
                   {result.maturityBenefit.survivalTotal.toLocaleString("en-US")} บาท
                 </span>
               </div>
-              <div className="mt-1 flex justify-between gap-3 border-t border-slate-200 pt-1">
-                <span className="text-slate-600">รวมรับทั้งสิ้น</span>
+              <div className="mt-1 flex justify-between gap-3 border-t border-[var(--op-line)] pt-1">
+                <span className="text-[var(--op-mute)]">รวมรับทั้งสิ้น</span>
                 <span className="font-semibold tabular-nums">
                   {(result.maturityBenefit.total ?? 0).toLocaleString("en-US")} บาท
                 </span>

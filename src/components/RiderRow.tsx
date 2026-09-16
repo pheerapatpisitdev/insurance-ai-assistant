@@ -42,17 +42,17 @@ function DiseaseList({ code }: { code: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="text-xs text-slate-500 underline decoration-dotted underline-offset-2"
+        className="text-xs text-[var(--op-mute)] underline decoration-dotted underline-offset-2"
       >
         {open ? "ซ่อนรายชื่อโรค" : `ดูรายชื่อ ${info.diseases.length} โรคที่คุ้มครอง`}
       </button>
       {open && (
-        <div className="mt-1 rounded border bg-slate-50 p-2">
-          <p className="mb-1 text-xs text-slate-600">{info.note}</p>
-          <ol className="grid gap-x-4 gap-y-0.5 text-xs text-slate-700 sm:grid-cols-2">
+        <div className="mt-1 rounded border bg-[var(--op-ground)] p-2">
+          <p className="mb-1 text-xs text-[var(--op-mute)]">{info.note}</p>
+          <ol className="grid gap-x-4 gap-y-0.5 text-xs text-[var(--op-ink)] sm:grid-cols-2">
             {info.diseases.map((d, i) => (
               <li key={d} className="flex gap-1.5">
-                <span className="shrink-0 tabular-nums text-slate-400">{i + 1}.</span>
+                <span className="shrink-0 tabular-nums text-[var(--op-mute)]">{i + 1}.</span>
                 <span>{d}</span>
               </li>
             ))}
@@ -71,7 +71,7 @@ export function RiderRow({
   const isPlan = a.plans !== undefined;
   const showSumAssured = !a.needsPayer && !isPlan && (!a.options || optionNeedsSumAssured);
   return (
-    <div className={`rounded-md border p-3 ${disabled ? "border-slate-200 bg-slate-100 text-slate-400" : "border-slate-300 bg-white"}`}>
+    <div className={`rounded-md border p-3 ${disabled ? "border-[var(--op-line)] bg-[var(--op-disabled)] text-[var(--op-mute)]" : "border-[var(--op-line)] bg-[var(--op-panel)]"}`}>
       <label className="flex items-center gap-3">
         <input type="checkbox" className="h-4 w-4" checked={(enabled || required) && !disabled} disabled={disabled || required} onChange={(e) => onToggle(e.target.checked)} />
         <span className="flex-1 text-sm font-medium">{a.name}{required && <span className="ml-2 text-xs text-sky-700">(บังคับตามแพ็กเกจ)</span>}</span>
@@ -96,7 +96,7 @@ export function RiderRow({
             </select>
           ))}
           {a.needsPayer ? (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-[var(--op-mute)]">
               ผู้ชำระเบี้ยคือผู้เอาประกัน
               {insured.age !== "" && ` · ${insured.sex === "M" ? "ชาย" : "หญิง"} ${insured.age} ปี`}
             </span>
@@ -113,7 +113,7 @@ export function RiderRow({
                 className="w-40 rounded border px-2 py-1 text-sm" placeholder="ทุนประกัน"
                 value={value} onChange={onChange} max={a.saMax}
               />
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-[var(--op-mute)]">
                 {a.saMin?.toLocaleString("en-US")}{a.saMax !== undefined ? ` – ${a.saMax.toLocaleString("en-US")}` : ""}
               </span>
             </>
