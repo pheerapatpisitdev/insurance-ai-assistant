@@ -384,4 +384,11 @@ export interface CoverTopUp {
   premiumPercent: number;
   /** whether the surrender value is one of the amounts compared */
   includeCashValue: boolean;
+  /**
+   * What the plan pays on the sum assured itself, where that is a flat multiple of it at
+   * every age — iSmart's benefit sheet reads MAX(2 × sum assured, 101% × premiums, surrender
+   * value). Left out by the plans whose multiple changes with age, which carry it on the
+   * package as a booster instead and hand it over through the death benefit.
+   */
+  sumAssuredMultiple?: number;
 }

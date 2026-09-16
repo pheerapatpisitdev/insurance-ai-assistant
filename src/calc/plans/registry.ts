@@ -94,7 +94,9 @@ const PLANS: Record<string, PlanBundle> = {
       WLCI20: "iShield 20 (ชำระเบี้ย 20 ปี)",
     },
   },
-  ...wFamily("ISMART", ismartRates, ismartRules, "iSmart 80/6"),
+  // ตารางแสดงผลประโยชน์ H: MAX(2 × จำนวนเงินเอาประกันภัย, 101% ของเบี้ยที่ชำระมาแล้ว, มูลค่าเวนคืน)
+  ...wFamily("ISMART", ismartRates, ismartRules, "iSmart 80/6", undefined,
+    { premiumPercent: 101, includeCashValue: true, sumAssuredMultiple: 2 }),
   // ตารางแสดงผลประโยชน์ หมายเหตุ 3: จำนวนเงินเอาประกันภัย หรือมูลค่าเวนคืนกรมธรรม์
   // หรือ 101% ของเบี้ยที่ชำระมาแล้ว แล้วแต่จำนวนใดจะมากกว่า
   ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules, "Life Treasure", undefined,

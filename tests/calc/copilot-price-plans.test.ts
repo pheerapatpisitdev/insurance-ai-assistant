@@ -42,11 +42,12 @@ describe("iSmart, which has one package and needs no choosing", () => {
     expect(reply.text).toContain(baht(expected.totalAnnual));
   });
 
-  it("draws the quote card — and not a value table, which iSmart has no sheet for", () => {
+  it("draws both pictures, the quote and the year-by-year table", () => {
     const reply = priceNamedPlan("iSmart ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่", "ISMART", "iSmart 80/6");
-    expect(reply.cards).toHaveLength(1);
+    expect(reply.cards).toHaveLength(2);
     expect(reply.cards?.[0]).toContain("/api/card?");
     expect(reply.cards?.[0]).toContain("plan=ISMART");
+    expect(reply.cards?.[1]).toContain("/api/card/table?");
   });
 });
 
@@ -128,23 +129,21 @@ describe("an arrangement the plan will not write", () => {
  */
 describe("bugs the sweep found", () => {
   it("offers the value table only for the plans whose benefit sheet has been read", () => {
-    // PLB and iSmart have no benefit sheet, so /api/card/table answers 400 for them and the
-    // customer was sent a broken picture
-    const withTable = priceNamedPlan(
-      "Life Treasure ชาย 40 ทุน 10 ล้าน จ่าย 6 ปี เบี้ยเท่าไหร่", "LIFETREASURE", "Life Treasure",
-    );
-    expect(withTable.cards).toHaveLength(2);
-    expect(withTable.cards?.[1]).toContain("/api/card/table");
-
+    // /api/card/table answers 400 for a plan without one, and the customer was sent a broken
+    // picture; PLB's sheet is still the one that has not been read
     for (const [text, code, label] of [
-      ["PLB ชาย 35 ทุน 1 ล้าน จ่าย 10 ปี เบี้ยเท่าไหร่", "PLB", "Protection Life (PLB)"],
+      ["Life Treasure ชาย 40 ทุน 10 ล้าน จ่าย 6 ปี เบี้ยเท่าไหร่", "LIFETREASURE", "Life Treasure"],
       ["iSmart ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่", "ISMART", "iSmart 80/6"],
     ] as const) {
       const reply = priceNamedPlan(text, code, label);
-      expect(reply.priced, label).toBe(true);
-      expect(reply.cards, label).toHaveLength(1);
-      expect(reply.cards?.[0], label).not.toContain("/api/card/table");
+      expect(reply.cards, label).toHaveLength(2);
+      expect(reply.cards?.[1], label).toContain("/api/card/table");
     }
+
+    const plb = priceNamedPlan("PLB ชาย 35 ทุน 1 ล้าน จ่าย 10 ปี เบี้ยเท่าไหร่", "PLB", "Protection Life (PLB)");
+    expect(plb.priced).toBe(true);
+    expect(plb.cards).toHaveLength(1);
+    expect(plb.cards?.[0]).not.toContain("/api/card/table");
   });
 
   it("never quotes an instalment below the company's floor", () => {

@@ -143,8 +143,8 @@ describe("a plan without a brain", () => {
     const a = await answerFromKnowledge("iSmart ชาย 35 ทุน 1 ล้าน จ่าย 6 ปี เบี้ยเท่าไหร่");
     expect(a.priced).toBe(true);
     expect(a.text).toContain("iSmart");
-    // the picture the engine drew — iSmart has no benefit sheet, so there is no table beside it
-    expect(a.cards).toHaveLength(1);
+    // the quote card, and the year-by-year table beside it
+    expect(a.cards).toHaveLength(2);
     expect(a.cards?.[0]).toContain("plan=ISMART");
   });
 

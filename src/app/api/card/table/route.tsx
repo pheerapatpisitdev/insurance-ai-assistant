@@ -11,10 +11,17 @@ export const revalidate = 86400;
 
 /** Six columns twice over; 1400 left the seven-figure ones touching their rules. */
 const WIDTH = 1600;
+/**
+ * And wider again for the plans that hand money back, which need a seventh column. The extra
+ * room is spent on the column rather than taken from the others: this is an image, where
+ * width costs nothing, and squeezing "1,662,000" into a narrower cell costs legibility.
+ */
+const WIDTH_WITH_PAYOUT = 1900;
 const PAD = 52;
 /** the space between the two halves the years are dealt into */
 const GUTTER = 48;
-const HALF = (WIDTH - PAD * 2 - GUTTER) / 2;
+const halfOf = (width: number) => (width - PAD * 2 - GUTTER) / 2;
+const HALF = halfOf(WIDTH);
 
 /**
  * Every band of the card, in pixels. As on the quote card, the drawing library lays a fixed
@@ -51,6 +58,23 @@ const COLS = [
   { w: HALF - 60 - 60 - 136 - 152 - 152, align: "flex-end" as const },
 ];
 
+/** The same layout with the payout column, in the wider canvas that makes room for it. */
+const PAYOUT_HALF = halfOf(WIDTH_WITH_PAYOUT);
+const PAYOUT_COLS = [
+  { w: 60, align: "flex-start" as const },
+  { w: 60, align: "flex-start" as const },
+  { w: 150, align: "flex-end" as const },
+  { w: 168, align: "flex-end" as const },
+  { w: 150, align: "flex-end" as const },
+  { w: 168, align: "flex-end" as const },
+  { w: PAYOUT_HALF - 60 - 60 - 150 - 168 - 150 - 168, align: "flex-end" as const },
+];
+
+/** Which layout a card is drawn in, decided by the columns it carries. */
+const layoutFor = (card: ValueTableCard) => (card.columns.length > 6
+  ? { cols: PAYOUT_COLS, half: PAYOUT_HALF, width: WIDTH_WITH_PAYOUT }
+  : { cols: COLS, half: HALF, width: WIDTH });
+
 /** Air either side of a figure, so no column ever touches the rule beside it. */
 const CELL_PAD = 11;
 
@@ -62,17 +86,17 @@ const CELL_PAD = 11;
  * ladder down the table instead of a column.
  */
 function Cell(
-  { i, height, color, rule, children }:
-  { i: number; height: number; color: string; rule: string; children: string },
+  { i, cols, height, color, rule, children }:
+  { i: number; cols: typeof COLS; height: number; color: string; rule: string; children: string },
 ) {
   return (
     <div
       style={{
         display: "flex",
-        width: COLS[i].w,
+        width: cols[i].w,
         height,
         alignItems: "center",
-        justifyContent: COLS[i].align,
+        justifyContent: cols[i].align,
         paddingLeft: CELL_PAD,
         paddingRight: CELL_PAD,
         ...(i > 0 ? { borderLeft: `1px solid ${rule}` } : {}),
@@ -90,11 +114,16 @@ const spacer = (height: number, background?: string) => (
 ) as const;
 
 /** Half the years, headed by their own row of column names so each half is read on its own. */
-function Half({ columns, rows, p }: { columns: string[]; rows: ValueTableRow[]; p: CardPalette }) {
+function Half(
+  { columns, rows, p, cols, half }:
+  { columns: string[]; rows: ValueTableRow[]; p: CardPalette; cols: typeof COLS; half: number },
+) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", width: HALF, flexShrink: 0 }}>
-      <div style={{ ...band(H.head), width: HALF, fontSize: 21, borderBottom: `1px solid ${p.hair}` }}>
-        {columns.map((c, i) => <Cell key={c} i={i} height={H.head - 1} color={p.ink} rule={p.rule}>{c}</Cell>)}
+    <div style={{ display: "flex", flexDirection: "column", width: half, flexShrink: 0 }}>
+      <div style={{ ...band(H.head), width: half, fontSize: 21, borderBottom: `1px solid ${p.hair}` }}>
+        {columns.map((c, i) => (
+          <Cell key={c} i={i} cols={cols} height={H.head - 1} color={p.ink} rule={p.rule}>{c}</Cell>
+        ))}
       </div>
       {rows.map((r, n) => {
         // the year the value first covers what has gone in is the one the customer looks for
@@ -109,14 +138,16 @@ function Half({ columns, rows, p }: { columns: string[]; rows: ValueTableRow[]; 
          * hard to read.
          */
         const ink = r.breakEven ? p.figure : p.ink;
-        const cells = [String(r.year), String(r.age), r.due, r.paid ?? "—", r.cash, r.cover];
+        const cells = r.payout === undefined
+          ? [String(r.year), String(r.age), r.due, r.paid ?? "—", r.cash, r.cover]
+          : [String(r.year), String(r.age), r.due, r.paid ?? "—", r.payout, r.cash, r.cover];
         return (
           <div
             key={r.year}
-            style={{ ...band(H.row), width: HALF, fontSize: 22, ...(ground ? { background: ground } : {}) }}
+            style={{ ...band(H.row), width: half, fontSize: 22, ...(ground ? { background: ground } : {}) }}
           >
             {cells.map((cell, i) => (
-              <Cell key={columns[i]} i={i} height={H.row} color={ink} rule={p.rule}>{cell}</Cell>
+              <Cell key={columns[i]} i={i} cols={cols} height={H.row} color={ink} rule={p.rule}>{cell}</Cell>
             ))}
           </div>
         );
@@ -167,6 +198,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   const cut = Math.ceil(card.rows.length / 2);
+  const { cols, half, width } = layoutFor(card);
   return new ImageResponse(
     (
       <div
@@ -192,10 +224,10 @@ export async function GET(req: NextRequest) {
         <div style={spacer(H.afterHairline)} />
         <div style={{ ...band(H.caption), fontSize: 25, color: p.accent }}>{CAPTION}</div>
 
-        <div style={{ display: "flex", width: WIDTH - PAD * 2, flexShrink: 0 }}>
-          <Half columns={card.columns} rows={card.rows.slice(0, cut)} p={p} />
+        <div style={{ display: "flex", width: width - PAD * 2, flexShrink: 0 }}>
+          <Half columns={card.columns} rows={card.rows.slice(0, cut)} p={p} cols={cols} half={half} />
           <div style={{ display: "flex", width: GUTTER, flexShrink: 0 }} />
-          <Half columns={card.columns} rows={card.rows.slice(cut)} p={p} />
+          <Half columns={card.columns} rows={card.rows.slice(cut)} p={p} cols={cols} half={half} />
         </div>
 
         <div style={spacer(H.gap)} />
@@ -207,7 +239,7 @@ export async function GET(req: NextRequest) {
       </div>
     ),
     {
-      width: WIDTH,
+      width,
       height: heightOf(card),
       fonts: [
         { name: "Plex", data: regular, weight: 400, style: "normal" },

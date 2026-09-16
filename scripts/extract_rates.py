@@ -17,7 +17,10 @@ from extract_ihu_benefits import PLAN_NO as IHU_PLAN_NO
 from extract_ihu_benefits import extract as extract_ihu_benefits
 
 ROOT = Path(__file__).resolve().parents[1]
-XLSX_DIR = ROOT / "ไฟล์คำนวน"
+# The workbooks are not in git, so a git worktree has none of them. Point this at the real
+# checkout to run an extraction from one: XLSX_DIR=/path/to/repo/ไฟล์คำนวน npm run extract
+import os
+XLSX_DIR = Path(os.environ.get("XLSX_DIR") or ROOT / "ไฟล์คำนวน")
 OUT_DIR = ROOT / "data" / "rates"
 MODE_MAP = {"รายปี": "annual", "ราย 6 เดือน": "semi", "รายเดือน": "monthly"}
 
@@ -529,6 +532,7 @@ def extract_w_family(plan_code, filename):
 LP_CV_SHEETS = {"M": "TABCV(Male) (as of 220626", "F": "TABCV(Female) (as of 220626)"}
 ISHIELD_CV_SHEETS = {"M": "TABCV(Male)", "F": "TABCV(Female)"}
 LT_CV_SHEETS = {"M": "TABCV(Male)", "F": "TABCV(Female)"}
+ISMART_CV_SHEETS = {"M": "TABCV(Male)", "F": "TABCV(Female)"}
 
 
 def cash_values(filename, sheets, header, first_value_column, last_covered_age):
@@ -601,6 +605,43 @@ def extract_lifetreasure_cash_values():
 
     write_json(OUT_DIR.parent / "cash-values" / "lifetreasure.json", {
         "planCode": "LIFETREASURE",
+        "source": filename,
+        "lastCoveredAge": last_covered_age,
+        "note": "surrender value = round(factor * sumAssured / 1000); factor per policy year, from year 1",
+        "factors": factors,
+    })
+
+
+def extract_ismart_cash_values():
+    """
+    iSmart's table, laid out like the rest of the W family but ending far earlier: the plan
+    covers to age 80, so the last row of an age-25 policy is the year that starts at 79.
+
+    The sheet is wide — hundreds of columns of extended-term and paid-up figures follow the
+    surrender values — and only the first (lastCoveredAge + 1 - age) of them belong to this
+    schedule. Reading past that point is what the length assertion below is for.
+    """
+    filename = W_FAMILY["ISMART"]
+    last_covered_age = 79
+    factors = cash_values(filename, ISMART_CV_SHEETS, ["Key", "CVPLAN", "CVSEX", "CVAGE"], 4, last_covered_age)
+
+    assert sorted(factors) == ["W80F06"], sorted(factors)
+    for variant, by_sex in factors.items():
+        assert sorted(by_sex) == ["F", "M"], variant
+        for sex, by_age in by_sex.items():
+            # the plan is sold from 25 to 65, which is what data/rules/ismart.json states
+            assert sorted(by_age) == list(range(25, 66)), f"{variant} {sex} ages"
+            for age, values in by_age.items():
+                assert len(values) == last_covered_age + 1 - age, f"{variant} {sex} age {age}"
+                assert values == sorted(values), f"{variant} {sex} age {age} is not rising"
+                # Every schedule ends at maturity, which the rules put at 200% of the sum
+                # assured — and above it at the older issue ages, where six years of premium
+                # come to more than twice the sum and the 101%-of-premiums floor takes over.
+                # A man crosses at 53 and a woman later, her premium being the smaller.
+                assert values[-1] >= 2000, f"{variant} {sex} age {age} ends {values[-1]}"
+
+    write_json(OUT_DIR.parent / "cash-values" / "ismart.json", {
+        "planCode": "ISMART",
         "source": filename,
         "lastCoveredAge": last_covered_age,
         "note": "surrender value = round(factor * sumAssured / 1000); factor per policy year, from year 1",
@@ -731,6 +772,7 @@ EXTRACTORS = {
     "lifeprotect-cv": extract_lifeprotect_cash_values,
     "lifetreasure-cv": extract_lifetreasure_cash_values,
     "ishield-cv": extract_ishield_cash_values,
+    "ismart-cv": extract_ismart_cash_values,
     "ishield-diseases": extract_ishield_diseases,
     "dci-diseases": extract_dci_diseases,
     "ihealthy-ultra": extract_ihu_benefits,

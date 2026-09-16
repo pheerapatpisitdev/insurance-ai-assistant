@@ -1,4 +1,4 @@
-import type { CoverTopUp, DeathBenefit } from "@/calc/types";
+import type { CoverTopUp, DeathBenefit, PlanRules } from "@/calc/types";
 
 export type { CoverTopUp };
 
@@ -26,6 +26,14 @@ export interface ProjectionRow {
   premiumPaid: number | null;
   /** what surrendering at the end of that year returns */
   cashValue: number;
+  /**
+   * What the policy pays the living insured that year, for the plans that pay one.
+   *
+   * It is the whole point of a savings plan and it is invisible in every other column: a
+   * first year that shows 277,000 paid in and 2,000 surrenderable reads as a terrible
+   * bargain until the 10,000 handed back that same year is on the page beside it.
+   */
+  payout?: number;
 }
 
 export interface Projection {
@@ -56,11 +64,45 @@ export interface ProjectionInput {
   payYears: number;
   death: DeathBenefit;
   topUp: CoverTopUp;
+  /** the plan's yearly survival benefit, where it sells one — `rules.base.maturity.survivalPayout` */
+  payout?: NonNullable<PlanRules["base"]["maturity"]>["survivalPayout"];
+  /** what staying to the end pays, as a percent of the sum assured — `maturity.percentOfSumAssured` */
+  maturityPercent?: number;
+}
+
+/**
+ * What the plan hands back in one policy year, in satang.
+ *
+ * The final year is the maturity rather than another instalment, which is how the company's
+ * own sheet reads it: the column is headed "เงินจ่ายคืน… และเงินครบกำหนดสัญญา" and its last
+ * row carries the whole contract. That figure is handled by the caller, not here.
+ */
+function payoutIn(
+  bands: ProjectionInput["payout"], sumAssured: number, policyYear: number, lastYear: number,
+): number | undefined {
+  if (!bands?.length || policyYear >= lastYear) return undefined;
+  let from = 1;
+  for (const band of bands) {
+    const through = band.throughPolicyYear ?? lastYear - 1;
+    if (policyYear >= from && policyYear <= through) {
+      return Math.round((sumAssured * band.percentOfSumAssured) / 100) * 100;
+    }
+    from = through + 1;
+  }
+  return undefined;
 }
 
 export function cashProjection(
-  { factors, age, sumAssured, annualSatang, payYears, death, topUp }: ProjectionInput,
+  { factors, age, sumAssured, annualSatang, payYears, death, topUp, payout, maturityPercent }: ProjectionInput,
 ): Projection {
+  /**
+   * Staying to the end pays what the rules promise, or the surrender value if that has grown
+   * past it — which it does at the older issue ages, where six years of premium come to more
+   * than the promise and the table's own last factor rises to meet them.
+   */
+  const maturity = maturityPercent === undefined
+    ? undefined
+    : Math.round((sumAssured * maturityPercent) / 100) * 100;
   let paid = 0;
   const rows: ProjectionRow[] = factors.map((factor, i) => {
     const at = age + i;
@@ -72,7 +114,8 @@ export function cashProjection(
      * Late in a long contract the premiums paid overtake the sum assured, and a cover drawn
      * without the top-up would understate what the family receives.
      */
-    const promised = (at < death.beforeAge ? death.sumBefore : death.sumFrom) * 100;
+    const promised = (at < death.beforeAge ? death.sumBefore : death.sumFrom)
+      * (topUp.sumAssuredMultiple ?? 1) * 100;
     const floors = [promised];
     if (topUp.includeCashValue) floors.push(cashValue);
     if (annualSatang !== null) floors.push(Math.round((paid * topUp.premiumPercent) / 100));
@@ -83,12 +126,35 @@ export function cashProjection(
       premiumDue: due,
       premiumPaid: annualSatang === null ? null : paid,
       cashValue,
+      ...(() => {
+        const last = i + 1 === factors.length;
+        const back = last && maturity !== undefined
+          ? Math.max(maturity, cashValue)
+          : payoutIn(payout, sumAssured, i + 1, factors.length);
+        return back === undefined ? {} : { payout: back };
+      })(),
     };
   });
 
   let zeroYears = 0;
   while (zeroYears < rows.length && rows[zeroYears].cashValue === 0) zeroYears += 1;
 
-  const breakEven = rows.find((r) => r.premiumPaid !== null && r.cashValue >= r.premiumPaid) ?? null;
-  return { rows, breakEven, zeroYears, maturityAge: age + factors.length, coverFloor: death.sumFrom * 100 };
+  /**
+   * The first year the policy has returned what was put into it.
+   *
+   * The money handed back along the way counts. On a plan that pays one, leaving it out puts
+   * the break-even sixteen years late — iSmart at 35 surrenders its way past the premiums in
+   * year 34, and has already handed back 610,000 of them by then. A table that highlights
+   * the later year is telling the customer the plan is worse than it is, in the one figure
+   * they look for.
+   */
+  let received = 0;
+  const breakEven = rows.find((r) => {
+    received += r.payout ?? 0;
+    return r.premiumPaid !== null && r.cashValue + received >= r.premiumPaid;
+  }) ?? null;
+  return {
+    rows, breakEven, zeroYears, maturityAge: age + factors.length,
+    coverFloor: death.sumFrom * (topUp.sumAssuredMultiple ?? 1) * 100,
+  };
 }

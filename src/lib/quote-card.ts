@@ -440,6 +440,8 @@ export interface ValueTableRow {
   paid: string | null;
   cash: string;
   cover: string;
+  /** the money handed back that year, for a plan that pays one; absent elsewhere */
+  payout?: string;
   /** the first year the policy is worth what has gone into it */
   breakEven?: boolean;
   /** a year that would return nothing at all on surrender */
@@ -458,6 +460,13 @@ export interface ValueTableCard {
 
 /** The same headings as the table on the sales page, in the same order. */
 const VALUE_COLUMNS = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"];
+/**
+ * The same table for a plan that pays money back while it runs.
+ *
+ * The payout goes next to the premium rather than at the end, because the two are read
+ * against each other: what went out that year, and what came back.
+ */
+const PAYOUT_COLUMNS = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "จ่ายคืน", "เวนคืนได้", "คุ้มครอง"];
 
 const baht = (satang: number) => money(Math.round(satang / 100));
 
@@ -490,8 +499,11 @@ export function valueTableCard(input: PlanCardInput, today: Date = new Date()): 
   const payYears = payYearsFor(plan, input.variant, input.age);
   const death = result.deathBenefit
     ?? { beforeAge: 0, sumBefore: result.sumAssured, sumFrom: result.sumAssured, alreadyPastAge: true };
+  const payout = plan.rules.base.maturity?.survivalPayout;
   const p = cashProjection({
-    factors, age: input.age, sumAssured: input.sumAssured, annualSatang, payYears, death, topUp: plan.coverTopUp,
+    factors, age: input.age, sumAssured: input.sumAssured, annualSatang, payYears, death,
+    topUp: plan.coverTopUp, payout,
+    ...(payout?.length ? { maturityPercent: plan.rules.base.maturity?.percentOfSumAssured } : {}),
   });
 
   const variantLabel = plan.variantLabels[input.variant];
@@ -502,7 +514,7 @@ export function valueTableCard(input: PlanCardInput, today: Date = new Date()): 
     premiumLine: annualSatang === null
       ? "ขอราคาปัจจุบันได้ทางแชท"
       : `เบี้ย ${baht(annualSatang)} บาทต่อปี · ชำระ ${payYears} ปี`,
-    columns: VALUE_COLUMNS,
+    columns: payout?.length ? PAYOUT_COLUMNS : VALUE_COLUMNS,
     rows: p.rows.map((r) => ({
       year: r.policyYear,
       age: r.age,
@@ -511,6 +523,8 @@ export function valueTableCard(input: PlanCardInput, today: Date = new Date()): 
       paid: r.premiumPaid === null ? null : baht(r.premiumPaid),
       cash: baht(r.cashValue),
       cover: baht(r.cover),
+      // a dash in the last year: what maturity pays is the surrender column's own last figure
+      ...(payout?.length ? { payout: r.payout ? baht(r.payout) : "—" } : {}),
       ...(p.breakEven?.policyYear === r.policyYear ? { breakEven: true } : {}),
       ...(r.cashValue === 0 ? { empty: true } : {}),
     })),

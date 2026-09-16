@@ -1,6 +1,7 @@
 import lifeprotectCashValues from "../../data/cash-values/lifeprotect.json";
 import ishieldCashValues from "../../data/cash-values/ishield.json";
 import lifetreasureCashValues from "../../data/cash-values/lifetreasure.json";
+import ismartCashValues from "../../data/cash-values/ismart.json";
 
 export interface CashValueRow {
   /** the insured's age at the start of that policy year, as the company table labels it */
@@ -18,7 +19,8 @@ interface CashValueTable {
 
 /** The plans whose surrender tables have been extracted, by the plan code the engine uses. */
 const TABLES: Record<string, CashValueTable> = Object.fromEntries(
-  [lifeprotectCashValues, ishieldCashValues, lifetreasureCashValues].map((t) => [t.planCode, t as unknown as CashValueTable]),
+  [lifeprotectCashValues, ishieldCashValues, lifetreasureCashValues, ismartCashValues]
+    .map((t) => [t.planCode, t as unknown as CashValueTable]),
 );
 
 export function hasCashValues(planCode: string): boolean {
