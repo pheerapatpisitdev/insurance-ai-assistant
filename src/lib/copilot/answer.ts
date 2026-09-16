@@ -9,6 +9,7 @@ import { asksCheaper } from "@/lib/assistant/common";
 import type { AnySlots } from "@/lib/assistant/slots";
 import { askLibrary } from "./library";
 import { PRICED_FOLLOW_UPS, type GuideItem } from "./guide";
+import { noteAfterAnswer } from "@/lib/assistant/unanswered";
 
 /**
  * The assistant that answers out of this system's own knowledge, and out of nothing else.
@@ -137,6 +138,31 @@ export async function answerFromKnowledge(
     const answer = await answerAny(turns, slots, "web");
     const text = answer.messages.map((m) => m.text).filter(Boolean).join("\n\n");
     const cards = answer.messages.map((m) => m.card).filter((c): c is string => Boolean(c));
+
+    /**
+     * Written down when the calculator did not answer this.
+     *
+     * A priced answer with a card is the engine's, is covered by the test suite, and teaches
+     * nothing by being collected. Everything else was worded by a model or ended in a question
+     * back to the customer, and those are the two shapes that go wrong: the day a customer was
+     * told there was no picture of the comparison table, this was the path that told them.
+     *
+     * Handed to `after`, not fired and forgotten. A floating promise in a server action is
+     * not a background task: the response goes back, the serverless function is frozen, and
+     * the insert never lands — which is exactly what happened on the first attempt, silently
+     * and with nothing in the log to say so. `after` runs it once the response has been sent
+     * and keeps the function alive until it finishes, so the customer waits for nothing and
+     * the note is still taken.
+     */
+    if (!answer.priced && cards.length === 0) {
+      const productAsked = answer.slots?.product;
+      noteAfterAnswer({
+        question,
+        route: answer.fromLibrary ? "library" : "brain",
+        product: productAsked,
+      });
+    }
+
     return {
       text,
       // an answer the library wrote is not the engine's, and the line under it should not say so
@@ -158,5 +184,7 @@ export async function answerFromKnowledge(
 
   const reply = await askLibrary(history, question);
   if (!reply) return { text: BROKEN, model: "—", slots };
+  // the library wrote this one too, and by the same argument it is worth knowing about
+  noteAfterAnswer({ question, route: "library" });
   return { text: reply.text, model: reply.model, slots };
 }
