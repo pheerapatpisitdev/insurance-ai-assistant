@@ -1,4 +1,6 @@
 import { getPlan, listPlans, trimSuffix } from "@/calc/plans/registry";
+import { riderDiseases } from "@/calc/riders/diseases";
+import ishieldDiseases from "../../../data/riders/ishield-diseases.json";
 import { pricedHere } from "./price";
 import { FAQ as LIFE_FAQ } from "@/lib/assistant/lifeprotect/faq";
 import { FAQ as HEALTH_FAQ } from "@/lib/assistant/ihealthy/faq";
@@ -107,6 +109,41 @@ function planSection(code: string, name: string, rules: PlanRules): string {
   return lines.join("\n");
 }
 
+/**
+ * The illnesses the critical-illness riders name, one line each.
+ *
+ * They were in the repository and not in here, so the assistant answered "DCI คุ้มครองกี่โรค"
+ * with "ข้อมูลนี้ไม่มีในระบบ" — which was true of what it could see and false of the system,
+ * and it is one of the questions an agent is asked most. Thirty-one names and seventy cost
+ * about four kilobytes, against a knowledge base that already sends everything it has.
+ *
+ * The names only, never the definitions: what counts as the illness is the policy's wording,
+ * and a model summarising that sentence is a model rewriting the contract.
+ */
+function diseaseSection(): string {
+  const out: string[] = ["## โรคร้ายแรงที่สัญญาเพิ่มเติมคุ้มครอง (ชื่อโรคตามกรมธรรม์)"];
+
+  const dci = riderDiseases("DCI");
+  if (dci) {
+    out.push(
+      `### ${dci.name} — ${dci.diseases.length} โรค`,
+      `- ${dci.note}`,
+      `- รายชื่อ: ${dci.diseases.join(" / ")}`,
+    );
+  }
+
+  const shield = ishieldDiseases as { note: string; early: string[]; major: string[] };
+  out.push(
+    `### iShield — ระยะเริ่มต้น ${shield.early.length} โรค, ระยะรุนแรง ${shield.major.length} โรค`,
+    `- ${shield.note}`,
+    `- ระยะเริ่มต้น: ${shield.early.join(" / ")}`,
+    `- ระยะรุนแรง: ${shield.major.join(" / ")}`,
+  );
+
+  out.push("- คำนิยามของแต่ละโรคเป็นไปตามที่ระบุในกรมธรรม์ ห้ามสรุปหรือย่อคำนิยามเอง");
+  return out.join("\n");
+}
+
 /** The answers the agency already gives by hand, which are the house's own words. */
 function faqSection(): string {
   const all = [
@@ -139,6 +176,11 @@ async function ownNotesSection(): Promise<string> {
   }
 }
 
+/** The plans this chat can price, by the names a person would use for them. */
+function priceableNames(): string[] {
+  return knowledgePlans().filter((p) => PRICEABLE.has(p.code)).map((p) => trimSuffix(p.name));
+}
+
 /** Which plans the assistant may speak about, newest question first in the caller's hands. */
 export function knowledgePlans(): { code: string; name: string }[] {
   return listPlans().filter((p) => getPlan(p.code)?.rules);
@@ -159,10 +201,17 @@ export async function assembleKnowledge(): Promise<string> {
     "# คลังความรู้ของระบบนี้",
     "ทุกอย่างด้านล่างมาจากไฟล์กฎและตารางของระบบนี้เอง ไม่ได้มาจากที่อื่น",
     "",
-    "**สำคัญ:** แชทนี้คิดเบี้ยได้เฉพาะ Life Protect x 2 และ iHealthy Ultra เท่านั้น",
-    "แบบอื่นตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
+    /**
+     * Written from the same set the per-plan lines use. This sentence used to name two plans
+     * by hand and forbid quoting any other — which outranked everything below it, so fixing
+     * the per-plan lines alone would have left the assistant refusing anyway.
+     */
+    `**สำคัญ:** แชทนี้คิดเบี้ยให้ได้เฉพาะแบบเหล่านี้: ${priceableNames().join(", ")} และ iHealthy Ultra`,
+    "แบบที่ไม่อยู่ในรายการนี้ ตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
     "",
     plans,
+    "",
+    diseaseSection(),
     "",
     faqSection(),
     ...(notes ? ["", notes] : []),

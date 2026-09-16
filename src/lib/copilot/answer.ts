@@ -139,20 +139,41 @@ export async function answerFromKnowledge(
     };
   }
 
+  /** what the pricing brain worked out about this person, to hand back whatever answers */
+  let carried: AnySlots | null = slots;
+
   if (forTheEngine(question) || slots) {
     const turns: ChatMessage[] = [...history.slice(-6), { role: "user", content: question }];
     const answer = await answerAny(turns, slots);
-    const text = answer.messages.map((m) => m.text).join("\n\n");
-    const cards = answer.messages.map((m) => m.card).filter((c): c is string => Boolean(c));
-    return {
-      text,
-      model: answer.priced ? ENGINE : ENGINE,
-      priced: Boolean(answer.priced),
-      slots: answer.slots,
-      ...(cards.length ? { cards } : {}),
-      // the brains' own recognisers match these, so they reach the engine and not a model
-      ...(answer.priced ? { guide: PRICED_FOLLOW_UPS } : {}),
-    };
+    carried = answer.slots;
+    /**
+     * "undecided" is the dispatcher saying it could not tell what the message is about, and
+     * its reply is then "สวัสดีครับ สนใจแบบไหนครับ" — the right answer on Messenger, where
+     * that greeting opens a conversation, and the wrong one here.
+     *
+     * "ประกันรถยนต์ชั้น 1 เบี้ยเท่าไหร่" carries a money word, so it reached the dispatcher,
+     * which sells no motor insurance and greeted the asker instead. It invented no premium,
+     * which was the thing that mattered — but being asked "which plan are you interested in"
+     * reads as though there were one. The knowledge has the better answer to that question,
+     * and to a bare "เบี้ยเท่าไหร่" as well: it names what to type.
+     *
+     * Whatever it worked out about the person is kept either way, so "ชาย 35" said before
+     * the plan was named is not lost by taking the other road.
+     */
+    const undecided = (answer.slots as { product?: string } | null)?.product === "undecided";
+    if (!undecided) {
+      const text = answer.messages.map((m) => m.text).join("\n\n");
+      const cards = answer.messages.map((m) => m.card).filter((c): c is string => Boolean(c));
+      return {
+        text,
+        model: ENGINE,
+        priced: Boolean(answer.priced),
+        slots: answer.slots,
+        ...(cards.length ? { cards } : {}),
+        // the brains' own recognisers match these, so they reach the engine and not a model
+        ...(answer.priced ? { guide: PRICED_FOLLOW_UPS } : {}),
+      };
+    }
   }
 
   const knowledge = await assembleKnowledge();
@@ -174,5 +195,5 @@ export async function answerFromKnowledge(
    * of.
    */
   const reply = await chat({ tier: "small", task: "copilot", messages, maxTokens: 900 });
-  return { text: reply.text, model: reply.model };
+  return { text: reply.text, model: reply.model, slots: carried };
 }
