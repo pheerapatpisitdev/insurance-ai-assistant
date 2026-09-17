@@ -64,7 +64,7 @@ function Status({ check }: { check?: ProviderCheck }) {
 }
 
 const PROVIDER_LABEL: Record<string, string> = {
-  anthropic: "Anthropic (Claude)", openai: "OpenAI (GPT)", google: "Google (Gemini)", xai: "xAI (Grok)", zai: "Z.ai (GLM)",
+  anthropic: "Anthropic (Claude)", openai: "OpenAI (GPT)", google: "Google (Gemini)", zai: "Z.ai (GLM)",
 };
 
 export function AiClient({ keys, models, settings, providers, spentThisMonth, spend }: {

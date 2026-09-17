@@ -9,8 +9,8 @@ const USD_TO_THB = 36;
  * call fails the next one is tried, so one provider being down does not take the bot down.
  */
 const TIER_PREFERENCE: Record<Tier, string[]> = {
-  small: ["gemini-3.1-flash-lite", "gpt-5-mini", "glm-5.3-flash", "claude-haiku-4-5-20251001", "grok-4.3"],
-  large: ["claude-sonnet-5", "gpt-5", "gemini-3.7-flash", "grok-4.6", "glm-5.3"],
+  small: ["gemini-3.1-flash-lite", "gpt-5-mini", "glm-5.3-flash", "claude-haiku-4-5-20251001"],
+  large: ["claude-sonnet-5", "gpt-5", "gemini-3.7-flash", "glm-5.3"],
 };
 
 export class BudgetExceeded extends Error {

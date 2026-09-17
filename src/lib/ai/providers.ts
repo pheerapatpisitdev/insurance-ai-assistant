@@ -87,10 +87,7 @@ export const CALLERS: Record<string, (a: CallArgs) => Promise<CallResult>> = {
     };
   },
 
-  // xAI and Z.ai both speak the OpenAI chat format on their own hosts.
-  async xai(args) {
-    return openAiCompatible("https://api.x.ai/v1/chat/completions", args);
-  },
+  // Z.ai speaks the OpenAI chat format on its own host.
   async zai(args) {
     return openAiCompatible("https://api.z.ai/api/paas/v4/chat/completions", args);
   },

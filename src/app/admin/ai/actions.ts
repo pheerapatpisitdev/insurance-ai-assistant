@@ -6,7 +6,12 @@ import { clearAiConfigCache, testProviders, type ProviderCheck } from "@/lib/ai/
 
 export type { ProviderCheck } from "@/lib/ai/client";
 
-const PROVIDERS = ["anthropic", "openai", "google", "xai", "zai"] as const;
+/**
+ * The companies this system can call. xAI was here until 2026-09-17: the account was blocked
+ * for want of credit, so every Grok call failed, and the owner asked for it to go rather than
+ * sit in the chain costing a failed attempt whenever the fallback reached it.
+ */
+const PROVIDERS = ["anthropic", "openai", "google", "zai"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
 export interface KeyRow { provider: string; tail: string }
@@ -55,7 +60,14 @@ export async function loadAiPage(): Promise<{
   const rows = (spend.data ?? []) as { model: string | null; task: string | null; cost_thb: number | null }[];
   return {
     keys: keys.data ?? [],
-    models: (models.data ?? []).map((m) => ({ ...m, enabled: m.enabled && !disabled.has(m.id) })),
+    /**
+     * Only the companies above. `model_configs` is shared with another product, so it lists
+     * models this system has no key for and no code to call — Grok is in it still, and would
+     * otherwise go on being offered here as something to switch on.
+     */
+    models: (models.data ?? [])
+      .filter((m) => (PROVIDERS as readonly string[]).includes(m.provider))
+      .map((m) => ({ ...m, enabled: m.enabled && !disabled.has(m.id) })),
     settings: settings.data ?? null,
     providers: [...PROVIDERS],
     spentThisMonth: rows.reduce((sum, r) => sum + Number(r.cost_thb ?? 0), 0),
