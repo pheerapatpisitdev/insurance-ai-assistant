@@ -28,6 +28,8 @@ const model = (name: string, inUsd: number, provider = "p"): ModelRow => ({
 const CHEAP = model("gemini-3.1-flash-lite", 0.1);
 const MID = model("claude-haiku-4-5-20251001", 1);
 const DEAR = model("claude-sonnet-5", 3);
+/** in the large tier's own list, and the model chosen on the admin page today */
+const PICKED = model("gemini-3.7-flash", 0.75);
 
 describe("the order models are tried in", () => {
   it("puts the preferred model first", () => {
@@ -59,6 +61,19 @@ describe("the order models are tried in", () => {
   it("lets the large tier reach the models the large tier is for", () => {
     const order = fallbackOrder([CHEAP, MID, DEAR], "large", null);
     expect(order.map((m) => m.model_name)).toContain("claude-sonnet-5");
+  });
+
+  it("does not ask the owner's model twice when it is also one of the tier's own", () => {
+    /**
+     * The large tier is set to gemini-3.7-flash on the admin page, and gemini-3.7-flash is
+     * in the large tier's list — so the chain asked it, then two others, then it again. The
+     * repeat falls due the moment the first attempt fails, which is when that provider is
+     * down, so the retry is a customer waiting twice for the same dead endpoint.
+     */
+    const names = fallbackOrder([CHEAP, MID, DEAR, PICKED], "large", "gemini-3.7-flash")
+      .map((m) => m.model_name);
+    expect(names).toContain("gemini-3.7-flash");
+    expect(new Set(names).size).toBe(names.length);
   });
 
   it("honours the model the owner picked on the admin page, whatever it costs", () => {

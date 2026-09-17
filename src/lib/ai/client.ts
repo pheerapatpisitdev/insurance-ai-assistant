@@ -131,7 +131,16 @@ const priceOf = (m: ModelRow) => m.price.inputPerMTokUsd + m.price.outputPerMTok
  */
 export function fallbackOrder(models: ModelRow[], tier: Tier, chosen: string | null, keys?: Record<string, string>): ModelRow[] {
   const enabled = models.filter((m) => m.kind === "text" && m.enabled && (!keys || keys[m.provider]));
-  const order = chosen ? [chosen, ...TIER_PREFERENCE[tier]] : TIER_PREFERENCE[tier];
+  /**
+   * Deduplicated, because the owner's choice is usually one of the tier's own models.
+   *
+   * gemini-3.7-flash is picked for the large tier on the admin page today and is also third
+   * in that tier's list, so the chain read: gemini-3.7-flash, sonnet, gpt-5, gemini-3.7-flash
+   * again. The second attempt is the one that matters — it lands exactly when the first has
+   * just failed, which is when the provider is down, so the fallback spends a call and a
+   * customer's wait asking the same dead endpoint a second time before trying anyone else.
+   */
+  const order = [...new Set(chosen ? [chosen, ...TIER_PREFERENCE[tier]] : TIER_PREFERENCE[tier])];
   const preferred = order
     .map((name) => enabled.find((m) => m.model_name === name))
     .filter((m): m is ModelRow => Boolean(m));
