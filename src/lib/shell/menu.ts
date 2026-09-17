@@ -53,35 +53,47 @@ export const SALES_PAGES: MenuLink[] = [
  * Selling first, because that is what the day is for; the assistant's own settings next,
  * because they are tended weekly rather than hourly; the channels after that, because they
  * are set up once and then left alone.
+ *
+ * Without a session the back office is not in it at all. Everything under /admin is gated
+ * and always was, but a gate is a different thing from a sign: naming the pages tells a
+ * stranger the shape of the tool and where to knock. What is left is what an agent sends
+ * customers anyway — the calculator, the assistant, the six sales pages — so a customer
+ * standing on one can still reach the others.
  */
-export function menuGroups(): MenuGroup[] {
-  return [
-    { links: [{ href: "/admin", label: "ภาพรวม" }] },
-    {
-      title: "งานขาย",
-      links: [
-        { href: "/other-plans", label: "คำนวณเบี้ย" },
-        { href: "/", label: "ถาม AI" },
-        { href: "/admin/crm", label: "ลูกค้า" },
-      ],
-    },
-    {
+export function menuGroups(signedIn: boolean): MenuGroup[] {
+  const groups: MenuGroup[] = [];
+
+  if (signedIn) groups.push({ links: [{ href: "/admin", label: "ภาพรวม" }] });
+
+  groups.push({
+    title: "งานขาย",
+    links: [
+      { href: "/other-plans", label: "คำนวณเบี้ย" },
+      { href: "/", label: "ถาม AI" },
+      ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า" }] : []),
+    ],
+  });
+
+  if (signedIn) {
+    groups.push({
       title: "ผู้ช่วย AI",
       links: [
         { href: "/admin/ai", label: "ตั้งค่า" },
         { href: "/admin/knowledge", label: "สอน AI" },
       ],
-    },
-    {
+    });
+    groups.push({
       title: "ช่องทาง",
       links: [
         { href: "/admin/messenger", label: "Messenger" },
         { href: "/admin/ads", label: "โฆษณา" },
         { href: "/admin/api", label: "API" },
       ],
-    },
-    { title: "หน้าขาย", links: SALES_PAGES.map((p) => ({ ...p, external: true })) },
-  ];
+    });
+  }
+
+  groups.push({ title: "หน้าขาย", links: SALES_PAGES.map((p) => ({ ...p, external: true })) });
+  return groups;
 }
 
 /**

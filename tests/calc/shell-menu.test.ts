@@ -19,7 +19,7 @@ const routeExists = (href: string) => {
 
 describe("every place the menu says you can go", () => {
   it("is a page that exists", () => {
-    for (const group of menuGroups()) {
+    for (const group of menuGroups(true)) {
       for (const link of group.links) {
         expect(routeExists(link.href), `${link.label} → ${link.href}`).toBe(true);
       }
@@ -34,7 +34,7 @@ describe("every place the menu says you can go", () => {
   });
 
   it("opens a sales page in its own tab and an agent's own page in place", () => {
-    const groups = menuGroups();
+    const groups = menuGroups(true);
     const sales = groups.find((g) => g.title === "หน้าขาย")!;
     expect(sales.links.every((l) => l.external)).toBe(true);
     const work = groups.find((g) => g.title === "งานขาย")!;
@@ -42,7 +42,7 @@ describe("every place the menu says you can go", () => {
   });
 
   it("has no duplicate destination", () => {
-    const all = menuGroups().flatMap((g) => g.links.map((l) => l.href));
+    const all = menuGroups(true).flatMap((g) => g.links.map((l) => l.href));
     expect(new Set(all).size).toBe(all.length);
   });
 });
@@ -64,5 +64,47 @@ describe("which link is lit", () => {
   it("keeps the overview apart from the pages under it", () => {
     expect(isCurrent("/admin", "/admin")).toBe(true);
     expect(isCurrent("/admin", "/admin/ai")).toBe(false);
+  });
+});
+
+/**
+ * What a customer may see, and what only an agent may.
+ *
+ * The owner first asked for one menu for everybody and was shown what that meant — somebody
+ * arriving from an advertisement reading CRM and API — then changed their mind, which is the
+ * reason this is a test and not a comment. The back office is not merely gated now; it is not
+ * announced.
+ *
+ * The public half is not an oversight either. The calculator and the sales pages are things
+ * an agent sends to customers, so a customer standing on one is meant to be able to reach the
+ * others.
+ */
+describe("what the menu shows to somebody who has not signed in", () => {
+  const hrefs = (signedIn: boolean) => menuGroups(signedIn).flatMap((g) => g.links.map((l) => l.href));
+
+  it("keeps every back-office page out of it", () => {
+    const out = hrefs(false);
+    for (const secret of ["/admin", "/admin/crm", "/admin/ai", "/admin/knowledge", "/admin/messenger", "/admin/ads", "/admin/api"]) {
+      expect(out, secret).not.toContain(secret);
+    }
+  });
+
+  it("still offers the pages a customer is sent to", () => {
+    const out = hrefs(false);
+    expect(out).toContain("/");
+    expect(out).toContain("/other-plans");
+    for (const page of SALES_PAGES) expect(out).toContain(page.href);
+  });
+
+  it("gives an agent everything back", () => {
+    const out = hrefs(true);
+    for (const page of ["/admin", "/admin/crm", "/admin/api", "/other-plans", "/"]) {
+      expect(out, page).toContain(page);
+    }
+  });
+
+  it("names no group a signed-out reader has nothing in", () => {
+    // an empty heading is a heading that says something is being kept from you
+    for (const group of menuGroups(false)) expect(group.links.length).toBeGreaterThan(0);
   });
 });

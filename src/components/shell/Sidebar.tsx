@@ -25,11 +25,31 @@ function Mark() {
   );
 }
 
-export function Sidebar({ signedIn }: { signedIn: boolean }) {
+export function Sidebar({ signedIn: known }: { signedIn: boolean }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const [leaving, startLeaving] = useTransition();
-  const groups = menuGroups();
+
+  /**
+   * Whether this browser holds a session, asked after the page is up.
+   *
+   * The back office is left out of the menu entirely without one — a gate and a sign are
+   * different things, and naming the pages tells a stranger the shape of the tool. The back
+   * office itself passes `true` and never asks, so there is no moment there where the menu
+   * is missing its own pages.
+   */
+  const [signedIn, setSignedIn] = useState(known);
+  useEffect(() => {
+    if (known) return;
+    let alive = true;
+    fetch("/api/session", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { signedIn?: boolean }) => { if (alive) setSignedIn(Boolean(d.signedIn)); })
+      .catch(() => { /* no session is the safe answer, and it is the one already held */ });
+    return () => { alive = false; };
+  }, [known]);
+
+  const groups = menuGroups(signedIn);
 
   // a menu left open across a navigation covers the page that was just asked for
   useEffect(() => { setOpen(false); }, [path]);
