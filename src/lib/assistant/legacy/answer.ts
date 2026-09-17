@@ -1,0 +1,182 @@
+import { bundleAgeRange, bundleModePremiums, describeTier, quoteBundle } from "@/calc/bundles/quote";
+import { getBundle } from "@/calc/bundles/registry";
+import { cardPath } from "@/lib/quote-card";
+import { formatBaht } from "@/calc/money";
+import { coverIn, peopleIn, type Reply } from "../common";
+import { writtenFor, type Channel } from "../channel";
+
+/**
+ * The arrangement this brain sells, by the name the registry holds it under.
+ *
+ * One bundle rather than a list on purpose: the customer is choosing how much, not which
+ * product, and the tier they pick is the whole of that choice.
+ */
+export const LEGACY_BUNDLE = "LEGACY_FAMILY";
+
+/** A million baht to the family, which is what a tier number means here. */
+const PER_TIER = 1_000_000;
+
+/**
+ * What this brain remembers between turns.
+ *
+ * Deliberately three fields. The arrangement fixes the plan, the package, the sum assured on
+ * the base contract and the rider that sits on it, so there is nothing left for a customer to
+ * decide except who they are and how large a legacy they want.
+ */
+export interface LegacySlots {
+  product: "legacy";
+  age?: number;
+  sex?: "M" | "F";
+  /** the tier, 1–10, which is also the millions the family receives */
+  tier?: number;
+}
+
+export type LegacyAnswer = Reply & { slots: LegacySlots };
+
+/**
+ * What the customer is told the moment they press the button, before anything is asked.
+ *
+ * The agency's own words, not a model's. Every line is a term of the contract as the bundle
+ * file states it, which is the only kind of claim this system makes about a plan it sells —
+ * and the premium is not among them, because no premium is known until an age is.
+ */
+export const LEGACY_OPENING = [
+  "มรดกเพื่อครอบครัว — วงเงินใหญ่ เบี้ยเบาครับ 🛡",
+  "• เสียชีวิต ครอบครัวรับ **เต็มวงเงิน** ที่เลือกไว้",
+  "• ตรวจเจอ **1 ใน 31 โรคร้ายแรง** รับเงินสดก้อนใหญ่ทันที จ่ายครั้งเดียว",
+  "• รับเงินโรคร้ายไปแล้ว **ประกันชีวิตยังอยู่ต่อ** 150,000 บาท ให้ครอบครัว",
+  "• เลือกวงเงินได้ **1–10 ล้านบาท** ส่วนโรคร้ายคุ้มครองถึงอายุ 75",
+].join("\n");
+
+/** The sum the bot asks for, offered as the three tiers most people land on. */
+export const LEGACY_TIERS = ["มรดก 1 ล้าน", "มรดก 3 ล้าน", "มรดก 5 ล้าน"];
+
+const ASK_PERSON = "ขอทราบเพศกับอายุหน่อยครับ เดี๋ยวคิดเบี้ยให้เลย (เช่น ช 35)";
+const ASK_TIER = "อยากได้วงเงินมรดกเท่าไหร่ครับ เลือกได้ 1–10 ล้าน";
+
+/**
+ * Why an age can be turned away here and not on the plain life plan.
+ *
+ * The critical-illness contract inside this arrangement is issued from 20 to 65, where the
+ * life contract under it runs to 80. Someone outside that cannot be sold this bundle at all —
+ * so they are told once, plainly, and pointed at the plan that would take them, rather than
+ * being walked through a sum and a payment mode to arrive at a refusal.
+ */
+function outOfRange(age: number): string | undefined {
+  const bundle = getBundle(LEGACY_BUNDLE);
+  if (!bundle) return undefined;
+  const { min, max } = bundleAgeRange(bundle);
+  if (age >= min && age <= max) return undefined;
+  return `แบบนี้รับประกันอายุ ${min}–${max} ปีครับ อายุ ${age} สมัครแบบนี้ไม่ได้`
+    + " แต่แบบมรดกเบี้ยไม่ทิ้งยังทำได้อยู่ สนใจให้คิดเบี้ยให้ไหมครับ";
+}
+
+/**
+ * The tier a message names, read from the sum rather than from a tier number.
+ *
+ * Customers say "3 ล้าน", never "เทียร์ 3", and the tap on a quick reply arrives as the
+ * button's own words — "มรดก 3 ล้าน" — which is the same sentence. Both are read by the sum
+ * the agency named the tier after, so there is one reader and not two.
+ */
+export function tierIn(text: string): number | undefined {
+  const cover = coverIn(text);
+  if (cover === undefined || cover % PER_TIER !== 0) return undefined;
+  const tier = cover / PER_TIER;
+  return getBundle(LEGACY_BUNDLE)?.tiers.some((t) => t.no === tier) ? tier : undefined;
+}
+
+/** Everything the message adds to what was already known. */
+function filled(previous: LegacySlots | null, asked: string): LegacySlots {
+  const slots: LegacySlots = { product: "legacy", ...previous };
+  const person = peopleIn(asked)[0];
+  if (person) {
+    slots.age = person.age;
+    slots.sex = person.sex;
+  }
+  const tier = tierIn(asked);
+  if (tier !== undefined) slots.tier = tier;
+  return slots;
+}
+
+/**
+ * One turn of the legacy conversation, without a model anywhere in it.
+ *
+ * Nothing here needs one. The arrangement has two unknowns, both of them read by code the
+ * bot already trusts to read a customer's message — and the figure at the end is the engine's.
+ * A model in this path could only add a rounding of somebody's premium and a bill for it.
+ */
+export function answerLegacy(
+  asked: string, previous: LegacySlots | null, channel: Channel = "web", today: Date = new Date(),
+): LegacyAnswer {
+  const slots = filled(previous, asked);
+  const said = (text: string) => writtenFor(channel, text);
+
+  if (slots.age === undefined || !slots.sex) {
+    // the opening is said once: on the turn the customer arrives, not every time they are
+    // asked something, which would read as a leaflet handed over twice
+    const messages = previous
+      ? [{ text: said(ASK_PERSON) }]
+      : [{ text: said(LEGACY_OPENING) }, { text: said(ASK_PERSON) }];
+    return { messages, slots };
+  }
+
+  const refusal = outOfRange(slots.age);
+  if (refusal) return { messages: [{ text: said(refusal) }], slots: { product: "legacy" } };
+
+  if (slots.tier === undefined) {
+    return { messages: [{ text: said(ASK_TIER) }], replies: LEGACY_TIERS, slots };
+  }
+
+  return quoted(slots as Required<Omit<LegacySlots, "product">> & LegacySlots, said, today);
+}
+
+/** The arrangement priced, as a sentence and a picture of the same figures. */
+function quoted(
+  slots: LegacySlots & { age: number; sex: "M" | "F"; tier: number },
+  said: (text: string) => string,
+  today: Date,
+): LegacyAnswer {
+  const bundle = getBundle(LEGACY_BUNDLE);
+  const result = bundle && quoteBundle(bundle, slots.tier, { ...slots, mode: "annual" }, today);
+  if (!bundle || !result || result.totalAnnual === 0) {
+    return {
+      messages: [{ text: said("ขออภัยครับ วงเงินนี้กับอายุนี้จัดให้ไม่ได้ ลองเลือกวงเงินอื่นดูไหมครับ") }],
+      replies: LEGACY_TIERS,
+      slots: { ...slots, tier: undefined },
+    };
+  }
+
+  const modes = bundleModePremiums(bundle, slots.tier, { age: slots.age, sex: slots.sex }, today) ?? [];
+  /**
+   * The monthly figure is offered only when it may actually be paid monthly.
+   *
+   * The plan holds a floor on what a monthly instalment may be, and quoting one under it is
+   * quoting a payment the insurer will not accept — which the customer finds out at the
+   * counter rather than here.
+   */
+  const monthly = modes.find((m) => m.mode === "monthly" && !m.belowMinimum);
+  const name = describeTier(bundle, slots.tier) ?? `มรดก ${slots.tier} ล้าน`;
+
+  /**
+   * "ปีแรก" is not a hedge and is not optional.
+   *
+   * The critical-illness contract is priced on the age attained each year, so the figure the
+   * customer is reading is the first year's and every later one is larger. A premium said
+   * without that word is a promise the second renewal notice breaks.
+   */
+  const lines = [
+    `${name} สำหรับ${slots.sex === "M" ? "ชาย" : "หญิง"}อายุ ${slots.age} ปี`,
+    `เบี้ย**ปีแรก** ${formatBaht(result.totalAnnual)} บาท/ปี`
+      + (monthly ? ` หรือ ${formatBaht(monthly.total)} บาท/เดือน` : ""),
+    "เบี้ยส่วนโรคร้ายคิดตามอายุจริง ปีถัดไปจะขยับขึ้นตามอายุครับ",
+  ];
+
+  return {
+    messages: [{
+      text: said(lines.join("\n")),
+      card: cardPath({ kind: "bundle", bundleCode: LEGACY_BUNDLE, tier: slots.tier, age: slots.age, sex: slots.sex, mode: "annual" }),
+    }],
+    priced: true,
+    slots,
+  };
+}
