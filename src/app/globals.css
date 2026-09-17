@@ -210,7 +210,12 @@ body:has(.theme-legacy) {
    rather than against whatever the browser's default happens to be. The sheet is the
    deliverable here: an agent prints this and hands it over. */
 @page {
-  size: A4;
+  /* Portrait said outright, not left to the browser's default.
+     A long table is the one thing a print dialog is tempted to turn sideways, and landscape
+     would fit the six columns more comfortably — but the owner asked for upright, and a
+     sheet that comes out in a different shape than the one it was checked in is a sheet
+     nobody trusts. */
+  size: A4 portrait;
   margin: 12mm;
 }
 
@@ -300,6 +305,55 @@ body:has(.theme-legacy) {
     display: none;
   }
 
+
+  /* ── printing the value table on its own ─────────────────────────────────────────────
+   *
+   * Everything above prints the whole sales page, which is what an agent hands over at a
+   * kitchen table. The owner asked for the table by itself as a PDF, which is a different
+   * errand: it goes to a customer who already knows what they are buying and wants the
+   * figures.
+   *
+   * So the table marks itself `print-table`, and the button walks up from it marking every
+   * sibling on the way out. `display: none` and not `visibility`, so the sheet starts at the
+   * table rather than after however many blank pages the hidden page used to occupy.
+   *
+   * The usual trick — hide everything, pull the target up with `position: absolute` — was
+   * tried and printed a blank sheet. `.theme-legacy > *` is given `position: relative` a
+   * hundred lines above this, so "top: 0" meant the top of an element halfway down the
+   * document.
+   *
+   * Two things the shared rules do not cover, because on a full page they never showed.
+   *
+   * The cell rules are written `border-white/5` and `border-l-white/10`, which are literals
+   * and not tokens — the failure this project keeps meeting. On the dark ground they are a
+   * hairline; on paper they are nothing at all, and the table loses its grid.
+   *
+   * And the break-even row is marked by a gold background. Browsers do not print backgrounds,
+   * so the one row the whole table is read for would arrive looking like every other one. It
+   * is given rules above and below instead, which do print.
+   */
+  [data-print-hide] { display: none !important; }
+
+  /* Buttons belong to the screen, and this says so without going through Tailwind's `print`
+     variant. That variant was used first and generated no rule at all — checked in the
+     browser, where the whole print block held only the rules written here — so the two
+     buttons would have been printed onto a document that goes to a customer. An attribute
+     this file defines itself cannot be silently absent. */
+  [data-screen-only] { display: none !important; }
+
+  .print-table :is(td, th) { border-color: #d4d4d4 !important; }
+
+  .print-table th {
+    position: static !important;
+    background: transparent !important;
+  }
+
+  .print-table tr[class*="gold-glow"] td {
+    font-weight: 600;
+    border-top: 1.5px solid #6b5320 !important;
+    border-bottom: 1.5px solid #6b5320 !important;
+  }
+
   /* the ground's texture is painted by fixed pseudo-elements, which repeat on every sheet */
   .theme-legacy::before,
   .theme-legacy::after {
@@ -350,3 +404,4 @@ body:has(.theme-legacy) {
   /* the menu is laid out beside the page rather than over it, so nothing is covered */
   .shell-inset { padding-left: 15rem; }
 }
+

@@ -1,6 +1,7 @@
 import { formatBaht } from "@/calc/money";
 import type { Projection } from "@/lib/cash-projection";
 import { CardButton } from "@/components/sales/CardButton";
+import { PrintButton } from "@/components/sales/PrintButton";
 
 export interface CashValueTableProps {
   projection: Projection;
@@ -48,17 +49,20 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
   const totalPaid = paying.length ? paying[paying.length - 1].premiumPaid : null;
 
   return (
-    <section className="mt-3.5 border-t border-[var(--lg-panel-line)] pt-3">
-      <div className="flex items-center justify-between gap-3">
+    <section className="print-table mt-3.5 border-t border-[var(--lg-panel-line)] pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-sm font-normal text-[var(--lg-gold)]">มูลค่าทุกปี</h4>
-        {cardPath && (
-          <CardButton
-            path={cardPath}
-            filename="value-table.png"
-            label={{ full: "บันทึกตารางเป็นรูป", compact: "บันทึกตาราง" }}
-            className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-xs font-medium text-[var(--lg-gold)]"
-          />
-        )}
+        <div data-screen-only className="flex flex-wrap items-center gap-2">
+          <PrintButton className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-xs font-medium text-[var(--lg-gold)]" />
+          {cardPath && (
+            <CardButton
+              path={cardPath}
+              filename="value-table.png"
+              label={{ full: "บันทึกตารางเป็นรูป", compact: "บันทึกตาราง" }}
+              className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-xs font-medium text-[var(--lg-gold)]"
+            />
+          )}
+        </div>
       </div>
 
       <p className="mt-2.5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-gold-glow)] px-3 py-2.5 text-xs leading-[1.75] tabular-nums text-[var(--lg-gold-lit)]">
