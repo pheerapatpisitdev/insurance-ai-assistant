@@ -2,6 +2,7 @@ import { formatBaht } from "@/calc/money";
 import type { Projection } from "@/lib/cash-projection";
 import { CardButton } from "@/components/sales/CardButton";
 import { PrintButton } from "@/components/sales/PrintButton";
+import { AGENTS, INSURER } from "@/lib/assistant/common";
 
 export interface CashValueTableProps {
   projection: Projection;
@@ -12,6 +13,8 @@ export interface CashValueTableProps {
    * hands it over — a table this long is the one thing on the page nobody can screenshot.
    */
   cardPath?: string;
+  /** the plan's own name, for the heading of the printed sheet */
+  planName?: string;
 }
 
 const HEAD = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"];
@@ -33,7 +36,7 @@ const CELL = "whitespace-nowrap border-b border-white/5 px-[5px] py-1.5";
  * try to surrender — and it is said plainly, by the 0 in the column and by the note
  * underneath, rather than by making the numbers harder to read.
  */
-export function CashValueTable({ projection, caption, cardPath }: CashValueTableProps) {
+export function CashValueTable({ projection, caption, cardPath, planName }: CashValueTableProps) {
   const { rows, breakEven, zeroYears, maturityAge } = projection;
   if (!rows.length) return null;
 
@@ -50,8 +53,28 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
 
   return (
     <section className="print-table mt-3.5 border-t border-[var(--lg-panel-line)] pt-3">
+      {/* The heading a printed sheet needs and a web page does not: what plan this is, and
+          who it was worked out for. Taken from the layout of the insurer's own proposal,
+          which is what the owner asked for — but deliberately without their marks. Ours is an
+          estimate from an agent's calculator and theirs is a quotation, and a sheet that
+          looks like the second while being the first is one a customer would be right to feel
+          misled by. So it says what it is, at the top, where it cannot be missed. */}
+      <div data-print-only className="mb-4 hidden">
+        <div className="flex items-start justify-between gap-4 border-b-2 border-black pb-2">
+          <div>
+            <p className="text-base font-semibold">{planName ?? "ตารางมูลค่ากรมธรรม์"}</p>
+            <p className="mt-0.5 text-[11px]">{caption}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[11px] font-semibold">เอกสารประมาณการ</p>
+            <p className="text-[10px]">ไม่ใช่ใบเสนอราคาของบริษัท</p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm font-semibold">ตารางมูลค่ากรมธรรม์</p>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-sm font-normal text-[var(--lg-gold)]">มูลค่าทุกปี</h4>
+        <h4 data-screen-only className="text-sm font-normal text-[var(--lg-gold)]">มูลค่าทุกปี</h4>
         <div data-screen-only className="flex flex-wrap items-center gap-2">
           <PrintButton className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-xs font-medium text-[var(--lg-gold)]" />
           {cardPath && (
@@ -65,7 +88,7 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
         </div>
       </div>
 
-      <p className="mt-2.5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-gold-glow)] px-3 py-2.5 text-xs leading-[1.75] tabular-nums text-[var(--lg-gold-lit)]">
+      <p data-screen-only className="mt-2.5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-gold-glow)] px-3 py-2.5 text-xs leading-[1.75] tabular-nums text-[var(--lg-gold-lit)]">
         {caption}
       </p>
 
@@ -170,6 +193,19 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
               );
             })}
           </tbody>
+          {/* The proposal this borrows from closes its table with the total, on the same
+              grid, under the column it totals. On screen that line already exists as a
+              sentence below; on paper it belongs in the table, where the eye is. */}
+          {totalPaid !== null && (
+            <tfoot data-print-only className="hidden">
+              <tr>
+                <td className={`${CELL} ${RULE} text-right`} colSpan={3}>รวมเบี้ยที่ชำระ</td>
+                <td className={`${CELL} ${RULE} text-right`}>{formatBaht(totalPaid)}</td>
+                <td className={`${CELL} ${RULE}`} />
+                <td className={`${CELL} ${RULE}`} />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
@@ -195,6 +231,25 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
       <p className="mt-2 px-0.5 text-[11.5px] leading-[1.7] text-[var(--lg-mute)] opacity-80">
         แถวสุดท้าย (ปีที่ {rows.length}) คือเงินที่ได้รับเมื่อครบสัญญาอายุ {maturityAge} ปี
       </p>
+
+      {/* What the proposal this is modelled on carries at the foot of every sheet: who
+          underwrites it, who is presenting it, and the sentence that has to travel with any
+          figure. The date is written in by the print button rather than rendered here — a
+          `new Date()` in a component that hydrates is a mismatch waiting to happen, and the
+          only moment the date means anything is the moment the sheet is made. */}
+      <div data-print-only className="mt-6 hidden border-t border-black pt-2 text-[9.5px] leading-[1.6]">
+        <p>
+          เบี้ยประกันเป็นตัวเลขประมาณการจากตารางของบริษัท ไม่ใช่ใบเสนอราคา
+          เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกันและที่ระบุในกรมธรรม์
+        </p>
+        <div className="mt-1.5 flex items-start justify-between gap-4">
+          <p>รับประกันโดย {INSURER}</p>
+          <p className="shrink-0 text-right">
+            {AGENTS.map((a) => `${a.name} · ใบอนุญาต ${a.licence}`).join(" / ")}
+          </p>
+        </div>
+        <p data-printed-at className="mt-1" />
+      </div>
     </section>
   );
 }

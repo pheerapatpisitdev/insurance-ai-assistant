@@ -14,6 +14,7 @@ import { cardPath, valueTablePath } from "@/lib/card-link";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
 import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
 import { ContactButtons } from "@/components/sales/ContactButtons";
+import { getPlan } from "@/calc/plans/registry";
 
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
 const PER_LABEL = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" } as const;
@@ -278,7 +279,12 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
                   {/* a new term, age or sex is a different contract, so the readout goes back
                       to its break-even year; dragging the sum alone keeps the year in view */}
                   <CashValueChart key={`${term.variant}-${sex}-${who!.age}`} projection={projection} age={who!.age} />
-                  <CashValueTable projection={projection} caption={tableCaption} cardPath={tableCard} />
+                  <CashValueTable
+                    projection={projection}
+                    caption={tableCaption}
+                    cardPath={tableCard}
+                    planName={getPlan(table.planCode)?.planLabel}
+                  />
                 </>
               )}
             </div>

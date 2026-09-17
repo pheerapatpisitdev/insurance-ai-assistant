@@ -341,7 +341,42 @@ body:has(.theme-legacy) {
      this file defines itself cannot be silently absent. */
   [data-screen-only] { display: none !important; }
 
-  .print-table :is(td, th) { border-color: #d4d4d4 !important; }
+  /* Blocks kept back for the sheet. `hidden` holds them off the screen; paper is the one
+     place they belong, so this is where they are let out. */
+  [data-print-only] { display: block !important; }
+  tfoot[data-print-only] { display: table-footer-group !important; }
+
+  /* The grid, taken from the insurer's own value table: every cell ruled, nothing floating.
+     On screen the table gets by on horizontal rules because the eye can follow a row across a
+     lit panel; on paper, at nine point and forty rows deep, a reader loses the row without
+     vertical rules to hold it. */
+  .print-table :is(td, th) {
+    border: 0.5pt solid #555555 !important;
+    padding: 2.2pt 3.5pt !important;
+  }
+
+  .print-table thead th {
+    background: #eeeeee !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-weight: 600;
+    text-align: center !important;
+  }
+
+  .print-table table {
+    border-collapse: collapse;
+    font-size: 8.5pt;
+  }
+
+  /* the totals row the proposal closes its table with */
+  .print-table tfoot td {
+    font-weight: 600;
+    background: #f6f6f6 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-table [data-printed-at]::after { content: attr(data-printed-at); }
 
   .print-table th {
     position: static !important;

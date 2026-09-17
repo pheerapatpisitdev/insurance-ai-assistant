@@ -28,6 +28,19 @@ export function PrintButton({ className }: { className: string }) {
     const target = ref.current?.closest(".print-table");
     const hidden: Element[] = [];
 
+    /**
+     * The date, written in at the moment the sheet is made.
+     *
+     * Not rendered with the component: a `new Date()` in something that hydrates is a
+     * mismatch between the server's clock and the browser's, and the only moment this date
+     * means anything is this one.
+     */
+    const stamp = target?.querySelector("[data-printed-at]");
+    stamp?.setAttribute(
+      "data-printed-at",
+      `พิมพ์เมื่อ ${new Date().toLocaleString("th-TH", { dateStyle: "long", timeStyle: "short" })}`,
+    );
+
     if (target) {
       for (let node: Element | null = target; node && node !== document.body; node = node.parentElement) {
         for (const sibling of Array.from(node.parentElement?.children ?? [])) {
