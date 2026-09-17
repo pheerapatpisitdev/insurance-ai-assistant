@@ -49,7 +49,26 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
         {caption}
       </p>
 
-      <div className="-mx-2.5 mt-2.5 max-h-[56vh] w-[calc(100%+1.25rem)] overflow-auto rounded-sm border border-[var(--lg-panel-line)]">
+      {/* Laid out in full rather than scrolled inside a box, which the owner asked for after
+          living with the box: a table you scroll inside a page you also scroll is two
+          scrolls fighting each other, and on a phone the inner one swallows the outer.
+
+          What that costs is the thing the box was for — a sixty-four-year contract now runs
+          to sixty-four rows of page, and whatever was under the table is a long way under it.
+
+          The sideways scroll is kept only where it is needed, and that is not tidiness. CSS
+          will not let a box scroll in one direction and stay open in the other: set
+          `overflow-x`, and `overflow-y` becomes a scroller too, which makes the box the
+          thing the sticky header sticks to — and a box as tall as its contents is one the
+          header can never stick within. Measured rather than assumed: at row 25 of 50 the
+          header sat 376px above the top of the screen, so from about row 12 the reader had
+          six columns of numbers and nothing saying which was which.
+
+          Past 1024px the table fits the column beside the menu, so there is no box and the
+          header sticks to the page instead. Below that the box comes back, because six
+          columns of `whitespace-nowrap` do not fit 375px and never will — there the headings
+          still scroll away, which is the part of this not yet solved. */}
+      <div className="-mx-2.5 mt-2.5 w-[calc(100%+1.25rem)] max-lg:overflow-x-auto">
         <table className="w-full border-collapse text-xs tabular-nums">
           <thead>
             <tr>
