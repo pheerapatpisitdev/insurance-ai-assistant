@@ -87,6 +87,20 @@ describe("the quotation", () => {
     expect(priced.messages[0].card).toContain("tier=3");
   });
 
+  /** The bill this arrangement does not pay, named by the arrangement that does not pay it. */
+  it("names the gap it leaves, with the health plan under it", async () => {
+    const { CHOOSE_HEALTH } = await import("@/lib/assistant/choose");
+    expect(priced.messages.at(-1)?.text).toContain("ค่าห้อง");
+    expect(priced.replies).toContain(CHOOSE_HEALTH);
+  });
+
+  /** And the way out of the conversation the whole campaign is for. */
+  it("hands over the application form when the customer asks to go ahead", async () => {
+    const { WANTS_IN, APPLICATION_FORM } = await import("@/lib/assistant/common");
+    const a = answer(WANTS_IN, { product: "legacy", age: 35, sex: "M", tier: 3, told: true });
+    expect(spoken(a)).toContain(APPLICATION_FORM);
+  });
+
   /**
    * The one sentence this brain may not leave out.
    *

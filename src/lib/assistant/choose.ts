@@ -53,15 +53,6 @@ export function productByTopic(text: string): Product | undefined {
  * "🛡 มรดกเบี้ยทิ้ง+โรคร้ายแรง" arrives in the inbox as "🛡 มรดกเบี้ยทิ้ง+โร". What the two
  * arrangements actually are is said in the message above them, which has no such limit.
  */
-/**
- * The health plan keeps its name and loses its button.
- *
- * The advertising sells the two legacies, so those are what the buttons offer — a third
- * choice in front of a lead paid for by a legacy advertisement is a way of losing it. The
- * brain behind this name is untouched and still answers: a customer who types "ค่าห้อง
- * เท่าไหร่" is routed to it exactly as before. Nobody is being shown the door, only not
- * shown the button.
- */
 export const CHOOSE_HEALTH = "🏥 ประกันสุขภาพ";
 export const CHOOSE_LIFE = "💰 มรดกเบี้ยไม่ทิ้ง";
 export const CHOOSE_LEGACY = "🛡 มรดก+โรคร้ายแรง";
@@ -74,14 +65,18 @@ export const MAX_BUTTON = 20;
  * What the customer is choosing between, said before they are asked to choose.
  *
  * The buttons cannot carry it — twenty characters each — and a customer asked "สนใจแบบไหนครับ"
- * under two names they have never seen is being asked to guess. The difference between the two
- * is one sentence apiece, so it is given.
+ * under four names they have never seen is being asked to guess. Each one gets a sentence.
+ *
+ * The heading no longer says มรดก. Three of these are, and the fourth is the opposite half of
+ * a person's life — money for the family after, against the bills while you are still here —
+ * so a heading that called all four a legacy would be wrong about the one that is not.
  */
 export const CHOICES = [
-  "สวัสดีครับ 🙏 มรดกที่ทิ้งไว้ให้ครอบครัว เลือกได้ 3 แบบครับ",
-  "💰 เบี้ยไม่ทิ้ง — จ่ายแล้วสะสมเป็นเงินก้อน เลิกกลางทางได้เงินคืน",
-  "🛡 เบี้ยทิ้ง + โรคร้ายแรง — วงเงินใหญ่ เบี้ยเบา เจอโรคร้ายรับเงินสดก้อนโต",
-  "🌱 ออม + โรคร้ายแรง — จ่ายสั้น 5–20 ปี อยู่ถึง 85 รับเงินคืนเต็มจำนวน",
+  "สวัสดีครับ 🙏 ที่ผมดูแลมี 4 แบบครับ",
+  "💰 มรดก เบี้ยไม่ทิ้ง — จ่ายแล้วสะสมเป็นเงินก้อน เลิกกลางทางได้เงินคืน",
+  "🛡 มรดก เบี้ยทิ้ง + โรคร้ายแรง — วงเงินใหญ่ เบี้ยเบา เจอโรคร้ายรับเงินสดก้อนโต",
+  "🌱 มรดก + ออม + โรคร้ายแรง — จ่ายสั้น 5–20 ปี อยู่ถึง 85 รับเงินคืนเต็มจำนวน",
+  "🏥 ประกันสุขภาพ — ค่าห้อง ค่าหมอ ค่ารักษา ทุกครั้งที่นอนโรงพยาบาล",
 ].join("\n");
 
 /**
@@ -97,5 +92,5 @@ export function askWhich(lead?: string): Reply {
   const messages = lead
     ? [{ text: lead }, { text: `${CHOICES}\n\nสนใจแบบไหนครับ` }]
     : [{ text: `${CHOICES}\n\nสนใจแบบไหนครับ` }];
-  return { messages, replies: [CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD] };
+  return { messages, replies: [CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD, CHOOSE_HEALTH] };
 }

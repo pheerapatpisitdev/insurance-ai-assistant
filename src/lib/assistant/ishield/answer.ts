@@ -7,9 +7,12 @@ import { formatBaht } from "@/calc/money";
 import { cardPath, valueTablePath } from "@/lib/card-link";
 import { valueTableCard } from "@/lib/quote-card";
 import diseases from "../../../../data/riders/ishield-diseases.json";
-import { coverIn, peopleIn, type Reply } from "../common";
+import {
+  coverIn, FORM_RECEIVED, handOverForm, peopleIn, saysFormDone, stallReply, stalls, WANTS_IN,
+  wantsToBuy, type Reply,
+} from "../common";
 import { writtenFor, type Channel } from "../channel";
-import { CHOOSE_LEGACY } from "../choose";
+import { CHOOSE_HEALTH, CHOOSE_LEGACY } from "../choose";
 
 export const ISHIELD = "ISHIELD";
 
@@ -209,6 +212,29 @@ export function answerIShield(
 ): IShieldAnswer {
   const slots = filled(previous, asked);
   const said = (text: string) => writtenFor(channel, text);
+  const priced = previous?.sumAssured !== undefined;
+
+  /**
+   * The three things a customer says that are not about this contract's numbers.
+   *
+   * They were the life plan's alone, and a customer who typed "สมัครยังไง" at either of the
+   * new arrangements was answered with the next question about a sum. The words are the same
+   * words and the agency's answer is the same answer — a form, and a person to follow it — so
+   * they are read here by the same code rather than by a second copy of it.
+   *
+   * Checked before the slots are acted on, because "สนใจสมัคร" is not a tier and not a saving,
+   * and because a customer leaving to think it over must not be asked one more question.
+   */
+  if (wantsToBuy(asked, priced)) {
+    const form = handOverForm(priced);
+    return { ...form, messages: form.messages.map((m) => ({ ...m, text: said(m.text) })), slots };
+  }
+  if (saysFormDone(asked)) {
+    return { messages: [{ text: said(FORM_RECEIVED) }], formDone: true, slots };
+  }
+  if (stalls(asked)) {
+    return { messages: [{ text: said(stallReply(priced)) }], slots };
+  }
 
   // said once per arrangement, and once per arrangement means once for this one — a customer
   // who tapped across from another quotation has been told nothing about this plan yet
@@ -239,6 +265,20 @@ export function answerIShield(
 
 /** Cross-sell by a name the dispatcher routes on, so the comparison costs the customer nothing. */
 const CROSS_SELL = CHOOSE_LEGACY;
+
+/**
+ * The gap this arrangement leaves, offered to the customer who just bought into it.
+ *
+ * Nothing here pays a hospital. A critical-illness contract pays a sum once and ends; the
+ * room, the doctor and the drugs arrive every time somebody is admitted, and they are
+ * somebody else's contract. Saying so after a quotation is not an upsell bolted on, it is
+ * the true shape of what the customer has just been shown.
+ *
+ * After, and never instead. It is not offered among the opening buttons: the advertisement
+ * sells the legacies, and a fourth choice from a different half of a person's life is a way
+ * of losing a lead that was paid for.
+ */
+const HEALTH_GAP = "เจอโรคร้ายได้เงินก้อนครั้งเดียว แต่ค่าห้องค่ารักษาที่มาทุกครั้งที่นอนโรงพยาบาล เป็นคนละส่วนกันครับ";
 
 function quoted(
   slots: IShieldSlots & { age: number; sex: "M" | "F"; variant: string; sumAssured: number },
@@ -296,7 +336,7 @@ function quoted(
   const table = valueTableCard(card, today) ? valueTablePath(card) : undefined;
 
   return {
-    replies: [CROSS_SELL],
+    replies: [WANTS_IN, CHOOSE_HEALTH, CROSS_SELL],
     messages: [
       { text: said(lines.join("\n")), card: cardPath(card) },
       ...(table
@@ -306,6 +346,8 @@ function quoted(
           card: table,
         }]
         : []),
+      // its own bubble, and last, so the health button under it reads as an answer to it
+      { text: said(HEALTH_GAP) },
     ],
     priced: true,
     slots,

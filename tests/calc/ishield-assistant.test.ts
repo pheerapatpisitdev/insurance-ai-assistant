@@ -110,9 +110,23 @@ describe("the conversation", () => {
    * customer ask for it is making them ask for the evidence of what they were just told.
    */
   it("sends the year-by-year value table beside the quotation", () => {
-    expect(priced.messages).toHaveLength(2);
-    expect(priced.messages[1].card).toContain("/api/card/table");
-    expect(priced.messages[1].text).toContain("เงินเวนคืน");
+    const table = priced.messages.find((m) => m.card?.includes("/api/card/table"));
+    expect(table).toBeDefined();
+    expect(table!.text).toContain("เงินเวนคืน");
+  });
+
+  /**
+   * What this contract does not do, said by this contract rather than left to be found out.
+   *
+   * It pays for an illness and it pays nothing towards a hospital bill: the room, the doctor
+   * and the drugs arrive every time somebody is admitted, and they are a different contract.
+   * The customer holding this quotation is the one person in the day who wants to hear it.
+   */
+  it("names the gap it leaves, in its own bubble, with the health plan under it", async () => {
+    const { CHOOSE_HEALTH } = await import("@/lib/assistant/choose");
+    expect(priced.messages.at(-1)?.text).toContain("ค่าห้อง");
+    expect(priced.messages.at(-1)?.card).toBeUndefined();
+    expect(priced.replies).toContain(CHOOSE_HEALTH);
   });
 
   it("says the same figure the engine says", () => {

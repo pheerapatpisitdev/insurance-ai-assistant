@@ -24,7 +24,7 @@ describe("a customer who has not said what they came for", () => {
     expect(answer.messages[0].text).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
     // the question is still put, and the buttons still offered
     expect(answer.messages.at(-1)!.text).toContain("สนใจแบบไหน");
-    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD]);
+    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD, CHOOSE_HEALTH]);
     expect(chat).not.toHaveBeenCalled();
   });
 
@@ -61,9 +61,9 @@ describe("a customer who has not said what they came for", () => {
     expect(answer.messages[2].card).toContain("age=53&sex=M");
   });
 
-  it("is asked, with the three buttons, and no model is paid", async () => {
+  it("is asked, with the four buttons, and no model is paid", async () => {
     const answer = await answerAny(said("สนใจค่ะ"), null);
-    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD]);
+    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD, CHOOSE_HEALTH]);
     expect(answer.slots).toMatchObject({ product: "undecided" });
     expect(chat).not.toHaveBeenCalled();
   });
