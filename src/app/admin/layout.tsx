@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <AppShell signedIn>
-      <div className="mx-auto max-w-5xl p-4 pt-16 sm:p-6 lg:pt-6">{children}</div>
+      <div className="mx-auto max-w-5xl p-4 pt-16 sm:p-6 sm:pt-16 lg:pt-6">{children}</div>
     </AppShell>
   );
 }

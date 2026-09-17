@@ -139,7 +139,7 @@ export default function Home() {
 
   return (
     <AppShell>
-    <main className="mx-auto max-w-5xl p-4 pt-16 sm:p-6 lg:pt-6">
+    <main className="mx-auto max-w-5xl p-4 pt-16 sm:p-6 sm:pt-16 lg:pt-6">
       <div className="mb-1 flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
         <span className="flex gap-4 text-sm text-[var(--op-mute)]">
