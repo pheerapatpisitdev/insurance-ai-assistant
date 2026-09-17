@@ -20,12 +20,17 @@ const RULE = "border-l border-l-white/10";
 const CELL = "whitespace-nowrap border-b border-white/5 px-[5px] py-1.5";
 
 /**
- * Every year of the contract, open on arrival — the rows scroll inside their own box, so a
- * sixty-four-year contract still leaves the chat buttons where they were.
+ * Every year of the contract, laid out in full.
  *
- * The years that are worth nothing are shown rather than filtered out, with a note under the
- * table that counts them. A customer should meet that fact before signing, not on the day
- * they try to surrender.
+ * It used to scroll inside its own box so that a sixty-four-year contract left the rest of
+ * the page where it was. The owner asked for the box gone, so the page is as long as the
+ * contract now — see the note above the table for what that took with it and how the column
+ * headings were got back.
+ *
+ * The years that are worth nothing are shown rather than filtered out, and at the same weight
+ * as every other row. A customer should meet that fact before signing, not on the day they
+ * try to surrender — and it is said plainly, by the 0 in the column and by the note
+ * underneath, rather than by making the numbers harder to read.
  */
 export function CashValueTable({ projection, caption, cardPath }: CashValueTableProps) {
   const { rows, breakEven, zeroYears, maturityAge } = projection;
@@ -90,8 +95,21 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
           </thead>
           <tbody>
             {rows.map((r) => {
-              // a year worth nothing yet says so by receding, not by being hidden
-              const dim = r.cashValue === 0 ? "opacity-55" : "";
+              /**
+               * Every row is the same weight, including the early years worth nothing.
+               *
+               * They used to recede at 55% opacity, on the argument that a year with no
+               * surrender value should say so by fading. Two things were wrong with it. The
+               * fact was already said twice over — the เวนคืนได้ column reads 0, and the note
+               * under the table names the years by number — so the fade carried nothing the
+               * reader did not already have. And it was not even applied consistently: the
+               * iShield skin switches it off for the whole page, because on ivory the fade
+               * drops that text to between 2.95 and 4.21 to one. So the same table was
+               * already being shown two different ways on three pages.
+               *
+               * Dropping it here settles that the other way, which is what the owner asked
+               * for and what the one skin that had thought about it had already done.
+               */
               return (
                 <tr
                   key={r.policyYear}
@@ -99,13 +117,13 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
                 >
                   <td className={`${CELL} text-left text-[var(--lg-mute)]`}>{r.policyYear}</td>
                   <td className={`${CELL} ${RULE} text-left text-[var(--lg-mute)]`}>{r.age}</td>
-                  <td className={`${CELL} ${RULE} text-right ${dim}`}>
+                  <td className={`${CELL} ${RULE} text-right`}>
                     {r.premiumDue ? formatBaht(r.premiumDue) : "—"}
                   </td>
-                  <td className={`${CELL} ${RULE} text-right ${dim}`}>
+                  <td className={`${CELL} ${RULE} text-right`}>
                     {r.premiumPaid === null ? "—" : formatBaht(r.premiumPaid)}
                   </td>
-                  <td className={`${CELL} ${RULE} text-right ${dim}`}>{formatBaht(r.cashValue)}</td>
+                  <td className={`${CELL} ${RULE} text-right`}>{formatBaht(r.cashValue)}</td>
                   <td className={`${CELL} ${RULE} pr-3 text-right`}>{formatBaht(r.cover)}</td>
                 </tr>
               );
