@@ -1,5 +1,5 @@
 import { Card, Empty } from "../ui";
-import { facebookStatus } from "@/lib/facebook/status";
+import { facebookStatuses } from "@/lib/facebook/status";
 import { pageConnections, readPending } from "@/lib/facebook/connection";
 import { listPages, oauthIsConfigured, SCOPES, SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
 import { DisconnectButton } from "./DisconnectButton";
@@ -53,11 +53,13 @@ export default async function MessengerAdminPage({
   const outcome = OUTCOMES[String(params.fb ?? "")];
   const detail = typeof params.detail === "string" ? params.detail : undefined;
 
-  const [status, connections, choices] = await Promise.all([
-    facebookStatus(),
-    pageConnections(),
-    pendingChoices(),
-  ]);
+  const [connections, choices] = await Promise.all([pageConnections(), pendingChoices()]);
+  /**
+   * Asked after the list, and asked per Page. Checking one token and calling it "the status"
+   * is what let a revoked Page sit behind a green tick while it answered nobody.
+   */
+  const statuses = await facebookStatuses(connections);
+  const revoked = statuses.filter((s) => s.revoked);
 
   return (
     <>
@@ -67,31 +69,83 @@ export default async function MessengerAdminPage({
         </p>
       )}
 
-      <Card title="เพจที่บอทตอบให้" hint="เชื่อมต่อผ่านหน้า login ของ Facebook ไม่ต้องคัดลอกโทเค็นเอง">
+      {/* Said once at the top as well: the per-Page red is below the fold on a phone, and the
+          Page that went dark is the one paying for advertisements today. */}
+      {revoked.length > 0 && (
+        <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          เพจ {revoked.map((s) => s.connectedPageName).join(", ")} ถูก Meta ถอนสิทธิ์ ตอบลูกค้าไม่ได้ในตอนนี้ — ดูวิธีแก้ในกล่องข้างล่าง
+        </p>
+      )}
+
+      <Card title="เพจที่บอทตอบให้" hint="สถานะอ่านสดจาก Meta ทุกครั้งที่เปิดหน้านี้">
         {choices.length > 0 ? (
           <PagePicker pages={choices} />
-        ) : connections.length > 0 ? (
-          /* One block per Page. It was written for exactly one because there could only be
-             one — connecting a second overwrote the first without a word. */
+        ) : statuses.length > 0 ? (
+          /* One block per Page, each carrying what Meta says about that Page right now. It was
+             written for exactly one because there could only be one — connecting a second
+             overwrote the first without a word. */
           <div className="space-y-5">
-            {connections.map((connection) => {
-              const missingFields = SUBSCRIBED_FIELDS.filter((f) => !connection.fields.includes(f));
+            {statuses.map((status) => {
+              const connection = connections.find((c) => c.pageId === status.connectedPageId);
+              const fields = status.fields ?? connection?.fields ?? [];
+              const missingFields = SUBSCRIBED_FIELDS.filter((f) => !fields.includes(f));
+              const name = status.connectedPageName || status.pageName || "—";
+              const id = status.connectedPageId || status.pageId || "—";
               return (
-                <div key={connection.pageId} className="rounded-lg border border-slate-200 p-3">
-                  <Row label="ชื่อเพจ"><span className="font-medium">{connection.pageName}</span></Row>
-                  <Row label="รหัสเพจ">{connection.pageId}</Row>
-                  <Row label="เชื่อมต่อเมื่อ">
-                    {new Date(connection.connectedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+                <div
+                  key={id}
+                  className={`rounded-lg border p-3 ${status.revoked ? "border-red-300 bg-red-50/40" : "border-slate-200"}`}
+                >
+                  <Row label="ชื่อเพจ"><span className="font-medium">{name}</span></Row>
+                  <Row label="รหัสเพจ">{id}</Row>
+                  <Row label="การตอบข้อความ">
+                    {status.messagingOk === undefined ? (
+                      <span className="text-amber-800">ตรวจไม่ได้ชั่วคราว</span>
+                    ) : status.messagingOk ? (
+                      <span className="text-emerald-700">✓ โทเค็นใช้งานได้ บอทส่งและรับข้อความได้</span>
+                    ) : (
+                      <span className="text-red-700">✗ โทเค็นใช้งานไม่ได้ เพจนี้ตอบใครไม่ได้เลย</span>
+                    )}
                   </Row>
-                  <Row label="สิทธิ์ที่ได้รับ">{connection.scopes.join(", ") || "—"}</Row>
-                  <Row label="เหตุการณ์ที่รับ">{connection.fields.join(", ") || "—"}</Row>
-                  {missingFields.length > 0 && (
-                    <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                      ระบบรุ่นนี้ต้องรับเหตุการณ์ {missingFields.join(", ")} ด้วย ไม่งั้นปุ่มคำถามที่ลูกค้ากดจะไม่ถึงบอท
-                      <span className="ml-3 inline-block"><RefreshSubscriptionButton pageId={connection.pageId} /></span>
+                  <Row label="การรับข้อมูล">
+                    {status.subscribed === undefined ? "—" : status.subscribed ? (
+                      <span className="text-emerald-700">✓ เพจส่งข้อมูลมาที่แอปนี้แล้ว</span>
+                    ) : (
+                      <span className="text-red-700">✗ เพจยังไม่ได้ส่งข้อมูลมาที่แอปนี้ บอทจะไม่ได้รับข้อความ</span>
+                    )}
+                  </Row>
+                  <Row label="เหตุการณ์ที่รับ">{fields.length ? fields.join(", ") : "—"}</Row>
+                  {connection && (
+                    <>
+                      <Row label="เชื่อมต่อเมื่อ">
+                        {new Date(connection.connectedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+                      </Row>
+                      <Row label="สิทธิ์ที่ได้รับ">{connection.scopes.join(", ") || "—"}</Row>
+                    </>
+                  )}
+
+                  {status.errors.map((e) => (
+                    <p key={e} className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{e}</p>
+                  ))}
+                  {/* The one thing that fixes a revoked Page, said where the red is, because
+                      the obvious move — connect this Page on its own — is what revoked it. */}
+                  {status.revoked && (
+                    <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                      วิธีแก้: กด “เชื่อมต่อเพจเพิ่ม” ข้างล่าง แล้วในหน้าจอเลือกเพจของ Facebook
+                      <strong> ติ๊กทุกเพจในรายการนี้พร้อมกัน</strong> ไม่ใช่เฉพาะเพจนี้ —
+                      Facebook เขียนทับสิทธิ์ทุกครั้งที่เข้าสู่ระบบ เพจที่ไม่ได้ติ๊กจะถูกถอนสิทธิ์
                     </p>
                   )}
-                  <div className="pt-3"><DisconnectButton pageId={connection.pageId} /></div>
+                  {status.notes.map((n) => (
+                    <p key={n} className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{n}</p>
+                  ))}
+                  {!status.revoked && missingFields.length > 0 && (
+                    <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      ระบบรุ่นนี้ต้องรับเหตุการณ์ {missingFields.join(", ")} ด้วย ไม่งั้นปุ่มคำถามที่ลูกค้ากดจะไม่ถึงบอท
+                      <span className="ml-3 inline-block"><RefreshSubscriptionButton pageId={status.connectedPageId} /></span>
+                    </p>
+                  )}
+                  {connection && <div className="pt-3"><DisconnectButton pageId={connection.pageId} /></div>}
                 </div>
               );
             })}
@@ -101,7 +155,11 @@ export default async function MessengerAdminPage({
                 reader to press something that was not on the screen. */}
             <div className="border-t border-slate-200 pt-4">
               <p className="mb-3 text-sm text-slate-600">
-                ต่อเพจเพิ่มได้ เพจที่ต่อไว้แล้วจะไม่หาย — เข้าสู่ระบบด้วยบัญชีที่เป็นแอดมินของเพจนั้น แล้วเลือกเพจใหม่
+                ต่อเพจเพิ่มได้ เข้าสู่ระบบด้วยบัญชีที่เป็นแอดมินของเพจนั้น
+              </p>
+              <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                ⚠️ ในหน้าจอเลือกเพจของ Facebook ให้ <strong>ติ๊กทุกเพจที่ต้องการ รวมเพจที่ต่อไว้แล้วข้างบนด้วย</strong>{" "}
+                Facebook ไม่ได้รวมสิทธิ์เก่ากับใหม่ แต่เขียนทับทั้งหมด เพจที่ไม่ได้ติ๊กจะถูกถอนสิทธิ์และตอบลูกค้าไม่ได้ทันที
               </p>
               {oauthIsConfigured() ? (
                 <a
@@ -119,7 +177,7 @@ export default async function MessengerAdminPage({
           <div>
             <p className="mb-3 text-sm text-slate-700">
               กดปุ่มแล้วเข้าสู่ระบบ Facebook ด้วยบัญชีที่เป็นแอดมินเพจ ระบบจะขอสิทธิ์เท่าที่จำเป็น
-              เก็บโทเค็นให้เอง และสมัครรับข้อความจากเพจให้เสร็จในขั้นตอนเดียว
+              เก็บโทเค็นให้เอง และสมัครรับข้อความจากเพจให้เสร็จในขั้นตอนเดียว ติ๊กได้หลายเพจพร้อมกัน
             </p>
             {oauthIsConfigured() ? (
               <a
@@ -134,40 +192,6 @@ export default async function MessengerAdminPage({
             <p className="mt-3 text-xs text-slate-500">สิทธิ์ที่ขอ: {SCOPES.join(", ")}</p>
           </div>
         )}
-      </Card>
-
-      <Card title="สถานะจาก Meta" hint="อ่านสดทุกครั้งที่เปิดหน้านี้">
-        {!status.configured ? (
-          <Empty>ยังไม่ได้เชื่อมต่อ Facebook</Empty>
-        ) : (
-          <div>
-            <Row label="การตอบข้อความ">
-              {status.messagingOk === undefined ? (
-                <span className="text-amber-800">ตรวจไม่ได้ชั่วคราว</span>
-              ) : status.messagingOk ? (
-                <span className="text-emerald-700">✓ โทเค็นเพจใช้งานได้ บอทส่งและรับข้อความได้</span>
-              ) : (
-                <span className="text-red-700">✗ โทเค็นเพจใช้งานไม่ได้ บอทตอบใครไม่ได้เลย</span>
-              )}
-            </Row>
-            <Row label="ชื่อเพจ">{status.pageName ?? connections[0]?.pageName ?? "—"}</Row>
-            <Row label="รหัสเพจ">{status.pageId ?? connections[0]?.pageId ?? "—"}</Row>
-            <Row label="การรับข้อมูล">
-              {status.subscribed === undefined ? "—" : status.subscribed ? (
-                <span className="text-emerald-700">✓ เพจส่งข้อมูลมาที่แอปนี้แล้ว</span>
-              ) : (
-                <span className="text-red-700">✗ เพจยังไม่ได้ส่งข้อมูลมาที่แอปนี้ บอทจะไม่ได้รับข้อความ</span>
-              )}
-            </Row>
-            <Row label="เหตุการณ์ที่รับ">{status.fields?.length ? status.fields.join(", ") : "—"}</Row>
-          </div>
-        )}
-        {status.errors.map((e) => (
-          <p key={e} className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{e}</p>
-        ))}
-        {status.notes.map((n) => (
-          <p key={n} className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{n}</p>
-        ))}
       </Card>
 
       <Card title="ใครคุยกับบอทได้บ้าง" hint="ตรวจกับคนนอกจริงแล้วเมื่อ 4 ก.ย. 2569">

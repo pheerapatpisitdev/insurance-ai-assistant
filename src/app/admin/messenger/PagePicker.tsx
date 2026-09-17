@@ -1,40 +1,73 @@
 "use client";
-import { cancelPending, connectPage } from "./actions";
+import { useState } from "react";
+import { cancelPending, connectPages } from "./actions";
 import { ActionError, useAction } from "./useAction";
 
 export interface Choice { id: string; name: string }
 
+/**
+ * Which of the Pages from this login to connect.
+ *
+ * Ticked, not pressed one at a time: connecting used to end the login, so a person with two
+ * Pages had to go round through Facebook twice — and the second trip is what revoked the
+ * first Page. Everything Facebook handed over starts ticked, because a Page the person did
+ * not want is one they would not have ticked on Meta's own screen a moment ago.
+ */
 export function PagePicker({ pages }: { pages: Choice[] }) {
   const { pending, error, run } = useAction();
+  const [chosen, setChosen] = useState<string[]>(() => pages.map((p) => p.id));
+
+  const toggle = (id: string) =>
+    setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
+
+  const connect = () =>
+    run(async () => {
+      const failed = await connectPages(chosen);
+      if (failed.length > 0) throw new Error(`เชื่อมไม่สำเร็จ: ${failed.join(" / ")}`);
+    });
+
   return (
     <div>
-      <p className="mb-3 text-sm text-slate-700">คุณเป็นแอดมินหลายเพจ เลือกเพจที่จะให้บอทตอบ</p>
+      <p className="mb-3 text-sm text-slate-700">
+        เข้าสู่ระบบแล้ว เลือกเพจที่จะให้บอทตอบ ติ๊กได้หลายเพจและเชื่อมพร้อมกันในครั้งเดียว
+      </p>
       <ul className="mb-3 divide-y rounded-md border">
         {pages.map((p) => (
-          <li key={p.id} className="flex items-center justify-between gap-3 px-3 py-2">
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-medium">{p.name}</span>
-              <span className="block text-xs text-slate-500">{p.id}</span>
-            </span>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => run(() => connectPage(p.id))}
-              className="shrink-0 rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:opacity-50"
-            >
-              เลือกเพจนี้
-            </button>
+          <li key={p.id}>
+            <label className="flex cursor-pointer items-center gap-3 px-3 py-2">
+              <input
+                type="checkbox"
+                checked={chosen.includes(p.id)}
+                onChange={() => toggle(p.id)}
+                disabled={pending}
+                className="size-4 shrink-0"
+              />
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium">{p.name}</span>
+                <span className="block text-xs text-slate-500">{p.id}</span>
+              </span>
+            </label>
           </li>
         ))}
       </ul>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => run(() => cancelPending())}
-        className="text-sm text-slate-500 underline disabled:opacity-50"
-      >
-        ยกเลิก
-      </button>
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          disabled={pending || chosen.length === 0}
+          onClick={connect}
+          className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-700 disabled:opacity-50"
+        >
+          {pending ? "กำลังเชื่อมต่อ…" : `เชื่อมต่อ ${chosen.length} เพจที่เลือก`}
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run(() => cancelPending())}
+          className="text-sm text-slate-500 underline disabled:opacity-50"
+        >
+          ยกเลิก
+        </button>
+      </div>
       <ActionError error={error} />
     </div>
   );

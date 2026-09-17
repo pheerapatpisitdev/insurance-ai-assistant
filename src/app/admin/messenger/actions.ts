@@ -4,21 +4,51 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { clearConnection, clearPending, pageConnections, pageToken, readPending, saveConnection } from "@/lib/facebook/connection";
 import { listPages, subscribePage, unsubscribePage } from "@/lib/facebook/oauth";
 
-/** Finishes a login where the person admins more than one Page. */
-export async function connectPage(pageId: string) {
+/**
+ * Finishes a login where the person admins more than one Page — all of the chosen Pages, in
+ * one go.
+ *
+ * It used to connect exactly one and throw the user token away, so a second Page meant a
+ * second login. That is what made the live Page go dark twice: each fresh login replaces the
+ * whole grant, so ticking one Page on Meta's screen revokes every Page left unticked, and the
+ * Page connected a minute earlier stopped being able to answer anyone.
+ *
+ * Returns what could not be connected rather than throwing on the first failure, because one
+ * Page that refuses to subscribe must not cost the others their connection.
+ */
+export async function connectPages(pageIds: string[]): Promise<string[]> {
   await requireAdmin();
+  if (pageIds.length === 0) throw new Error("ยังไม่ได้เลือกเพจ");
+
   const pending = await readPending();
   if (!pending) throw new Error("การเชื่อมต่อหมดอายุแล้ว กดเชื่อมต่อกับ Facebook ใหม่อีกครั้ง");
 
-  const page = (await listPages(pending.token)).find((p) => p.id === pageId);
-  if (!page) throw new Error("ไม่พบเพจนี้ในบัญชีที่เพิ่งเข้าสู่ระบบ");
-
-  const fields = await subscribePage(page);
-  await saveConnection({
-    pageId: page.id, pageName: page.name, token: page.accessToken, scopes: pending.scopes, fields,
+  const available = await listPages(pending.token);
+  const chosen = pageIds.map((id) => {
+    const page = available.find((p) => p.id === id);
+    if (!page) throw new Error("ไม่พบเพจนี้ในบัญชีที่เพิ่งเข้าสู่ระบบ");
+    return page;
   });
-  await clearPending();
+
+  const failures: string[] = [];
+  for (const page of chosen) {
+    try {
+      const fields = await subscribePage(page);
+      await saveConnection({
+        pageId: page.id, pageName: page.name, token: page.accessToken, scopes: pending.scopes, fields,
+      });
+    } catch (e) {
+      failures.push(`${page.name} — ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  /**
+   * The user token is kept while anything is still unconnected, so the picker stays on screen
+   * and the person can try the failed Page again without another trip through Facebook.
+   */
+  if (failures.length === 0) await clearPending();
   revalidatePath("/admin/messenger");
+  return failures;
 }
 
 /**
