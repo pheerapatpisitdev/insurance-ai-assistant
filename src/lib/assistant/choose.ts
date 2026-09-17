@@ -1,7 +1,7 @@
 import type { Reply } from "./common";
 
 /** What this page sells, as the session records which one a customer came for. */
-export type Product = "lifeprotect" | "ihealthy" | "legacy";
+export type Product = "lifeprotect" | "ihealthy" | "legacy" | "ishield";
 
 /**
  * A plan named outright — the only signal strong enough to move a conversation already under
@@ -11,6 +11,7 @@ export type Product = "lifeprotect" | "ihealthy" | "legacy";
 const NAMES: [Product, RegExp][] = [
   ["ihealthy", /ประกันสุขภาพ|ไอเฮลท์ตี้|ไอเฮลตี้|i\s*-?\s*healthy/i],
   ["legacy", /เบี้ยทิ้ง|มรดกเพื่อครอบครัว|มรดก\s*\+\s*โรคร้าย/i],
+  ["ishield", /i\s*-?\s*shield|ไอ\s*ชิลด์|ออม/i],
   ["lifeprotect", /life\s*protect|ไลฟ์\s*โพรเทค|ไลฟ์โปรเทค|ประกันชีวิต|เบี้ยไม่ทิ้ง/i],
 ];
 
@@ -64,6 +65,7 @@ export function productByTopic(text: string): Product | undefined {
 export const CHOOSE_HEALTH = "🏥 ประกันสุขภาพ";
 export const CHOOSE_LIFE = "💰 มรดกเบี้ยไม่ทิ้ง";
 export const CHOOSE_LEGACY = "🛡 มรดก+โรคร้ายแรง";
+export const CHOOSE_ISHIELD = "🌱 มรดก+ออม+โรคร้าย";
 
 /** Longer than this and Messenger truncates the title mid-word. */
 export const MAX_BUTTON = 20;
@@ -76,9 +78,10 @@ export const MAX_BUTTON = 20;
  * is one sentence apiece, so it is given.
  */
 export const CHOICES = [
-  "สวัสดีครับ 🙏 มรดกที่ทิ้งไว้ให้ครอบครัว เลือกได้ 2 แบบครับ",
+  "สวัสดีครับ 🙏 มรดกที่ทิ้งไว้ให้ครอบครัว เลือกได้ 3 แบบครับ",
   "💰 เบี้ยไม่ทิ้ง — จ่ายแล้วสะสมเป็นเงินก้อน เลิกกลางทางได้เงินคืน",
   "🛡 เบี้ยทิ้ง + โรคร้ายแรง — วงเงินใหญ่ เบี้ยเบา เจอโรคร้ายรับเงินสดก้อนโต",
+  "🌱 ออม + โรคร้ายแรง — จ่ายสั้น 5–20 ปี อยู่ถึง 85 รับเงินคืนเต็มจำนวน",
 ].join("\n");
 
 /**
@@ -94,5 +97,5 @@ export function askWhich(lead?: string): Reply {
   const messages = lead
     ? [{ text: lead }, { text: `${CHOICES}\n\nสนใจแบบไหนครับ` }]
     : [{ text: `${CHOICES}\n\nสนใจแบบไหนครับ` }];
-  return { messages, replies: [CHOOSE_LIFE, CHOOSE_LEGACY] };
+  return { messages, replies: [CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD] };
 }

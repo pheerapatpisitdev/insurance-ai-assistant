@@ -78,7 +78,7 @@ describe("a question about a rule, asked in the page's inbox", () => {
     expect(a.fromLibrary).toBe(true);
     expect(a.messages[0].text).toBe("ตอบจากคลัง");
     // the funnel is not dropped: the two buttons are still offered under the answer
-    expect(a.replies?.length).toBe(2);
+    expect(a.replies?.length).toBe(3);
 
     // and the library it read is the whole library, not one plan's summary
     const system = chat.mock.calls.at(-1)![0].messages[0].content as string;

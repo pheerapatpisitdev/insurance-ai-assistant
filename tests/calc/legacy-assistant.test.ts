@@ -35,9 +35,22 @@ describe("the first turn", () => {
   });
 
   it("does not hand the same leaflet over twice", () => {
-    const a = answer("สนใจครับ", { product: "legacy" });
+    const a = answer("สนใจครับ", { product: "legacy", told: true });
     expect(spoken(a)).not.toContain(LEGACY_OPENING.slice(0, 20));
     expect(spoken(a)).toContain("เพศกับอายุ");
+  });
+
+  /**
+   * A customer who crossed over from another quotation has never seen this leaflet.
+   *
+   * They arrive carrying an age and a sex, which used to read as a conversation already under
+   * way — so pressing a button naming a plan they had been told nothing about got them a
+   * question and no answer. The slots below are exactly what the hand-over produces.
+   */
+  it("introduces itself to a customer handed over from another plan", () => {
+    const a = answer("🛡 มรดก+โรคร้ายแรง", { product: "legacy", age: 40, sex: "M" });
+    expect(spoken(a)).toContain("31 โรคร้ายแรง");
+    expect(spoken(a)).toContain("วงเงิน");
   });
 
   it("skips straight past the question when the customer answered it unasked", () => {

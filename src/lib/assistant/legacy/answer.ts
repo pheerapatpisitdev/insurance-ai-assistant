@@ -4,6 +4,7 @@ import { cardPath } from "@/lib/quote-card";
 import { formatBaht } from "@/calc/money";
 import { coverIn, peopleIn, type Reply } from "../common";
 import { writtenFor, type Channel } from "../channel";
+import { CHOOSE_LIFE } from "../choose";
 
 /**
  * The arrangement this brain sells, by the name the registry holds it under.
@@ -29,6 +30,16 @@ export interface LegacySlots {
   sex?: "M" | "F";
   /** the tier, 1–10, which is also the millions the family receives */
   tier?: number;
+  /**
+   * Whether this arrangement has already introduced itself.
+   *
+   * Not "is this the first turn": a customer who taps across from another quotation arrives
+   * carrying their age and sex, which used to read as a conversation already under way — so
+   * they pressed a button naming a plan they had never been told anything about, and were
+   * answered with a question. The leaflet belongs to the plan, so the plan records whether it
+   * has handed it over.
+   */
+  told?: true;
 }
 
 export type LegacyAnswer = Reply & { slots: LegacySlots };
@@ -60,7 +71,7 @@ const ASK_PERSON = "ขอทราบเพศกับอายุหน่อ
  * life plan — which is the whole mechanism: the customer changes product and keeps their age
  * and sex, and is quoted the comparison without being asked a single thing twice.
  */
-const CROSS_SELL = "💰 มรดกเบี้ยไม่ทิ้ง";
+const CROSS_SELL = CHOOSE_LIFE;
 const ASK_TIER = "อยากได้วงเงินมรดกเท่าไหร่ครับ เลือกได้ 1–10 ล้าน";
 
 /**
@@ -120,20 +131,21 @@ export function answerLegacy(
   const slots = filled(previous, asked);
   const said = (text: string) => writtenFor(channel, text);
 
+  // the opening is said once per arrangement: not every time something is asked, which
+  // would read as a leaflet handed over twice, and not never, which is how a customer who
+  // crossed over from the other plan was treated
+  const opening = previous?.told ? [] : [{ text: said(LEGACY_OPENING) }];
+  slots.told = true;
+
   if (slots.age === undefined || !slots.sex) {
-    // the opening is said once: on the turn the customer arrives, not every time they are
-    // asked something, which would read as a leaflet handed over twice
-    const messages = previous
-      ? [{ text: said(ASK_PERSON) }]
-      : [{ text: said(LEGACY_OPENING) }, { text: said(ASK_PERSON) }];
-    return { messages, slots };
+    return { messages: [...opening, { text: said(ASK_PERSON) }], slots };
   }
 
   const refusal = outOfRange(slots.age);
   if (refusal) return { messages: [{ text: said(refusal) }], slots: { product: "legacy" } };
 
   if (slots.tier === undefined) {
-    return { messages: [{ text: said(ASK_TIER) }], replies: LEGACY_TIERS, slots };
+    return { messages: [...opening, { text: said(ASK_TIER) }], replies: LEGACY_TIERS, slots };
   }
 
   return quoted(slots as Required<Omit<LegacySlots, "product">> & LegacySlots, said, today);

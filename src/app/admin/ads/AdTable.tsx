@@ -22,12 +22,14 @@ const PRODUCTS: { value: Product | ""; label: string }[] = [
   { value: "", label: "อ่านจากชื่อโฆษณา" },
   { value: "lifeprotect", label: "มรดกเบี้ยไม่ทิ้ง (Life Protect)" },
   { value: "legacy", label: "มรดกเบี้ยทิ้ง + โรคร้ายแรง" },
+  { value: "ishield", label: "มรดก + ออม + โรคร้ายแรง (iShield)" },
   { value: "ihealthy", label: "iHealthy Ultra (ประกันสุขภาพ)" },
 ];
 
 const NAME: Record<Product, string> = {
   lifeprotect: "มรดกเบี้ยไม่ทิ้ง",
   legacy: "มรดกเบี้ยทิ้ง",
+  ishield: "มรดก + ออม",
   ihealthy: "iHealthy Ultra",
 };
 

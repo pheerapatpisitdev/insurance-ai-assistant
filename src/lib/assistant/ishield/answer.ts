@@ -1,0 +1,291 @@
+import { getPlan } from "@/calc/plans/registry";
+import { quote } from "@/calc/quote";
+import { baseAgeRange, baseSumAssuredLimits } from "@/calc/rules";
+import { sumAssuredFromPremium } from "@/calc/sa-from-premium";
+import { modePremiumsFrom } from "@/calc/mode-premiums";
+import { formatBaht } from "@/calc/money";
+import { cardPath } from "@/lib/quote-card";
+import diseases from "../../../../data/riders/ishield-diseases.json";
+import { coverIn, peopleIn, type Reply } from "../common";
+import { writtenFor, type Channel } from "../channel";
+import { CHOOSE_LEGACY } from "../choose";
+
+export const ISHIELD = "ISHIELD";
+
+/**
+ * The paying terms, shortest first, and the one the conversation opens on.
+ *
+ * WLCI10 because that is where the sales page opens too: the same arrangement quoted by the
+ * bot and by the page is the same arrangement, and a customer who reads one and then asks the
+ * other should not be shown two different figures for having used two different doors.
+ */
+const TERMS = ["WLCI05", "WLCI10", "WLCI15", "WLCI20"] as const;
+const OPENS_ON = "WLCI10";
+
+/** Sums are quoted in tidy steps, because an agent writing an application writes a tidy sum. */
+const SUM_STEP = 10_000;
+
+/**
+ * What this brain remembers between turns.
+ *
+ * The sum is held rather than the saving, because the sum is what the contract is written
+ * for: a customer who says "เดือนละ 3,000" is answered with the cover that buys, and it is
+ * that cover the next question is about.
+ */
+export interface IShieldSlots {
+  product: "ishield";
+  age?: number;
+  sex?: "M" | "F";
+  /** the paying term, e.g. WLCI10 */
+  variant?: string;
+  /** the sum assured in baht, once a saving or a sum has settled it */
+  sumAssured?: number;
+  /**
+   * Whether this arrangement has already introduced itself.
+   *
+   * Not "is this the first turn": a customer who taps across from another quotation arrives
+   * carrying their age and sex, which used to read as a conversation already under way — so
+   * they pressed a button naming a plan they had never been told anything about, and were
+   * answered with a question. The leaflet belongs to the plan, so the plan records whether it
+   * has handed it over.
+   */
+  told?: true;
+}
+
+export type IShieldAnswer = Reply & { slots: IShieldSlots };
+
+const rules = () => getPlan(ISHIELD)?.rules;
+const rates = () => getPlan(ISHIELD)?.rates;
+
+/** How many illnesses the contract names, counted rather than written down. */
+function illnesses(): { early: number; major: number; earlyPercent: number } {
+  const d = diseases as { early: string[]; major: string[] };
+  return { early: d.early.length, major: d.major.length, earlyPercent: 25 };
+}
+
+/**
+ * What the customer is told the moment they press the button.
+ *
+ * Built from the plan's own rules and its own list of illnesses, not typed out: the day a
+ * disease is added to the contract this sentence counts it, and the day the maturity age
+ * moves this sentence moves. A leaflet that can disagree with the engine will.
+ */
+export function ishieldOpening(): string {
+  const r = rules();
+  const ill = illnesses();
+  const maturity = r?.base.maturity;
+  return [
+    "มรดก + ออม + โรคร้ายแรง — จ่ายสั้น คุ้มยาว ได้เงินคืนครับ 🌱",
+    `• เจอโรคร้าย **${ill.early + ill.major} โรค** — ระยะเริ่มต้นรับ ${ill.earlyPercent}% ของทุน ระยะรุนแรงรับสูงสุด 100%`,
+    maturity
+      ? `• **อยู่ถึงอายุ ${maturity.age} ปี รับเงินคืน ${maturity.percentOfSumAssured}% ของทุน** — เบี้ยไม่ทิ้ง`
+      : "• มีเงินคืนเมื่อครบสัญญา",
+    "• **จ่ายแค่ 5 / 10 / 15 / 20 ปี** แล้วจบ แต่คุ้มครองชีวิตตลอดชีพ",
+    "• เสียชีวิต ครอบครัวรับทุนประกัน หรือเบี้ยที่จ่ายมาแล้ว แล้วแต่จำนวนใดมากกว่า",
+  ].join("\n");
+}
+
+/**
+ * The question this plan asks instead of "ทุนเท่าไหร่".
+ *
+ * Its rate table runs both ways — a premium in gives a sum assured back — and a customer
+ * knows what they can put aside each month long before they know what cover they want. The
+ * sum is arrived at rather than asked for, which is one fewer thing a lead has to decide.
+ */
+const ASK_PERSON = "ขอทราบเพศกับอายุหน่อยครับ เดี๋ยวคิดให้เลย (เช่น ช 35)";
+const ASK_SAVING = "อยากออมเดือนละเท่าไหร่ครับ บอกมาได้เลย เดี๋ยวคิดให้ว่าได้ทุนเท่าไหร่";
+export const SAVING_CHOICES = ["ออมเดือนละ 2,000 บาท", "ออมเดือนละ 3,000 บาท", "ออมเดือนละ 5,000 บาท"];
+
+/** The smallest monthly saving worth reading as one, below which a number is something else. */
+const SMALLEST_SAVING = 500;
+const LARGEST_SAVING = 500_000;
+
+/**
+ * The monthly saving a message names.
+ *
+ * Deliberately narrow. A bare number in this conversation is as likely to be an age as a
+ * premium, so one is only read where the customer said what it was — "เดือนละ 3000", "3,000
+ * บาท" — or where the message is nothing but the number, which is what an answer to the
+ * question actually looks like.
+ */
+export function savingIn(text: string): number | undefined {
+  const said = text.replace(/[฿,]/g, "").trim();
+  const named = said.match(/(?:เดือนละ|งวดละ|ออม|จ่าย)\s*(\d{3,7})|(\d{3,7})\s*(?:บาท|฿)/);
+  const alone = /^\d{3,7}$/.test(said) ? said : undefined;
+  const found = named?.[1] ?? named?.[2] ?? alone;
+  if (!found) return undefined;
+  const baht = Number(found);
+  if (baht < SMALLEST_SAVING || baht > LARGEST_SAVING) return undefined;
+  return baht;
+}
+
+/**
+ * The paying term to quote at this age.
+ *
+ * The one the page opens on where the age allows it — the terms end at different ages, 51 for
+ * the ten-year and 56 for the fifteen — and otherwise the longest one that still takes them,
+ * because a term that refuses is not an option and being told so is not an answer.
+ */
+export function termFor(age: number): string | undefined {
+  const r = rules();
+  if (!r) return undefined;
+  const takes = (v: string) => {
+    const { min, max } = baseAgeRange(r, v, rates());
+    return age >= min && age <= max;
+  };
+  if (takes(OPENS_ON)) return OPENS_ON;
+  return TERMS.find(takes);
+}
+
+/** The widest age this plan is issued at under any of its terms, for the refusal to quote. */
+function ageSpan(): { min: number; max: number } {
+  const r = rules();
+  if (!r) return { min: 0, max: 0 };
+  const spans = TERMS.map((v) => baseAgeRange(r, v, rates()));
+  return {
+    min: Math.min(...spans.map((s) => s.min)),
+    max: Math.max(...spans.map((s) => s.max)),
+  };
+}
+
+/**
+ * A saving turned into the sum the contract is written for.
+ *
+ * Rounded down to a tidy step and held inside the plan's own limits, then priced forward
+ * again — so the figure the customer is given is what that sum actually costs rather than
+ * what they said they would pay. The two are close and they are not the same, and quoting
+ * the second as if it were the first is quoting a premium nobody computed.
+ */
+export function sumFromSaving(saving: number, who: { age: number; sex: "M" | "F"; variant: string }): number | undefined {
+  const r = rules();
+  const table = rates();
+  if (!r || !table) return undefined;
+  const raw = sumAssuredFromPremium(table, { ...who, mode: "monthly", targetPremium: saving });
+  if (raw === undefined) return undefined;
+  const { min, max } = baseSumAssuredLimits(r, who.variant);
+  const tidy = Math.floor(raw / SUM_STEP) * SUM_STEP;
+  return Math.min(Math.max(tidy, min), max ?? raw);
+}
+
+/** Everything the message adds to what was already known. */
+function filled(previous: IShieldSlots | null, asked: string): IShieldSlots {
+  const slots: IShieldSlots = { product: "ishield", ...previous };
+  const person = peopleIn(asked)[0];
+  if (person) {
+    slots.age = person.age;
+    slots.sex = person.sex;
+    // the term depends on the age, so an age that moves takes the term with it
+    slots.variant = termFor(person.age);
+  } else if (slots.age !== undefined && !slots.variant) {
+    /**
+     * An age that arrived by another road still needs a term.
+     *
+     * The dispatcher carries a person across from whichever plan they were asking about
+     * before, and that person has an age and no paying term — so without this the customer
+     * who taps over from a legacy quotation is told this plan will not take them, at an age
+     * it takes perfectly well.
+     */
+    slots.variant = termFor(slots.age);
+  }
+
+  if (slots.age !== undefined && slots.sex && slots.variant) {
+    // a sum said outright is the sum; a saving is turned into one
+    const cover = coverIn(asked);
+    const saving = cover === undefined ? savingIn(asked) : undefined;
+    if (cover !== undefined) {
+      const { min, max } = baseSumAssuredLimits(rules()!, slots.variant);
+      slots.sumAssured = Math.min(Math.max(cover, min), max ?? cover);
+    } else if (saving !== undefined) {
+      slots.sumAssured = sumFromSaving(saving, { age: slots.age, sex: slots.sex, variant: slots.variant });
+    }
+  }
+  return slots;
+}
+
+/** One turn of the iShield conversation. No model: the plan's two unknowns are both read here. */
+export function answerIShield(
+  asked: string, previous: IShieldSlots | null, channel: Channel = "web", today: Date = new Date(),
+): IShieldAnswer {
+  const slots = filled(previous, asked);
+  const said = (text: string) => writtenFor(channel, text);
+
+  // said once per arrangement, and once per arrangement means once for this one — a customer
+  // who tapped across from another quotation has been told nothing about this plan yet
+  const opening = previous?.told ? [] : [{ text: said(ishieldOpening()) }];
+  slots.told = true;
+
+  if (slots.age === undefined || !slots.sex) {
+    return { messages: [...opening, { text: said(ASK_PERSON) }], slots };
+  }
+
+  if (!slots.variant) {
+    const { min, max } = ageSpan();
+    return {
+      messages: [{
+        text: said(`แบบนี้รับประกันอายุ ${min}–${max} ปีครับ อายุ ${slots.age} สมัครแบบนี้ไม่ได้`
+          + " แต่แบบมรดกเบี้ยไม่ทิ้งยังทำได้อยู่ สนใจให้คิดเบี้ยให้ไหมครับ"),
+      }],
+      slots: { product: "ishield" },
+    };
+  }
+
+  if (slots.sumAssured === undefined) {
+    return { messages: [...opening, { text: said(ASK_SAVING) }], replies: SAVING_CHOICES, slots };
+  }
+
+  return quoted(slots as IShieldSlots & { age: number; sex: "M" | "F"; variant: string; sumAssured: number }, said, today);
+}
+
+/** Cross-sell by a name the dispatcher routes on, so the comparison costs the customer nothing. */
+const CROSS_SELL = CHOOSE_LEGACY;
+
+function quoted(
+  slots: IShieldSlots & { age: number; sex: "M" | "F"; variant: string; sumAssured: number },
+  said: (text: string) => string,
+  today: Date,
+): IShieldAnswer {
+  const input = {
+    planCode: ISHIELD, variant: slots.variant, age: slots.age, sex: slots.sex,
+    sumAssured: slots.sumAssured, riders: [],
+  };
+  const modes = modePremiumsFrom((mode) => quote({ ...input, mode }, today));
+  const annual = modes?.find((m) => m.mode === "annual");
+  if (!annual || annual.total === 0) {
+    return {
+      messages: [{ text: said("ขออภัยครับ จำนวนนี้กับอายุนี้จัดให้ไม่ได้ ลองบอกจำนวนอื่นดูไหมครับ") }],
+      replies: SAVING_CHOICES,
+      slots: { ...slots, sumAssured: undefined },
+    };
+  }
+  const monthly = modes?.find((m) => m.mode === "monthly" && !m.belowMinimum);
+  const r = rules();
+  const ill = illnesses();
+  const maturity = r?.base.maturity;
+  const years = Number(slots.variant.replace(/\D/g, ""));
+  const money = (n: number) => n.toLocaleString("en-US");
+
+  const lines = [
+    `iShield ชำระเบี้ย ${years} ปี สำหรับ${slots.sex === "M" ? "ชาย" : "หญิง"}อายุ ${slots.age} ปี`,
+    `ทุนประกัน ${money(slots.sumAssured)} บาท`,
+    monthly
+      ? `เบี้ย ${formatBaht(monthly.total)} บาท/เดือน (ปีละ ${formatBaht(annual.total)} บาท) จ่าย ${years} ปีแล้วจบ`
+      : `เบี้ย ${formatBaht(annual.total)} บาท/ปี จ่าย ${years} ปีแล้วจบ`,
+    `เจอโรคร้ายระยะเริ่มต้นรับ ${money(Math.round(slots.sumAssured * ill.earlyPercent / 100))} บาท ระยะรุนแรงรับสูงสุด ${money(slots.sumAssured)} บาท`,
+    maturity
+      ? `อยู่ถึงอายุ ${maturity.age} ปี รับคืน ${money(Math.round(slots.sumAssured * maturity.percentOfSumAssured / 100))} บาทครับ`
+      : "",
+  ].filter(Boolean);
+
+  return {
+    replies: [CROSS_SELL],
+    messages: [{
+      text: said(lines.join("\n")),
+      card: cardPath({
+        kind: "plan", planCode: ISHIELD, variant: slots.variant,
+        age: slots.age, sex: slots.sex, sumAssured: slots.sumAssured, mode: "annual",
+      }),
+    }],
+    priced: true,
+    slots,
+  };
+}

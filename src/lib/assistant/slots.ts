@@ -1,4 +1,5 @@
 import type { LegacySlots } from "./legacy/answer";
+import type { IShieldSlots } from "./ishield/answer";
 import type { HealthSlots } from "./ihealthy/route";
 import type { Routed } from "./lifeprotect/route";
 
@@ -23,4 +24,4 @@ export interface Undecided {
  * A row written before the health brain existed has no `product` at all; `answerAny` reads
  * that as the life plan, which is the only thing it can have been.
  */
-export type AnySlots = Routed | HealthSlots | LegacySlots | Undecided;
+export type AnySlots = Routed | HealthSlots | LegacySlots | IShieldSlots | Undecided;

@@ -3,6 +3,7 @@ import { askWhich, productByTopic, productNamedIn, type Product } from "./choose
 import { aboutCompany, asksAboutCompany, peopleIn, type Reply } from "./common";
 import { answerHealth } from "./ihealthy/answer";
 import { answerLegacy, type LegacySlots } from "./legacy/answer";
+import { answerIShield, type IShieldSlots } from "./ishield/answer";
 import type { HealthSlots } from "./ihealthy/route";
 import { answerQuestion } from "./lifeprotect/answer";
 import type { Routed } from "./lifeprotect/route";
@@ -104,7 +105,7 @@ export async function answerAny(
   const now = settled(stored);
   const named = productNamedIn(asked);
 
-  if (now === "lifeprotect" || now === "ihealthy" || now === "legacy") {
+  if (now === "lifeprotect" || now === "ihealthy" || now === "legacy" || now === "ishield") {
     // the customer has named the other plan: only the person travels, because the sum, the
     // plan, the territory and any offer on the table all belong to the contract being left
     if (named && named !== now) return run(named, history, personIn(stored), true, channel);
@@ -188,7 +189,7 @@ async function run(
   product: Product, history: ChatMessage[], carried: AnySlots | Person | null, fresh: boolean,
   channel: Channel = "web",
 ): Promise<AnyAnswer> {
-  if (product === "legacy") {
+  if (product === "legacy" || product === "ishield") {
     /**
      * The one brain that is given the message rather than the conversation.
      *
@@ -197,6 +198,10 @@ async function run(
      * then have to be kept in step with.
      */
     const asked = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+    if (product === "ishield") {
+      const previous = fresh ? startIShield(carried as Person) : (carried as IShieldSlots);
+      return answerIShield(asked, previous, channel);
+    }
     const previous = fresh ? startLegacy(carried as Person) : (carried as LegacySlots);
     return answerLegacy(asked, previous, channel);
   }
@@ -222,6 +227,17 @@ async function run(
 function startLegacy({ age, sex }: Person): LegacySlots | null {
   if (age === undefined && sex === undefined) return null;
   return { product: "legacy", ...(age !== undefined ? { age } : {}), ...(sex ? { sex } : {}) };
+}
+
+/**
+ * The same for iShield, and the sum is left behind for the same reason as the tier.
+ *
+ * A million of this contract is not a million of either other one — it is a paying term, a
+ * maturity and a list of illnesses besides — so a sum decided elsewhere decides nothing here.
+ */
+function startIShield({ age, sex }: Person): IShieldSlots | null {
+  if (age === undefined && sex === undefined) return null;
+  return { product: "ishield", ...(age !== undefined ? { age } : {}), ...(sex ? { sex } : {}) };
 }
 
 /** A health conversation begun from whatever the last one knew about the person. */
