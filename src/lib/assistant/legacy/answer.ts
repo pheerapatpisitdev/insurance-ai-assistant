@@ -52,6 +52,15 @@ export const LEGACY_OPENING = [
 export const LEGACY_TIERS = ["มรดก 1 ล้าน", "มรดก 3 ล้าน", "มรดก 5 ล้าน"];
 
 const ASK_PERSON = "ขอทราบเพศกับอายุหน่อยครับ เดี๋ยวคิดเบี้ยให้เลย (เช่น ช 35)";
+
+/**
+ * The other arrangement, offered by the name its own brain answers to.
+ *
+ * A tapped button arrives as this sentence, so it has to be one the dispatcher reads as the
+ * life plan — which is the whole mechanism: the customer changes product and keeps their age
+ * and sex, and is quoted the comparison without being asked a single thing twice.
+ */
+const CROSS_SELL = "💰 มรดกเบี้ยไม่ทิ้ง";
 const ASK_TIER = "อยากได้วงเงินมรดกเท่าไหร่ครับ เลือกได้ 1–10 ล้าน";
 
 /**
@@ -171,7 +180,21 @@ function quoted(
     "เบี้ยส่วนโรคร้ายคิดตามอายุจริง ปีถัดไปจะขยับขึ้นตามอายุครับ",
   ];
 
+  /**
+   * What to offer after a premium, said by the brain that knows what follows from it.
+   *
+   * Left to the page, a quotation here was followed by "ขอตารางมูลค่า" — the life plan's own
+   * next question, and a dead end on an arrangement whose premium is spent rather than saved.
+   * What actually follows is a larger legacy, or the other way of leaving one: the customer's
+   * age and sex are already known, so the comparison costs them nothing to ask for.
+   */
+  const after = [
+    ...LEGACY_TIERS.filter((t) => tierIn(t) !== slots.tier).slice(0, 2),
+    CROSS_SELL,
+  ];
+
   return {
+    replies: after,
     messages: [{
       text: said(lines.join("\n")),
       card: cardPath({ kind: "bundle", bundleCode: LEGACY_BUNDLE, tier: slots.tier, age: slots.age, sex: slots.sex, mode: "annual" }),

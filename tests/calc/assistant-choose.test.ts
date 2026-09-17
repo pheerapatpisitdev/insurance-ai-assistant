@@ -9,9 +9,37 @@ describe("a message that names a plan", () => {
   });
 
   it("recognises the life one", () => {
-    for (const said of ["Life Protect x 2", "ไลฟ์โพรเทค", "สนใจประกันมรดก ทุน 1,000,000", "ประกันชีวิต"]) {
+    for (const said of ["Life Protect x 2", "ไลฟ์โพรเทค", "ประกันชีวิต", "มรดกเบี้ยไม่ทิ้ง"]) {
       expect(productNamedIn(said)).toBe("lifeprotect");
     }
+  });
+
+  it("recognises the legacy arrangement", () => {
+    for (const said of ["มรดกเบี้ยทิ้ง", "มรดกเพื่อครอบครัว", "มรดก+โรคร้ายแรง", "เบี้ยทิ้ง"]) {
+      expect(productNamedIn(said)).toBe("legacy");
+    }
+  });
+
+  /**
+   * The two arrangements are told apart by one word, and it is a word of negation.
+   *
+   * "เบี้ยไม่ทิ้ง" holds "ทิ้ง" inside it, so a reader written a shade loosely sends every
+   * customer who taps the first button into the second one's brain — quietly, for as long as
+   * nobody reads the inbox. This is the test that fails the day someone writes /ทิ้ง/.
+   */
+  it("does not read เบี้ยไม่ทิ้ง as เบี้ยทิ้ง", () => {
+    expect(productNamedIn("มรดกเบี้ยไม่ทิ้ง")).toBe("lifeprotect");
+    expect(productNamedIn("อยากได้แบบเบี้ยไม่ทิ้งครับ")).toBe("lifeprotect");
+    expect(productNamedIn("เบี้ยทิ้งก็ได้")).toBe("legacy");
+  });
+
+  /**
+   * A bare "มรดก" used to mean the life plan, because it was the only thing sold under that
+   * word. It now names three arrangements, so it names none of them: the customer is shown
+   * the buttons rather than guessed at.
+   */
+  it("asks rather than guessing when a customer says only มรดก", () => {
+    expect(productNamedIn("สนใจประกันมรดกครับ")).toBeUndefined();
   });
 
   it("recognises the two buttons it offers", () => {

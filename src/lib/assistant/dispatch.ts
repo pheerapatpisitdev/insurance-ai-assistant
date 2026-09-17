@@ -2,6 +2,7 @@ import type { ChatMessage } from "@/lib/ai/types";
 import { askWhich, productByTopic, productNamedIn, type Product } from "./choose";
 import { aboutCompany, asksAboutCompany, peopleIn, type Reply } from "./common";
 import { answerHealth } from "./ihealthy/answer";
+import { answerLegacy, type LegacySlots } from "./legacy/answer";
 import type { HealthSlots } from "./ihealthy/route";
 import { answerQuestion } from "./lifeprotect/answer";
 import type { Routed } from "./lifeprotect/route";
@@ -103,11 +104,11 @@ export async function answerAny(
   const now = settled(stored);
   const named = productNamedIn(asked);
 
-  if (now === "lifeprotect" || now === "ihealthy") {
+  if (now === "lifeprotect" || now === "ihealthy" || now === "legacy") {
     // the customer has named the other plan: only the person travels, because the sum, the
     // plan, the territory and any offer on the table all belong to the contract being left
-    if (named && named !== now) return run(named, history, personIn(stored), true);
-    return run(now, history, stored, false);
+    if (named && named !== now) return run(named, history, personIn(stored), true, channel);
+    return run(now, history, stored, false, channel);
   }
 
   /**
@@ -137,7 +138,7 @@ export async function answerAny(
 
   // nothing settled yet: the name first, then the subject, then the advertisement they came through
   const product = named ?? productByTopic(asked) ?? cameFor;
-  if (product) return run(product, history, personIn(stored), true);
+  if (product) return run(product, history, personIn(stored), true, channel);
 
   // the customer has not said, so the customer is asked — and what they did say is kept,
   // all of it: everyone they named, not only whoever they named first
@@ -185,7 +186,20 @@ export async function answerAny(
  */
 async function run(
   product: Product, history: ChatMessage[], carried: AnySlots | Person | null, fresh: boolean,
+  channel: Channel = "web",
 ): Promise<AnyAnswer> {
+  if (product === "legacy") {
+    /**
+     * The one brain that is given the message rather than the conversation.
+     *
+     * It reads two things — a person and a sum — and both are said in the turn being answered.
+     * Handing it the history would be handing it turns it has no use for, and a shape it would
+     * then have to be kept in step with.
+     */
+    const asked = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+    const previous = fresh ? startLegacy(carried as Person) : (carried as LegacySlots);
+    return answerLegacy(asked, previous, channel);
+  }
   if (product === "ihealthy") {
     const previous = fresh
       ? startHealth(carried as Person)
@@ -196,6 +210,18 @@ async function run(
   const previous = fresh ? startLife(carried as Person) : (carried as Routed);
   const answer = await answerQuestion(history, previous);
   return { ...answer, slots: { ...answer.slots, product: "lifeprotect" } };
+}
+
+/**
+ * A legacy conversation begun from whatever the last one knew about the person.
+ *
+ * The tier is left behind with everything else, because a sum chosen on another contract is
+ * not a sum chosen on this one: "ทุน 1 ล้าน" on the life plan is what the family receives,
+ * and a million of this arrangement is a different arrangement entirely.
+ */
+function startLegacy({ age, sex }: Person): LegacySlots | null {
+  if (age === undefined && sex === undefined) return null;
+  return { product: "legacy", ...(age !== undefined ? { age } : {}), ...(sex ? { sex } : {}) };
 }
 
 /** A health conversation begun from whatever the last one knew about the person. */

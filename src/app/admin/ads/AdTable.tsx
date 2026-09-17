@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { pairAd, type AdRow } from "./actions";
+import type { Product } from "@/lib/assistant/choose";
 import { Empty } from "../ui";
 
 /**
@@ -13,13 +14,22 @@ import { Empty } from "../ui";
  * whose names already read correctly need nobody to touch them.
  */
 
-const PRODUCTS = [
+/**
+ * Typed against `Product` rather than spelled out, so a plan the bot learns to sell cannot be
+ * one this page quietly refuses to pair an advertisement with. The build says so instead.
+ */
+const PRODUCTS: { value: Product | ""; label: string }[] = [
   { value: "", label: "อ่านจากชื่อโฆษณา" },
-  { value: "lifeprotect", label: "Life Protect (ประกันชีวิต)" },
+  { value: "lifeprotect", label: "มรดกเบี้ยไม่ทิ้ง (Life Protect)" },
+  { value: "legacy", label: "มรดกเบี้ยทิ้ง + โรคร้ายแรง" },
   { value: "ihealthy", label: "iHealthy Ultra (ประกันสุขภาพ)" },
-] as const;
+];
 
-const NAME = { lifeprotect: "Life Protect", ihealthy: "iHealthy Ultra" } as const;
+const NAME: Record<Product, string> = {
+  lifeprotect: "มรดกเบี้ยไม่ทิ้ง",
+  legacy: "มรดกเบี้ยทิ้ง",
+  ihealthy: "iHealthy Ultra",
+};
 
 export function AdTable({ rows }: { rows: AdRow[] }) {
   /**
@@ -38,7 +48,7 @@ export function AdTable({ rows }: { rows: AdRow[] }) {
     setChosen((c) => ({ ...c, [adId]: product }));
     start(async () => {
       try {
-        await pairAd(adId, product as "" | "lifeprotect" | "ihealthy", label);
+        await pairAd(adId, product as Product | "", label);
       } catch (e) {
         setError(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
       }
@@ -154,7 +164,7 @@ export function AddAd() {
         onClick={() => start(async () => {
           setError(undefined);
           try {
-            await pairAd(adId, product as "lifeprotect" | "ihealthy", label);
+            await pairAd(adId, product as Product, label);
             setAdId(""); setLabel("");
           } catch (e) {
             setError(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");

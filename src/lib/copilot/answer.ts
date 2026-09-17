@@ -178,7 +178,16 @@ export async function answerFromKnowledge(
        */
       ...(answer.guide?.length
         ? { guide: answer.guide }
-        : answer.priced ? { guide: PRICED_FOLLOW_UPS } : {}),
+        /**
+         * The buttons the bot offered the inbox, offered to the page as well.
+         *
+         * They are the same offer — "🛡 มรดก+โรคร้ายแรง" is a whole message either way — and
+         * the page was dropping them on the floor, so a customer who asked the same thing here
+         * was told to choose between two things and given nothing to choose with.
+         */
+        : answer.replies?.length
+          ? { guide: answer.replies.map((label) => ({ label, ask: label })) }
+          : answer.priced ? { guide: PRICED_FOLLOW_UPS } : {}),
     };
   }
 

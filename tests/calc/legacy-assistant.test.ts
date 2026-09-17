@@ -97,3 +97,38 @@ describe("the quotation", () => {
     }
   });
 });
+
+describe("what is offered after a premium", () => {
+  const priced = answer("มรดก 3 ล้าน", { product: "legacy", age: 35, sex: "M" });
+
+  /**
+   * The life plan's follow-ups are wrong here and were what the page offered.
+   *
+   * "ขอตารางมูลค่า" after this quotation is a button with a page's authority behind it
+   * leading nowhere: the premium on this arrangement is spent, and there is no surrender
+   * value to show. What follows is a larger legacy, or the other way of leaving one.
+   */
+  it("offers its own next questions, not the life plan's", () => {
+    expect(priced.replies).toBeDefined();
+    expect(priced.replies?.join(" ")).not.toContain("ตารางมูลค่า");
+  });
+
+  it("offers the tiers the customer did not pick, and never the one they did", () => {
+    expect(priced.replies).toContain("มรดก 1 ล้าน");
+    expect(priced.replies).not.toContain("มรดก 3 ล้าน");
+  });
+
+  /**
+   * The comparison is free to ask for, so it is offered.
+   *
+   * Both arrangements are priced from the same age and sex, and this one has just collected
+   * them. The button says the other plan's name because that is how the dispatcher hears a
+   * change of product — the customer is carried across without being asked anything twice.
+   */
+  it("offers the other arrangement by a name the dispatcher will route on", async () => {
+    const { productNamedIn } = await import("@/lib/assistant/choose");
+    const cross = priced.replies?.find((r) => r.includes("เบี้ยไม่ทิ้ง"));
+    expect(cross).toBeDefined();
+    expect(productNamedIn(cross!)).toBe("lifeprotect");
+  });
+});
