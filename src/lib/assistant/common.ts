@@ -1,4 +1,5 @@
 import type { ChatMessage } from "@/lib/ai/types";
+import { listPlans } from "@/calc/plans/registry";
 
 /**
  * What a bot on this page is, before it is a bot about any particular plan.
@@ -356,10 +357,60 @@ export function coverIn(text: string): number | undefined {
   return Math.round(baht);
 }
 
-/** Everyone a message names, in the order it names them. */
+/**
+ * A plan's own name, with whatever model number belongs to it.
+ *
+ * Built from the registry rather than written out, so a plan added next year is covered on
+ * the day it is added and not on the day somebody is quoted as a two-year-old. The Thai
+ * spellings are here as well, because a customer types those and the registry only holds the
+ * English.
+ *
+ * The numeric tail is the part that matters: "Life Protect" is harmless and "Life Protect
+ * x 1.5 / x 2" is not, so the pattern takes the name and then as many `x 2`, `80/6`, `1.5`
+ * pieces as follow it. Nothing standing on its own is touched — a sum, an age and a paying
+ * term are all still read.
+ */
+const PLAN_TAIL = String.raw`(?:\s*(?:x\s*)?\d{1,3}(?:\.\d)?(?:\s*/\s*(?:x\s*)?\d{1,3}(?:\.\d)?)?)*`;
+const THAI_PLAN_NAMES = [
+  String.raw`ไลฟ์\s*(?:โพรเทค|โปรเทค)`,
+  String.raw`ไอ\s*สมาร์ท`,
+  String.raw`ไลฟ์\s*(?:เทรเชอร์|ทรีเชอร์|เทรชเชอร์)`,
+  String.raw`ไอ\s*ชิลด์`,
+  String.raw`โพรเทคชั่น\s*ไลฟ์`,
+  String.raw`ไอเฮลท์ตี้(?:\s*อัลตร้า)?`,
+];
+
+let planNames: RegExp | undefined;
+function planNamePattern(): RegExp {
+  if (!planNames) {
+    const fromRegistry = listPlans().map(({ name }) => {
+      // the registry's own name, with its model number turned back into a pattern so that
+      // "Life Protect x 2" is recognised as well as the full "x 1.5 / x 2"
+      const word = name.replace(/[\d.\s/()x]+$/i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return word.replace(/\s+/g, String.raw`\s*`);
+    });
+    planNames = new RegExp(`(?:${[...fromRegistry, ...THAI_PLAN_NAMES].join("|")})${PLAN_TAIL}`, "gi");
+  }
+  return planNames;
+}
+
+/**
+ * Everyone a message names, in the order it names them.
+ *
+ * The plan's name comes out first. Product names carry numbers and this reader pairs a number
+ * with the sex word beside it in either order, so "Life Protect x 1.5 / x 2 ชาย 35" was read
+ * as a two-year-old and the quotation was refused for an age the plan does not write.
+ *
+ * It is done here and not at the call sites. It was tried at a call site once — `price.ts`,
+ * for the plans with no Messenger brain — and the two plans that have brains went on reading
+ * their own names as customers for weeks, as did the dispatcher. There is no caller that
+ * wants a model number read as somebody's age, so there is no reason for any of them to have
+ * to remember.
+ */
 export function peopleIn(text: string): { age: number; sex: "M" | "F" }[] {
+  const said = text.replace(planNamePattern(), " ");
   const out: { age: number; sex: "M" | "F" }[] = [];
-  for (const m of text.matchAll(PERSON_RE)) {
+  for (const m of said.matchAll(PERSON_RE)) {
     const word = m[1] ?? m[4] ?? "";
     const age = Number(m[2] ?? m[3]);
     if (!Number.isInteger(age) || age < 0 || age > 99) continue;
