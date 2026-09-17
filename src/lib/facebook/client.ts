@@ -9,8 +9,15 @@ const MAX_PARTS = 5;
 const MAX_REPLIES = 13;
 const MAX_REPLY_TITLE = 20;
 
-async function token(): Promise<string> {
-  const t = await pageToken();
+/**
+ * The token to answer with, for the Page the message arrived on.
+ *
+ * `pageId` travels down from the webhook rather than being looked up here, because the Page a
+ * reply belongs to is a fact about the event and not about the process. With two Pages
+ * connected, a send that guessed would answer one customer out of the other Page's inbox.
+ */
+async function token(pageId?: string): Promise<string> {
+  const t = await pageToken(pageId);
   if (!t) throw new Error("ยังไม่ได้เชื่อมต่อเพจ Facebook");
   return t;
 }
@@ -51,20 +58,20 @@ function quickReplies(titles: string[]) {
   });
 }
 
-async function post(path: string, body: unknown): Promise<void> {
+async function post(path: string, body: unknown, pageId?: string): Promise<void> {
   // the token goes in the header, not the query string: a URL is written to access logs and
   // proxy caches, and this one can send messages as the page
   const res = await fetch(`${GRAPH}/${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${await token()}` },
+    headers: { "content-type": "application/json", authorization: `Bearer ${await token(pageId)}` },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Messenger ${res.status}: ${(await res.text()).slice(0, 300)}`);
 }
 
 /** An answer takes several seconds; the typing bubble says the page is working on it. */
-export async function showTyping(psid: string): Promise<void> {
-  await post("messages", { recipient: { id: psid }, sender_action: "typing_on" });
+export async function showTyping(psid: string, pageId?: string): Promise<void> {
+  await post("messages", { recipient: { id: psid }, sender_action: "typing_on" }, pageId);
 }
 
 /**
@@ -72,7 +79,9 @@ export async function showTyping(psid: string): Promise<void> {
  * internet can reach — which the card route is, and which is why the card carries no more
  * than the arrangement it draws.
  */
-export async function sendImage(psid: string, url: string, replies?: string[]): Promise<void> {
+export async function sendImage(
+  psid: string, url: string, replies?: string[], pageId?: string,
+): Promise<void> {
   await post("messages", {
     recipient: { id: psid },
     messaging_type: "RESPONSE",
@@ -80,7 +89,7 @@ export async function sendImage(psid: string, url: string, replies?: string[]): 
       attachment: { type: "image", payload: { url, is_reusable: true } },
       ...(replies?.length ? { quick_replies: quickReplies(replies) } : {}),
     },
-  });
+  }, pageId);
 }
 
 /**
@@ -90,6 +99,8 @@ export async function sendImage(psid: string, url: string, replies?: string[]): 
  */
 export interface SendOptions {
   proactive?: boolean;
+  /** the Page this reply belongs to; without it the only connected Page is used */
+  pageId?: string;
 }
 
 export async function sendMessage(
@@ -105,6 +116,6 @@ export async function sendMessage(
       recipient: { id: psid },
       messaging_type: options?.proactive ? "UPDATE" : "RESPONSE",
       message: { text: part, ...(last && replies?.length ? { quick_replies: quickReplies(replies) } : {}) },
-    });
+    }, options?.pageId);
   }
 }

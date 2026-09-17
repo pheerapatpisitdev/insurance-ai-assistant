@@ -119,7 +119,7 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
   const markedBefore = session.mutedUntil;
 
   if (!allow(`fb:${userHash}`)) {
-    await sendMessage(psid, BUSY);
+    await sendMessage(psid, BUSY, undefined, { pageId });
     return;
   }
 
@@ -137,7 +137,7 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     : undefined;
   if (cameFor) console.info(`[ad] ${userHash.slice(0, 8)} มาจากโฆษณา ${cameFor.product} (${cameFor.from})`);
 
-  await showTyping(psid).catch(() => {});
+  await showTyping(psid, pageId).catch(() => {});
   try {
     const answer = await answered(history, session.slots, cameFor?.product);
     // the model takes seconds, and an agent watching the thread answers inside them. Their
@@ -149,16 +149,16 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
       // a second bubble arrives the way a person's would: after the dots, and after a pause
       // that scales with how much there was to type
       if (i > 0) {
-        await showTyping(psid).catch(() => {});
+        await showTyping(psid, pageId).catch(() => {});
         await pause(Math.min(2500, 400 + said.text.length * 15));
       }
       // the buttons ride on whatever lands last, because anything sent after them clears them
       const last = i === answer.messages.length - 1;
-      await sendMessage(psid, said.text, last && !said.card ? answer.replies : undefined);
+      await sendMessage(psid, said.text, last && !said.card ? answer.replies : undefined, { pageId });
       // the card follows its own words, so the customer reads the quote before the picture of
       // it — and a couple priced together gets the pair in the order they were named
       if (said.card) {
-        await sendImage(psid, siteUrl(said.card), last ? answer.replies : undefined)
+        await sendImage(psid, siteUrl(said.card), last ? answer.replies : undefined, pageId)
           .catch((e) => console.error("card failed:", e));
       }
     }
@@ -198,7 +198,7 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
   } catch (e) {
     ledger.push({ kind: "failed" });
     await record(conversationId, ledger, null);
-    await sendMessage(psid, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN);
+    await sendMessage(psid, e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN, undefined, { pageId });
     throw e;
   }
 }

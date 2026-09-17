@@ -8,7 +8,7 @@ import { ActionError, useAction } from "./useAction";
  * showing dialogs answers confirm() with "no" from then on, which left this button dead with
  * nothing on screen to say why.
  */
-export function DisconnectButton() {
+export function DisconnectButton({ pageId }: { pageId: string }) {
   const { pending, error, run } = useAction();
   const [armed, setArmed] = useState(false);
 
@@ -36,7 +36,7 @@ export function DisconnectButton() {
         <button
           type="button"
           disabled={pending}
-          onClick={() => run(() => disconnectPage())}
+          onClick={() => run(() => disconnectPage(pageId))}
           className="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700 disabled:opacity-50"
         >
           {pending ? "กำลังยกเลิก…" : "ยืนยันยกเลิกการเชื่อมต่อ"}

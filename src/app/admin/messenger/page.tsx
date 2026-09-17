@@ -1,6 +1,6 @@
 import { Card, Empty } from "../ui";
 import { facebookStatus } from "@/lib/facebook/status";
-import { pageConnection, readPending } from "@/lib/facebook/connection";
+import { pageConnections, readPending } from "@/lib/facebook/connection";
 import { listPages, oauthIsConfigured, SCOPES, SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
 import { DisconnectButton } from "./DisconnectButton";
 import { PagePicker, type Choice } from "./PagePicker";
@@ -53,12 +53,11 @@ export default async function MessengerAdminPage({
   const outcome = OUTCOMES[String(params.fb ?? "")];
   const detail = typeof params.detail === "string" ? params.detail : undefined;
 
-  const [status, connection, choices] = await Promise.all([
+  const [status, connections, choices] = await Promise.all([
     facebookStatus(),
-    pageConnection(),
+    pageConnections(),
     pendingChoices(),
   ]);
-  const missingFields = SUBSCRIBED_FIELDS.filter((f) => !(connection?.fields ?? []).includes(f));
 
   return (
     <>
@@ -71,22 +70,34 @@ export default async function MessengerAdminPage({
       <Card title="เพจที่บอทตอบให้" hint="เชื่อมต่อผ่านหน้า login ของ Facebook ไม่ต้องคัดลอกโทเค็นเอง">
         {choices.length > 0 ? (
           <PagePicker pages={choices} />
-        ) : connection ? (
-          <div>
-            <Row label="ชื่อเพจ"><span className="font-medium">{connection.pageName}</span></Row>
-            <Row label="รหัสเพจ">{connection.pageId}</Row>
-            <Row label="เชื่อมต่อเมื่อ">
-              {new Date(connection.connectedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
-            </Row>
-            <Row label="สิทธิ์ที่ได้รับ">{connection.scopes.join(", ") || "—"}</Row>
-            <Row label="เหตุการณ์ที่รับ">{connection.fields.join(", ") || "—"}</Row>
-            {missingFields.length > 0 && (
-              <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                ระบบรุ่นนี้ต้องรับเหตุการณ์ {missingFields.join(", ")} ด้วย ไม่งั้นปุ่มคำถามที่ลูกค้ากดจะไม่ถึงบอท
-                <span className="ml-3 inline-block"><RefreshSubscriptionButton /></span>
-              </p>
-            )}
-            <div className="pt-3"><DisconnectButton /></div>
+        ) : connections.length > 0 ? (
+          /* One block per Page. It was written for exactly one because there could only be
+             one — connecting a second overwrote the first without a word. */
+          <div className="space-y-5">
+            {connections.map((connection) => {
+              const missingFields = SUBSCRIBED_FIELDS.filter((f) => !connection.fields.includes(f));
+              return (
+                <div key={connection.pageId} className="rounded-lg border border-slate-200 p-3">
+                  <Row label="ชื่อเพจ"><span className="font-medium">{connection.pageName}</span></Row>
+                  <Row label="รหัสเพจ">{connection.pageId}</Row>
+                  <Row label="เชื่อมต่อเมื่อ">
+                    {new Date(connection.connectedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+                  </Row>
+                  <Row label="สิทธิ์ที่ได้รับ">{connection.scopes.join(", ") || "—"}</Row>
+                  <Row label="เหตุการณ์ที่รับ">{connection.fields.join(", ") || "—"}</Row>
+                  {missingFields.length > 0 && (
+                    <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      ระบบรุ่นนี้ต้องรับเหตุการณ์ {missingFields.join(", ")} ด้วย ไม่งั้นปุ่มคำถามที่ลูกค้ากดจะไม่ถึงบอท
+                      <span className="ml-3 inline-block"><RefreshSubscriptionButton pageId={connection.pageId} /></span>
+                    </p>
+                  )}
+                  <div className="pt-3"><DisconnectButton pageId={connection.pageId} /></div>
+                </div>
+              );
+            })}
+            <p className="text-sm text-slate-600">
+              ต่อเพจเพิ่มได้ — กดเชื่อมต่อกับ Facebook อีกครั้งแล้วเลือกเพจอื่น เพจที่ต่อไว้แล้วจะไม่หาย
+            </p>
           </div>
         ) : (
           <div>
@@ -123,8 +134,8 @@ export default async function MessengerAdminPage({
                 <span className="text-red-700">✗ โทเค็นเพจใช้งานไม่ได้ บอทตอบใครไม่ได้เลย</span>
               )}
             </Row>
-            <Row label="ชื่อเพจ">{status.pageName ?? connection?.pageName ?? "—"}</Row>
-            <Row label="รหัสเพจ">{status.pageId ?? connection?.pageId ?? "—"}</Row>
+            <Row label="ชื่อเพจ">{status.pageName ?? connections[0]?.pageName ?? "—"}</Row>
+            <Row label="รหัสเพจ">{status.pageId ?? connections[0]?.pageId ?? "—"}</Row>
             <Row label="การรับข้อมูล">
               {status.subscribed === undefined ? "—" : status.subscribed ? (
                 <span className="text-emerald-700">✓ เพจส่งข้อมูลมาที่แอปนี้แล้ว</span>
