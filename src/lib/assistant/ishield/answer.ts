@@ -4,7 +4,8 @@ import { baseAgeRange, baseSumAssuredLimits } from "@/calc/rules";
 import { sumAssuredFromPremium } from "@/calc/sa-from-premium";
 import { modePremiumsFrom } from "@/calc/mode-premiums";
 import { formatBaht } from "@/calc/money";
-import { cardPath } from "@/lib/quote-card";
+import { cardPath, valueTablePath } from "@/lib/card-link";
+import { valueTableCard } from "@/lib/quote-card";
 import diseases from "../../../../data/riders/ishield-diseases.json";
 import { coverIn, peopleIn, type Reply } from "../common";
 import { writtenFor, type Channel } from "../channel";
@@ -276,15 +277,36 @@ function quoted(
       : "",
   ].filter(Boolean);
 
+  const card = {
+    kind: "plan" as const, planCode: ISHIELD, variant: slots.variant,
+    age: slots.age, sex: slots.sex, sumAssured: slots.sumAssured, mode: "annual" as const,
+  };
+
+  /**
+   * The year-by-year table, sent beside the quotation rather than waited for.
+   *
+   * This is the plan whose whole argument is that the premium comes back, and the table is
+   * where that argument is actually made: the cash value at every year, against the premiums
+   * paid to get there. Offering it as a next question would be making the customer ask for
+   * the evidence of the thing they were just told.
+   *
+   * Guarded by the drawing itself rather than by a list of plans that can draw one — the list
+   * would be a second place to keep in step, and this asks the code that does the work.
+   */
+  const table = valueTableCard(card, today) ? valueTablePath(card) : undefined;
+
   return {
     replies: [CROSS_SELL],
-    messages: [{
-      text: said(lines.join("\n")),
-      card: cardPath({
-        kind: "plan", planCode: ISHIELD, variant: slots.variant,
-        age: slots.age, sex: slots.sex, sumAssured: slots.sumAssured, mode: "annual",
-      }),
-    }],
+    messages: [
+      { text: said(lines.join("\n")), card: cardPath(card) },
+      ...(table
+        ? [{
+          text: said(`ตารางมูลค่าทุกปีให้ดูด้วยครับ — เบี้ยสะสม เงินเวนคืน และความคุ้มครองของแต่ละปี`
+            + ` ตั้งแต่ปีแรกจนถึงอายุ ${maturity?.age ?? 85} ปี`),
+          card: table,
+        }]
+        : []),
+    ],
     priced: true,
     slots,
   };

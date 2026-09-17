@@ -477,7 +477,19 @@ const COVER_COLUMNS = ["ปีที่", "อายุ", "เบี้ย/ป�
  */
 const PAYOUT_COLUMNS = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "จ่ายคืน", "เวนคืนได้", "คุ้มครอง"];
 
-const baht = (satang: number) => money(Math.round(satang / 100));
+/**
+ * Whole baht, dropped rather than rounded — the same ROUNDDOWN the premiums themselves are
+ * built on, and the same rule `formatBaht` follows everywhere else a price is printed.
+ *
+ * It rounded, and the quotation card beside it did not. An iShield premium of 54,996.80 was
+ * "54,996 บาท" on the quote and "54,997 บาทต่อปี" on the table of the very same arrangement,
+ * sent one after the other into the same inbox. A baht is nothing; two figures for one
+ * premium, in two pictures the customer keeps, is not nothing.
+ *
+ * Only premiums move. Cash values and cover reach this already whole, so the two roundings
+ * never differed on them.
+ */
+const baht = (satang: number) => formatBaht(satang);
 
 /**
  * The same contract for a plan that is protection and nothing else.

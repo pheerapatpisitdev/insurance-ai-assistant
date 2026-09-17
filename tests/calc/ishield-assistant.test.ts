@@ -102,6 +102,19 @@ describe("the conversation", () => {
     expect(spoken(priced)).toContain("85");
   });
 
+  /**
+   * The table is the argument, so it travels with the claim rather than behind a button.
+   *
+   * This is the plan whose whole case is that the premium comes back. The year-by-year cash
+   * value against the premiums paid is where that case is actually made, and making the
+   * customer ask for it is making them ask for the evidence of what they were just told.
+   */
+  it("sends the year-by-year value table beside the quotation", () => {
+    expect(priced.messages).toHaveLength(2);
+    expect(priced.messages[1].card).toContain("/api/card/table");
+    expect(priced.messages[1].text).toContain("เงินเวนคืน");
+  });
+
   it("says the same figure the engine says", () => {
     const sum = priced.slots.sumAssured!;
     const engine = quote({
