@@ -13,9 +13,45 @@
  * preference, it is a button that does nothing.
  */
 
+/** The drawings the menu has. One per kind of work, not one per link — see `icon` below. */
+export type MenuIcon =
+  | "grid"
+  | "calc"
+  | "spark"
+  | "users"
+  | "sliders"
+  | "book"
+  | "chat"
+  | "megaphone"
+  | "code"
+  | "shield"
+  | "home"
+  | "umbrella"
+  | "gem"
+  | "shieldCheck"
+  | "heart";
+
 export interface MenuLink {
   href: string;
   label: string;
+  /** which drawing sits on its chip */
+  icon: MenuIcon;
+  /**
+   * The item's own colour.
+   *
+   * This is the one place in the shell where a colour is written down, and the exception is
+   * narrow on purpose. Every other colour here is a `--shell-*` variable because the same
+   * menu is worn by six sales pages running from near-black to warm cream, and a literal
+   * picked to look right on one of them vanishes on another — a mistake this project has
+   * made twice.
+   *
+   * A hue is safe from that because it is never laid on the page's ground: it fills a chip
+   * of its own, the chip carries white ink, and the chip's edge is drawn by the relief in
+   * `globals.css` rather than by the difference between the hue and whatever is behind it.
+   * What it buys is recognition — after a week the agent reaches for the orange one without
+   * reading the word, on any page.
+   */
+  hue: string;
   /** opened in a new tab: a sales page is something an agent shows, not somewhere they go */
   external?: boolean;
 }
@@ -37,14 +73,17 @@ export interface MenuGroup {
  * It was already written out — inside the calculator page, where nothing else could reach it.
  * It is here now so that the menu and the calculator cannot come to disagree about how many
  * pages there are.
+ *
+ * Each one's hue leans toward the page it opens — copper for iShield, gold for the legacy
+ * bundle — so the menu and the page an agent lands on are plainly the same thing.
  */
 export const SALES_PAGES: MenuLink[] = [
-  { href: "/lifeprotect", label: "Life Protect x 2" },
-  { href: "/legacy", label: "มรดกเพื่อครอบครัว" },
-  { href: "/plb", label: "Protection Life" },
-  { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์" },
-  { href: "/ishield", label: "iShield" },
-  { href: "/ihealthy-ultra", label: "iHealthy Ultra" },
+  { href: "/lifeprotect", label: "Life Protect x 2", icon: "shield", hue: "#e11d48" },
+  { href: "/legacy", label: "มรดกเพื่อครอบครัว", icon: "home", hue: "#b45309" },
+  { href: "/plb", label: "Protection Life", icon: "umbrella", hue: "#0f766e" },
+  { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์", icon: "gem", hue: "#7e22ce" },
+  { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#c2410c" },
+  { href: "/ihealthy-ultra", label: "iHealthy Ultra", icon: "heart", hue: "#0369a1" },
 ];
 
 /**
@@ -63,14 +102,14 @@ export const SALES_PAGES: MenuLink[] = [
 export function menuGroups(signedIn: boolean): MenuGroup[] {
   const groups: MenuGroup[] = [];
 
-  if (signedIn) groups.push({ links: [{ href: "/admin", label: "ภาพรวม" }] });
+  if (signedIn) groups.push({ links: [{ href: "/admin", label: "ภาพรวม", icon: "grid", hue: "#4f46e5" }] });
 
   groups.push({
     title: "งานขาย",
     links: [
-      { href: "/other-plans", label: "คำนวณเบี้ย" },
-      { href: "/", label: "ถาม AI" },
-      ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า" }] : []),
+      { href: "/other-plans", label: "คำนวณเบี้ย", icon: "calc", hue: "#0d9488" },
+      { href: "/", label: "ถาม AI", icon: "spark", hue: "#7c3aed" },
+      ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า", icon: "users" as const, hue: "#d97706" }] : []),
     ],
   });
 
@@ -78,16 +117,16 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
     groups.push({
       title: "ผู้ช่วย AI",
       links: [
-        { href: "/admin/ai", label: "ตั้งค่า" },
-        { href: "/admin/knowledge", label: "สอน AI" },
+        { href: "/admin/ai", label: "ตั้งค่า", icon: "sliders", hue: "#0284c7" },
+        { href: "/admin/knowledge", label: "สอน AI", icon: "book", hue: "#be185d" },
       ],
     });
     groups.push({
       title: "ช่องทาง",
       links: [
-        { href: "/admin/messenger", label: "Messenger" },
-        { href: "/admin/ads", label: "โฆษณา" },
-        { href: "/admin/api", label: "API" },
+        { href: "/admin/messenger", label: "Messenger", icon: "chat", hue: "#2563eb" },
+        { href: "/admin/ads", label: "โฆษณา", icon: "megaphone", hue: "#ea580c" },
+        { href: "/admin/api", label: "API", icon: "code", hue: "#059669" },
       ],
     });
   }

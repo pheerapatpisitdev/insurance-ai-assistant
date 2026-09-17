@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { signOut } from "@/app/login/actions";
-import { isCurrent, menuGroups } from "@/lib/shell/menu";
+import { isCurrent, menuGroups, type MenuIcon } from "@/lib/shell/menu";
 
 /**
  * The menu, beside the page on a desk and over it on a phone.
@@ -12,10 +12,17 @@ import { isCurrent, menuGroups } from "@/lib/shell/menu";
  * there, 240px of it, and the page is inset by the same amount. Below that it is behind a
  * button, because 240px of a 375px screen is most of the screen.
  *
- * Every colour is a `--shell-*` variable and not one is written here. The six sales pages run
- * from near-black to warm cream under one class name, and a literal picked to look right on
- * one of them is invisible on another — which is a mistake this project has already made
- * twice, and which `HomeButton` carries a note about for the same reason.
+ * Every colour of the menu's own furniture — its ground, its ink, its rules — is a
+ * `--shell-*` variable and not one is written here. The six sales pages run from near-black
+ * to warm cream under one class name, and a literal picked to look right on one of them is
+ * invisible on another — which is a mistake this project has already made twice, and which
+ * `HomeButton` carries a note about for the same reason.
+ *
+ * The one thing that does carry a colour is each item's chip, and `menu.ts` explains why that
+ * is safe: the hue fills a surface of its own rather than being laid on the page's ground.
+ * The relief — the lift under the finger, the press, the lit item's tint — is drawn by
+ * `.shell-btn` in `globals.css` out of neutral black and white at low opacity, which is the
+ * only kind of shading that reads on a near-black page and a cream one both.
  */
 
 function Mark() {
@@ -23,6 +30,58 @@ function Mark() {
     // eslint-disable-next-line @next/next/no-img-element
     <img src="/mark.png" alt="" width={22} height={28} className="h-7 w-auto shrink-0" />
   );
+}
+
+/**
+ * The drawings, on one 24-grid in one weight.
+ *
+ * They are decoration and are marked as such: the label beside each one is what the menu
+ * actually says, so nothing is lost to somebody reading with their ears, and nothing here
+ * has to clear a contrast bar on its own.
+ */
+function Icon({ name }: { name: MenuIcon }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    className: "h-[1.05rem] w-[1.05rem]",
+    "aria-hidden": true,
+  };
+  switch (name) {
+    case "grid":
+      return <svg {...common}><path d="M4.5 5.5h5v5h-5zM14.5 5.5h5v5h-5zM4.5 13.5h5v5h-5zM14.5 13.5h5v5h-5z" /></svg>;
+    case "calc":
+      return <svg {...common}><path d="M6.5 3.5h11v17h-11zM9 7.5h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" /></svg>;
+    case "spark":
+      return <svg {...common}><path d="M11 4l1.7 4.3L17 10l-4.3 1.7L11 16l-1.7-4.3L5 10l4.3-1.7zM17.5 14.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" /></svg>;
+    case "users":
+      return <svg {...common}><path d="M3.5 19.5v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1M12.7 8a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0M16.5 14.7a4 4 0 0 1 4 3.8v1M15.4 5.3a3.2 3.2 0 0 1 0 5.4" /></svg>;
+    case "sliders":
+      return <svg {...common}><path d="M4 8h7M17 8h3M4 16h3M13 16h7M15 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4M9 14a2 2 0 1 1 0 4 2 2 0 0 1 0-4" /></svg>;
+    case "book":
+      return <svg {...common}><path d="M4.5 5.5A2 2 0 0 1 6.5 3.5H19v14H6.5a2 2 0 0 0-2 2zM19 17.5v3H6.5M8 7.5h7M8 11h5" /></svg>;
+    case "chat":
+      return <svg {...common}><path d="M20 11.6c0 3.9-3.6 7-8 7a9 9 0 0 1-2.4-.3L5 20l1.2-3.3A6.6 6.6 0 0 1 4 11.6c0-3.9 3.6-7 8-7s8 3.1 8 7z" /></svg>;
+    case "megaphone":
+      return <svg {...common}><path d="M4 10.5v3A1.5 1.5 0 0 0 5.5 15H7l9 4.5v-15L7 9H5.5A1.5 1.5 0 0 0 4 10.5zM7 15v4.5M19 10.5a3 3 0 0 1 0 3" /></svg>;
+    case "code":
+      return <svg {...common}><path d="M9 8.5 5 12l4 3.5M15 8.5 19 12l-4 3.5M13.3 5.5l-2.6 13" /></svg>;
+    case "shield":
+      return <svg {...common}><path d="M12 3.5 19 6v5.5c0 4-3 7.2-7 9-4-1.8-7-5-7-9V6z" /></svg>;
+    case "home":
+      return <svg {...common}><path d="M4.5 10.5 12 4.5l7.5 6M6.5 9.6V19.5h11V9.6M10 19.5v-5h4v5" /></svg>;
+    case "umbrella":
+      return <svg {...common}><path d="M3.5 12a8.5 8.5 0 0 1 17 0zM12 12v6a2 2 0 0 0 4 0M12 3.5v1" /></svg>;
+    case "gem":
+      return <svg {...common}><path d="M7 4h10l3.5 5.5L12 20 3.5 9.5zM3.5 9.5h17M12 20 9 9.5 12 4l3 5.5z" /></svg>;
+    case "shieldCheck":
+      return <svg {...common}><path d="M12 3.5 19 6v5.5c0 4-3 7.2-7 9-4-1.8-7-5-7-9V6zM9 11.8l2.2 2.2 4-4.2" /></svg>;
+    case "heart":
+      return <svg {...common}><path d="M12 19.6S4.5 15.2 4.5 10a3.8 3.8 0 0 1 7.5-1.1A3.8 3.8 0 0 1 19.5 10c0 5.2-7.5 9.6-7.5 9.6z" /></svg>;
+  }
 }
 
 export function Sidebar({ signedIn: known }: { signedIn: boolean }) {
@@ -85,7 +144,7 @@ export function Sidebar({ signedIn: known }: { signedIn: boolean }) {
               {group.title}
             </p>
           )}
-          <ul className="space-y-0.5">
+          <ul className="space-y-1">
             {group.links.map((link) => {
               const here = !link.external && isCurrent(link.href, path);
               return (
@@ -94,14 +153,16 @@ export function Sidebar({ signedIn: known }: { signedIn: boolean }) {
                     href={link.href}
                     {...(link.external ? { target: "_blank", rel: "noreferrer" } : {})}
                     aria-current={here ? "page" : undefined}
-                    className="block rounded-md px-2 py-1.5 text-sm no-underline"
+                    className="shell-btn flex items-center gap-2.5 px-2 py-1.5 text-sm no-underline"
                     style={{
+                      // read by .shell-btn and .shell-chip for the tint, the edge and the fill
+                      ["--hue" as string]: link.hue,
                       color: here ? "var(--shell-active)" : "var(--shell-ink)",
-                      background: here ? "var(--shell-active-bg)" : "transparent",
                       fontWeight: here ? 600 : 400,
                     }}
                   >
-                    {link.label}
+                    <span className="shell-chip"><Icon name={link.icon} /></span>
+                    <span className="min-w-0 truncate">{link.label}</span>
                   </Link>
                 </li>
               );
@@ -141,7 +202,7 @@ export function Sidebar({ signedIn: known }: { signedIn: boolean }) {
         onClick={() => setOpen(true)}
         aria-label="เปิดเมนู"
         aria-expanded={open}
-        className="fixed left-3 top-3 z-30 rounded-full border p-2 backdrop-blur lg:hidden"
+        className="shell-hamburger fixed left-3 top-3 z-30 rounded-full border p-2 backdrop-blur lg:hidden"
         style={{ background: "var(--shell-bg)", borderColor: "var(--shell-line)", color: "var(--shell-ink)" }}
       >
         <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { menuGroups } from "@/lib/shell/menu";
 
 /**
  * The menu has to be legible on every skin the site wears, and that is checked by arithmetic
@@ -97,4 +98,34 @@ describe("the menu can be read on every skin the site wears", () => {
       expect(ratio(over(t["--lg-panel-line"], bg), bg), `${name} เส้นคั่น`).toBeGreaterThan(1.2);
     });
   }
+});
+
+/**
+ * The chips.
+ *
+ * A hue is the one colour the menu writes down, and it is allowed to because it never lands
+ * on the page's ground — it fills a chip, and the chip carries its own white drawing. So what
+ * has to hold is the thing inside the chip, on every skin at once, because the chip is the
+ * same colour on all of them. The drawing is decoration with a word beside it, which is the
+ * 3:1 bar rather than the 4.5:1 one.
+ */
+describe("the colours the menu wears itself", () => {
+  it("draws every icon clearly on its own chip", () => {
+    for (const group of menuGroups(true)) {
+      for (const link of group.links) {
+        // the chip is a gradient from the hue to a darker mix of it; the lit half is the
+        // hard case for white, so that is the one checked
+        expect(ratio([255, 255, 255], rgb(link.hue)), `${link.label} ${link.hue}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it("gives no two links in a group the same colour", () => {
+    // two orange chips side by side is one chip twice: the point of them is to be reached
+    // for without reading, and that only works while they differ from their neighbours
+    for (const group of menuGroups(true)) {
+      const hues = group.links.map((l) => l.hue);
+      expect(new Set(hues).size, group.title ?? "ภาพรวม").toBe(hues.length);
+    }
+  });
 });
