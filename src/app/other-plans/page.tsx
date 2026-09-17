@@ -142,8 +142,11 @@ export default function Home() {
     <main className="mx-auto max-w-5xl p-4 pt-16 sm:p-6 sm:pt-16 lg:pt-6">
       <div className="mb-1 flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
+        {/* The way into the back office is to type /admin, which the owner asked for: this
+            page is what an agent shows a customer across a table, and a link on it labelled
+            หลังบ้าน is an invitation to press it. The door is unchanged — /admin still asks
+            for the PIN — only the sign is gone. */}
         <span className="flex gap-4 text-sm text-[var(--op-mute)]">
-          <Link href="/admin" className="underline">หลังบ้าน</Link>
           <Link href="/privacy" className="underline">ความเป็นส่วนตัว</Link>
         </span>
       </div>
