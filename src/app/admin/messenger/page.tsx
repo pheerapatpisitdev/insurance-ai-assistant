@@ -95,9 +95,25 @@ export default async function MessengerAdminPage({
                 </div>
               );
             })}
-            <p className="text-sm text-slate-600">
-              ต่อเพจเพิ่มได้ — กดเชื่อมต่อกับ Facebook อีกครั้งแล้วเลือกเพจอื่น เพจที่ต่อไว้แล้วจะไม่หาย
-            </p>
+            {/* The button, not a sentence pointing at one.
+                It only existed on the branch for "no Page connected yet", which is the branch
+                nobody with a Page to add is looking at — so the line under the list told the
+                reader to press something that was not on the screen. */}
+            <div className="border-t border-slate-200 pt-4">
+              <p className="mb-3 text-sm text-slate-600">
+                ต่อเพจเพิ่มได้ เพจที่ต่อไว้แล้วจะไม่หาย — เข้าสู่ระบบด้วยบัญชีที่เป็นแอดมินของเพจนั้น แล้วเลือกเพจใหม่
+              </p>
+              {oauthIsConfigured() ? (
+                <a
+                  href="/api/facebook/connect"
+                  className="inline-block rounded-md bg-[#0866FF] px-4 py-2 text-sm font-medium text-white no-underline hover:bg-[#0653cc]"
+                >
+                  เชื่อมต่อเพจเพิ่ม
+                </a>
+              ) : (
+                <Empty>ยังตั้งค่า FB_APP_ID กับ FB_APP_SECRET ไม่ครบ</Empty>
+              )}
+            </div>
           </div>
         ) : (
           <div>
