@@ -140,8 +140,12 @@ export function IllnessSection({ facts }: { facts: IShieldCopyFacts }) {
       <div className="pt-8">
         <H2>คุ้มครอง {facts.illnessTotal} โรคร้ายแรง</H2>
         <div className="mt-5 border-t border-[var(--lg-panel-line)]">
+          {/* Open on arrival. The names are what the plan is — a customer weighing seventy
+              illnesses against a premium cannot do it from a heading, and the fold asked them
+              to press twice before they could start. It stays a fold so the page can be
+              collapsed back down once they have read it. */}
           {groups.map((g) => (
-            <Fold key={g.key} summary={`ดูรายชื่อ ${g.heading}`}>
+            <Fold key={g.key} open summary={g.heading}>
               <p className="mb-3 text-xs text-[var(--lg-gold)]">{g.note}</p>
               <ol className="space-y-1.5 sm:columns-2 sm:gap-x-8">
                 {g.names.map((d, i) => (

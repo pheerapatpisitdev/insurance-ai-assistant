@@ -17,9 +17,18 @@ export function Rule() {
  * which on a phone over mobile data is the difference between a list that works and a list
  * that waits for a bundle to arrive.
  */
-export function Fold({ summary, children }: { summary: string; children: React.ReactNode }) {
+/**
+ * `open` is for a fold whose contents are the reason the section exists.
+ *
+ * A fold is a promise that what is inside can wait. The seventy illnesses on the iShield page
+ * cannot: they are what the contract is, and a reader who has to press twice to find out what
+ * is covered has been asked to take the heading on trust.
+ */
+export function Fold(
+  { summary, children, open = false }: { summary: string; children: React.ReactNode; open?: boolean },
+) {
   return (
-    <details className="group border-b border-[var(--lg-panel-line)] last:border-b-0">
+    <details open={open} className="group border-b border-[var(--lg-panel-line)] last:border-b-0">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-sm font-medium text-[var(--lg-white)] marker:hidden">
         {summary}
         <span
