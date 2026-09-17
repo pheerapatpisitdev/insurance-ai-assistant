@@ -96,15 +96,66 @@ async function record(model: string, task: string, inTok: number, outTok: number
   });
 }
 
-function candidates(config: Config, tier: Tier): ModelRow[] {
-  const enabled = config.models.filter((m) => m.kind === "text" && m.enabled && config.keys[m.provider]);
-  const chosen = tier === "small" ? config.smallModel : config.largeModel;
+/**
+ * How far past the tier's own price a fallback may go before it is refused.
+ *
+ * Four, which is wide enough to survive a provider being down — the small tier's models
+ * spread further than that between cheapest and dearest — and narrow enough that the thing
+ * the ledger recorded cannot happen again: a routing call, worth 0.009 baht, answered at
+ * 0.819 by the large tier's model. Ninety times, unnoticed, on a budget that switches the
+ * assistant off when it runs out.
+ */
+const PRICE_CEILING = 4;
+
+/** What a call on this model costs per million tokens, in and out weighted as they are used. */
+const priceOf = (m: ModelRow) => m.price.inputPerMTokUsd + m.price.outputPerMTokUsd / 4;
+
+/**
+ * The models to try, in order, for one task.
+ *
+ * Three rules, and the order of them is the point.
+ *
+ * The owner's own choice from the admin page goes first and is never questioned: an explicit
+ * decision is not an accident, and this is not the place to overrule it.
+ *
+ * Then the tier's preference list, which is what the task was designed around.
+ *
+ * Then everything else — but cheapest first, and only up to a multiple of what this tier
+ * already costs. It used to be "then everything else" with no order and no limit, which is
+ * how a classifier came to be answered by the most expensive model in the account. Keeping
+ * the fallback matters, because one provider having a bad afternoon must not take the
+ * assistant down; keeping it bounded matters for the same reason, since the budget running
+ * out takes the assistant down too, only for longer and without a message.
+ *
+ * Exported for the test that holds the ceiling in place.
+ */
+export function fallbackOrder(models: ModelRow[], tier: Tier, chosen: string | null, keys?: Record<string, string>): ModelRow[] {
+  const enabled = models.filter((m) => m.kind === "text" && m.enabled && (!keys || keys[m.provider]));
   const order = chosen ? [chosen, ...TIER_PREFERENCE[tier]] : TIER_PREFERENCE[tier];
   const preferred = order
     .map((name) => enabled.find((m) => m.model_name === name))
     .filter((m): m is ModelRow => Boolean(m));
-  const rest = enabled.filter((m) => !preferred.includes(m));
-  return [...preferred, ...rest];
+
+  // the ceiling is measured against what this tier actually costs, so it moves with the
+  // prices rather than against a number written here once
+  const baseline = preferred.length ? Math.min(...preferred.map(priceOf)) : undefined;
+  const rest = enabled
+    .filter((m) => !preferred.includes(m))
+    .filter((m) => baseline === undefined || priceOf(m) <= baseline * PRICE_CEILING)
+    .sort((a, b) => priceOf(a) - priceOf(b));
+
+  const out = [...preferred, ...rest];
+  /**
+   * A tier with nothing in it falls back to the cheapest thing available rather than to
+   * nothing. Refusing to answer at all is worse than answering dearly, and this only happens
+   * when the preference list has gone stale against the model table.
+   */
+  if (out.length === 0 && enabled.length > 0) return [...enabled].sort((a, b) => priceOf(a) - priceOf(b));
+  return out;
+}
+
+function candidates(config: Config, tier: Tier): ModelRow[] {
+  return fallbackOrder(config.models, tier, tier === "small" ? config.smallModel : config.largeModel, config.keys);
 }
 
 export interface ChatOptions {
