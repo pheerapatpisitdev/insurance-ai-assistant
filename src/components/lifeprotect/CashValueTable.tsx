@@ -107,6 +107,19 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
           <tbody>
             {rows.map((r) => {
               /**
+               * The lit row says what it is, in the space the running total left behind.
+               *
+               * The highlight on its own is a colour somebody has to be told the meaning of.
+               * Written into the cell beside the surrender value, it points at the figure it
+               * is about: this is the year that column passes what was paid in.
+               *
+               * Only where that cell is empty. On a contract still being paid for at the
+               * crossover — the life plan paid to 99 is one — both figures are real, and a
+               * label there would be a number taken away to make room for a word.
+               */
+              const crossover = breakEven?.policyYear === r.policyYear;
+              const labelHere = crossover && !r.premiumDue;
+              /**
                * Every row is the same weight, including the early years worth nothing.
                *
                * They used to recede at 55% opacity, on the argument that a year with no
@@ -124,7 +137,7 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
               return (
                 <tr
                   key={r.policyYear}
-                  className={breakEven?.policyYear === r.policyYear ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold-lit)]" : ""}
+                  className={crossover ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold-lit)]" : ""}
                 >
                   <td className={`${CELL} text-left text-[var(--lg-mute)]`}>{r.policyYear}</td>
                   <td className={`${CELL} ${RULE} text-left text-[var(--lg-mute)]`}>{r.age}</td>
@@ -142,8 +155,10 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
                       carrying it — the break-even row is still lit, which is that answer
                       given rather than left to be worked out, and the total paid is stated
                       under the table, where it is said once instead of fifty times. */}
-                  <td className={`${CELL} ${RULE} text-right`}>
-                    {r.premiumDue && r.premiumPaid !== null ? formatBaht(r.premiumPaid) : "—"}
+                  <td className={`${CELL} ${RULE} text-right ${labelHere ? "font-medium" : ""}`}>
+                    {labelHere
+                      ? "จุดคุ้มทุน >"
+                      : r.premiumDue && r.premiumPaid !== null ? formatBaht(r.premiumPaid) : "—"}
                   </td>
                   <td className={`${CELL} ${RULE} text-right`}>{formatBaht(r.cashValue)}</td>
                   <td className={`${CELL} ${RULE} pr-3 text-right`}>{formatBaht(r.cover)}</td>
