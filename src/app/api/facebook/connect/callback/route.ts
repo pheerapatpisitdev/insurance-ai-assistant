@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${origin}/admin/messenger?${params}`);
   };
 
-  if (!(await isSignedIn())) return NextResponse.redirect(`${origin}/login`);
+  if (!(await isSignedIn())) return NextResponse.redirect(`${origin}/admin`);
 
   const params = new URL(req.url).searchParams;
   if (params.get("error")) return back("cancelled");

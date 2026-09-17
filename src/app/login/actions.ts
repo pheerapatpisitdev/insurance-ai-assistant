@@ -42,11 +42,12 @@ export async function signIn(formData: FormData): Promise<{ error: string } | un
   }
 
   await startSession();
-  redirect("/admin/ai");
+  /** the address they typed to get here, which is now the overview rather than a redirect */
+  redirect("/admin");
 }
 
 export async function signOut(): Promise<void> {
   const { endSession } = await import("@/lib/admin/session");
   await endSession();
-  redirect("/login");
+  redirect("/admin");
 }

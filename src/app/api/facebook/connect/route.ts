@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** Sends the admin to Facebook's own login screen. Nothing is stored until they come back. */
 export async function GET(req: Request) {
   const origin = requestOrigin(req);
-  if (!(await isSignedIn())) return NextResponse.redirect(`${origin}/login`);
+  if (!(await isSignedIn())) return NextResponse.redirect(`${origin}/admin`);
   if (!oauthIsConfigured()) {
     return NextResponse.redirect(`${origin}/admin/messenger?fb=unconfigured`);
   }
