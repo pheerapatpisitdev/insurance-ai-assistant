@@ -1,5 +1,5 @@
 import { IBM_Plex_Sans_Thai, Trirong } from "next/font/google";
-import { HomeButton } from "./HomeButton";
+import { AppShell } from "@/components/shell/AppShell";
 
 /**
  * Trirong is a Thai serif: it has the weight of something printed and kept, which is what a
@@ -29,12 +29,11 @@ const body = IBM_Plex_Sans_Thai({
 export function SalesTheme({ children }: { children: React.ReactNode }) {
   return (
     <div className={`${display.variable} ${body.variable} theme-legacy min-h-screen`}>
-      {children}
-      {/* last, not first: `.theme-legacy > *` in globals.css sets z-index 1 on every direct
-          child, and it ties a Tailwind z utility on specificity — so the order these are
-          painted in is the order they are written in, and the way home has to come after the
-          page it sits over. */}
-      <HomeButton />
+      {/* The menu replaces the single "way home" button that used to sit here, and inherits
+          its one hard-won rule: `.theme-legacy > *` in globals.css sets z-index 1 on every
+          direct child and ties a Tailwind z utility on specificity, so what puts the menu
+          above the page is being written after it. AppShell keeps that order. */}
+      <AppShell>{children}</AppShell>
     </div>
   );
 }

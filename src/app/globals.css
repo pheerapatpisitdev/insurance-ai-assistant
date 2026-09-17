@@ -306,3 +306,47 @@ body:has(.theme-legacy) {
     display: none;
   }
 }
+
+/* ── the menu, on whatever the page is wearing ────────────────────────────────────────────
+ *
+ * The shell names no colour of its own. It reads these five, and each skin points them at
+ * tokens it already has — so the menu follows the dark sales pages, the rose ones and the
+ * cream one without knowing any of them exist.
+ *
+ * This is the shape of a bug this project has had twice: a literal chosen to look right on
+ * one skin is invisible on another. `HomeButton` carries the same note for the same reason.
+ */
+:root {
+  --shell-bg: #ffffff;
+  --shell-ink: #1e293b;
+  --shell-mute: #64748b;
+  --shell-line: #e2e8f0;
+  --shell-active: #0f172a;
+  --shell-active-bg: #f1f5f9;
+}
+
+.theme-legacy {
+  --shell-bg: var(--lg-panel);
+  --shell-ink: var(--lg-white);
+  --shell-mute: var(--lg-mute);
+  --shell-line: var(--lg-panel-line);
+  --shell-active: var(--lg-gold);
+  --shell-active-bg: var(--lg-raise);
+}
+
+.home-chat {
+  --shell-bg: var(--hm-panel);
+  --shell-ink: var(--hm-ink);
+  --shell-mute: var(--hm-mute);
+  --shell-line: var(--hm-line);
+  --shell-active: var(--hm-accent);
+  --shell-active-bg: var(--hm-ground);
+}
+
+/* the drawer's backdrop, dark on every skin because it is the absence of the page */
+.shell-scrim { background: rgba(15, 23, 42, 0.45); }
+
+@media (min-width: 1024px) {
+  /* the menu is laid out beside the page rather than over it, so nothing is covered */
+  .shell-inset { padding-left: 15rem; }
+}

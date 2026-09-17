@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { AppShell } from "@/components/shell/AppShell";
+import { SALES_PAGES } from "@/lib/shell/menu";
 import { useMemo, useState } from "react";
 import { quote } from "@/calc/quote";
 import { getPlan, listPlans } from "@/calc/plans/registry";
@@ -56,14 +58,6 @@ function toQuoteInput(s: FormState, eligibleCodes: Set<string>): QuoteInput | nu
 }
 
 /** Opened in a new tab so a half-finished quotation is still there when the agent comes back. */
-const SALES_PAGES = [
-  { href: "/legacy", label: "มรดกเพื่อครอบครัว" },
-  { href: "/lifeprotect", label: "Life Protect x 2" },
-  { href: "/ishield", label: "iShield" },
-  { href: "/plb", label: "Protection Life" },
-  { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์" },
-  { href: "/ihealthy-ultra", label: "iHealthy Ultra" },
-];
 
 export default function Home() {
   const [state, setStateRaw] = useState<FormState>(INITIAL);
@@ -144,7 +138,8 @@ export default function Home() {
   );
 
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-6">
+    <AppShell>
+    <main className="mx-auto max-w-5xl p-4 pt-16 sm:p-6 lg:pt-6">
       <div className="mb-1 flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">คำนวณเบี้ยประกัน</h1>
         <span className="flex gap-4 text-sm text-[var(--op-mute)]">
@@ -183,5 +178,6 @@ export default function Home() {
         </div>
       </div>
     </main>
+    </AppShell>
   );
 }

@@ -1,30 +1,21 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isSignedIn, pinIsConfigured } from "@/lib/admin/session";
-import { SignOutButton } from "./SignOutButton";
+import { AppShell } from "@/components/shell/AppShell";
 
-/** Every page under /admin requires a valid PIN session; the login page sits at /login. */
+/**
+ * Every page under /admin requires a valid PIN session; the login page sits at /login.
+ *
+ * The row of links that used to be here has gone into the menu, which is the same menu on
+ * every page in the site — the answer to the owner's "I don't know what there is to use".
+ * Six links in a row was already at the width a phone will show, and the seventh would have
+ * had nowhere to go.
+ */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   if (!pinIsConfigured() || !(await isSignedIn())) redirect("/login");
 
   return (
-    <div className="mx-auto max-w-5xl p-4 sm:p-6">
-      <header className="mb-5 flex flex-wrap items-center gap-3 border-b pb-3">
-        <h1 className="text-lg font-semibold">หลังบ้าน</h1>
-        <nav className="flex items-center gap-3 text-sm">
-          <Link href="/admin/ai" className="text-slate-700 underline-offset-4 hover:underline">AI</Link>
-          <Link href="/admin/messenger" className="text-slate-700 underline-offset-4 hover:underline">Messenger</Link>
-          <Link href="/admin/knowledge" className="text-slate-700 underline-offset-4 hover:underline">สอน AI</Link>
-          <Link href="/admin/ads" className="text-slate-700 underline-offset-4 hover:underline">โฆษณา</Link>
-          <Link href="/admin/crm" className="text-slate-700 underline-offset-4 hover:underline">CRM</Link>
-          <Link href="/admin/api" className="text-slate-700 underline-offset-4 hover:underline">API</Link>
-        </nav>
-        <div className="ml-auto flex items-center gap-3 text-sm text-slate-500">
-          <Link href="/other-plans" className="underline">หน้าคำนวณ</Link>
-          <SignOutButton />
-        </div>
-      </header>
-      {children}
-    </div>
+    <AppShell signedIn>
+      <div className="mx-auto max-w-5xl p-4 pt-16 sm:p-6 lg:pt-6">{children}</div>
+    </AppShell>
   );
 }
