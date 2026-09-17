@@ -132,8 +132,8 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
   }
 
   return (
-    <main className="flex min-h-[70vh] flex-col py-6 sm:py-10">
-      <header className="mb-6 flex items-start justify-between gap-3">
+    <main className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+      <header className="flex shrink-0 items-start justify-between gap-3 pt-1">
         <div className="flex items-start gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -160,7 +160,30 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         )}
       </header>
 
-      <div className="flex-1 space-y-4">
+      {/**
+        * The chat box.
+        *
+        * One frame holding the conversation and the thing you type into, instead of a page
+        * that scrolls with the field stuck to the bottom of the window by a gradient. On a
+        * desktop screen that layout left half the page empty between the opening card and a
+        * stranded input, which reads as a page that has not finished loading.
+        *
+        * The interior keeps the ground colour rather than the panel: every answer is a panel
+        * bubble, and a panel inside a panel is a bubble with no edge.
+        */}
+      <section
+        className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--hm-hair)] bg-[var(--hm-ground)] shadow-[0_1px_2px_rgba(54,33,31,0.05),0_18px_36px_-20px_rgba(54,33,31,0.35)] ${
+          /**
+           * Empty, the box is only as tall as what is in it, sitting in the middle of the
+           * screen. Stretching it to the full height before anyone has said anything is what
+           * put a field to type in at the bottom of an empty page — the thing the owner was
+           * looking at when they asked for a chat box. It takes the height when there is a
+           * conversation to hold, which is when height is worth having.
+           */
+          turns.length === 0 ? "my-auto max-h-full" : "min-h-0 flex-1"
+        }`}
+      >
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain p-3 sm:p-4">
         {turns.length === 0 && (
           /**
            * The first group only, and the rest behind a press.
@@ -169,7 +192,9 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
            * in off the bottom of the screen — a guide that hides the thing it is guiding you
            * to. The prices stay open because that is what people come to ask.
            */
-          <div className="space-y-4 rounded-xl border border-[var(--hm-line)] bg-[var(--hm-panel)] p-4">
+          /* No card around it any more: the box is the container now, and a bordered panel
+             inside a bordered panel is a frame drawn twice. */
+          <div className="my-auto space-y-4 px-1 py-2">
             <p className="text-sm text-[var(--hm-mute)]">ไม่รู้จะเริ่มตรงไหน กดเลือกได้เลยครับ</p>
             <div>
               <p className="mb-2 text-xs font-medium text-[var(--hm-mute)]">{guide[0]?.title}</p>
@@ -264,14 +289,16 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
 
       <form
         onSubmit={(e) => { e.preventDefault(); ask(draft); }}
-        className="sticky bottom-0 mt-6 flex gap-2 bg-gradient-to-t from-[var(--hm-ground)] via-[var(--hm-ground)] to-transparent pb-4 pt-3"
+        className="flex shrink-0 gap-2 border-t border-[var(--hm-hair)] bg-[var(--hm-panel)] p-3"
       >
         <input
           value={draft} onChange={(e) => setDraft(e.target.value)}
           disabled={busy} maxLength={500} autoComplete="off"
           placeholder="พิมพ์คำถามเรื่องแบบประกัน…"
           aria-label="คำถามของคุณ"
-          className="flex-1 rounded-xl border border-[var(--hm-line)] bg-[var(--hm-panel)] px-4 py-3 text-sm outline-none focus:border-[var(--hm-accent)]"
+          /* the ground, because the strip it sits on is the panel — a field the colour of
+             the thing behind it is a field with only a hairline to say where it is */
+          className="flex-1 rounded-xl border border-[var(--hm-line)] bg-[var(--hm-ground)] px-4 py-3 text-sm outline-none placeholder:text-[var(--hm-mute)] focus:border-[var(--hm-accent)]"
         />
         <button
           type="submit" disabled={busy || !draft.trim()}
@@ -280,8 +307,9 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
           ถาม
         </button>
       </form>
+      </section>
 
-      <p className="pb-2 text-center text-xs text-[var(--hm-mute)]">
+      <p className="shrink-0 text-center text-xs text-[var(--hm-mute)]">
         เบี้ยเป็นตัวเลขประมาณการจากตารางของบริษัท ไม่ใช่ใบเสนอราคา ·{" "}
         <Link href="/privacy" className="underline">ความเป็นส่วนตัว</Link>
       </p>
