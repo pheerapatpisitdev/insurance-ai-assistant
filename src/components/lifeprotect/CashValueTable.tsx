@@ -36,6 +36,17 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
   const { rows, breakEven, zeroYears, maturityAge } = projection;
   if (!rows.length) return null;
 
+  /**
+   * The last year a premium is due, and what has been paid by then.
+   *
+   * Read off the rows rather than passed in, because the rows are what the reader is looking
+   * at: a contract whose paying term the projection and the caller disagreed about would
+   * otherwise state a total the table does not show.
+   */
+  const paying = rows.filter((r) => r.premiumDue);
+  const payingYears = paying.length;
+  const totalPaid = paying.length ? paying[paying.length - 1].premiumPaid : null;
+
   return (
     <section className="mt-3.5 border-t border-[var(--lg-panel-line)] pt-3">
       <div className="flex items-center justify-between gap-3">
@@ -120,8 +131,19 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
                   <td className={`${CELL} ${RULE} text-right`}>
                     {r.premiumDue ? formatBaht(r.premiumDue) : "—"}
                   </td>
+                  {/* The running total stops when the paying does, rather than repeating the
+                      same figure down the rest of the contract — thirty-six identical rows
+                      are not a column, they are noise with a heading on it.
+
+                      What that costs is the comparison a reader makes further down: on Life
+                      Treasure the last premium is year 18 and the cash value only passes it
+                      at year 25, so the seven rows where the question "am I ahead yet" gets
+                      answered no longer have both numbers side by side. Two things are left
+                      carrying it — the break-even row is still lit, which is that answer
+                      given rather than left to be worked out, and the total paid is stated
+                      under the table, where it is said once instead of fifty times. */}
                   <td className={`${CELL} ${RULE} text-right`}>
-                    {r.premiumPaid === null ? "—" : formatBaht(r.premiumPaid)}
+                    {r.premiumDue && r.premiumPaid !== null ? formatBaht(r.premiumPaid) : "—"}
                   </td>
                   <td className={`${CELL} ${RULE} text-right`}>{formatBaht(r.cashValue)}</td>
                   <td className={`${CELL} ${RULE} pr-3 text-right`}>{formatBaht(r.cover)}</td>
@@ -139,6 +161,16 @@ export function CashValueTable({ projection, caption, cardPath }: CashValueTable
           </span>{" "}
           เบี้ยช่วงต้นถูกใช้ไปกับค่าใช้จ่ายในการออกกรมธรรม์ เป็นปกติของประกันตลอดชีพทุกบริษัท
           แบบนี้เน้นความคุ้มครอง ไม่ใช่การออมระยะสั้น
+        </p>
+      )}
+      {/* Said once, here, because the column no longer says it on every row. It is the figure
+          every later row is measured against — "have I got back more than I put in" — so it
+          cannot simply be dropped along with the repetition. */}
+      {totalPaid !== null && (
+        <p className="mt-2.5 px-0.5 text-xs leading-[1.7] text-[var(--lg-mute)]">
+          จ่ายเบี้ยทั้งหมด{" "}
+          <span className="font-medium tabular-nums text-[var(--lg-white)]">{formatBaht(totalPaid)}</span>{" "}
+          บาท ({payingYears} ปี) — ตั้งแต่ปีที่ {payingYears + 1} เป็นต้นไปไม่ต้องจ่ายเพิ่ม
         </p>
       )}
       <p className="mt-2 px-0.5 text-[11.5px] leading-[1.7] text-[var(--lg-mute)] opacity-80">
