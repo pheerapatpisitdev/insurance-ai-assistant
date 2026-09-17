@@ -7,10 +7,16 @@ export type Product = "lifeprotect" | "ihealthy" | "legacy" | "ishield";
  * A plan named outright — the only signal strong enough to move a conversation already under
  * way. "ประกันสุขภาพ" is that; a bare "สุขภาพ" is not, because a customer buying life cover is
  * asked to declare their health and then asks about the declaration.
+ *
+ * The English words are here because an m.me link carries one: `?ref=legacy` arrives as the
+ * whole of the customer's first message, and a ref the reader does not know fails the way
+ * every silent failure does — the customer is asked which plan, exactly as if the link had
+ * never been set. Three of the four already answered to their own English name; this one had
+ * none, so it has one. Whatever /admin/ads offers to copy has to be a word this list knows.
  */
 const NAMES: [Product, RegExp][] = [
   ["ihealthy", /ประกันสุขภาพ|ไอเฮลท์ตี้|ไอเฮลตี้|i\s*-?\s*healthy/i],
-  ["legacy", /เบี้ยทิ้ง|มรดกเพื่อครอบครัว|มรดก\s*\+\s*โรคร้าย/i],
+  ["legacy", /เบี้ยทิ้ง|มรดกเพื่อครอบครัว|มรดก\s*\+\s*โรคร้าย|\blegacy\b/i],
   ["ishield", /i\s*-?\s*shield|ไอ\s*ชิลด์|ออม/i],
   ["lifeprotect", /life\s*protect|ไลฟ์\s*โพรเทค|ไลฟ์โปรเทค|ประกันชีวิต|เบี้ยไม่ทิ้ง/i],
 ];

@@ -125,7 +125,6 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
       title: "ช่องทาง",
       links: [
         { href: "/admin/messenger", label: "Messenger", icon: "chat", hue: "#2563eb" },
-        { href: "/admin/ads", label: "โฆษณา", icon: "megaphone", hue: "#ea580c" },
         { href: "/admin/api", label: "API", icon: "code", hue: "#059669" },
       ],
     });

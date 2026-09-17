@@ -21,6 +21,22 @@ describe("a message that names a plan", () => {
   });
 
   /**
+   * An m.me link carries a plan's English name and nothing else.
+   *
+   * `?ref=legacy` arrives as the whole of the customer's first message, and a ref the reader
+   * does not know fails the way silent failures do — the customer taps a link that says which
+   * plan they came for and is asked which plan they came for. Three of the four already
+   * answered to their own name; this one did not, which made it the only one that could be
+   * linked to and not arrive.
+   */
+  it("answers to the English name a link would carry", () => {
+    expect(productNamedIn("lifeprotect")).toBe("lifeprotect");
+    expect(productNamedIn("ihealthy")).toBe("ihealthy");
+    expect(productNamedIn("ishield")).toBe("ishield");
+    expect(productNamedIn("legacy")).toBe("legacy");
+  });
+
+  /**
    * The two arrangements are told apart by one word, and it is a word of negation.
    *
    * "เบี้ยไม่ทิ้ง" holds "ทิ้ง" inside it, so a reader written a shade loosely sends every

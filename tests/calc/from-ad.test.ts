@@ -97,20 +97,21 @@ describe("the first reply to someone who came from an advertisement", () => {
   });
 });
 
-describe("an advertisement paired by hand at /admin/ads", () => {
-  it("outranks everything read off a name", async () => {
-    // the point of the page: an advertisement the readings get wrong can be corrected, and
-    // the correction is about this advertisement and nothing else
-    paired = [{ product: "ihealthy" }];
-    adRows = [{ ad_name: "ประกันชีวิต มรดก" }];
-    expect(await productFromAd({ ad_id: "120288776655443322", ref: "lifeprotect" }, undefined))
-      .toEqual({ product: "ihealthy", from: "paired" });
-  });
-
-  it("gives the other readings their turn when nothing was paired", async () => {
-    paired = [];
+describe("an advertisement nothing was said about by hand", () => {
+  /**
+   * The pairing table used to sit in front of these and outrank them. It is gone with the
+   * page that wrote it — there is no longer a way to say anything by hand about one
+   * advertisement, so an advertisement read wrongly is renamed rather than corrected.
+   */
+  it("is read from its own name", async () => {
     adRows = [{ ad_name: "ประกันสุขภาพ เหมาจ่าย" }];
     expect(await productFromAd({ ad_id: "nope" }, undefined))
       .toEqual({ product: "ihealthy", from: "ad_name" });
+  });
+
+  it("lets the link's own ref outrank the name", async () => {
+    adRows = [{ ad_name: "ประกันสุขภาพ เหมาจ่าย" }];
+    expect(await productFromAd({ ad_id: "120288776655443322", ref: "lifeprotect" }, undefined))
+      .toEqual({ product: "lifeprotect", from: "ref" });
   });
 });

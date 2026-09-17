@@ -55,9 +55,8 @@ export async function loadOverview(): Promise<Overview> {
   const since = new Date(Date.now() - DAYS * 86_400_000).toISOString();
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-  const [connection, adProducts, unanswered, conversations, spend, settings] = await Promise.all([
+  const [connection, unanswered, conversations, spend, settings] = await Promise.all([
     pageConnection().catch(() => null),
-    supabase.from("ins_ad_products").select("id", { count: "exact", head: true }),
     supabase.from("ins_unanswered").select("id", { count: "exact", head: true }).gte("at", since),
     supabase.from("ins_conversations").select("priced_at, form_sent_at").gte("started_at", since),
     supabase.from("ins_usage_ledger").select("cost_thb").gte("created_at", monthStart),
@@ -89,15 +88,6 @@ export async function loadOverview(): Promise<Overview> {
       title: "เชื่อมเพจแล้ว แต่ยังไม่ได้สมัครรับข้อความ",
       detail: `ข้อความจากลูกค้ายังไม่เข้าระบบเลย ต้องกดปุ่มสมัครรับอีกครั้ง (ขาด ${missing.join(", ")})`,
       href: "/admin/messenger", action: "กดสมัครรับ",
-    });
-  }
-
-  if ((adProducts.count ?? 0) === 0) {
-    attention.push({
-      id: "ads", urgency: "wait",
-      title: "ยังไม่ได้จับคู่โฆษณากับแบบประกัน",
-      detail: "เวลาลูกค้าทักมาจากโฆษณา ระบบจะไม่รู้ว่ามาจากโฆษณาตัวไหน",
-      href: "/admin/ads", action: "ไปจับคู่",
     });
   }
 
