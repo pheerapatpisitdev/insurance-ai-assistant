@@ -2,8 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Answer } from "@/lib/assistant/lifeprotect/answer";
 
 const sent: { text: string[]; images: string[]; replies: (string[] | undefined)[] } = { text: [], images: [], replies: [] };
-const session = { messages: [] as { role: "user" | "assistant"; content: string }[], slots: null as unknown, mutedUntil: null as string | null };
-const saved: { mutedUntil?: Date | null }[] = [];
+const session = {
+  messages: [] as { role: "user" | "assistant"; content: string }[],
+  slots: null as unknown,
+  mutedUntil: null as string | null,
+  handedOverAt: null as string | null,
+};
+const saved: { mutedUntil?: Date | null; handedOverAt?: Date | null }[] = [];
 /** every user hash the handler touched, so one conversation can be shown to be one row */
 const hashesSeen: string[] = [];
 const quoted = async (): Promise<Answer> => ({
@@ -43,7 +48,8 @@ vi.mock("@/lib/chat/session", async () => {
     loadSession: async (_c: string, u: string) => { hashesSeen.push(u); return session; },
     saveSession: async (
       _c: string, u: string, _m: unknown, _s: unknown, mutedUntil?: Date | null,
-    ) => { hashesSeen.push(u); saved.push({ mutedUntil }); },
+      _conversationId?: string | null, handedOverAt?: Date | null,
+    ) => { hashesSeen.push(u); saved.push({ mutedUntil, handedOverAt }); },
   };
 });
 
@@ -57,7 +63,7 @@ beforeEach(() => {
   sent.text = []; sent.images = []; sent.replies = []; saved.length = 0;
   imageFailures = 0;
   followups.armed.length = 0; followups.dropped.length = 0;
-  session.messages = []; session.slots = null; session.mutedUntil = null;
+  session.messages = []; session.slots = null; session.mutedUntil = null; session.handedOverAt = null;
   answer.mockReset();
   answer.mockImplementation(quoted);
 });
@@ -291,6 +297,33 @@ describe("once the form has been handed over", () => {
     expect(sent.images).toEqual([]);
     // and no model was asked to compose the silence
     expect(answer).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A session is a day old and an application is not finished in a day. The stamp is read
+   * past the staleness that empties the slots, so Thursday's message is met by the same
+   * silence Tuesday's was.
+   */
+  it("stays quiet after the session itself has gone stale", async () => {
+    session.slots = null;
+    session.handedOverAt = new Date("2026-09-01T00:00:00.000Z").toISOString();
+    await handle({ sender: { id: "psid-old" }, message: { mid: "mg4", text: "ขอถามอีกเรื่องครับ" } });
+    expect(sent.text).toEqual([]);
+    expect(answer).not.toHaveBeenCalled();
+  });
+
+  it("stamps the thread on the turn the form goes out, and not on any other", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "ยินดีครับ 😊" }],
+      slots: { intent: "quote", product: "lifeprotect", formSent: true },
+    }));
+    await handle({ sender: { id: "psid-stamp" }, message: { mid: "mg5", text: "สนใจสมัคร" } });
+    expect(saved.at(-1)!.handedOverAt).toBeInstanceOf(Date);
+
+    // an ordinary turn leaves the column alone rather than writing null over a stamp
+    saved.length = 0;
+    await handle({ sender: { id: "psid-plain" }, message: { mid: "mg6", text: "ทุน 1 ล้าน" } });
+    expect(saved.at(-1)!.handedOverAt).toBeUndefined();
   });
 
   it("still answers the turn that sends the form", async () => {

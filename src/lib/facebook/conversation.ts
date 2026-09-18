@@ -154,10 +154,11 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
    * not need another quotation.
    *
    * The message is still recorded, so the report shows a live thread rather than one that
-   * stopped. Silence lasts as long as the session does: a day later the row is stale, the
-   * flag is gone with it, and somebody writing next week is a new customer again.
+   * stopped. The silence does not expire: `handed_over_at` is read past the session's own
+   * staleness, because a session is a day old and an application is not finished in a day.
+   * Clearing that column is what gives the thread back to the bot.
    */
-  if (handedOver(session.slots)) {
+  if (session.handedOverAt || handedOver(session.slots)) {
     await record(conversationId, ledger, productOf(session.slots));
     return;
   }
@@ -219,10 +220,13 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
       if (said.card) await sendCard(psid, siteUrl(said.card), last ? answer.replies : undefined, pageId);
     }
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
+    // the turn that hands the form over is the turn that stamps the thread; every other save
+    // leaves the column alone, so a stamp already there is never wiped
+    const justSent = handedOver(answer.slots) && !handedOver(session.slots);
     // no mute argument: recording what was said must never clear one
     await saveSession(
       "facebook", userHash, [...history, { role: "assistant", content: spoken }],
-      answer.slots, undefined, conversationId,
+      answer.slots, undefined, conversationId, justSent ? new Date() : undefined,
     );
     /**
      * A quotation is where the conversation used to stop, so it is where the bot now arms one
@@ -241,9 +245,8 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     if (answer.priced) ledger.push({ kind: "quoted", data: { ...answer.quote } });
     if (wantsIn) ledger.push({ kind: "handover" });
     // the form is sent once, and the turn that sends it is the one where the flag turns over
-    const formSent = Boolean((answer.slots as { formSent?: boolean }).formSent);
-    const hadForm = Boolean((session.slots as { formSent?: boolean } | null)?.formSent);
-    if (formSent && !hadForm) ledger.push({ kind: "form_sent" });
+    const formSent = handedOver(answer.slots);
+    if (justSent) ledger.push({ kind: "form_sent" });
     if (answer.formDone) ledger.push({ kind: "form_done" });
 
     // written last, and its failure is its own: the customer has already been answered
