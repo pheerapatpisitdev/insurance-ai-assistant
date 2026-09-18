@@ -89,16 +89,33 @@ export function ishieldOpening(): string {
   ].join("\n");
 }
 
-/**
- * The question this plan asks instead of "ทุนเท่าไหร่".
- *
- * Its rate table runs both ways — a premium in gives a sum assured back — and a customer
- * knows what they can put aside each month long before they know what cover they want. The
- * sum is arrived at rather than asked for, which is one fewer thing a lead has to decide.
- */
 const ASK_PERSON = "ขอทราบเพศกับอายุหน่อยครับ เดี๋ยวคิดให้เลย (เช่น ช 35)";
-const ASK_SAVING = "อยากออมเดือนละเท่าไหร่ครับ บอกมาได้เลย เดี๋ยวคิดให้ว่าได้ทุนเท่าไหร่";
-export const SAVING_CHOICES = ["ออมเดือนละ 2,000 บาท", "ออมเดือนละ 3,000 บาท", "ออมเดือนละ 5,000 บาท"];
+
+/**
+ * The sum, asked for outright.
+ *
+ * It was asked the other way round for a while — "อยากออมเดือนละเท่าไหร่" — because the rate
+ * table runs both ways and a saving is the easier thing to name. What the inbox showed is
+ * that a customer who came for an inheritance is thinking in cover, and the six sums this
+ * plan is actually sold in are a shorter decision than a number typed from nothing.
+ *
+ * The saving is never asked for now. It is still read where a customer volunteers one —
+ * "เดือนละ 3,000" priced rather than met with the same question again — but nothing the bot
+ * says puts that word in front of them.
+ */
+const ASK_COVER = "อยากได้ทุนประกันเท่าไหร่ครับ เลือกได้เลย เดี๋ยวคิดเบี้ยให้";
+
+/**
+ * The sums on the buttons.
+ *
+ * Every one of them is inside the contract's own limits — it is written for 100,000 up to
+ * 5,000,000 — and every one is a phrase `coverIn` reads back, because a tap arrives as
+ * nothing but its own title.
+ */
+export const COVER_CHOICES = [
+  "ทุน 500,000", "ทุน 1,000,000", "ทุน 2,000,000",
+  "ทุน 3,000,000", "ทุน 4,000,000", "ทุน 5,000,000",
+];
 
 /** The smallest monthly saving worth reading as one, below which a number is something else. */
 const SMALLEST_SAVING = 500;
@@ -266,7 +283,7 @@ export function answerIShield(
   }
 
   if (slots.sumAssured === undefined) {
-    return { messages: [...opening, { text: said(ASK_SAVING) }], replies: SAVING_CHOICES, slots };
+    return { messages: [...opening, { text: said(ASK_COVER) }], replies: COVER_CHOICES, slots };
   }
 
   return quoted(slots as IShieldSlots & { age: number; sex: "M" | "F"; variant: string; sumAssured: number }, said, today);
@@ -303,7 +320,7 @@ function quoted(
   if (!annual || annual.total === 0) {
     return {
       messages: [{ text: said("ขออภัยครับ จำนวนนี้กับอายุนี้จัดให้ไม่ได้ ลองบอกจำนวนอื่นดูไหมครับ") }],
-      replies: SAVING_CHOICES,
+      replies: COVER_CHOICES,
       slots: { ...slots, sumAssured: undefined },
     };
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answerIShield, savingIn, SAVING_CHOICES, sumFromSaving, termFor } from "@/lib/assistant/ishield/answer";
+import { answerIShield, COVER_CHOICES, savingIn, sumFromSaving, termFor } from "@/lib/assistant/ishield/answer";
 import { quote } from "@/calc/quote";
 import { formatBaht } from "@/calc/money";
 
@@ -13,7 +13,9 @@ const spoken = (a: ReturnType<typeof answerIShield>) => a.messages.map((m) => m.
 
 describe("the monthly saving a customer names", () => {
   it("reads the buttons it offers, and the ways a person types the same thing", () => {
-    for (const said of SAVING_CHOICES) expect(savingIn(said)).toBeGreaterThan(0);
+    for (const said of ["ออมเดือนละ 2,000 บาท", "ออมเดือนละ 3,000 บาท"]) {
+      expect(savingIn(said)).toBeGreaterThan(0);
+    }
     expect(savingIn("เดือนละ 3000")).toBe(3000);
     expect(savingIn("3,000 บาท")).toBe(3000);
     expect(savingIn("5000")).toBe(5000);
@@ -88,11 +90,20 @@ describe("the conversation", () => {
     expect(spoken(next)).toContain("85");
   });
 
-  it("asks what they can save, not what cover they want", () => {
+  /**
+   * The sum is asked for outright, in the six amounts the contract is sold in.
+   *
+   * A saving is still read where a customer names one — the question changed, not the
+   * arithmetic — and every button has to be a phrase the reader takes back as a sum.
+   */
+  it("asks what cover they want, in sums the plan is written for", () => {
     const a = answer("ชาย 35");
-    expect(spoken(a)).toContain("ออมเดือนละ");
-    expect(spoken(a)).not.toContain("ทุนประกันเท่าไหร่");
-    expect(a.replies).toEqual(SAVING_CHOICES);
+    expect(spoken(a)).toContain("ทุนประกันเท่าไหร่");
+    expect(a.replies).toEqual(COVER_CHOICES);
+    for (const said of COVER_CHOICES) {
+      const priced = answer(said, { product: "ishield", age: 35, sex: "M", variant: "WLCI10" });
+      expect(priced.priced).toBe(true);
+    }
   });
 
   it("turns away an age no term will take, and names one that would", () => {
@@ -164,7 +175,7 @@ describe("the conversation", () => {
   it("introduces itself to that person rather than going straight to a question", () => {
     const a = answer("🌱 มรดก+ออม+โรคร้าย", { product: "ishield", age: 35, sex: "M" });
     expect(spoken(a)).toContain("70 โรค");
-    expect(spoken(a)).toContain("ออมเดือนละ");
+    expect(spoken(a)).toContain("ทุนประกันเท่าไหร่");
   });
 
   it("does not introduce itself twice", () => {
