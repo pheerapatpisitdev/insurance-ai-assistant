@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { loadOverview } from "./overview";
 import { Card, Empty } from "./ui";
+import { isSignedIn } from "@/lib/admin/session";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,17 @@ function Figure({ label, value, note }: { label: string; value: string; note?: s
 }
 
 export default async function OverviewPage() {
+  /**
+   * No session, nothing to read.
+   *
+   * The layout has the PIN box up already — a page renders beside its layout, not after it —
+   * and the loaders below all throw at a missing session. That throw reached the browser as
+   * Next's error screen: an owner whose twelve hours had run out was told the back office had
+   * broken rather than being asked for the PIN. The actions still throw; they are a network
+   * boundary and this is a screen.
+   */
+  if (!(await isSignedIn())) return null;
+
   const { attention, week } = await loadOverview();
   const n = (v: number) => v.toLocaleString("en-US");
 

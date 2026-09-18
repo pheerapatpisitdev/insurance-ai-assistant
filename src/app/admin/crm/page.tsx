@@ -6,6 +6,7 @@ import { Kpis } from "./Kpis";
 import { Funnel } from "./Funnel";
 import { Charts } from "./Charts";
 import { Leads } from "./Leads";
+import { isSignedIn } from "@/lib/admin/session";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,17 @@ function isTab(v: string | undefined): v is Tab {
 export default async function CrmPage(
   { searchParams }: { searchParams: Promise<{ range?: string; tab?: string }> },
 ) {
+  /**
+   * No session, nothing to read.
+   *
+   * The layout has the PIN box up already — a page renders beside its layout, not after it —
+   * and the loaders below all throw at a missing session. That throw reached the browser as
+   * Next's error screen: an owner whose twelve hours had run out was told the back office had
+   * broken rather than being asked for the PIN. The actions still throw; they are a network
+   * boundary and this is a screen.
+   */
+  if (!(await isSignedIn())) return null;
+
   const params = await searchParams;
   const range = isRange(params.range) ? params.range : "7d";
   const tab = isTab(params.tab) ? params.tab : "recent";

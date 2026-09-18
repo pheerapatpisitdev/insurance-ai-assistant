@@ -12,6 +12,8 @@ const quoted = async (): Promise<Answer> => ({
   priced: true,
 });
 const answer = vi.fn(quoted);
+/** how many of the next picture sends Messenger will refuse */
+let imageFailures = 0;
 
 vi.mock("@/lib/facebook/client", () => ({
   sendMessage: async (_psid: string, text: string, replies?: string[]) => {
@@ -19,14 +21,17 @@ vi.mock("@/lib/facebook/client", () => ({
   },
   sendImage: async (_psid: string, url: string, replies?: string[]) => {
     sent.images.push(url); sent.replies.push(replies);
+    if (imageFailures > 0) { imageFailures -= 1; throw new Error("Messenger 400: อัพโหลดไฟล์แนบไม่สำเร็จ"); }
   },
   showTyping: async () => {},
 }));
 
 /** the follow-up the bot arms after a quotation, and drops the moment anyone speaks */
-const followups: { armed: string[]; dropped: string[] } = { armed: [], dropped: [] };
+const followups: { armed: { user: string; pageId?: string }[]; dropped: string[] } = { armed: [], dropped: [] };
 vi.mock("@/lib/chat/followup", () => ({
-  armFollowup: async (_c: string, u: string) => { followups.armed.push(u); },
+  armFollowup: async (_c: string, u: string, _psid: string, pageId?: string) => {
+    followups.armed.push({ user: u, pageId });
+  },
   dropFollowup: async (_c: string, u: string) => { followups.dropped.push(u); },
 }));
 
@@ -50,6 +55,7 @@ beforeEach(() => {
   process.env.FB_APP_ID = "app-1";
   process.env.FB_APP_SECRET = "secret";
   sent.text = []; sent.images = []; sent.replies = []; saved.length = 0;
+  imageFailures = 0;
   followups.armed.length = 0; followups.dropped.length = 0;
   session.messages = []; session.slots = null; session.mutedUntil = null;
   answer.mockReset();
@@ -128,8 +134,24 @@ describe("the question the bot arms for five minutes' time", () => {
       slots: { intent: "quote", product: "lifeprotect" },
       priced: true,
     }));
-    await handle({ sender: { id: "psid-arm" }, message: { mid: "mf1", text: "หญิง 40 ทุน 1 ล้าน" } });
+    await handle({ sender: { id: "psid-arm" }, message: { mid: "mf1", text: "หญิง 40 ทุน 1 ล้าน" } }, "page-1");
     expect(followups.armed).toHaveLength(1);
+  });
+
+  /**
+   * And addressed out of the Page it arrived on.
+   *
+   * Two Pages are connected, and a page-scoped id means nothing to the other one: a follow-up
+   * armed without a Page was sent with whichever token came first and refused by Meta.
+   */
+  it("carries the Page the conversation happened on", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "เบี้ยประมาณ…" }],
+      slots: { intent: "quote", product: "lifeprotect" },
+      priced: true,
+    }));
+    await handle({ sender: { id: "psid-arm3" }, message: { mid: "mf4", text: "หญิง 40 ทุน 1 ล้าน" } }, "page-7");
+    expect(followups.armed).toEqual([{ user: expect.any(String), pageId: "page-7" }]);
   });
 
   it("is not armed by an answer that carries no premium", async () => {
@@ -229,5 +251,30 @@ describe("the agent answering by hand", () => {
   it("does not silence the bot for its own echo", async () => {
     await handle({ sender: { id: "page" }, recipient: { id: "psid" }, message: { mid: "m4", text: "เบี้ย…", is_echo: true, app_id: "app-1" } });
     expect(saved).toEqual([]);
+  });
+});
+
+/**
+ * Messenger fetches the card off the public internet itself, and sometimes refuses it.
+ *
+ * The customer has been quoted in words by the time this happens, and what used to follow was
+ * nothing at all — the figures they were promised a picture of never arrived and no one knew.
+ */
+describe("the picture of the quotation, when Messenger will not take it", () => {
+  it("is offered a second time before anything else is tried", async () => {
+    imageFailures = 1;
+    await handle({ sender: { id: "psid-card1" }, message: { mid: "mc1", text: "หญิง 40 ทุน 1 ล้าน" } });
+    expect(sent.images).toHaveLength(2);
+    expect(sent.images.every((u) => u.endsWith("/api/card?x=1"))).toBe(true);
+    expect(sent.text.join("\n")).not.toContain("เปิดดูได้ที่ลิงก์นี้");
+  });
+
+  it("goes as a link when both attempts are refused, rather than going nowhere", async () => {
+    imageFailures = 2;
+    await handle({ sender: { id: "psid-card2" }, message: { mid: "mc2", text: "หญิง 40 ทุน 1 ล้าน" } });
+    expect(sent.images).toHaveLength(2);
+    const last = sent.text[sent.text.length - 1];
+    expect(last).toContain("เปิดดูได้ที่ลิงก์นี้");
+    expect(last).toContain("/api/card?x=1");
   });
 });

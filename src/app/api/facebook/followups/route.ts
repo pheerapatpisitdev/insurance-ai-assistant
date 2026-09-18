@@ -26,10 +26,12 @@ export async function POST(req: NextRequest) {
 
   const due = await claimDueFollowups("facebook");
   after(async () => {
-    for (const { userHash, psid, stage } of due) {
+    for (const { userHash, psid, pageId, stage } of due) {
       const { text, replies } = followupMessage(stage);
-      // proactive, not a reply to anything: Meta has a name for that and this is it
-      await sendMessage(psid, text, replies, { proactive: true })
+      // proactive, not a reply to anything: Meta has a name for that and this is it — and it
+      // goes out of the Page the conversation happened on, which is the only Page that knows
+      // who this id is
+      await sendMessage(psid, text, replies, { proactive: true, pageId: pageId ?? undefined })
         .catch((e) => console.error("followup failed:", e));
       // the second question is the last one, and reaching it means the first went unanswered —
       // which is the one outcome worth reporting that nothing else leaves a trace of

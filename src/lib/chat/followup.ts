@@ -76,14 +76,22 @@ function passphrase(): string {
   return s;
 }
 
-/** Arm the follow-up for a thread that has just been quoted. */
+/**
+ * Arm the follow-up for a thread that has just been quoted.
+ *
+ * The Page goes into the queue beside the id, because a page-scoped id is only an id to the
+ * Page that issued it. With two Pages connected and no Page recorded, the send an hour later
+ * took whichever token came to hand and Meta refused it: "ไม่พบผู้ใช้ที่แมตช์", three
+ * customers quoted and then left in silence on the morning this was found.
+ */
 export async function armFollowup(
-  channel: Channel, userHash: string, psid: string, now: Date = new Date(),
+  channel: Channel, userHash: string, psid: string, pageId?: string, now: Date = new Date(),
 ): Promise<void> {
   const { error } = await supabaseAdmin().rpc("ins_arm_followup", {
     p_channel: channel,
     p_user_hash: userHash,
     p_psid: psid,
+    p_page_id: pageId ?? null,
     p_due_at: new Date(now.getTime() + SILENCE_MS).toISOString(),
     p_expires_at: new Date(now.getTime() + WINDOW_HOURS * 3600_000).toISOString(),
     p_passphrase: passphrase(),
@@ -103,6 +111,8 @@ export async function dropFollowup(channel: Channel, userHash: string): Promise<
 export interface Due {
   userHash: string;
   psid: string;
+  /** the Page this thread belongs to; null on a row armed before the queue recorded one */
+  pageId: string | null;
   /** 1 is the five-minute question, 2 the last one before the window shuts */
   stage: number;
 }
@@ -126,9 +136,9 @@ export async function claimDueFollowups(channel: Channel): Promise<Due[]> {
     p_passphrase: passphrase(),
   });
   if (error) throw new Error(`อ่านคิวติดตามไม่สำเร็จ: ${error.message}`);
-  return ((data ?? []) as { user_hash: string; psid: string; stage: number }[])
+  return ((data ?? []) as { user_hash: string; psid: string; page_id: string | null; stage: number }[])
     .filter((r) => r.psid)
-    .map((r) => ({ userHash: r.user_hash, psid: r.psid, stage: r.stage ?? 1 }));
+    .map((r) => ({ userHash: r.user_hash, psid: r.psid, pageId: r.page_id ?? null, stage: r.stage ?? 1 }));
 }
 
 /** Rows past their day, sent or not. */

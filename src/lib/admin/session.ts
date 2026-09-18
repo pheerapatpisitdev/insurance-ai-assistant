@@ -2,7 +2,19 @@ import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
 
 const COOKIE = "ins_admin";
-const TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+/**
+ * How long a signed-in back office stays signed in.
+ *
+ * Twelve hours meant the owner typed the PIN most mornings, and the logs show what that cost:
+ * three people met an expired session nine times in two days, on a phone, in the middle of
+ * doing something. The session cannot be renewed as it is used — a cookie may only be set in
+ * an action, and these are screens — so the honest choice is between asking often and asking
+ * seldom. Two weeks, on a cookie that is http-only, same-site and secure, behind a PIN that
+ * is not in the page: a stolen phone is the threat this length accepts, and a stolen phone
+ * with the back office open was already that threat.
+ */
+const TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 function secret(): string {
   const s = process.env.ADMIN_SESSION_SECRET;

@@ -50,6 +50,37 @@ const BUSY = "ตอนนี้มีคำถามเข้ามาเยอ
 const BROKEN = "ขออภัยครับ ระบบขัดข้องชั่วคราว เดี๋ยวแอดมินมาตอบให้นะครับ 🙏";
 const OUT_OF_BUDGET = "ตอนนี้ระบบผู้ช่วยปิดชั่วคราวครับ รบกวนติดต่อตัวแทนโดยตรงนะครับ";
 
+
+/**
+ * The quotation as a picture, with somewhere to go when the picture will not send.
+ *
+ * Messenger fetches the URL itself and now and then does not — "อัพโหลดไฟล์แนบไม่สำเร็จ" —
+ * and the failure used to end there: the customer had been quoted in words and the picture of
+ * the figures simply never arrived. So it is attempted twice, and if the second attempt fails
+ * the customer is given the link to the same card. The buttons ride along either way, because
+ * they were riding on the picture and a customer left without them has nothing to tap.
+ */
+const CARD_UNSENT = "ใบเสนอราคาเป็นรูปครับ เปิดดูได้ที่ลิงก์นี้เลย";
+
+async function sendCard(
+  psid: string, url: string, replies: string[] | undefined, pageId?: string,
+): Promise<void> {
+  try {
+    await sendImage(psid, url, replies, pageId);
+    return;
+  } catch (e) {
+    console.error("card failed, trying once more:", e);
+  }
+  try {
+    await sendImage(psid, url, replies, pageId);
+    return;
+  } catch (e) {
+    console.error("card failed twice, sending the link instead:", e);
+  }
+  await sendMessage(psid, `${CARD_UNSENT}\n${url}`, replies, { pageId })
+    .catch((e) => console.error("card link failed:", e));
+}
+
 export async function handle(event: Messaging, pageId?: string): Promise<void> {
   // on an echo the sender is the page, so the thread is named by who it was sent to
   const psid = customerOf(event);
@@ -157,10 +188,7 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
       await sendMessage(psid, said.text, last && !said.card ? answer.replies : undefined, { pageId });
       // the card follows its own words, so the customer reads the quote before the picture of
       // it — and a couple priced together gets the pair in the order they were named
-      if (said.card) {
-        await sendImage(psid, siteUrl(said.card), last ? answer.replies : undefined, pageId)
-          .catch((e) => console.error("card failed:", e));
-      }
+      if (said.card) await sendCard(psid, siteUrl(said.card), last ? answer.replies : undefined, pageId);
     }
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
     // no mute argument: recording what was said must never clear one
@@ -178,7 +206,8 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
      */
     const product = (answer.slots as { product?: string }).product ?? null;
     if (answer.priced && product === "lifeprotect") {
-      await armFollowup("facebook", userHash, psid).catch((e) => console.error("followup:", e));
+      await armFollowup("facebook", userHash, psid, pageId)
+        .catch((e) => console.error("followup:", e));
     }
 
     if (answer.priced) ledger.push({ kind: "quoted", data: { ...answer.quote } });

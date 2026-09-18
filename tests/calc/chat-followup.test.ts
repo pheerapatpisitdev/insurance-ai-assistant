@@ -8,7 +8,8 @@ vi.mock("@/lib/supabase/admin", () => ({
   supabaseAdmin: () => ({
     rpc: async (fn: string, args: Record<string, unknown>) => {
       calls.push({ fn, args });
-      return { data: fn === "ins_claim_followups" ? [{ user_hash: "h1", psid: "psid-1", stage: 1 }] : null, error: null };
+      const claimed = [{ user_hash: "h1", psid: "psid-1", page_id: "page-1", stage: 1 }];
+      return { data: fn === "ins_claim_followups" ? claimed : null, error: null };
     },
     from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: secretRow }) }) }),
@@ -33,7 +34,7 @@ beforeEach(() => {
 describe("the one question sent into a silence", () => {
   it("is armed five minutes out, and expires within the day Meta allows", async () => {
     const now = new Date("2026-09-15T03:00:00.000Z");
-    await armFollowup("facebook", "h1", "psid-1", now);
+    await armFollowup("facebook", "h1", "psid-1", "page-1", now);
     const { args } = calls[0];
     expect(calls[0].fn).toBe("ins_arm_followup");
     expect(args.p_due_at).toBe(new Date(now.getTime() + SILENCE_MS).toISOString());
@@ -42,9 +43,24 @@ describe("the one question sent into a silence", () => {
   });
 
   it("hands the page-scoped id over only to be encrypted, never stored as it arrived", async () => {
-    await armFollowup("facebook", "h1", "psid-1");
+    await armFollowup("facebook", "h1", "psid-1", "page-1");
     expect(calls[0].args.p_psid).toBe("psid-1");
     expect(calls[0].args.p_passphrase).toBe("passphrase");
+  });
+
+  /**
+   * A page-scoped id is only an id to the Page that issued it.
+   *
+   * With two Pages connected and no Page in the queue, the send an hour later reached for
+   * whichever token came first and Meta refused it — so the Page is written down when the
+   * follow-up is armed and handed back when it is claimed.
+   */
+  it("remembers which Page the conversation happened on", async () => {
+    await armFollowup("facebook", "h1", "psid-1", "page-1");
+    expect(calls[0].args.p_page_id).toBe("page-1");
+
+    const [due] = await claimDueFollowups("facebook");
+    expect(due.pageId).toBe("page-1");
   });
 
   it("is dropped the moment anyone speaks", async () => {
@@ -53,7 +69,8 @@ describe("the one question sent into a silence", () => {
   });
 
   it("claims what is due, which is the same statement that marks it sent", async () => {
-    expect(await claimDueFollowups("facebook")).toEqual([{ userHash: "h1", psid: "psid-1", stage: 1 }]);
+    expect(await claimDueFollowups("facebook"))
+      .toEqual([{ userHash: "h1", psid: "psid-1", pageId: "page-1", stage: 1 }]);
     expect(calls[0].fn).toBe("ins_claim_followups");
   });
 
