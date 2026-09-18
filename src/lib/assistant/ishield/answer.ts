@@ -236,14 +236,23 @@ export function answerIShield(
     return { messages: [{ text: said(stallReply(priced)) }], slots };
   }
 
+  /**
+   * The question comes before the leaflet.
+   *
+   * Someone who has just pressed a button will answer one thing, and that willingness was
+   * being spent on reading: four lines of contract terms arrived first, and the question they
+   * were meant to answer sat underneath them. So the plan asks who it is pricing for, and
+   * introduces itself on the turn after — beside the next question, when the customer has
+   * already shown they are answering.
+   */
+  if (slots.age === undefined || !slots.sex) {
+    return { messages: [{ text: said(ASK_PERSON) }], slots };
+  }
+
   // said once per arrangement, and once per arrangement means once for this one — a customer
   // who tapped across from another quotation has been told nothing about this plan yet
   const opening = previous?.told ? [] : [{ text: said(ishieldOpening()) }];
   slots.told = true;
-
-  if (slots.age === undefined || !slots.sex) {
-    return { messages: [...opening, { text: said(ASK_PERSON) }], slots };
-  }
 
   if (!slots.variant) {
     const { min, max } = ageSpan();

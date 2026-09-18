@@ -72,11 +72,20 @@ describe("a saving turned into a sum", () => {
 });
 
 describe("the conversation", () => {
-  it("says what the plan is, then asks who they are", () => {
-    const a = answer("สนใจครับ");
-    expect(spoken(a)).toContain("70 โรค");
-    expect(spoken(a)).toContain("85");
-    expect(spoken(a)).toContain("เพศกับอายุ");
+  /**
+   * The question is the whole of the first answer.
+   *
+   * The leaflet used to come first and the question under it, which spent a customer's one
+   * willing moment on reading. It is still said — on the turn after, once they have answered.
+   */
+  it("asks who they are first, and says what the plan is once they have answered", () => {
+    const first = answer("สนใจครับ");
+    expect(spoken(first)).toContain("เพศกับอายุ");
+    expect(spoken(first)).not.toContain("70 โรค");
+
+    const next = answer("ชาย 35", first.slots);
+    expect(spoken(next)).toContain("70 โรค");
+    expect(spoken(next)).toContain("85");
   });
 
   it("asks what they can save, not what cover they want", () => {
