@@ -16,6 +16,8 @@ export interface Undecided {
   sex?: "M" | "F";
   /** everyone the message named, when it named more than one; the life brain prices them all */
   people?: { age: number; sex: "M" | "F" }[];
+  /** the application form has gone, which the report counts and the bot does not repeat */
+  formSent?: true;
 }
 
 /**

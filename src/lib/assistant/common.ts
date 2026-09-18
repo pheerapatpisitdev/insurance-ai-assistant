@@ -187,6 +187,22 @@ export function handOverForm(quoted: boolean): Reply {
 }
 
 /**
+ * The invitation taken up a word short.
+ *
+ * The bot is told to end an answer with พิมพ์ว่า "สนใจสมัคร", and a customer who had just
+ * asked about the medical check wrote back "สนใจ" — one word short of the phrase, and plainly
+ * the same answer. He got the four buttons again, as though the conversation had not happened.
+ *
+ * So a bare yes counts as the form, but only where the bot had just offered it: "สนใจ" from
+ * someone who has been offered nothing is still someone to ask which plan they came for.
+ */
+const INVITED_FORM = new RegExp(WANTS_IN);
+
+export function tookUpTheOffer(asked: string, lastSaid: string | undefined): boolean {
+  return Boolean(lastSaid && INVITED_FORM.test(lastSaid) && affirms(asked));
+}
+
+/**
  * What the bot says when the customer steps back. One line, no question, and — once they
  * have a quotation in hand — the door left open by name: the owner's choice, over silence
  * and over a follow-up.

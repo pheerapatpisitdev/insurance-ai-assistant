@@ -1,6 +1,8 @@
 import type { ChatMessage } from "@/lib/ai/types";
 import { askWhich, productByTopic, productNamedIn, type Product } from "./choose";
-import { aboutCompany, asksAboutCompany, peopleIn, type Reply } from "./common";
+import {
+  aboutCompany, asksAboutCompany, handOverForm, peopleIn, tookUpTheOffer, wantsToBuy, type Reply,
+} from "./common";
 import { answerHealth } from "./ihealthy/answer";
 import { answerLegacy, type LegacySlots } from "./legacy/answer";
 import { answerIShield, type IShieldSlots } from "./ishield/answer";
@@ -161,6 +163,29 @@ export async function answerAny(
    * Only for something actually asked. "สนใจประกันชีวิต" is a lead, not a question, and the
    * two buttons are the right answer to it — which is why they are still attached below.
    */
+  /**
+   * Someone asking to apply, who was never placed on a plan.
+   *
+   * Both halves of this were the four buttons until now. "สนใจสมัคร" is the words the bot
+   * itself hands out and the title of the button under every follow-up, and typed by a
+   * customer with no plan on their session it was read as nothing at all; "สนใจ", from a
+   * customer the bot had just invited to apply, was read as no better. Neither is a question
+   * about which plan they came for, and both are the message this whole campaign is for.
+   *
+   * The form does not need a plan — it asks for what the agency needs and a person reads it —
+   * and it says the premium is a message away, which is the invitation the menu was trying
+   * to make.
+   */
+  const lastSaid = [...history].reverse().find((m) => m.role === "assistant")?.content;
+  if (wantsToBuy(asked, false) || tookUpTheOffer(asked, lastSaid)) {
+    const form = handOverForm(false);
+    return {
+      ...form,
+      messages: form.messages.map((m) => ({ ...m, text: writtenFor(channel, m.text) })),
+      slots: { ...undecided, formSent: true },
+    };
+  }
+
   // a question they asked on the way in is answered before the question they are asked back
   const lead = asksAboutCompany(asked) ? aboutCompany(asked) : undefined;
 

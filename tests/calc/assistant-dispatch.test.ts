@@ -28,6 +28,34 @@ describe("a customer who has not said what they came for", () => {
     expect(chat).not.toHaveBeenCalled();
   });
 
+  /**
+   * Two real messages from the page, both answered with the menu they had already been past.
+   *
+   * "สนใจสมัคร" is the words the bot hands out and the title of the button under every
+   * follow-up; "สนใจ" came from a customer the bot had just told to type it. Neither is a
+   * question about which plan, and both are the one message the advertising is paid for.
+   */
+  it("sends the form to someone asking to apply, plan or no plan", async () => {
+    const answer = await answerAny(said("สนใจสมัคร"), { product: "undecided" });
+    expect(answer.messages.map((m) => m.text).join("\n")).toContain("ฟอร์ม");
+    expect(answer.slots).toMatchObject({ product: "undecided", formSent: true });
+    expect(chat).not.toHaveBeenCalled();
+  });
+
+  it("reads a bare yes as the form, but only where the form was just offered", async () => {
+    const invited = [
+      { role: "user" as const, content: "ตรวจสุขภาพมั้ย" },
+      { role: "assistant" as const, content: 'ถ้าสนใจขั้นตอนการสมัคร พิมพ์ว่า สนใจสมัคร ได้เลยครับผม' },
+      { role: "user" as const, content: "สนใจ" },
+    ];
+    const taken = await answerAny(invited, { product: "undecided" });
+    expect(taken.messages.map((m) => m.text).join("\n")).toContain("ฟอร์ม");
+
+    // the same word from someone who has been offered nothing is still someone to ask
+    const cold = await answerAny(said("สนใจ"), null);
+    expect(cold.messages.at(-1)!.text).toContain("สนใจแบบไหน");
+  });
+
   it("keeps everyone the message named, not just the first", async () => {
     // a family of three, the message that lost two of them yesterday
     const answer = await answerAny(said("ช 23\nญ 25\nช 53"), null);
