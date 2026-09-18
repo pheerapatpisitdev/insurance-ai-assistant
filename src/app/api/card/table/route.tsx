@@ -25,6 +25,22 @@ const halfOf = (width: number) => (width - PAD * 2 - GUTTER) / 2;
 const HALF = halfOf(WIDTH);
 
 /**
+ * How many years a table can hold before it is dealt into two halves.
+ *
+ * The halving is for the sixty-row contracts, which in one file make a picture three times
+ * taller than it is wide. A five-year term does not have that problem, and splitting it into
+ * three rows and two leaves the reader crossing a gutter to find year four — a table
+ * pretending to be long.
+ *
+ * Sixteen, so that the plan whose terms are five, ten, twelve and fifteen years draws all
+ * four the same way: a customer comparing two of its terms should not be handed two tables
+ * shaped differently. At fifteen rows the picture is still taller than it is wide by less
+ * than half again, which is a page rather than a sliver.
+ */
+const SINGLE_MAX = 16;
+const splitsInTwo = (card: ValueTableCard) => card.rows.length > SINGLE_MAX;
+
+/**
  * Every band of the card, in pixels. As on the quote card, the drawing library lays a fixed
  * canvas out in one pass and will squeeze one line on top of another rather than grow the
  * page, so each band is given a height here and the canvas is the sum of the bands.
@@ -183,7 +199,7 @@ function Half(
 }
 
 function heightOf(card: ValueTableCard): number {
-  const perHalf = Math.ceil(card.rows.length / 2);
+  const perHalf = splitsInTwo(card) ? Math.ceil(card.rows.length / 2) : card.rows.length;
   return PAD * 2
     + H.plan + H.insured + H.premium
     + H.gap + H.hairline + H.afterHairline
@@ -207,9 +223,9 @@ const loadFont = (file: string) => readFile(path.join(FONT_DIR, file));
  * the end — the table the sales page shows, in a form a chat can hand over and a customer
  * can show whoever else in the house has to agree to it.
  *
- * The years are dealt into two halves side by side rather than one long column: sixty-odd
- * rows in a single file makes a picture three times taller than it is wide, which a phone
- * shows as a sliver.
+ * A long contract's years are dealt into two halves side by side rather than one long column:
+ * sixty-odd rows in a single file makes a picture three times taller than it is wide, which a
+ * phone shows as a sliver. A short one is not split at all — see SINGLE_MAX.
  */
 export async function GET(req: NextRequest) {
   const input = cardInputFrom(req.nextUrl.searchParams);
@@ -224,8 +240,11 @@ export async function GET(req: NextRequest) {
     loadFont("Trirong-SemiBold.ttf"),
   ]);
 
-  const cut = Math.ceil(card.rows.length / 2);
-  const { cols, half, width } = layoutFor(card);
+  const split = splitsInTwo(card);
+  const cut = split ? Math.ceil(card.rows.length / 2) : card.rows.length;
+  const { cols, half, width: wide } = layoutFor(card);
+  // one column needs no gutter and no second half, so the canvas gives that room back
+  const width = split ? wide : half + PAD * 2;
   const mark = await markDataUri();
 
   return new ImageResponse(
@@ -257,8 +276,10 @@ export async function GET(req: NextRequest) {
 
         <div style={{ display: "flex", width: width - PAD * 2, flexShrink: 0 }}>
           <Half columns={card.columns} rows={card.rows.slice(0, cut)} p={p} cols={cols} half={half} />
-          <div style={{ display: "flex", width: GUTTER, flexShrink: 0 }} />
-          <Half columns={card.columns} rows={card.rows.slice(cut)} p={p} cols={cols} half={half} />
+          {split ? <div style={{ display: "flex", width: GUTTER, flexShrink: 0 }} /> : null}
+          {split
+            ? <Half columns={card.columns} rows={card.rows.slice(cut)} p={p} cols={cols} half={half} />
+            : null}
         </div>
 
         <div style={spacer(H.gap)} />
