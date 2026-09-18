@@ -235,9 +235,24 @@ export function recentTurns(history: ChatMessage[], count: number): ChatMessage[
  * "ประกันของใครคะ", "เจ้าไหน" — and mean exactly which company. Left out, those reached the
  * model, which has no business naming one. "ที่ไหน" is deliberately absent: "ซื้อได้ที่ไหน"
  * asks where to buy, not who sells.
+ *
+ * The words between "บริษัท" and "อะไร" are the part that had to be loosened. A customer on
+ * the advertisement wrote "บริษัท ประกัน ของ อะไร" and the pattern, which wanted the two
+ * words touching, did not know it: the question went to the model, which is told never to
+ * name an insurer, and he was answered "เป็นระบบช่วยตอบของเพจครับ" — told what the bot was
+ * when he had asked who would be insuring his life. The gap is spelled out word by word
+ * rather than left as "anything at all", because "บริษัทจะตรวจสุขภาพไหม" is a question about
+ * underwriting and must not be answered with a company's name.
  */
-const INSURER_QUESTION =
-  /บริษัท\s*(อะไร|ไหน|อะไรคะ|ไรครับ)|ของบริษัท|ของอะไร|ของใคร|เจ้าไหน|ของค่าย|ผู้รับประกัน|รับประกันโดย|ค่ายไหน|แบรนด์|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential|allianz|อลิอันซ์|\bfwd\b|โตเกียว|กรุงเทพประกัน|ไทยพาณิชย์|\bscb\b/i;
+const INSURER_FILLER = String.raw`(?:\s*(?:ประกัน(?:ชีวิต)?|ของ|นี้|นั้น|อัน|ชื่อ))*\s*`;
+const INSURER_QUESTION = new RegExp(
+  String.raw`บริษัท${INSURER_FILLER}(?:อะไร|ไหน|ไร)`
+  + String.raw`|ของ\s*บริษัท|ของ\s*อะไร|ของ\s*ใคร|เจ้า\s*ไหน|ของ\s*ค่าย|ค่าย\s*ไหน`
+  + String.raw`|ผู้รับประกัน|รับประกันโดย|แบรนด์`
+  + String.raw`|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential`
+  + String.raw`|allianz|อลิอันซ์|\bfwd\b|โตเกียว|กรุงเทพประกัน|ไทยพาณิชย์|\bscb\b`,
+  "i",
+);
 
 /**
  * Asking about the people rather than the company: a licence, a brokerage, whether any of

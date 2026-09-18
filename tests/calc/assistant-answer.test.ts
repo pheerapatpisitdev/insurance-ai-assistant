@@ -191,6 +191,31 @@ describe("who stands behind the policy", () => {
     }
   });
 
+  /**
+   * The words a customer puts between "บริษัท" and "อะไร".
+   *
+   * One on the advertisement wrote "บริษัท ประกัน ของ อะไร" and was told what the bot was
+   * rather than who the insurer is — the question reached the model, which is forbidden to
+   * name one. The filler is spelled out, so a question about underwriting keeps going to the
+   * brain that can answer it.
+   */
+  it("hears the question with words in the middle of it", async () => {
+    for (const asked of ["บริษัท ประกัน ของ อะไร", "บริษัทนี้ชื่ออะไรครับ", "ประกัน ของ บริษัท ไหน"]) {
+      routed = { intent: "other" };
+      const answer = await answerQuestion(said(asked), null);
+      expect(answer.messages[0].text, asked).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
+    }
+  });
+
+  it("does not hear a question about the company's own doings as a question about its name", async () => {
+    for (const asked of ["บริษัทจะตรวจสุขภาพไหม", "บริษัทพิจารณากี่วัน"]) {
+      routed = { intent: "plan_info" };
+      worded = "ตอบตามข้อมูลครับ";
+      const answer = await answerQuestion(said(asked), null);
+      expect(answer.messages[0].text, asked).not.toContain("กรุงไทย-แอกซ่า");
+    }
+  });
+
   it("does not hear a question about where to buy as a question about who sells", async () => {
     for (const asked of ["ซื้อได้ที่ไหนครับ", "สมัครที่ไหน", "คุ้มครองอะไรบ้าง", "ต้องเตรียมอะไรบ้าง"]) {
       routed = { intent: "plan_info" };
