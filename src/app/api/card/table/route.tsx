@@ -27,18 +27,17 @@ const HALF = halfOf(WIDTH);
 /**
  * How many years a table can hold before it is dealt into two halves.
  *
- * The halving is for the sixty-row contracts, which in one file make a picture three times
- * taller than it is wide. A five-year term does not have that problem, and splitting it into
- * three rows and two leaves the reader crossing a gutter to find year four — a table
- * pretending to be long.
+ * Every table is one column now. The halving was for the sixty-row contracts, which in a
+ * narrow canvas make a picture three times taller than it is wide — but the answer to that is
+ * the canvas, not the gutter: a long table is drawn at the full width instead, with every
+ * column widened to fill it, so the figures are as large as they were when there were two of
+ * them side by side. What the reader no longer does is cross a gutter to find year four.
  *
- * Sixteen, so that the plan whose terms are five, ten, twelve and fifteen years draws all
- * four the same way: a customer comparing two of its terms should not be handed two tables
- * shaped differently. At fifteen rows the picture is still taller than it is wide by less
- * than half again, which is a page rather than a sliver.
+ * Short tables keep the narrow canvas, because stretching five rows across sixteen hundred
+ * pixels is mostly rule and air.
  */
 const SINGLE_MAX = 16;
-const splitsInTwo = (card: ValueTableCard) => card.rows.length > SINGLE_MAX;
+const isShort = (card: ValueTableCard) => card.rows.length <= SINGLE_MAX;
 
 /**
  * Every band of the card, in pixels. As on the quote card, the drawing library lays a fixed
@@ -148,7 +147,7 @@ const spacer = (height: number, background?: string) => (
   { display: "flex", height, flexShrink: 0, ...(background ? { background } : {}) }
 ) as const;
 
-/** Half the years, headed by their own row of column names so each half is read on its own. */
+/** The years, under one row of column names. */
 function Half(
   { columns, rows, p, cols, half }:
   { columns: string[]; rows: ValueTableRow[]; p: CardPalette; cols: typeof COLS; half: number },
@@ -199,7 +198,7 @@ function Half(
 }
 
 function heightOf(card: ValueTableCard): number {
-  const perHalf = splitsInTwo(card) ? Math.ceil(card.rows.length / 2) : card.rows.length;
+  const perHalf = card.rows.length;
   return PAD * 2
     + H.plan + H.insured + H.premium
     + H.gap + H.hairline + H.afterHairline
@@ -223,9 +222,8 @@ const loadFont = (file: string) => readFile(path.join(FONT_DIR, file));
  * the end — the table the sales page shows, in a form a chat can hand over and a customer
  * can show whoever else in the house has to agree to it.
  *
- * A long contract's years are dealt into two halves side by side rather than one long column:
- * sixty-odd rows in a single file makes a picture three times taller than it is wide, which a
- * phone shows as a sliver. A short one is not split at all — see SINGLE_MAX.
+ * The years run down one column, however many there are; a long contract is given the wider
+ * canvas so that column can carry its figures at full size — see SINGLE_MAX.
  */
 export async function GET(req: NextRequest) {
   const input = cardInputFrom(req.nextUrl.searchParams);
@@ -240,11 +238,18 @@ export async function GET(req: NextRequest) {
     loadFont("Trirong-SemiBold.ttf"),
   ]);
 
-  const split = splitsInTwo(card);
-  const cut = split ? Math.ceil(card.rows.length / 2) : card.rows.length;
-  const { cols, half, width: wide } = layoutFor(card);
-  // one column needs no gutter and no second half, so the canvas gives that room back
-  const width = split ? wide : half + PAD * 2;
+  const { cols: narrow, half, width: wide } = layoutFor(card);
+  /**
+   * The canvas, and the column widths that fill it.
+   *
+   * A short table is drawn in the half it was already sized for, on a canvas trimmed to it. A
+   * long one keeps the full width and spends it on the columns rather than on a second half:
+   * the same figures, at the same size, in one file.
+   */
+  const short = isShort(card);
+  const width = short ? half + PAD * 2 : wide;
+  const stretch = (width - PAD * 2) / half;
+  const cols = short ? narrow : narrow.map((c) => ({ ...c, w: Math.floor(c.w * stretch) }));
   const mark = await markDataUri();
 
   return new ImageResponse(
@@ -275,11 +280,7 @@ export async function GET(req: NextRequest) {
         </div>
 
         <div style={{ display: "flex", width: width - PAD * 2, flexShrink: 0 }}>
-          <Half columns={card.columns} rows={card.rows.slice(0, cut)} p={p} cols={cols} half={half} />
-          {split ? <div style={{ display: "flex", width: GUTTER, flexShrink: 0 }} /> : null}
-          {split
-            ? <Half columns={card.columns} rows={card.rows.slice(cut)} p={p} cols={cols} half={half} />
-            : null}
+          <Half columns={card.columns} rows={card.rows} p={p} cols={cols} half={width - PAD * 2} />
         </div>
 
         <div style={spacer(H.gap)} />
