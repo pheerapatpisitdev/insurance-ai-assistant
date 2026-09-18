@@ -3,6 +3,7 @@ import type { ChatMessage } from "@/lib/ai/types";
 import { assembleKnowledge } from "@/lib/copilot/knowledge";
 import { getPlan } from "@/calc/plans/registry";
 import { baseSumAssuredLimits } from "@/calc/rules";
+import { sumAssuredFromPremium } from "@/calc/sa-from-premium";
 import { formatBaht } from "@/calc/money";
 import { cardPath, valueTablePath } from "@/lib/card-link";
 import { lifeProtectQuoteText } from "@/lib/lifeprotect-cta";
@@ -13,9 +14,10 @@ import { faqAnswer } from "./faq";
 import { PLAN_INFO_SYSTEM, SMALL_TALK_SYSTEM } from "./prompts";
 import { asksPayTerm, asksValueTable, mergeSlots, PLAN_CODE, routeMessage, type Routed } from "./route";
 import {
-  aboutCompany, affirms, APPLICATION_FORM, asksAboutCompany, asksCheaper, baht, FORM_RECEIVED,
-  handOverForm, HEALTH_DECLARATION, one, type QuoteFigures, recentTurns, Reply, Said,
-  saysFormDone, spoken, stallReply, stalls, WANTS_IN, wantsToBuy,
+  aboutCompany, affirms, APPLICATION_FORM, asksAboutCompany, asksCheaper, baht, type Budget,
+  budgetIn, coverIn, FORM_RECEIVED, handOverForm, HEALTH_DECLARATION, one, peopleIn,
+  type QuoteFigures, recentTurns, Reply, Said, saysFormDone, spoken, stallReply, stalls,
+  WANTS_IN, wantsToBuy,
 } from "../common";
 
 /** The package quoted when the customer has not named one: the cheapest instalment of the three. */
@@ -89,6 +91,19 @@ export async function answerQuestion(history: ChatMessage[], previous: Routed | 
   if (asksPayTerm(asked)) return { ...answerPayTerm(slots), slots };
   if (asksValueTable(asked)) return { ...answerValueTable(slots), slots };
   if (asksCheaper(asked)) return answerCheaper(slots);
+
+  /**
+   * A budget rather than a sum.
+   *
+   * The two arrive in either order — the money first and the person when asked, or both at
+   * once — so a budget carried from an earlier turn is taken up again on the turn that
+   * finally names somebody. A sum said outright always wins: a customer who names one has
+   * stopped shopping by what they can pay.
+   */
+  const saidBudget = budgetIn(asked);
+  const carried = peopleIn(asked).length > 0 && slots.coverWanted === undefined ? slots.budget : undefined;
+  const budget = saidBudget ?? carried;
+  if (budget && coverIn(asked) === undefined) return answerFromBudget(slots, budget);
   // a bare "เอา" takes the cheaper arrangement the bot last put on the table
   if (affirms(asked) && slots.offer) {
     const { offer } = slots;
@@ -329,6 +344,100 @@ function answerPayTerm(slots: Routed): Reply {
  * proportion. Both are stated with the engine's figures, and the smaller cover is left on the
  * table so a bare "เอา" can take it.
  */
+/** Sums are quoted in tidy steps, because an agent writing an application writes a tidy sum. */
+const SUM_STEP = 10_000;
+
+/**
+ * What a stated budget actually buys, on each of the three ways of paying for it.
+ *
+ * A man wrote "ผมมีเดือนละ 1000 สามารถทำประกันแบบไหนได้บ้างครับ" and was sent a quotation for
+ * a million baht of cover at 2,781 a month — the figure he had named was read as nothing at
+ * all. The rate table runs both ways, so this is arithmetic: the sum is worked backwards from
+ * the instalment, rounded down to a tidy figure so the premium quoted back is inside his
+ * budget rather than a little over it, and then priced forwards again so the number he is
+ * given is what that sum really costs.
+ *
+ * All three terms, because the answer to "แบบไหนได้บ้าง" is the comparison: the same money
+ * buys three times the cover on the longest term, and that is the whole of the decision.
+ */
+function answerFromBudget(slots: Routed, budget: Budget): Answer {
+  const kept: Routed = { ...slots, budget, offer: undefined };
+  const table = lifeProtectTable();
+  const { age, sex } = kept;
+  const per = budget.per === "month" ? "เดือน" : "ปี";
+  const money = (n: number) => n.toLocaleString("en-US");
+
+  if (age === undefined || sex === undefined) {
+    return {
+      ...one(`ได้เลยครับ งบ${per}ละ ${money(budget.baht)} บาท 👍\n`
+        + 'ขอเพศกับอายุด้วยครับ เดี๋ยวคิดให้ว่าได้ทุนเท่าไหร่ (เช่น "ชาย 38")'),
+      slots: kept,
+    };
+  }
+  if (table.expired || age < table.ageMin || age > table.ageMax) return { ...one(HAND_OVER), slots: kept };
+
+  const rates = getPlan(PLAN_CODE)!.rates;
+  const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, DEFAULT_TERM).min;
+  const mode = budget.per === "month" ? "monthly" : "annual";
+  const multiple = coverMultiple(table, age);
+
+  const instalment = (variant: string, sumAssured: number) =>
+    lifeProtectModes(table, termAt(table, variant), { sex, age, sumAssured })?.find((m) => m.mode === mode);
+
+  const lines: string[] = [];
+  let overBudget = false;
+  for (const variant of ["WLF09H", "WLF19H", "WLF99H"]) {
+    const raw = sumAssuredFromPremium(rates, { variant, sex, age, mode, targetPremium: budget.baht });
+    if (raw === undefined) continue;
+    // rounded down, so what is quoted back fits inside the money they said they had
+    let sum = Math.floor(raw / SUM_STEP) * SUM_STEP;
+    let priced = instalment(variant, sum);
+    /**
+     * Rounding down can take the instalment under the smallest one the plan accepts — a
+     * budget of exactly a thousand a month lands there, since a thousand is the floor. The
+     * step back up is the only arrangement that can actually be sold, so it is the one quoted,
+     * and the customer is told it is over the figure they named rather than left to notice.
+     */
+    if (priced?.belowMinimum) {
+      const up = instalment(variant, sum + SUM_STEP);
+      if (up && !up.belowMinimum) { sum += SUM_STEP; priced = up; overBudget = true; } else priced = undefined;
+    }
+    if (!priced || sum < floor) continue;
+    const label = table.terms.find((t) => t.variant === variant)?.label ?? variant;
+    lines.push(`• ${label} — ทุน ${money(sum)} บาท (ครอบครัวได้รับ ${money(sum * multiple)})`
+      + ` เบี้ย ${formatBaht(priced.total)} บาท/${per}`);
+  }
+
+  if (!lines.length) {
+    /**
+     * The money does not reach the smallest contract sold. Said plainly, with the figure it
+     * would take — a customer told only "ไม่ได้ครับ" has nothing to decide with.
+     */
+    const least = instalment(DEFAULT_TERM, floor);
+    const term = table.terms.find((t) => t.variant === DEFAULT_TERM)?.label ?? "";
+    return {
+      ...one(least
+        ? `งบ${per}ละ ${money(budget.baht)} บาท ยังไม่ถึงทุนขั้นต่ำของแบบนี้ครับ 🙏\n`
+          + `ทุนต่ำสุดคือ ${money(floor)} บาท แบบ${term} เบี้ย ${formatBaht(least.total)} บาท/${per}\n`
+          + "ถ้าสนใจแบบนี้ หรืออยากดูประกันสุขภาพที่เบี้ยเริ่มต้นต่ำกว่า บอกได้เลยครับ"
+        : HAND_OVER),
+      slots: kept,
+    };
+  }
+
+  return {
+    ...one([
+      `งบ${per}ละ ${money(budget.baht)} บาท ${sex === "M" ? "ชาย" : "หญิง"}อายุ ${age} ปี ได้ทุนประมาณนี้ครับ 💰`,
+      ...lines,
+      ...(overBudget && budget.per === "month"
+        ? [`(แบบชำระรายเดือนขั้นต่ำ ${money(table.minMonthly)} บาท/เดือน เบี้ยจึงเกินงบมานิดหน่อยครับ)`]
+        : []),
+      "งบเท่ากัน จ่ายยาวกว่าได้ทุนมากกว่า — สนใจแบบไหน บอกได้เลยครับ เดี๋ยวส่งใบเสนอให้",
+    ].join("\n")),
+    slots: kept,
+  };
+}
+
 function answerCheaper(slots: Routed): Answer {
   const table = lifeProtectTable();
   const { age, sex, coverWanted } = slots;

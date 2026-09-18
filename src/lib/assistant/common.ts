@@ -278,6 +278,42 @@ const INSURER_QUESTION = new RegExp(
 const TRUST_QUESTION = /ใบอนุญาต|นายหน้า|ตัวแทนของ|เชื่อถือ|มั่นคง|โกง|หลอก|จดทะเบียน|ตัวจริง/i;
 
 /**
+ * The money a customer says they have, rather than the cover they want.
+ *
+ * "ผมมีเดือนละ 1000 สามารถทำประกันแบบไหนได้บ้างครับ" — a real message, answered with a
+ * quotation for a million baht of cover at nearly three times the figure he had just named.
+ * The rate table runs both ways, so the sum a budget buys is arithmetic and not a guess.
+ *
+ * A period word is required — เดือนละ, ต่อปี — because a bare number in this conversation is
+ * an age or a sum far more often than it is a budget, and reading it wrong prices something
+ * nobody asked for. "1 แสน ต่อปี" is a hundred thousand a year, not one.
+ */
+export interface Budget {
+  baht: number;
+  per: "month" | "year";
+}
+
+const A_MONTH = String.raw`เดือนละ|ต่อเดือน|รายเดือน|/\s*เดือน|ต่อ\s*เดือน`;
+const A_YEAR = String.raw`ปีละ|ต่อปี|รายปี|/\s*ปี|ต่อ\s*ปี`;
+const AMOUNT = String.raw`([\d,]+(?:\.\d+)?)\s*(ล้าน|แสน|หมื่น|พัน)?`;
+const BUDGET_BEFORE = new RegExp(String.raw`(?:${A_MONTH}|${A_YEAR})\s*${AMOUNT}`);
+const BUDGET_AFTER = new RegExp(String.raw`${AMOUNT}\s*(?:บาท)?\s*(?:${A_MONTH}|${A_YEAR})`);
+const SAYS_MONTH = new RegExp(A_MONTH);
+const SCALE: Record<string, number> = { ล้าน: 1_000_000, แสน: 100_000, หมื่น: 10_000, พัน: 1_000 };
+
+/** The smallest and largest instalment worth reading as one rather than as something else. */
+const SMALLEST_BUDGET = 300;
+const LARGEST_BUDGET = 2_000_000;
+
+export function budgetIn(text: string): Budget | undefined {
+  const m = BUDGET_BEFORE.exec(text) ?? BUDGET_AFTER.exec(text);
+  if (!m) return undefined;
+  const baht = Number(m[1].replace(/,/g, "")) * (m[2] ? SCALE[m[2]] : 1);
+  if (!Number.isFinite(baht) || baht < SMALLEST_BUDGET || baht > LARGEST_BUDGET) return undefined;
+  return { baht: Math.round(baht), per: SAYS_MONTH.test(text) ? "month" : "year" };
+}
+
+/**
  * The premium is too much. Answered by pointing at what is actually cheaper — the pay-to-99
  * term, a smaller cover — rather than by the shorter terms the bot offered on its first
  * attempt, which cost more a year, not less.
