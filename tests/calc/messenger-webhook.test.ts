@@ -278,3 +278,34 @@ describe("the picture of the quotation, when Messenger will not take it", () => 
     expect(last).toContain("/api/card?x=1");
   });
 });
+
+/**
+ * What follows an application form is an agent — a name to check, a birthdate to read back,
+ * a question about the health declaration that no model may answer.
+ */
+describe("once the form has been handed over", () => {
+  it("says nothing more in that thread, whatever the customer writes", async () => {
+    session.slots = { product: "lifeprotect", formSent: true };
+    await handle({ sender: { id: "psid-done" }, message: { mid: "mg1", text: "กรอกแล้วครับ" } });
+    expect(sent.text).toEqual([]);
+    expect(sent.images).toEqual([]);
+    // and no model was asked to compose the silence
+    expect(answer).not.toHaveBeenCalled();
+  });
+
+  it("still answers the turn that sends the form", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }],
+      slots: { intent: "quote", product: "lifeprotect", formSent: true },
+    }));
+    await handle({ sender: { id: "psid-form" }, message: { mid: "mg2", text: "สนใจสมัคร" } });
+    expect(sent.text.join(" ")).toContain("ฟอร์ม");
+  });
+
+  /** A thread nobody has been handed anything in is untouched by this. */
+  it("leaves an ordinary thread alone", async () => {
+    session.slots = { product: "lifeprotect" };
+    await handle({ sender: { id: "psid-live" }, message: { mid: "mg3", text: "ขอตารางมูลค่า" } });
+    expect(sent.text.length).toBeGreaterThan(0);
+  });
+});

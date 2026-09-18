@@ -43,6 +43,8 @@ export interface LegacySlots {
    * has handed it over.
    */
   told?: true;
+  /** the application form has gone; the bot says nothing more in this thread */
+  formSent?: true;
 }
 
 export type LegacyAnswer = Reply & { slots: LegacySlots };
@@ -162,7 +164,12 @@ export function answerLegacy(
    */
   if (wantsToBuy(asked, priced)) {
     const form = handOverForm(priced);
-    return { ...form, messages: form.messages.map((m) => ({ ...m, text: said(m.text) })), slots };
+    // the flag the report counts and the inbox reads as "an agent has this one now"
+    return {
+      ...form,
+      messages: form.messages.map((m) => ({ ...m, text: said(m.text) })),
+      slots: { ...slots, formSent: true },
+    };
   }
   if (saysFormDone(asked)) {
     return { messages: [{ text: said(FORM_RECEIVED) }], formDone: true, slots };

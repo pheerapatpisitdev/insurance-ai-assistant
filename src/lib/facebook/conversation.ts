@@ -41,6 +41,16 @@ async function answered(
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Whether the application form has already been handed to this customer. */
+function handedOver(slots: unknown): boolean {
+  return Boolean((slots as { formSent?: boolean } | null)?.formSent);
+}
+
+/** The arrangement a stored session was about, for the events that carry one. */
+function productOf(slots: unknown): string | null {
+  return (slots as { product?: string } | null)?.product ?? null;
+}
+
 const BUSY = "ตอนนี้มีคำถามเข้ามาเยอะครับ รบกวนรอสักครู่แล้วถามใหม่นะครับ";
 /**
  * What the customer sees when the bot cannot answer at all. It used to send them away —
@@ -134,6 +144,24 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     await attribute(conversationId, referral);
   }
   const ledger: RecordedEvent[] = [{ kind: "message" }];
+
+  /**
+   * The form has gone out. The bot has nothing left to do in this thread.
+   *
+   * What follows a form is an agent: a name to check, a birthdate to read back, a question
+   * about the health declaration that no model may answer. The bot answering over the top of
+   * that is the failure this stops — and a customer who has been handed an application does
+   * not need another quotation.
+   *
+   * The message is still recorded, so the report shows a live thread rather than one that
+   * stopped. Silence lasts as long as the session does: a day later the row is stale, the
+   * flag is gone with it, and somebody writing next week is a new customer again.
+   */
+  if (handedOver(session.slots)) {
+    await record(conversationId, ledger, productOf(session.slots));
+    return;
+  }
+
   const wantsIn = text.trim() === WANTS_IN;
 
   /**
