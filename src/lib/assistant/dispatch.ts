@@ -1,7 +1,8 @@
 import type { ChatMessage } from "@/lib/ai/types";
-import { askWhich, productByTopic, productNamedIn, type Product } from "./choose";
+import { askWhich, askWhichAgain, productByTopic, productNamedIn, type Product } from "./choose";
 import {
-  aboutCompany, asksAboutCompany, handOverForm, peopleIn, tookUpTheOffer, wantsToBuy, type Reply,
+  aboutCompany, ageIn, asksAboutCompany, handOverForm, peopleIn, tookUpTheOffer, wantsToBuy,
+  type Reply,
 } from "./common";
 import { answerHealth } from "./ihealthy/answer";
 import { answerLegacy, type LegacySlots } from "./legacy/answer";
@@ -14,6 +15,9 @@ import { planNamedIn, priceNamedPlan } from "@/lib/copilot/price";
 import type { GuideItem } from "@/lib/copilot/guide";
 import { writtenFor, type Channel } from "./channel";
 import { answerFromLibrary } from "@/lib/copilot/library";
+
+/** The last line of the menu, which is how a turn knows the menu was the last thing said. */
+const ASKED_WHICH = "สนใจแบบไหนครับ";
 
 /** One answer, and everything the bot should remember about this customer next turn. */
 export type AnyAnswer = Reply & {
@@ -146,11 +150,14 @@ export async function answerAny(
   // the customer has not said, so the customer is asked — and what they did say is kept,
   // all of it: everyone they named, not only whoever they named first
   const here = peopleIn(asked);
+  const carriedPerson = personIn(stored);
+  // an age with no sex beside it is still an age: it decides which doors can be opened at all
+  const alone = here.length ? undefined : ageIn(asked);
   const undecided: Undecided = {
     product: "undecided",
     ...(here.length
       ? { age: here[0].age, sex: here[0].sex, ...(here.length > 1 ? { people: here } : {}) }
-      : personIn(stored)),
+      : { ...carriedPerson, ...(alone !== undefined ? { age: alone } : {}) }),
   };
   /**
    * A question the dispatcher cannot place, but the library can answer.
@@ -196,11 +203,26 @@ export async function answerAny(
   if (!lead && ASKS_SOMETHING.test(asked)) {
     const answer = await answerFromLibrary(history, asked, channel);
     if (answer) {
-      return { messages: [{ text: answer }], replies: askWhich().replies, slots: undecided, fromLibrary: true };
+      return {
+        messages: [{ text: answer }], replies: askWhich(undefined, undecided.age).replies,
+        slots: undecided, fromLibrary: true,
+      };
     }
   }
 
-  return { ...askWhich(lead), slots: undecided };
+  /**
+   * The same menu twice is a dead end.
+   *
+   * A man of sixty-eight gave his age, was shown four arrangements, wrote "ขอดูทั้ง2แบบ", and
+   * was shown the same four again — two of which no company would have issued him. The age
+   * narrows the list below; a second pass at the same list does not need narrowing, it needs
+   * a person, and the agency is watching this inbox.
+   */
+  if (!lead && lastSaid?.includes(ASKED_WHICH)) {
+    return { ...askWhichAgain(undecided.age), slots: undecided };
+  }
+
+  return { ...askWhich(lead, undecided.age), slots: undecided };
 }
 
 /**

@@ -56,6 +56,51 @@ describe("a customer who has not said what they came for", () => {
     expect(cold.messages.at(-1)!.text).toContain("สนใจแบบไหน");
   });
 
+  /**
+   * A man of sixty-eight, on the page this morning.
+   *
+   * He gave his age, was shown four arrangements, wrote "ขอดูทั้ง2แบบ" and was shown the same
+   * four again. Two of them no company would have issued him, and the second telling was the
+   * same dead end as the first.
+   */
+  it("offers only the arrangements that would take them, once an age is known", async () => {
+    const answer = await answerAny(said("อายุ 68 ปีครับ"), null);
+    const text = answer.messages.at(-1)!.text;
+    expect(text).toContain("อายุ 68");
+    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_HEALTH]);
+    expect(text).not.toContain("จ่ายสั้น 5–20 ปี");
+  });
+
+  it("shows all four when no age says otherwise", async () => {
+    const answer = await answerAny(said("สนใจครับ"), null);
+    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD, CHOOSE_HEALTH]);
+  });
+
+  it("does not put the same menu up twice; it offers a person instead", async () => {
+    const first = await answerAny(said("อายุ 68 ปีครับ"), null);
+    const again = await answerAny([
+      { role: "user" as const, content: "อายุ 68 ปีครับ" },
+      { role: "assistant" as const, content: first.messages.at(-1)!.text },
+      { role: "user" as const, content: "ขอดูทั้ง2แบบ" },
+    ], first.slots);
+    expect(again.messages[0].text).not.toContain("สนใจแบบไหนครับ");
+    expect(again.messages[0].text).toContain("ตัวแทน");
+    // the buttons stay up, still only the two he can have
+    expect(again.replies).toEqual([CHOOSE_LIFE, CHOOSE_HEALTH]);
+  });
+
+  it("stops offering anything at an age every arrangement refuses", async () => {
+    const answer = await answerAny(said("อายุ 85 ปีครับ"), null);
+    expect(answer.messages.at(-1)!.text).toContain("ตัวแทน");
+    expect(answer.replies).toBeUndefined();
+  });
+
+  /** "คุ้มครองถึงอายุ 99 ไหม" is a question about the contract, not a customer of ninety-nine. */
+  it("does not read the contract's own age as the customer's", async () => {
+    const answer = await answerAny(said("คุ้มครองถึงอายุ 99 ไหมครับ"), null);
+    expect(answer.slots).not.toMatchObject({ age: 99 });
+  });
+
   it("keeps everyone the message named, not just the first", async () => {
     // a family of three, the message that lost two of them yesterday
     const answer = await answerAny(said("ช 23\nญ 25\nช 53"), null);

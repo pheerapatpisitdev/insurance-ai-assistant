@@ -462,6 +462,26 @@ function planNamePattern(): RegExp {
 }
 
 /**
+ * An age with nobody attached to it — "อายุ 68 ปีครับ", "68 ปีครับ".
+ *
+ * `peopleIn` wants a sex beside the number, which is the right rule for pricing: the rate
+ * table has two columns. But a customer who writes only their age has still told the bot
+ * something, and it was being thrown away — a man of sixty-eight wrote "อายุ68 ปีครับ", was
+ * shown four arrangements including two no company would issue him, and said so.
+ *
+ * "ถึงอายุ" is excluded: "คุ้มครองถึงอายุ 99 ไหม" is a question about the contract, and reading
+ * ninety-nine as the customer's age would answer somebody who does not exist.
+ */
+const AGE_ALONE = /(?<!ถึง\s?)อายุ\s*(\d{1,2})(?!\d)|^\s*(\d{1,2})\s*ปี/;
+
+export function ageIn(text: string): number | undefined {
+  const m = AGE_ALONE.exec(text);
+  if (!m) return undefined;
+  const age = Number(m[1] ?? m[2]);
+  return Number.isInteger(age) && age >= 0 && age <= 99 ? age : undefined;
+}
+
+/**
  * Everyone a message names, in the order it names them.
  *
  * The plan's name comes out first. Product names carry numbers and this reader pairs a number
