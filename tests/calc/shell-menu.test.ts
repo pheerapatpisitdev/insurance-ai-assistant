@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { isCurrent, menuGroups, SALES_PAGES } from "@/lib/shell/menu";
+import { isCurrent, menuGroups, SALES_PAGES, SALES_SECTIONS } from "@/lib/shell/menu";
 
 /**
  * The menu is the answer to "what is there", so a link in it that goes nowhere is worse than
@@ -38,10 +38,25 @@ describe("every place the menu says you can go", () => {
 
   it("opens a sales page in its own tab and an agent's own page in place", () => {
     const groups = menuGroups(true);
-    const sales = groups.find((g) => g.title === "หน้าขาย")!;
-    expect(sales.links.every((l) => l.external)).toBe(true);
+    // the sales pages are dealt into four sections now, and every one of them opens away
+    const sales = groups.filter((g) => SALES_SECTIONS.some((s) => s.title === g.title));
+    expect(sales).toHaveLength(SALES_SECTIONS.length);
+    expect(sales.flatMap((g) => g.links).every((l) => l.external)).toBe(true);
     const work = groups.find((g) => g.title === "งานขาย")!;
     expect(work.links.some((l) => l.external)).toBe(false);
+  });
+
+  /**
+   * Eight pages in one column is a list to be read through. An agent reaching for a page
+   * knows whether the customer is asking about dying, about being ill, about a hospital bill
+   * or about their staff, and the headings answer that before the names are read.
+   */
+  it("deals the sales pages into the four kinds of cover, losing none", () => {
+    expect(SALES_SECTIONS.map((s) => s.title))
+      .toEqual(["ประกันชีวิต", "ประกันโรคร้ายแรง", "ประกันสุขภาพ", "ประกันกลุ่ม"]);
+    expect(SALES_SECTIONS.flatMap((s) => s.links)).toEqual(SALES_PAGES);
+    // and no page is filed under two kinds at once
+    expect(new Set(SALES_PAGES.map((p) => p.href)).size).toBe(SALES_PAGES.length);
   });
 
   it("lists no destination twice inside one group", () => {

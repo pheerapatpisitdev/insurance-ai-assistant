@@ -64,7 +64,17 @@ export interface MenuGroup {
 }
 
 /**
- * The eight sales pages.
+ * The eight sales pages, in the four kinds of cover the agency sells.
+ *
+ * Grouped because eight names in one column is a list to be read through, and an agent
+ * reaching for a page is not reading — they know whether the customer in front of them is
+ * asking about dying, about being ill, about a hospital bill, or about their staff. The
+ * headings answer that before the names are read at all.
+ *
+ * A plan sits under what it is bought for, not under what it is built from. มรดกเพื่อครอบครัว
+ * is a life contract with a critical-illness rider on it and iShield is a whole life policy,
+ * and nobody buys either for the life cover: they buy the money that arrives on the day of a
+ * diagnosis. Filing them under ประกันชีวิต would be filing them where nobody would look.
  *
  * Written out rather than generated from the plan registry, which is what the design said
  * before the two were compared: there are eight pages and six plans, `/legacy` is a way of
@@ -72,24 +82,50 @@ export interface MenuGroup {
  * `/group-insurance` is not a life plan and is not in the registry. A list generated from
  * the registry would therefore invent a link to nowhere and miss three that exist.
  *
- * It was already written out — inside the calculator page, where nothing else could reach it.
- * It is here now so that the menu and the calculator cannot come to disagree about how many
- * pages there are.
- *
  * Each one's hue leans toward the page it opens — copper for iShield, gold for the legacy
  * bundle, the corporate navy for group insurance — so the menu and the page an agent lands
  * on are plainly the same thing.
  */
-export const SALES_PAGES: MenuLink[] = [
-  { href: "/lifeprotect", label: "Life Protect x 2", icon: "shield", hue: "#e11d48" },
-  { href: "/legacy", label: "มรดกเพื่อครอบครัว", icon: "home", hue: "#b45309" },
-  { href: "/plb", label: "Protection Life", icon: "umbrella", hue: "#0f766e" },
-  { href: "/easyprotect", label: "อีซี่ โพรเทค 6", icon: "clock", hue: "#15803d" },
-  { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์", icon: "gem", hue: "#7e22ce" },
-  { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#c2410c" },
-  { href: "/ihealthy-ultra", label: "iHealthy Ultra", icon: "heart", hue: "#0369a1" },
-  { href: "/group-insurance", label: "ประกันภัยกลุ่ม", icon: "building", hue: "#292d78" },
+export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
+  {
+    title: "ประกันชีวิต",
+    links: [
+      { href: "/lifeprotect", label: "Life Protect x 2", icon: "shield", hue: "#e11d48" },
+      { href: "/plb", label: "Protection Life", icon: "umbrella", hue: "#0f766e" },
+      { href: "/easyprotect", label: "อีซี่ โพรเทค 6", icon: "clock", hue: "#15803d" },
+      { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์", icon: "gem", hue: "#7e22ce" },
+    ],
+  },
+  {
+    title: "ประกันโรคร้ายแรง",
+    links: [
+      { href: "/legacy", label: "มรดกเพื่อครอบครัว", icon: "home", hue: "#b45309" },
+      { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#c2410c" },
+    ],
+  },
+  {
+    title: "ประกันสุขภาพ",
+    links: [
+      { href: "/ihealthy-ultra", label: "iHealthy Ultra", icon: "heart", hue: "#0369a1" },
+    ],
+  },
+  {
+    title: "ประกันกลุ่ม",
+    links: [
+      { href: "/group-insurance", label: "ประกันภัยกลุ่ม", icon: "building", hue: "#292d78" },
+    ],
+  },
 ];
+
+/**
+ * The same eight, flat.
+ *
+ * `/other-plans` lists them as cards in one grid and has no use for the headings, and the
+ * test that checks none of the pages on disk has been left out of the menu counts them here.
+ * Derived rather than written twice, so a page added to a section cannot go missing from the
+ * grid — which is the way round this went wrong when the list lived inside the calculator.
+ */
+export const SALES_PAGES: MenuLink[] = SALES_SECTIONS.flatMap((s) => s.links);
 
 /**
  * The menu, in the order the work is done in.
@@ -146,7 +182,9 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
     });
   }
 
-  groups.push({ title: "หน้าขาย", links: SALES_PAGES.map((p) => ({ ...p, external: true })) });
+  for (const section of SALES_SECTIONS) {
+    groups.push({ title: section.title, links: section.links.map((p) => ({ ...p, external: true })) });
+  }
   return groups;
 }
 
