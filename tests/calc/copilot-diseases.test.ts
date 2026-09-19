@@ -95,6 +95,14 @@ describe("which question opens which list", () => {
      * illness. It used to open all four name lists — twelve thousand characters, and the
      * wrong answer besides.
      */
+    /**
+     * Measured against the spine every question carries rather than against a number: a
+     * fixed ceiling here is a number each new plan walks into — the sixth one already did,
+     * at 11,316 characters of spine against a limit of 11,000 — while what is actually
+     * being pinned is that no illness list travelled, which is exactly "no longer than the
+     * spine".
+     */
+    const spine = (await assembleKnowledge("สวัสดี")).length;
     for (const q of ["โรคร้ายแรงมีอะไรบ้าง", "โรคร้ายแรงมีแบบไหนบ้าง", "อยากได้ประกันโรคร้ายแรง"]) {
       const k = await assembleKnowledge(q);
       expect(k, q).toContain("## คุ้มครองโรคร้ายแรง");
@@ -104,7 +112,7 @@ describe("which question opens which list", () => {
       expect(k, q).toContain("(DCI)");
       expect(k, q).toContain("(CI 123)");
       expect(k, q).toContain("โรคร้ายโซชิลด์");
-      expect(k.length, q).toBeLessThan(11000);
+      expect(k.length, q).toBeLessThanOrEqual(spine);
     }
   });
 
