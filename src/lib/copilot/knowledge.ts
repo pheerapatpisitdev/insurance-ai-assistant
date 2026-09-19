@@ -141,7 +141,9 @@ function planSection(code: string, name: string, rules: PlanRules): string {
  * so a declared index is testable where a nearest-neighbour is only inspectable. Every route
  * in this table has a test that presses it.
  */
-interface DiseaseList {
+export interface DiseaseList {
+  /** the contract's own code, which is how anything outside this file asks for one */
+  code: string;
   name: string;
   note: string;
   groups: { title: string; diseases: string[] }[];
@@ -156,18 +158,18 @@ function diseaseLists(): DiseaseList[] {
   const rrss = rrssDiseases as { name: string; note: string; groups: { title: string; diseases: string[] }[] };
   return [
     ...(dci ? [{
-      name: dci.name, note: dci.note, re: /\bdci\b|ดีซีไอ/i,
+      code: "DCI", name: dci.name, note: dci.note, re: /\bdci\b|ดีซีไอ/i,
       groups: [{ title: "รายชื่อ", diseases: dci.diseases }],
     }] : []),
     {
-      name: "iShield", note: shield.note, re: /i\s*-?\s*shield|ไอ\s*ชิลด์/i,
+      code: "ISHIELD", name: "iShield", note: shield.note, re: /i\s*-?\s*shield|ไอ\s*ชิลด์/i,
       groups: [
         { title: "ระยะเริ่มต้น", diseases: shield.early },
         { title: "ระยะรุนแรง", diseases: shield.major },
       ],
     },
-    { name: ci.name, note: ci.note, groups: ci.groups, re: /\bci\s*-?\s*123\b|ซีไอ\s*123/i },
-    { name: rrss.name, note: rrss.note, groups: rrss.groups, re: /\brrss\b|\bmci\b|โซชิลด์/i },
+    { code: "CI123", name: ci.name, note: ci.note, groups: ci.groups, re: /\bci\s*-?\s*123\b|ซีไอ\s*123/i },
+    { code: "RRSS", name: rrss.name, note: rrss.note, groups: rrss.groups, re: /\brrss\b|\bmci\b|โซชิลด์/i },
   ];
 }
 
@@ -226,6 +228,22 @@ function diseaseDetail(lists: DiseaseList[]): string {
  * and if they do not, the summary's own line tells the assistant to ask, which it has to do
  * regardless: there are four different lists and no way to guess which one is meant.
  */
+/**
+ * One contract's illnesses, by the code the contract is written under.
+ *
+ * Exported so the picture of a list and the words of one come from the same place. A card
+ * drawn from a second copy of these names is a card that goes on saying fifty when the
+ * benefit sheet has moved to fifty-two, and nothing would say which of the two was wrong.
+ */
+export function diseaseListFor(code: string): DiseaseList | undefined {
+  return diseaseLists().find((l) => l.code === code);
+}
+
+/** Every list there is, for anything that offers a choice of them. */
+export function diseaseListCodes(): { code: string; name: string; total: number }[] {
+  return diseaseLists().map((l) => ({ code: l.code, name: l.name, total: listTotal(l) }));
+}
+
 export function listsFor(question: string): DiseaseList[] {
   const all = diseaseLists();
   if (!question) return all;

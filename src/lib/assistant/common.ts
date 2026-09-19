@@ -578,3 +578,15 @@ function ageFromBirthYear(text: string, today: Date): number | undefined {
   return age >= 0 && age <= 99 ? age : undefined;
 }
 
+
+/**
+ * A customer asking to see the illnesses, rather than how many there are.
+ *
+ * "กี่โรค" is answered in a sentence and always was. "ขอดูรายชื่อโรค" is seventy diagnoses,
+ * which is a wall of text on a phone and cannot be forwarded to whoever else in the house has
+ * to agree — so it is answered with the picture instead, drawn from the same list the
+ * assistant reads from, and it costs no model call at all.
+ */
+export function asksDiseaseList(text: string): boolean {
+  return /รายชื่อ|ชื่อโรค|โรคอะไร|โรคไหน|มีโรคอะไรบ้าง|ครอบคลุมโรค|คุ้มครองโรคอะไร|ดูโรค|ลิสต์โรค/i.test(text);
+}

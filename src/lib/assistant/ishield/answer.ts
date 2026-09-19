@@ -4,12 +4,12 @@ import { baseAgeRange, baseSumAssuredLimits } from "@/calc/rules";
 import { sumAssuredFromPremium } from "@/calc/sa-from-premium";
 import { modePremiumsFrom } from "@/calc/mode-premiums";
 import { formatBaht } from "@/calc/money";
-import { cardPath, valueTablePath } from "@/lib/card-link";
+import { cardPath, diseaseCardPath, valueTablePath } from "@/lib/card-link";
 import { valueTableCard } from "@/lib/quote-card";
 import diseases from "../../../../data/riders/ishield-diseases.json";
 import {
-  coverIn, FORM_RECEIVED, handOverForm, peopleIn, saysFormDone, stallReply, stalls, WANTS_IN,
-  wantsToBuy, type Reply,
+  asksDiseaseList, coverIn, FORM_RECEIVED, handOverForm, peopleIn, saysFormDone, stallReply,
+  stalls, WANTS_IN, wantsToBuy, type Reply,
 } from "../common";
 import { writtenFor, type Channel } from "../channel";
 import { CHOOSE_HEALTH, CHOOSE_LEGACY } from "../choose";
@@ -244,6 +244,19 @@ export function answerIShield(
    * Checked before the slots are acted on, because "สนใจสมัคร" is not a tier and not a saving,
    * and because a customer leaving to think it over must not be asked one more question.
    */
+  /** the seventy, as a picture — see the note on `asksDiseaseList` */
+  if (asksDiseaseList(asked)) {
+    const ill = illnesses();
+    return {
+      messages: [{
+        text: said(`รายชื่อโรคร้ายแรงทั้ง ${ill.early + ill.major} โรคที่คุ้มครองครับ 🙏`
+          + " กดที่รูปเพื่อดูเต็ม บันทึกส่งต่อให้ที่บ้านดูได้เลย"),
+        card: diseaseCardPath("ISHIELD"),
+      }],
+      slots,
+    };
+  }
+
   if (wantsToBuy(asked, priced)) {
     const form = handOverForm(priced);
     // the flag the report counts and the inbox reads as "an agent has this one now"

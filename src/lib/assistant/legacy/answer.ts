@@ -1,10 +1,11 @@
 import { bundleAgeRange, bundleModePremiums, describeTier, quoteBundle } from "@/calc/bundles/quote";
 import { getBundle } from "@/calc/bundles/registry";
 import { cardPath } from "@/lib/quote-card";
+import { diseaseCardPath } from "@/lib/card-link";
 import { formatBaht } from "@/calc/money";
 import {
-  coverIn, FORM_RECEIVED, handOverForm, peopleIn, saysFormDone, stallReply, stalls, WANTS_IN,
-  wantsToBuy, type Reply,
+  asksDiseaseList, coverIn, FORM_RECEIVED, handOverForm, peopleIn, saysFormDone, stallReply,
+  stalls, WANTS_IN, wantsToBuy, type Reply,
 } from "../common";
 import { writtenFor, type Channel } from "../channel";
 import { CHOOSE_HEALTH, CHOOSE_LIFE } from "../choose";
@@ -162,6 +163,22 @@ export function answerLegacy(
    * Checked before the slots are acted on, because "สนใจสมัคร" is not a tier and not a saving,
    * and because a customer leaving to think it over must not be asked one more question.
    */
+  /**
+   * The thirty-one, as a picture, before anything else is worked out.
+   *
+   * Asked at any point in the conversation and answered the same way: the list does not
+   * depend on who is asking or what they have chosen, so it does not wait for an age.
+   */
+  if (asksDiseaseList(asked)) {
+    return {
+      messages: [{
+        text: said("รายชื่อโรคร้ายแรงทั้ง 31 โรคที่คุ้มครองครับ 🙏 กดที่รูปเพื่อดูเต็ม บันทึกส่งต่อให้ที่บ้านดูได้เลย"),
+        card: diseaseCardPath("DCI"),
+      }],
+      slots,
+    };
+  }
+
   if (wantsToBuy(asked, priced)) {
     const form = handOverForm(priced);
     // the flag the report counts and the inbox reads as "an agent has this one now"

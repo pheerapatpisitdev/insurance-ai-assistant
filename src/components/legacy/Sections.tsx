@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { riderDiseases } from "@/calc/riders/diseases";
+import { diseaseCardPath } from "@/lib/card-link";
 import type { LegacyCopyFacts } from "@/lib/legacy-facts";
 import { Fold, H2, Rule } from "@/components/sales/Blocks";
 
@@ -132,7 +133,12 @@ export function DiseaseSection() {
     <section className="py-12">
       <Rule />
       <div className="pt-8">
-        <H2>คุ้มครอง {info.diseases.length} โรคร้ายแรง</H2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <H2>คุ้มครอง {info.diseases.length} โรคร้ายแรง</H2>
+          <a href={diseaseCardPath("DCI")} download={`DCI-${info.diseases.length}-โรคร้ายแรง.png`} className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-xs font-medium text-[var(--lg-gold)]">
+            ดาวน์โหลดรูปรายชื่อโรค
+          </a>
+        </div>
         <div className="mt-5 border-t border-[var(--lg-panel-line)]">
           <Fold summary={`ดูรายชื่อ ${info.diseases.length} โรคที่คุ้มครอง`}>
             <ol className="space-y-1.5 sm:columns-2 sm:gap-x-8">

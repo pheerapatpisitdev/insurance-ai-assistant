@@ -46,7 +46,7 @@ export interface CardPalette {
  * whose plan has not been given a palette of its own. Kept to the exact values the card was
  * drawn in before there was more than one theme, so those two cards are unchanged.
  */
-const CHARCOAL_GOLD: CardPalette = {
+export const CHARCOAL_GOLD: CardPalette = {
   ground: "#26272a",
   groundDeep: "#1c1d1f",
   accent: "#c9a26f",

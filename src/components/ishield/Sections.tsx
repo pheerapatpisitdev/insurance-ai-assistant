@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { diseaseCardPath } from "@/lib/card-link";
 import { Fold, H2, Rule } from "@/components/sales/Blocks";
 import type { IShieldCopyFacts } from "@/lib/ishield-facts";
 import diseases from "../../../data/riders/ishield-diseases.json";
@@ -138,7 +139,13 @@ export function IllnessSection({ facts }: { facts: IShieldCopyFacts }) {
     <section className="py-12">
       <Rule />
       <div className="pt-8">
-        <H2>คุ้มครอง {facts.illnessTotal} โรคร้ายแรง</H2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <H2>คุ้มครอง {facts.illnessTotal} โรคร้ายแรง</H2>
+          {/* the same list as a picture, for the agent who has to send it to somebody */}
+          <a href={diseaseCardPath("ISHIELD")} download={`iShield-${facts.illnessTotal}-โรคร้ายแรง.png`} className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-xs font-medium text-[var(--lg-gold)]">
+            ดาวน์โหลดรูปรายชื่อโรค
+          </a>
+        </div>
         <div className="mt-5 border-t border-[var(--lg-panel-line)]">
           {/* Open on arrival. The names are what the plan is — a customer weighing seventy
               illnesses against a premium cannot do it from a heading, and the fold asked them

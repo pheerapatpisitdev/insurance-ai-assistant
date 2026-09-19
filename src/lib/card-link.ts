@@ -97,3 +97,13 @@ export function valueTablePath(input: PlanCardInput): string {
 export function cardUrl(origin: string, input: CardInput): string {
   return new URL(cardPath(input), origin).toString();
 }
+
+/**
+ * The picture of one contract's illnesses.
+ *
+ * Named by the contract's code and nothing else: the list belongs to the rider, is the same
+ * list for every plan the rider is sold under, and has no insured to be about.
+ */
+export function diseaseCardPath(code: string): string {
+  return `/api/card/diseases?of=${encodeURIComponent(code)}`;
+}
