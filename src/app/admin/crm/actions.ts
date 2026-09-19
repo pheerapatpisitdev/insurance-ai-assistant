@@ -26,11 +26,28 @@ export interface LeadView extends LeadRow {
   reachable: boolean;
 }
 
+/**
+ * One thread a person took over, and what the bot knew about it when they did.
+ *
+ * Named by `user_hash` rather than by anything that could write to the customer: the page
+ * needs to say which thread to turn the bot back on in, and nothing more than that.
+ */
+export interface HandedOverRow {
+  userHash: string;
+  handedOverAt: string;
+  updatedAt: string;
+  /** what the conversation had settled on, where one had */
+  product: string | null;
+  messages: number | null;
+}
+
 export interface CrmPage {
   range: Range;
   summary: Summary;
   leads: LeadView[];
   unanswered: UnansweredRow[];
+  /** threads the bot is switched off in, so a customer taken on cannot be quietly forgotten */
+  handedOver: HandedOverRow[];
   /** what the models have cost since the first of the month, in baht */
   aiCostThisMonth: number;
 }
@@ -42,7 +59,7 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
   const since = rangeStart(range).toISOString();
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-  const [conversations, leads, unanswered, spend] = await Promise.all([
+  const [conversations, leads, unanswered, spend, handed] = await Promise.all([
     supabase
       .from("ins_conversations")
       .select(
@@ -65,6 +82,19 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
       .order("at", { ascending: false })
       .limit(UNANSWERED_LIMIT),
     supabase.from("ins_usage_ledger").select("cost_thb").gte("created_at", monthStart),
+    /**
+     * Every thread the bot is off in, whatever its age and whatever range the page is showing.
+     *
+     * The range filters the report; it must not filter this. A thread handed over five weeks
+     * ago is still a thread with nobody answering it, and hiding it behind "7 วัน" is how it
+     * stays that way.
+     */
+    supabase
+      .from("ins_chat_sessions")
+      .select("user_hash, handed_over_at, updated_at, slots")
+      .not("handed_over_at", "is", null)
+      .order("handed_over_at", { ascending: false })
+      .limit(LEAD_LIMIT),
   ]);
 
   // the select list is long enough that the client infers an error shape rather than the row
@@ -77,6 +107,14 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
     summary: summarise(rows, range),
     leads: await withNames(leadRows),
     unanswered: (unanswered.data ?? []) as unknown as UnansweredRow[],
+    handedOver: ((handed.data ?? []) as { user_hash: string; handed_over_at: string; updated_at: string; slots: { product?: string } | null }[])
+      .map((r) => ({
+        userHash: r.user_hash,
+        handedOverAt: r.handed_over_at,
+        updatedAt: r.updated_at,
+        product: r.slots?.product ?? null,
+        messages: null,
+      })),
     aiCostThisMonth: (spend.data ?? []).reduce((sum, r) => sum + Number(r.cost_thb ?? 0), 0),
   };
 }
@@ -115,4 +153,21 @@ async function psidFor(leadId: string): Promise<string | null> {
     console.error("อ่านรหัสลูกค้าไม่สำเร็จ:", e);
     return null;
   }
+}
+
+/**
+ * Give one thread back to the bot.
+ *
+ * The only way back: a hand-over does not time out, by the owner's own instruction, so
+ * without this a thread switched off by a "สวัสดีครับ" would stay off for good. Guarded in
+ * its own right — a server action is a network entry point whatever page it was written for.
+ */
+export async function resumeBot(userHash: string): Promise<void> {
+  await requireAdmin();
+  const { error } = await supabaseAdmin()
+    .from("ins_chat_sessions")
+    .update({ handed_over_at: null })
+    .eq("channel", "facebook")
+    .eq("user_hash", userHash);
+  if (error) throw new Error(error.message);
 }

@@ -6,6 +6,7 @@ import { Kpis } from "./Kpis";
 import { Funnel } from "./Funnel";
 import { Charts } from "./Charts";
 import { Leads } from "./Leads";
+import { HandedOver } from "./HandedOver";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ const TABS = [
   { key: "recent", label: "ลูกค้าล่าสุด" },
   { key: "follow", label: "ต้องตามต่อ" },
   { key: "unanswered", label: "คำถามที่ตอบไม่ได้" },
+  { key: "handed", label: "บอทถูกปิด" },
 ] as const;
 
 type Tab = (typeof TABS)[number]["key"];
@@ -28,7 +30,7 @@ function isRange(v: string | undefined): v is Range {
 }
 
 function isTab(v: string | undefined): v is Tab {
-  return v === "recent" || v === "follow" || v === "unanswered";
+  return v === "recent" || v === "follow" || v === "unanswered" || v === "handed";
 }
 
 export default async function CrmPage(
@@ -37,7 +39,7 @@ export default async function CrmPage(
   const params = await searchParams;
   const range = isRange(params.range) ? params.range : "7d";
   const tab = isTab(params.tab) ? params.tab : "recent";
-  const { summary, leads, unanswered, aiCostThisMonth } = await loadCrm(range);
+  const { summary, leads, unanswered, handedOver, aiCostThisMonth } = await loadCrm(range);
   const { counts } = summary;
 
   /** Everyone the bot quoted who then went quiet, plus everyone who asked to apply. */
@@ -73,7 +75,11 @@ export default async function CrmPage(
       <div>
         <nav className="flex gap-0.5 border-b border-slate-200">
           {TABS.map((t) => {
-            const n = t.key === "unanswered" ? unanswered.length : t.key === "follow" ? following.length : leads.length;
+            const n = t.key === "unanswered"
+              ? unanswered.length
+              : t.key === "handed"
+                ? handedOver.length
+                : t.key === "follow" ? following.length : leads.length;
             return (
               <Link
                 key={t.key}
@@ -89,11 +95,15 @@ export default async function CrmPage(
             );
           })}
         </nav>
-        <Leads
-          tab={tab}
-          leads={tab === "follow" ? following : leads}
-          unanswered={unanswered}
-        />
+        {tab === "handed" ? (
+          <HandedOver rows={handedOver} />
+        ) : (
+          <Leads
+            tab={tab}
+            leads={tab === "follow" ? following : leads}
+            unanswered={unanswered}
+          />
+        )}
       </div>
 
       <p className="rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-3 text-xs leading-relaxed text-sky-900">

@@ -2,8 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Answer } from "@/lib/assistant/lifeprotect/answer";
 
 const sent: { text: string[]; images: string[]; replies: (string[] | undefined)[] } = { text: [], images: [], replies: [] };
-const session = { messages: [] as { role: "user" | "assistant"; content: string }[], slots: null as unknown, mutedUntil: null as string | null };
-const saved: { mutedUntil?: Date | null }[] = [];
+const session = {
+  messages: [] as { role: "user" | "assistant"; content: string }[],
+  slots: null as unknown,
+  mutedUntil: null as string | null,
+  handedOverAt: null as string | null,
+};
+const saved: { mutedUntil?: Date | null; handedOverAt?: Date | null }[] = [];
 /** every user hash the handler touched, so one conversation can be shown to be one row */
 const hashesSeen: string[] = [];
 const quoted = async (): Promise<Answer> => ({
@@ -37,8 +42,9 @@ vi.mock("@/lib/chat/session", async () => {
     claimEvent: async () => true,
     loadSession: async (_c: string, u: string) => { hashesSeen.push(u); return session; },
     saveSession: async (
-      _c: string, u: string, _m: unknown, _s: unknown, mutedUntil?: Date | null,
-    ) => { hashesSeen.push(u); saved.push({ mutedUntil }); },
+      _c: string, u: string, _m: unknown, _s: unknown,
+      mutedUntil?: Date | null, _conv?: string | null, handedOverAt?: Date | null,
+    ) => { hashesSeen.push(u); saved.push({ mutedUntil, handedOverAt }); },
   };
 });
 
@@ -51,7 +57,7 @@ beforeEach(() => {
   process.env.FB_APP_SECRET = "secret";
   sent.text = []; sent.images = []; sent.replies = []; saved.length = 0;
   followups.armed.length = 0; followups.dropped.length = 0;
-  session.messages = []; session.slots = null; session.mutedUntil = null;
+  session.messages = []; session.slots = null; session.mutedUntil = null; session.handedOverAt = null;
   answer.mockReset();
   answer.mockImplementation(quoted);
 });
@@ -229,5 +235,48 @@ describe("the agent answering by hand", () => {
   it("does not silence the bot for its own echo", async () => {
     await handle({ sender: { id: "page" }, recipient: { id: "psid" }, message: { mid: "m4", text: "เบี้ย…", is_echo: true, app_id: "app-1" } });
     expect(saved).toEqual([]);
+  });
+});
+
+/**
+ * The owner asked for this after watching the other way round go wrong.
+ *
+ * The bot used to pick a thread back up the moment the customer wrote again, so a lead the
+ * agent was already talking to could get an agent and a bot answering the same message. One
+ * reply typed by hand is now the whole signal, and it does not time out.
+ */
+describe("a thread the agent has answered in", () => {
+  const agentEcho = {
+    sender: { id: "PAGE" },
+    recipient: { id: "PSID" },
+    message: { mid: "m-echo", text: "สวัสดีครับ", is_echo: true },
+  };
+
+  it("is handed to the person who typed, on the first reply", async () => {
+    await handle(agentEcho as never);
+    expect(saved).toHaveLength(1);
+    expect(saved[0].handedOverAt).toBeInstanceOf(Date);
+  });
+
+  it("stays theirs when the customer writes again — the bot says nothing", async () => {
+    session.handedOverAt = new Date().toISOString();
+    await handle({
+      sender: { id: "PSID" }, recipient: { id: "PAGE" },
+      message: { mid: "m-2", text: "ชาย 35 ครับ" },
+    } as never);
+    expect(sent.text).toEqual([]);
+    expect(sent.images).toEqual([]);
+    expect(answer).not.toHaveBeenCalled();
+  });
+
+  /** and never comes back on a clock: an hour later, a day later, the thread is still theirs */
+  it("does not expire", async () => {
+    session.handedOverAt = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    await handle({
+      sender: { id: "PSID" }, recipient: { id: "PAGE" },
+      message: { mid: "m-3", text: "ยังสนใจอยู่ครับ" },
+    } as never);
+    expect(sent.text).toEqual([]);
+    expect(answer).not.toHaveBeenCalled();
   });
 });

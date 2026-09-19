@@ -23,6 +23,16 @@ export interface Session {
   slots: AnySlots | null;
   /** ISO time the bot may speak again, or null when it was never asked to stop */
   mutedUntil: string | null;
+  /**
+   * ISO time a person took this thread over, or null while the bot still has it.
+   *
+   * Not the same thing as the mute beside it, and not the same thing as
+   * `ins_conversations.handover_at` either — that one says the customer asked to buy, which
+   * is a step forward in the sale. This says the bot is off in this thread and stays off: an
+   * agent answered by hand, so the thread is a person's now and does not come back on a
+   * timer. Only the button in the back office turns it round.
+   */
+  handedOverAt: string | null;
   /** the conversation row this live session is part of, or null when none has been opened */
   conversationId: string | null;
 }
@@ -37,6 +47,17 @@ export function isMuted(mutedUntil: string | null, now: Date = new Date()): bool
 }
 
 /**
+ * Whether the bot has anything to say in this thread at all.
+ *
+ * The mute is a few seconds wide and ends when the customer writes again; a hand-over does
+ * not end. Asked as one question because every caller wants the same answer — may I speak —
+ * and a caller that checked only the mute would answer over the agent who owns the thread.
+ */
+export function silenced(session: Pick<Session, "mutedUntil" | "handedOverAt">, now: Date = new Date()): boolean {
+  return session.handedOverAt !== null || isMuted(session.mutedUntil, now);
+}
+
+/**
  * The row is read whatever its age, and the cutoff is applied to the conversation alone: a
  * mute has its own clock. A thread the agent answered in and then left alone for a day would
  * otherwise come back with the mute unread, and the bot would speak over them.
@@ -44,11 +65,11 @@ export function isMuted(mutedUntil: string | null, now: Date = new Date()): bool
 export async function loadSession(channel: Channel, userHash: string): Promise<Session> {
   const { data } = await supabaseAdmin()
     .from("ins_chat_sessions")
-    .select("messages, slots, muted_until, updated_at, conversation_id")
+    .select("messages, slots, muted_until, handed_over_at, updated_at, conversation_id")
     .eq("channel", channel)
     .eq("user_hash", userHash)
     .maybeSingle();
-  if (!data) return { messages: [], slots: null, mutedUntil: null, conversationId: null };
+  if (!data) return { messages: [], slots: null, mutedUntil: null, handedOverAt: null, conversationId: null };
 
   const fresh = new Date(data.updated_at).getTime() > Date.now() - MAX_AGE_HOURS * 3600_000;
   const stored = fresh && Array.isArray(data.messages) ? (data.messages as ChatMessage[]) : [];
@@ -56,7 +77,14 @@ export async function loadSession(channel: Channel, userHash: string): Promise<S
   // a stale row is a different visit as far as the report is concerned, and a conversation
   // carried on into it would show one arrival where there were two
   const conversationId = fresh ? ((data.conversation_id as string | null) ?? null) : null;
-  return { messages: stored.slice(-MAX_TURNS), slots, mutedUntil: data.muted_until ?? null, conversationId };
+  return {
+    messages: stored.slice(-MAX_TURNS),
+    slots,
+    mutedUntil: data.muted_until ?? null,
+    // read whatever the row's age: a thread handed to a person a fortnight ago is still theirs
+    handedOverAt: data.handed_over_at ?? null,
+    conversationId,
+  };
 }
 
 /**
@@ -74,6 +102,7 @@ export async function saveSession(
   slots: AnySlots | null,
   mutedUntil?: Date | null,
   conversationId?: string | null,
+  handedOverAt?: Date | null,
 ): Promise<void> {
   await supabaseAdmin()
     .from("ins_chat_sessions")
@@ -86,6 +115,9 @@ export async function saveSession(
       ...(mutedUntil === undefined ? {} : { muted_until: mutedUntil?.toISOString() ?? null }),
       // and the same for the conversation: a save that is not about which one this is leaves it
       ...(conversationId === undefined ? {} : { conversation_id: conversationId }),
+      // and again for the hand-over: the bot saving an answer has no opinion on whose thread
+      // this is, so leaving it out leaves it exactly as the agent left it
+      ...(handedOverAt === undefined ? {} : { handed_over_at: handedOverAt?.toISOString() ?? null }),
       updated_at: new Date().toISOString(),
     });
 }

@@ -1,6 +1,6 @@
 import { siteUrl } from "@/lib/site-url";
 import { hashUserId } from "@/lib/facebook/verify";
-import { claimEvent, isMuted, loadSession, muteFor, saveSession } from "@/lib/chat/session";
+import { claimEvent, isMuted, loadSession, muteFor, saveSession, silenced } from "@/lib/chat/session";
 import { armFollowup, dropFollowup } from "@/lib/chat/followup";
 import { sendImage, sendMessage, showTyping } from "@/lib/facebook/client";
 import { answerAny } from "@/lib/assistant/dispatch";
@@ -61,7 +61,22 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
   // carries the page's words, not theirs.
   if (agentTyped(event)) {
     const session = await loadSession("facebook", userHash);
-    await saveSession("facebook", userHash, session.messages, session.slots, muteFor());
+    /**
+     * The thread becomes a person's, and stays one.
+     *
+     * The owner asked for this after running the other way round: the bot used to pick the
+     * thread back up the moment the customer wrote again, so a lead the agent was already
+     * talking to would get an agent and a bot answering the same message. One reply by hand
+     * is the whole signal — whoever typed it is in this conversation now.
+     *
+     * It does not time out. The way back is the button in the back office, which is also
+     * where the threads it has been used on are listed, because a bot switched off and
+     * forgotten is a customer nobody answers.
+     *
+     * The mute is set as well and is not redundant: it is the thing that stops an answer
+     * already in flight from landing on top of the agent's words a second later.
+     */
+    await saveSession("facebook", userHash, session.messages, session.slots, muteFor(), undefined, new Date());
     // the thread is theirs now, so the bot's own follow-up is not wanted — and the id it was
     // holding to send it with goes with it
     await dropFollowup("facebook", userHash);
@@ -106,6 +121,18 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
   const wantsIn = text.trim() === WANTS_IN;
 
   /**
+   * A thread a person took over: the customer's words are written down and nothing is said.
+   *
+   * Recorded rather than dropped, because the report is the only place the owner can see that
+   * a customer they took on is still writing — a silent thread that also leaves no trace is
+   * how somebody gets forgotten.
+   */
+  if (session.handedOverAt) {
+    await record(conversationId, ledger, null);
+    return;
+  }
+
+  /**
    * The agent answering by hand pauses the bot, and this message ends the pause: the customer
    * has written again, so the thread is handed back.
    *
@@ -143,8 +170,8 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     // the model takes seconds, and an agent watching the thread answers inside them. Their
     // words are already in the customer's phone by now, so the bot says nothing and records
     // nothing — a mark that was not there when this answer began is theirs, just now.
-    const marked = (await loadSession("facebook", userHash)).mutedUntil;
-    if (marked !== markedBefore && isMuted(marked)) return;
+    const now = await loadSession("facebook", userHash);
+    if (now.mutedUntil !== markedBefore && silenced(now)) return;
     for (const [i, said] of answer.messages.entries()) {
       // a second bubble arrives the way a person's would: after the dots, and after a pause
       // that scales with how much there was to type
