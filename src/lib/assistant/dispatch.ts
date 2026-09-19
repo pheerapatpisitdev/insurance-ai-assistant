@@ -1,8 +1,8 @@
 import type { ChatMessage } from "@/lib/ai/types";
-import { askWhich, askWhichAgain, productByTopic, productNamedIn, type Product } from "./choose";
+import { aboutAGroup, askWhich, askWhichAgain, productByTopic, productNamedIn, type Product } from "./choose";
 import {
-  aboutCompany, ageIn, asksAboutCompany, handOverForm, peopleIn, tookUpTheOffer, wantsToBuy,
-  type Reply,
+  aboutCompany, ageIn, asksAboutCompany, handOverForm, handOverGroup, peopleIn, tookUpTheOffer,
+  wantsToBuy, type Reply,
 } from "./common";
 import { answerHealth } from "./ihealthy/answer";
 import { answerLegacy, type LegacySlots } from "./legacy/answer";
@@ -110,6 +110,27 @@ export async function answerAny(
   const asked = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
   const now = settled(stored);
   const named = productNamedIn(asked);
+
+  /**
+   * A company asking about cover for its staff, answered before anything else happens.
+   *
+   * First, and ahead of a settled conversation, because this is the one subject that is not a
+   * change of plan but a change of product: an employer who has been pricing their own life
+   * cover and then asks about the payroll is asking a question none of the four brains below
+   * can take. Answering it early costs the conversation nothing — the slots are carried
+   * through untouched, so the quotation they were building is still there on the next turn.
+   *
+   * Three fixed bubbles, no model. The owner's decision is that group cover is sold by a
+   * person, so the chat's whole job here is the link and the handover — and the version that
+   * asked a model to do that was watched leaving the link out with the instruction in front
+   * of it. There is nothing here for a model to get wrong because there is no model.
+   *
+   * `aboutAGroup` is deliberately narrow — "กลุ่มโรค" and "กลุ่มอาการ" are not this — and
+   * every case it does and does not catch is written down in `group-knowledge.test.ts`.
+   */
+  if (aboutAGroup(asked)) {
+    return { ...handOverGroup(), slots: stored ?? { product: "undecided", ...personIn(stored) } };
+  }
 
   if (now === "lifeprotect" || now === "ihealthy" || now === "legacy" || now === "ishield") {
     // the customer has named the other plan: only the person travels, because the sum, the

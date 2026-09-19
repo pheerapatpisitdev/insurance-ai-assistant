@@ -1,5 +1,6 @@
 import type { ChatMessage } from "@/lib/ai/types";
 import { listPlans } from "@/calc/plans/registry";
+import { siteUrl } from "@/lib/site-url";
 
 /**
  * What a bot on this page is, before it is a bot about any particular plan.
@@ -184,6 +185,32 @@ export function spoken(text: string, fallback: string): Reply {
 export function handOverForm(quoted: boolean): Reply {
   const next = quoted ? FORM_NEXT : `${FORM_NEXT} ถ้าอยากทราบเบี้ยก่อน บอกเพศกับอายุมาได้เลยครับ เดี๋ยวคิดให้`;
   return { messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }, { text: APPLICATION_FORM }, { text: next }] };
+}
+
+/**
+ * Handing a company over: the page, and a person.
+ *
+ * The owner's decision, and the second one they made about this. The assistant briefly knew
+ * the group product well enough to describe it — the risk classes, the six plans, the cover
+ * across all of them — and that was taken back out. Group cover is sold to a company across
+ * a meeting-room table and they want a person in that conversation, not a chat window.
+ *
+ * Written out rather than left to a model, which is the part worth keeping. The version that
+ * asked a model to send this link was watched doing exactly what a prompt cannot prevent: it
+ * had the instruction in front of it, wrote a perfectly sensible answer, and left the link
+ * out. Three fixed bubbles cannot leave the link out, cannot invent a premium, and cost
+ * nothing to send.
+ *
+ * The link is on its own bubble so it is one tap, the same as the form above.
+ */
+export function handOverGroup(): Reply {
+  return {
+    messages: [
+      { text: "ประกันกลุ่มสำหรับองค์กรมีครับ 😊 คิดเบี้ยและออกใบเสนอราคาได้ที่หน้านี้เลย" },
+      { text: siteUrl("/group-insurance") },
+      { text: "รายละเอียดความคุ้มครองและเงื่อนไขของแบบกลุ่ม ขอให้ตัวแทนดูแลต่อนะครับ แจ้งจำนวนพนักงานกับลักษณะธุรกิจไว้ในแชทนี้ได้เลย เดี๋ยวติดต่อกลับไปครับ" },
+    ],
+  };
 }
 
 /**

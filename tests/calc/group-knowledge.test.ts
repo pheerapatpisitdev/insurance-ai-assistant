@@ -1,13 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
 /**
- * What the assistant knows about ประกันภัยกลุ่ม, and where a question about it goes.
+ * What the assistant says about ประกันภัยกลุ่ม, which is: that it exists, and here is the
+ * page and a person.
  *
- * Two halves of one thing, so they are tested together: knowledge nothing routes to is
- * knowledge nobody reads, and a route to an empty section is worse than no route at all.
+ * It briefly said more. The knowledge held the risk classes, the six plans and the cover
+ * across all of them, and the owner took that back out — group cover is sold to a company
+ * across a meeting-room table, and they want a person in that conversation rather than a chat
+ * window. So these tests changed shape with it, and what they now press is the opposite of
+ * what they pressed before: not that the facts are right, but that the facts are absent.
  *
- * The figures are asserted against the same tables /group-insurance prices from, never
- * against a fixture — the whole claim of this module is that the two cannot disagree.
+ * The routing guard did not change, and neither did its tests. Without it a company asking
+ * about thirty staff is read as the individual health plan — "ประกันสุขภาพ" is inside
+ * "ประกันสุขภาพกลุ่ม" — and quoted one person's premium. That fault is what this file was
+ * opened for and it is still the first thing here.
  */
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -17,13 +23,13 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 const { assembleKnowledge } = await import("@/lib/copilot/knowledge");
-const { groupPointer, groupSection, groupSpine, groupTablesFor } = await import("@/lib/copilot/group-knowledge");
 const { aboutAGroup, productByTopic, productNamedIn } = await import("@/lib/assistant/choose");
-const { GI, PRODUCT_LIMITS } = await import("@/lib/group-insurance/data");
+const { handOverGroup } = await import("@/lib/assistant/common");
+const { GI } = await import("@/lib/group-insurance/data");
 
 describe("a question about a company's staff", () => {
   /**
-   * The case this whole feature exists for.
+   * The case this whole guard exists for.
    *
    * "ประกันสุขภาพ" is inside "ประกันสุขภาพกลุ่ม", so the individual health plan used to claim
    * it — and a company of thirty was asked its age and its sex and quoted one person's
@@ -54,8 +60,8 @@ describe("a question about a company's staff", () => {
    * The other half of a guard, and the half that is easy to forget.
    *
    * "กลุ่ม" on its own is a word this business uses for กลุ่มโรค and กลุ่มอาการ, and a guard
-   * that swallowed those would take an individual customer mid-quotation and drop them at a
-   * product for companies.
+   * that swallowed those would take an individual customer mid-quotation and hand them a
+   * link to a product for companies.
    */
   it("does not swallow the individual customer who happens to say กลุ่ม", () => {
     for (const said of [
@@ -73,115 +79,75 @@ describe("a question about a company's staff", () => {
   });
 });
 
-describe("the spine, which a question about a company opens", () => {
-  it("says outright that this is for companies and not for one person", () => {
-    const spine = groupSpine();
-    expect(spine).toContain("ประกันภัยกลุ่ม");
-    expect(spine).toContain("ไม่ใช่รายบุคคล");
-    expect(spine).toContain("พนักงาน");
+describe("the handover a company gets", () => {
+  /**
+   * Written out rather than asked of a model, and this is the test that records why: the
+   * version that put the link in a prompt was watched on production writing a perfectly
+   * sensible reply with the link left out.
+   */
+  it("always carries the page, on a bubble of its own so it is one tap", () => {
+    const reply = handOverGroup();
+    const links = reply.messages.filter((m) => m.text.includes("/group-insurance"));
+    expect(links).toHaveLength(1);
+    expect(links[0].text.trim()).toMatch(/^https?:\/\/\S+\/group-insurance$/);
   });
 
-  it("carries the head-count limits off the real tables", () => {
-    const spine = groupSpine();
-    const { health, pa } = PRODUCT_LIMITS;
-    expect(spine).toContain(`${health.min}–${health.max} คน`);
-    expect(spine).toContain(`${pa.min}–${pa.max.toLocaleString("en-US")} คน`);
+  it("says the product exists and hands the details to a person", () => {
+    const text = handOverGroup().messages.map((m) => m.text).join("\n");
+    expect(text).toContain("ประกันกลุ่ม");
+    expect(text).toContain("ตัวแทน");
   });
 
   /**
-   * The bands are on purpose absent. They are how a premium is looked up, and the chat does
-   * not look premiums up — a list of them in the prompt is an invitation to try, which is
-   * the one thing this section spends four bullets forbidding.
+   * The owner's instruction, as an assertion: no plan, no cover, no head count, no risk
+   * class, no premium. A handover that started describing the product would be the thing
+   * that was removed, creeping back in through the words of the removal.
    */
-  it("leaves out the pricing bands, which are only useful for pricing", () => {
-    const spine = groupSpine();
+  it("describes nothing about the product", () => {
+    const text = handOverGroup().messages.map((m) => m.text).join("\n");
+    for (const leak of ["แผน 1", "ลักษณะธุรกิจ 1", "10-100", "IPD", "OPD", "Group PA"]) {
+      expect(text, leak).not.toContain(leak);
+    }
+    // no figure at all beyond the ones inside the link
+    expect(text.replace(/https?:\/\/\S+/g, "")).not.toMatch(/\d{3}/);
+  });
+});
+
+describe("what the knowledge says, which is as little as possible", () => {
+  it("tells the brains the product exists, so neither denies one the agency sells", async () => {
+    const text = await assembleKnowledge("HIC ซื้อคู่กับ MEB ได้ไหม");
+    expect(text).toContain("## ประกันภัยกลุ่ม (Group Insurance)");
+    expect(text).toContain("ห้ามอธิบายรายละเอียดของประกันกลุ่มทุกกรณี");
+  });
+
+  /**
+   * The guarantee is the absence, not the instruction. A model cannot repeat a benefit table
+   * it was never given, and an instruction is only ever a request.
+   */
+  it("holds no fact about the product that a brain could improvise from", async () => {
+    const text = await assembleKnowledge("ประกันกลุ่มให้พนักงาน 30 คน สุขภาพกับอุบัติเหตุ ค่าห้อง opd me");
+
+    // the benefit wording and the head-count bands are this product's alone, so finding one
+    // anywhere in the prompt means the section came back
+    for (const row of [...GI.healthBenefits, ...GI.paMainBenefits]) {
+      expect(text, row.key).not.toContain(row.label);
+    }
     for (const band of [...GI.healthEmployeeRanges, ...GI.paEmployeeRanges]) {
-      expect(spine, band).not.toContain(band);
+      expect(text, band).not.toContain(band);
     }
-  });
-
-  it("names the three risk classes and says the fourth is not written", () => {
-    const spine = groupSpine();
-    for (const n of [1, 2, 3]) expect(spine).toContain(`ลักษณะธุรกิจ ${n}`);
-    expect(spine).toContain("ขั้น 4");
-    expect(spine).toContain("ไม่รับทำประกัน");
-  });
-
-  it("refuses to price, says where pricing happens, and says what to ask for", () => {
-    const spine = groupSpine();
-    expect(spine).toContain("คิดเบี้ยประกันกลุ่มให้ไม่ได้");
-    expect(spine).toContain("/group-insurance");
-    expect(spine).toContain("ลักษณะธุรกิจ, จำนวนพนักงาน, แผนที่สนใจ");
+    /**
+     * `paMeCoverLevels` is deliberately not checked. They are round money — 10,000, 20,000 —
+     * and 10,000 is also a rider's minimum sum assured on the individual plans, which is
+     * legitimately in this prompt. A figure that generic proves nothing either way.
+     */
   });
 
   /**
-   * The rule a model reading a rate table would never apply, written out so it does not have
-   * to be inferred: the band comes from the total across every group on the quotation.
-   */
-  it("explains why a premium cannot be guessed from a table", () => {
-    expect(groupSpine()).toContain("จำนวนคนรวมทั้งใบเสนอราคา");
-  });
-
-  /**
-   * Without this line a question whose table was not fetched is answered "ไม่มีในระบบ" —
-   * a lie about a system that has it. The illness lists carry the same sentence for the
-   * same reason.
-   */
-  it("tells the assistant the full tables exist even when they were not sent", () => {
-    const spine = groupSpine();
-    expect(spine).toContain("มีอยู่ในระบบ");
-    expect(spine).toContain("ห้ามบอกว่าไม่มีในระบบ");
-  });
-});
-
-describe("the benefit tables, which wait to be asked for", () => {
-  it("stay shut for a question that names neither product", () => {
-    expect(groupTablesFor("ประกันกลุ่มคืออะไร")).toEqual([]);
-    expect(groupSection("ประกันกลุ่มคืออะไร")).toBe(groupSpine());
-  });
-
-  it("open the one the question names", () => {
-    expect(groupTablesFor("ประกันสุขภาพกลุ่มคุ้มครองค่าห้องเท่าไหร่")).toEqual(["health"]);
-    expect(groupTablesFor("ประกันอุบัติเหตุกลุ่มคุ้มครองอะไรบ้าง")).toEqual(["pa"]);
-    expect(groupTablesFor("สุขภาพกลุ่มกับอุบัติเหตุกลุ่มต่างกันยังไง")).toEqual(["health", "pa"]);
-  });
-
-  it("carry every line of the sheet, across all six plans", () => {
-    const health = groupSection("ประกันสุขภาพกลุ่มคุ้มครองอะไรบ้าง");
-    for (const row of GI.healthBenefits) {
-      expect(health, row.key).toContain(row.label);
-      // the sixth column is the one a truncated table loses first
-      expect(health, row.key).toContain(row.values[5]);
-    }
-    const pa = groupSection("ประกันอุบัติเหตุกลุ่มคุ้มครองอะไรบ้าง");
-    for (const row of GI.paMainBenefits) {
-      expect(pa, row.key).toContain(row.label);
-      expect(pa, row.key).toContain(row.values[5]);
-    }
-    for (const level of GI.paMeCoverLevels) expect(pa).toContain(level);
-  });
-
-  it("marks the rider's line as the rider's, not the main plan's", () => {
-    expect(groupSection("ประกันสุขภาพกลุ่ม opd")).toContain("[สัญญาเพิ่มเติม OPD]");
-    expect(groupSection("ประกันอุบัติเหตุกลุ่ม me")).toContain("[สัญญาเพิ่มเติม ME]");
-  });
-
-  it("says these are cover amounts and not premiums", () => {
-    expect(groupSection("ประกันสุขภาพกลุ่ม")).toContain("ความคุ้มครอง ไม่ใช่เบี้ย");
-  });
-});
-
-describe("no premium ever reaches a prompt", () => {
-  /**
-   * The rate tables are in this repository and a model handed one would read a number out of
-   * it. This walks every premium the two products can charge and asserts none of them is in
-   * the text — the same guarantee the life plans already have, and the reason `/group-insurance`
-   * exists as the only place a group premium is produced.
+   * And no premium, which was true when the section was long and has to stay true now.
+   * Matched as whole figures — a plain `includes` finds "150" inside "150,000".
    */
   it("holds not one figure that only the rate tables have", async () => {
-    // everything asked for at once, so the biggest group section this can ever produce is
-    // the one under test
-    const text = await assembleKnowledge("ประกันสุขภาพกลุ่มกับอุบัติเหตุกลุ่ม ค่าห้อง opd me");
+    const text = await assembleKnowledge("ประกันกลุ่มพนักงาน เบี้ยเท่าไหร่");
 
     const premiums = new Set<number>();
     for (const table of [GI.healthIpdPremiums, GI.paMainPremiums, GI.paMePremiums]) {
@@ -189,28 +155,17 @@ describe("no premium ever reaches a prompt", () => {
     }
     for (const row of Object.values(GI.healthOpdPremiums)) for (const v of row) premiums.add(v);
 
-    /**
-     * Six of the 238 premiums are also cover amounts — 1,500 is a premium in one table and a
-     * daily room limit in another — and the policy minimum is a seventh. Those are legitimately
-     * on the page, so the assertion is made on the 232 that can only be premiums. A rate table
-     * dumped into a prompt would bring all 232 with it; no innocent sentence brings one.
-     */
+    // six of the 238 are also cover amounts elsewhere in this system, and 3,000 is a policy
+    // minimum; the assertion is on the 232 that can only have come from a rate table
     const cover = new Set<number>();
     for (const row of [...GI.healthBenefits, ...GI.paMainBenefits]) {
       for (const v of row.values) cover.add(Number(v.replace(/,/g, "")));
     }
     for (const v of GI.paMeCoverLevels) cover.add(Number(v.replace(/,/g, "")));
-    cover.add(3000); // the minimum total premium, which the conditions state outright
+    cover.add(3000);
 
-    /**
-     * Matched as a whole figure, not as a run of digits. A plain `includes` found "150"
-     * inside the cover amount "150,000" and reported eight leaks that were not there — and a
-     * test that cries wolf about this particular thing is worse than none, because the next
-     * person to see it fail will assume the same.
-     */
     const appears = (n: number) =>
-      new RegExp(`(?<![\\d,])${n.toLocaleString("en-US").replace(/,/g, ",")}(?![\\d,])`).test(text);
-
+      new RegExp(`(?<![\\d,])${n.toLocaleString("en-US")}(?![\\d,])`).test(text);
     const premiumOnly = [...premiums].filter((n) => !cover.has(n));
     expect(premiumOnly.length).toBeGreaterThan(200);
     const leaked = premiumOnly.filter(appears);
@@ -218,67 +173,31 @@ describe("no premium ever reaches a prompt", () => {
   });
 
   /**
-   * The minimum is a condition of the policy and belongs on the page; what it must not be is
-   * readable as the answer to "เบี้ยเท่าไหร่". The life plans' own minimum carries a note
-   * saying so, having been got wrong there first.
-   */
-  it("states the policy minimum as a condition rather than as a price", () => {
-    const spine = groupSpine();
-    expect(spine).toContain("3,000 บาท");
-    expect(spine).toContain("ไม่ใช่ราคาของแผนใดแผนหนึ่ง");
-    expect(spine).not.toContain("เบี้ยประกันภัย รวมขั้นต่ำ: ไม่ต่ำกว่า 3,000");
-  });
-});
-
-describe("the knowledge as a whole", () => {
-  /**
-   * Three tiers, and the cost is why. The knowledge is rebuilt into the prompt of every
-   * question anybody asks, and most of them are about one person's life cover — so a group
-   * question gets the whole section and everybody else pays for two lines.
-   */
-  it("gives an unrelated question the pointer and nothing more", async () => {
-    const text = await assembleKnowledge("HIC ซื้อคู่กับ MEB ได้ไหม");
-    expect(text).toContain(groupPointer());
-    expect(text).not.toContain("### ลักษณะธุรกิจ");
-    expect(text).not.toContain("วงเงินคุ้มครอง (บาท) แผน 1 → แผน 6");
-  });
-
-  it("opens the spine for a question about a company, and the table when it names one", async () => {
-    const spine = await assembleKnowledge("ประกันกลุ่มให้พนักงานรับกี่คน");
-    expect(spine).toContain("### ลักษณะธุรกิจ");
-    expect(spine).not.toContain("วงเงินคุ้มครอง (บาท) แผน 1 → แผน 6");
-
-    const table = await assembleKnowledge("ประกันสุขภาพกลุ่มคุ้มครองค่าห้องเท่าไหร่");
-    expect(table).toContain("### ลักษณะธุรกิจ");
-    expect(table).toContain("ประกันสุขภาพกลุ่ม (Group Health) — วงเงินคุ้มครอง");
-  });
-
-  /**
-   * The mirror of the fault this feature closed: an individual customer naming health must
-   * not be handed the company sheet.
-   */
-  it("keeps the group tables away from a question about one person", async () => {
-    const text = await assembleKnowledge("ประกันสุขภาพค่าห้องเท่าไหร่");
-    expect(text).not.toContain("วงเงินคุ้มครอง (บาท) แผน 1 → แผน 6");
-    expect(groupTablesFor("ประกันสุขภาพค่าห้องเท่าไหร่")).toEqual([]);
-  });
-
-  /**
-   * After the plans, before the illnesses — and the second half is load-bearing:
-   * `copilot-diseases` reads every `### ` heading after `## รายชื่อโรค` to see which illness
-   * lists a question opened, so a section placed after it is counted as four more of them.
+   * `## รายชื่อโรค` is the last heading of the document by design — `copilot-diseases` reads
+   * every heading after it to see which illness lists a question opened, and this section
+   * placed later was counted as four more of them.
    */
   it("sits after the individual plans and before the illness lists", async () => {
-    const text = await assembleKnowledge("DCI คุ้มครองโรคอะไรบ้าง ประกันกลุ่มพนักงานด้วย");
+    const text = await assembleKnowledge("DCI คุ้มครองโรคอะไรบ้าง");
     const groupAt = text.indexOf("## ประกันภัยกลุ่ม (Group Insurance)");
     expect(groupAt).toBeGreaterThan(0);
     expect(text.lastIndexOf("### สัญญาเพิ่มเติมที่ซื้อกับแบบนี้ได้")).toBeLessThan(groupAt);
     expect(groupAt).toBeLessThan(text.indexOf("## รายชื่อโรค"));
   });
 
-  it("costs an unrelated question almost nothing", () => {
-    // what every call pays for, against what a group question opens on top of it
-    expect(groupPointer().length).toBeLessThan(500);
-    expect(groupSpine().length).toBeLessThan(2500);
+  it("costs every question the same few hundred characters, group question or not", async () => {
+    /** the group block alone, from its heading to whatever heading follows it */
+    const block = (text: string) => {
+      const at = text.indexOf("## ประกันภัยกลุ่ม (Group Insurance)");
+      const next = text.indexOf("\n## ", at + 1);
+      return text.slice(at, next < 0 ? undefined : next).trim();
+    };
+    const [unrelated, group] = await Promise.all([
+      assembleKnowledge("HIC ซื้อคู่กับ MEB ได้ไหม"),
+      assembleKnowledge("ประกันกลุ่มให้พนักงาน 30 คน คุ้มครองอะไรบ้าง"),
+    ]);
+    // a fixed block: a group question opens nothing extra, because there is nothing to open
+    expect(block(group)).toBe(block(unrelated));
+    expect(block(group).length).toBeLessThan(700);
   });
 });

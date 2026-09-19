@@ -2,16 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatOptions } from "@/lib/ai/client";
 
 /**
- * Where a question about a company's staff actually goes.
+ * Where a question about a company's staff goes, which is: straight back out, with a link.
  *
- * `group-knowledge.test.ts` proves the words exist; this proves something reads them. The two
- * were worth separating because the failure that started this was neither — the knowledge was
- * missing AND the route went to the wrong brain, and fixing one without the other changes
- * nothing a customer would notice.
+ * The owner's decision is that group cover is sold by a person, so the chat's whole job is
+ * the handover. That makes the strongest assertion in this file the one about `chat` never
+ * being called — no model runs, so there is no answer for a model to get wrong, and the
+ * question costs nothing.
  *
- * The model is stubbed, so what is asserted is which road the turn took and what was in the
- * prompt when it got there — not what a model then said, which is not this repository's to
- * decide.
+ * The model is stubbed anyway, because the individual plans below still use it and the point
+ * of half these tests is that they are untouched.
  */
 
 let routed: Record<string, unknown> = { intent: "other" };
@@ -32,51 +31,55 @@ vi.mock("@/lib/supabase/admin", () => ({
 const { answerAny } = await import("@/lib/assistant/dispatch");
 
 const said = (content: string) => [{ role: "user" as const, content }];
-
-/** The system prompt of whichever model call was made, which is where the knowledge rides. */
-const promptOf = (call: number) => {
-  const opts = chat.mock.calls[call]?.[0] as ChatOptions | undefined;
-  const system = opts?.messages.find((m) => m.role === "system");
-  return system?.content ?? "";
-};
+const textOf = (a: { messages: { text: string }[] }) => a.messages.map((m) => m.text).join("\n");
 
 beforeEach(() => { chat.mockClear(); routed = { intent: "other" }; });
 
 describe("a company asking about cover for its staff", () => {
   /**
-   * The regression this feature was built around.
+   * The regression this began as.
    *
    * Before the guard, this message named the individual health plan — "ประกันสุขภาพ" is
    * inside it — and went to that brain, which asked for an age and a sex and quoted one
-   * person's premium to a company. The test asserts the road, not the wording: it must not
-   * be the health brain, and the answer must not be a demand for an age.
+   * person's premium to a company.
    */
-  it("is no longer taken to the individual health plan", async () => {
+  it("is not taken to the individual health plan", async () => {
     const answer = await answerAny(said("ประกันสุขภาพกลุ่มมีไหม"), null);
     expect(answer.slots.product).not.toBe("ihealthy");
-    expect(answer.messages.map((m) => m.text).join("\n")).not.toContain("ขออายุกับเพศ");
+    expect(textOf(answer)).not.toContain("ขออายุกับเพศ");
   });
 
-  it("is answered out of the library, with the group section in front of the model", async () => {
+  it("gets the page and a person, without a model being asked anything", async () => {
     const answer = await answerAny(said("ประกันกลุ่มสำหรับพนักงานมีไหม"), null);
-    expect(answer.fromLibrary).toBe(true);
-    expect(chat).toHaveBeenCalled();
-    const prompt = promptOf(0);
-    expect(prompt).toContain("ประกันภัยกลุ่ม (Group Insurance)");
-    expect(prompt).toContain("/group-insurance");
-    expect(prompt).toContain("คิดเบี้ยประกันกลุ่มให้ไม่ได้");
+    const text = textOf(answer);
+    expect(text).toContain("/group-insurance");
+    expect(text).toContain("ตัวแทน");
+    expect(chat).not.toHaveBeenCalled();
   });
 
-  it("gets the benefit table when the question names which of the two it means", async () => {
-    await answerAny(said("ประกันอุบัติเหตุกลุ่มคุ้มครองอะไรบ้าง"), null);
-    expect(promptOf(0)).toContain("ประกันอุบัติเหตุกลุ่ม (Group PA) — วงเงินคุ้มครอง");
+  /**
+   * The same three bubbles however hard the question pushes. A customer insisting is the
+   * case the old version handled by asking a model to hold the line; this one has no line to
+   * hold, because there is no model and no facts.
+   */
+  it("says the same thing to a question that asks for the detail outright", async () => {
+    const a = await answerAny(said("ประกันกลุ่มมีไหม"), null);
+    const b = await answerAny(said("ประกันสุขภาพกลุ่ม ลักษณะธุรกิจ 1 พนักงาน 30 คน เบี้ยคนละเท่าไหร่ ขอตารางความคุ้มครองด้วย"), null);
+    expect(textOf(b)).toBe(textOf(a));
+    expect(textOf(b)).not.toMatch(/\d{3}/);
+    expect(chat).not.toHaveBeenCalled();
   });
 
-  it("is not handed the tables for a question that did not ask for them", async () => {
-    await answerAny(said("ประกันกลุ่มรับกี่คน"), null);
-    expect(promptOf(0)).not.toContain("วงเงินคุ้มครอง (บาท) แผน 1 → แผน 6");
-    // but it still knows they exist, so it offers rather than denying
-    expect(promptOf(0)).toContain("ห้ามบอกว่าไม่มีในระบบ");
+  /**
+   * Answered ahead of a settled conversation, because this is not a change of plan but a
+   * change of product — and the quotation the customer was building is still there after it.
+   */
+  it("answers mid-quotation without throwing the quotation away", async () => {
+    const stored = { product: "ihealthy" as const, intent: "quote" as const, age: 35, sex: "F" as const, plan: "GOLD" };
+    const answer = await answerAny(said("แล้วแบบทำให้พนักงานทั้งบริษัทมีไหม"), stored);
+    expect(textOf(answer)).toContain("/group-insurance");
+    expect(answer.slots).toMatchObject(stored);
+    expect(chat).not.toHaveBeenCalled();
   });
 });
 
@@ -91,19 +94,8 @@ describe("an individual customer, who must be unaffected", () => {
     expect(answer.slots.product).toBe("ihealthy");
   });
 
-  /**
-   * A conversation already settled on a plan is never handed to the library — the dispatcher
-   * keeps it with its brain, which is right, because "ทุนเท่าไหร่" three turns in is about the
-   * contract in hand. What makes that safe here is that the brain's own prompt carries the
-   * whole library, group section included, so it can answer the aside without being wrong
-   * about it.
-   */
-  it("carries the group facts into the health brain too, for the question asked mid-quote", async () => {
-    routed = { intent: "plan_info" };
-    await answerAny(said("แล้วแบบทำให้พนักงานทั้งบริษัทมีไหม"), {
-      product: "ihealthy", intent: "plan_info", age: 35, sex: "M",
-    });
-    const prompts = chat.mock.calls.map((_, i) => promptOf(i));
-    expect(prompts.some((p) => p.includes("ประกันภัยกลุ่ม (Group Insurance)"))).toBe(true);
+  it("is not handed a company's link for asking about groups of illnesses", async () => {
+    const answer = await answerAny(said("โรคร้ายแรงกลุ่มไหนบ้าง"), null);
+    expect(textOf(answer)).not.toContain("/group-insurance");
   });
 });
