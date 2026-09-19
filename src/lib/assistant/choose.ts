@@ -30,11 +30,40 @@ const NAMES: [Product, RegExp][] = [
 ];
 
 /**
+ * A message about a company's staff rather than about the person writing it.
+ *
+ * None of the four plans below is sold this way — they are contracts a person takes out on
+ * their own life — and the agency's group cover is a different product with different tables,
+ * priced at /group-insurance and answered out of the library.
+ *
+ * This exists because "ประกันสุขภาพกลุ่มมีไหม" contains "ประกันสุขภาพ", so `NAMES` read it as
+ * iHealthy Ultra and a company asking about thirty staff was asked its age and its sex and
+ * quoted one person's premium. Wrong, and wrong in a way that looks right — which is worse
+ * than the "สนใจแบบไหนครับ" the other group questions got, and is the reason this is a guard
+ * on the reading rather than a fifth entry in the list.
+ *
+ * Deliberately narrow. "กลุ่ม" alone is not enough — a customer asks about กลุ่มโรค and กลุ่ม
+ * อาการ — so it has to be the word this business uses for a body of employees, or the word
+ * กลุ่ม standing next to an insurance word. Everything here has a case in the test file.
+ */
+const ABOUT_A_GROUP =
+  /ประกัน\s*(?:ภัย)?\s*กลุ่ม|(?:สุขภาพ|อุบัติเหตุ|ชีวิต)\s*กลุ่ม|กลุ่ม\s*พนักงาน|หมู่คณะ|\bgroup\s*(?:health|pa|insurance)\b|พนักงาน(?:ประจำ|บริษัท|ทั้ง)|(?:บริษัท|องค์กร|โรงงาน|ห้างร้าน|นายจ้าง|hr)[^]{0,30}?พนักงาน|พนักงาน[^]{0,20}?\d+\s*คน|\d+\s*คน[^]{0,20}?พนักงาน/i;
+
+/** Whether a message is asking about cover for a company's staff. */
+export function aboutAGroup(text: string): boolean {
+  return ABOUT_A_GROUP.test(text);
+}
+
+/**
  * What a message is about when it says so in as many words, or nothing when it says neither —
  * or both, which is a question about the difference and belongs to whoever is already
  * answering rather than to a switch of brains.
+ *
+ * Nothing, too, when the message is about a company's staff: see `ABOUT_A_GROUP`. Answering
+ * nothing sends the question to the library, which has the group product's own section.
  */
 export function productNamedIn(text: string): Product | undefined {
+  if (aboutAGroup(text)) return undefined;
   const named = NAMES.filter(([, re]) => re.test(text));
   return named.length === 1 ? named[0][0] : undefined;
 }
@@ -51,8 +80,15 @@ const TOPICS: [Product, RegExp][] = [
   ["lifeprotect", /ทุน\s*\d|ทุนประกัน|\d+\s*ล้าน|\d+\s*แสน|(?:จ่าย|ชำระ)\s*(?:เบี้ย)?\s*\d+\s*ปี|อายุ\s*99|เวนคืน|เสียชีวิต/i],
 ];
 
-/** The subject of a message, when only one of the two recognises it. */
+/**
+ * The subject of a message, when only one of the two recognises it.
+ *
+ * A company's staff is nobody's subject here, for the reason `ABOUT_A_GROUP` gives: "ค่าห้อง
+ * ของประกันสุขภาพกลุ่ม" is the health *topic* as well as the health *name*, so guarding one
+ * reading and not the other would leave the same wrong answer one sentence away.
+ */
 export function productByTopic(text: string): Product | undefined {
+  if (aboutAGroup(text)) return undefined;
   const found = TOPICS.filter(([, re]) => re.test(text));
   return found.length === 1 ? found[0][0] : undefined;
 }

@@ -7,6 +7,7 @@ import { pricedHere } from "./price";
 import { FAQ as LIFE_FAQ } from "@/lib/assistant/lifeprotect/faq";
 import { FAQ as HEALTH_FAQ } from "@/lib/assistant/ihealthy/faq";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { groupSection, groupTablesFor } from "./group-knowledge";
 import type { PlanRules } from "@/calc/types";
 
 /**
@@ -345,6 +346,18 @@ export async function assembleKnowledge(question = ""): Promise<string> {
     "แบบที่ไม่อยู่ในรายการนี้ ตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
     "",
     plans,
+    /**
+     * Group insurance, after the plans and before the illnesses.
+     *
+     * After the plans because it is not one of them — the plans above are contracts a person
+     * buys on their own life, this is one a company buys over its payroll, and its heading
+     * says so in its first line. Before the illnesses because `## รายชื่อโรค` is the last
+     * heading of the document by design: `copilot-diseases` reads everything after it to see
+     * which illness lists a question opened, and a section that arrived later was counted as
+     * four more of them.
+     */
+    "",
+    groupSection(question),
     "",
     criticalIllnessSection(all),
     "",
@@ -359,9 +372,11 @@ export async function assembleKnowledge(question = ""): Promise<string> {
    * this design can have, and the only way to find it is to be able to read afterwards which
    * blocks a question opened.
    */
+  const groupTables = groupTablesFor(question);
   console.info(
     `[knowledge] ${text.length} ตัวอักษร · โรค: ${opened.length ? opened.map((l) => l.name.slice(0, 18)).join("+") : "สรุปเท่านั้น"}`
-    + ` · faq: ${faq ? faq.split("\n").length - 1 : 0}`,
+    + ` · faq: ${faq ? faq.split("\n").length - 1 : 0}`
+    + ` · กลุ่ม: ${groupTables.length ? groupTables.join("+") : "สรุปเท่านั้น"}`,
   );
   return text;
 }
