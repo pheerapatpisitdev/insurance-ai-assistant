@@ -67,18 +67,14 @@ describe("every place the menu says you can go", () => {
   });
 
   /**
-   * The menu listed every destination exactly once until ประกันภัยกลุ่ม, which is in two
-   * groups on purpose: it is the agent's own calculator and it is the page they turn round
-   * and show the HR manager, and the owner was asked which and answered both.
-   *
-   * The rule that replaces "once, everywhere" is this one — a repeat has to be a repeat
-   * somebody meant. A second one appearing without being named here is the accident the old
-   * assertion was there to catch.
+   * ประกันภัยกลุ่ม was in two groups on purpose for a while — the agent's own calculator and
+   * the page they turn round and show the HR manager. Then the sales pages were dealt into
+   * four headings and one of them was ประกันกลุ่ม, so the pair read as a mistake and the
+   * owner took the first one out. Every destination is listed once again.
    */
-  it("repeats only the one destination that is meant to be in two groups", () => {
+  it("lists every destination exactly once", () => {
     const all = menuGroups(true).flatMap((g) => g.links.map((l) => l.href));
-    const repeated = [...new Set(all.filter((h, i) => all.indexOf(h) !== i))];
-    expect(repeated).toEqual(["/group-insurance"]);
+    expect(new Set(all).size).toBe(all.length);
   });
 });
 

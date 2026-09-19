@@ -146,20 +146,22 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
   if (signedIn) groups.push({ links: [{ href: "/admin", label: "ภาพรวม", icon: "grid", hue: "#4f46e5" }] });
 
   /**
-   * ประกันภัยกลุ่ม is in this group and in หน้าขาย below, and the repetition is deliberate.
+   * ประกันภัยกลุ่ม used to be here as well as under its own heading below.
    *
-   * The page is both things, which no other page here is. It is the agent's own calculator —
-   * several groups of employees, a total, a quotation — and it is what gets turned around and
-   * shown to the HR manager on the other side of the table. So it appears twice and behaves
-   * differently in each place: here it opens in the tab the agent is already working in, and
-   * under หน้าขาย it opens in a new one, beside the six pages an agent sends a customer to.
-   * The owner was asked which of the two it was and answered both.
+   * It earned the repeat: it is the agent's own calculator — several groups of employees, a
+   * total, a quotation — and it is what gets turned round and shown to the HR manager. The
+   * owner was asked which of the two it was and answered both.
+   *
+   * Then the sales pages were dealt into the four kinds of cover, and one of those headings
+   * is ประกันกลุ่ม. Two links a few lines apart, one called ประกันกลุ่ม and one called
+   * ประกันภัยกลุ่ม, read as a mistake however well meant — so the owner took this one out.
+   * The page is still both things; it is now reached from one place, which opens it in a new
+   * tab the way every other sales page does.
    */
   groups.push({
     title: "งานขาย",
     links: [
       { href: "/other-plans", label: "คำนวณเบี้ย", icon: "calc", hue: "#0d9488" },
-      { href: "/group-insurance", label: "ประกันกลุ่ม", icon: "building", hue: "#292d78" },
       { href: "/", label: "ถาม AI", icon: "spark", hue: "#7c3aed" },
       ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า", icon: "users" as const, hue: "#d97706" }] : []),
     ],
