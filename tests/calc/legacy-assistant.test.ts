@@ -27,11 +27,20 @@ describe("the tier a customer names", () => {
 });
 
 describe("the first turn", () => {
-  it("says what the plan is before it asks anything", () => {
-    const a = answer("สนใจครับ");
-    expect(spoken(a)).toContain("31 โรคร้ายแรง");
-    expect(spoken(a)).toContain("เพศกับอายุ");
-    expect(a.priced).toBeFalsy();
+  /**
+   * The question is the whole of the first answer.
+   *
+   * The leaflet used to come first and the question under it, which spent a customer's one
+   * willing moment on reading. It is still said — on the turn after, once they have answered.
+   */
+  it("asks who they are first, and says what the plan is once they have answered", () => {
+    const first = answer("สนใจครับ");
+    expect(spoken(first)).toContain("เพศกับอายุ");
+    expect(spoken(first)).not.toContain("31 โรคร้ายแรง");
+    expect(first.priced).toBeFalsy();
+
+    const next = answer("ชาย 40", first.slots);
+    expect(spoken(next)).toContain("31 โรคร้ายแรง");
   });
 
   it("does not hand the same leaflet over twice", () => {

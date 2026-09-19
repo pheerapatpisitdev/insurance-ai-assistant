@@ -81,6 +81,11 @@ function Icon({ name }: { name: MenuIcon }) {
       return <svg {...common}><path d="M12 3.5 19 6v5.5c0 4-3 7.2-7 9-4-1.8-7-5-7-9V6zM9 11.8l2.2 2.2 4-4.2" /></svg>;
     case "heart":
       return <svg {...common}><path d="M12 19.6S4.5 15.2 4.5 10a3.8 3.8 0 0 1 7.5-1.1A3.8 3.8 0 0 1 19.5 10c0 5.2-7.5 9.6-7.5 9.6z" /></svg>;
+    case "building":
+      return <svg {...common}><path d="M6.5 20.5V4.5h11v16M4 20.5h16M9.5 8h1.5M13 8h1.5M9.5 11.5h1.5M13 11.5h1.5M10.5 20.5v-4h3v4" /></svg>;
+    // อีซี่ โพรเทค 6 is sold on the premium having a last year, so its mark is a clock
+    case "clock":
+      return <svg {...common}><path d="M12 4.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zM12 8v4.3l3 1.7" /></svg>;
   }
 }
 

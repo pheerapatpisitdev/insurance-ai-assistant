@@ -1,6 +1,9 @@
 import type { ChatMessage } from "@/lib/ai/types";
-import { askWhich, productByTopic, productNamedIn, type Product } from "./choose";
-import { aboutCompany, asksAboutCompany, peopleIn, type Reply } from "./common";
+import { aboutAGroup, askWhich, askWhichAgain, productByTopic, productNamedIn, type Product } from "./choose";
+import {
+  aboutCompany, ageIn, asksAboutCompany, handOverForm, handOverGroup, peopleIn, tookUpTheOffer,
+  wantsToBuy, type Reply,
+} from "./common";
 import { answerHealth } from "./ihealthy/answer";
 import { answerLegacy, type LegacySlots } from "./legacy/answer";
 import { answerIShield, type IShieldSlots } from "./ishield/answer";
@@ -12,6 +15,9 @@ import { planNamedIn, priceNamedPlan } from "@/lib/copilot/price";
 import type { GuideItem } from "@/lib/copilot/guide";
 import { writtenFor, type Channel } from "./channel";
 import { answerFromLibrary } from "@/lib/copilot/library";
+
+/** The last line of the menu, which is how a turn knows the menu was the last thing said. */
+const ASKED_WHICH = "สนใจแบบไหนครับ";
 
 /** One answer, and everything the bot should remember about this customer next turn. */
 export type AnyAnswer = Reply & {
@@ -105,6 +111,27 @@ export async function answerAny(
   const now = settled(stored);
   const named = productNamedIn(asked);
 
+  /**
+   * A company asking about cover for its staff, answered before anything else happens.
+   *
+   * First, and ahead of a settled conversation, because this is the one subject that is not a
+   * change of plan but a change of product: an employer who has been pricing their own life
+   * cover and then asks about the payroll is asking a question none of the four brains below
+   * can take. Answering it early costs the conversation nothing — the slots are carried
+   * through untouched, so the quotation they were building is still there on the next turn.
+   *
+   * Three fixed bubbles, no model. The owner's decision is that group cover is sold by a
+   * person, so the chat's whole job here is the link and the handover — and the version that
+   * asked a model to do that was watched leaving the link out with the instruction in front
+   * of it. There is nothing here for a model to get wrong because there is no model.
+   *
+   * `aboutAGroup` is deliberately narrow — "กลุ่มโรค" and "กลุ่มอาการ" are not this — and
+   * every case it does and does not catch is written down in `group-knowledge.test.ts`.
+   */
+  if (aboutAGroup(asked)) {
+    return { ...handOverGroup(), slots: stored ?? { product: "undecided", ...personIn(stored) } };
+  }
+
   if (now === "lifeprotect" || now === "ihealthy" || now === "legacy" || now === "ishield") {
     // the customer has named the other plan: only the person travels, because the sum, the
     // plan, the territory and any offer on the table all belong to the contract being left
@@ -144,11 +171,14 @@ export async function answerAny(
   // the customer has not said, so the customer is asked — and what they did say is kept,
   // all of it: everyone they named, not only whoever they named first
   const here = peopleIn(asked);
+  const carriedPerson = personIn(stored);
+  // an age with no sex beside it is still an age: it decides which doors can be opened at all
+  const alone = here.length ? undefined : ageIn(asked);
   const undecided: Undecided = {
     product: "undecided",
     ...(here.length
       ? { age: here[0].age, sex: here[0].sex, ...(here.length > 1 ? { people: here } : {}) }
-      : personIn(stored)),
+      : { ...carriedPerson, ...(alone !== undefined ? { age: alone } : {}) }),
   };
   /**
    * A question the dispatcher cannot place, but the library can answer.
@@ -161,6 +191,29 @@ export async function answerAny(
    * Only for something actually asked. "สนใจประกันชีวิต" is a lead, not a question, and the
    * two buttons are the right answer to it — which is why they are still attached below.
    */
+  /**
+   * Someone asking to apply, who was never placed on a plan.
+   *
+   * Both halves of this were the four buttons until now. "สนใจสมัคร" is the words the bot
+   * itself hands out and the title of the button under every follow-up, and typed by a
+   * customer with no plan on their session it was read as nothing at all; "สนใจ", from a
+   * customer the bot had just invited to apply, was read as no better. Neither is a question
+   * about which plan they came for, and both are the message this whole campaign is for.
+   *
+   * The form does not need a plan — it asks for what the agency needs and a person reads it —
+   * and it says the premium is a message away, which is the invitation the menu was trying
+   * to make.
+   */
+  const lastSaid = [...history].reverse().find((m) => m.role === "assistant")?.content;
+  if (wantsToBuy(asked, false) || tookUpTheOffer(asked, lastSaid)) {
+    const form = handOverForm(false);
+    return {
+      ...form,
+      messages: form.messages.map((m) => ({ ...m, text: writtenFor(channel, m.text) })),
+      slots: { ...undecided, formSent: true },
+    };
+  }
+
   // a question they asked on the way in is answered before the question they are asked back
   const lead = asksAboutCompany(asked) ? aboutCompany(asked) : undefined;
 
@@ -171,11 +224,26 @@ export async function answerAny(
   if (!lead && ASKS_SOMETHING.test(asked)) {
     const answer = await answerFromLibrary(history, asked, channel);
     if (answer) {
-      return { messages: [{ text: answer }], replies: askWhich().replies, slots: undecided, fromLibrary: true };
+      return {
+        messages: [{ text: answer }], replies: askWhich(undefined, undecided.age).replies,
+        slots: undecided, fromLibrary: true,
+      };
     }
   }
 
-  return { ...askWhich(lead), slots: undecided };
+  /**
+   * The same menu twice is a dead end.
+   *
+   * A man of sixty-eight gave his age, was shown four arrangements, wrote "ขอดูทั้ง2แบบ", and
+   * was shown the same four again — two of which no company would have issued him. The age
+   * narrows the list below; a second pass at the same list does not need narrowing, it needs
+   * a person, and the agency is watching this inbox.
+   */
+  if (!lead && lastSaid?.includes(ASKED_WHICH)) {
+    return { ...askWhichAgain(undecided.age), slots: undecided };
+  }
+
+  return { ...askWhich(lead, undecided.age), slots: undecided };
 }
 
 /**

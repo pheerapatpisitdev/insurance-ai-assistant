@@ -43,6 +43,8 @@ export interface LegacySlots {
    * has handed it over.
    */
   told?: true;
+  /** the application form has gone; the bot says nothing more in this thread */
+  formSent?: true;
 }
 
 export type LegacyAnswer = Reply & { slots: LegacySlots };
@@ -162,7 +164,12 @@ export function answerLegacy(
    */
   if (wantsToBuy(asked, priced)) {
     const form = handOverForm(priced);
-    return { ...form, messages: form.messages.map((m) => ({ ...m, text: said(m.text) })), slots };
+    // the flag the report counts and the inbox reads as "an agent has this one now"
+    return {
+      ...form,
+      messages: form.messages.map((m) => ({ ...m, text: said(m.text) })),
+      slots: { ...slots, formSent: true },
+    };
   }
   if (saysFormDone(asked)) {
     return { messages: [{ text: said(FORM_RECEIVED) }], formDone: true, slots };
@@ -171,15 +178,24 @@ export function answerLegacy(
     return { messages: [{ text: said(stallReply(priced)) }], slots };
   }
 
+  /**
+   * The question comes before the leaflet.
+   *
+   * Someone who has just pressed a button will answer one thing, and that willingness was
+   * being spent on reading: four lines of contract terms arrived first, and the question they
+   * were meant to answer sat underneath them. So the plan asks who it is pricing for, and
+   * introduces itself on the turn after — beside the next question, when the customer has
+   * already shown they are answering.
+   */
+  if (slots.age === undefined || !slots.sex) {
+    return { messages: [{ text: said(ASK_PERSON) }], slots };
+  }
+
   // the opening is said once per arrangement: not every time something is asked, which
   // would read as a leaflet handed over twice, and not never, which is how a customer who
   // crossed over from the other plan was treated
   const opening = previous?.told ? [] : [{ text: said(LEGACY_OPENING) }];
   slots.told = true;
-
-  if (slots.age === undefined || !slots.sex) {
-    return { messages: [...opening, { text: said(ASK_PERSON) }], slots };
-  }
 
   const refusal = outOfRange(slots.age);
   if (refusal) return { messages: [{ text: said(refusal) }], slots: { product: "legacy" } };

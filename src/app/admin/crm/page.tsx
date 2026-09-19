@@ -6,7 +6,7 @@ import { Kpis } from "./Kpis";
 import { Funnel } from "./Funnel";
 import { Charts } from "./Charts";
 import { Leads } from "./Leads";
-import { HandedOver } from "./HandedOver";
+import { isSignedIn } from "@/lib/admin/session";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,6 @@ const TABS = [
   { key: "recent", label: "ลูกค้าล่าสุด" },
   { key: "follow", label: "ต้องตามต่อ" },
   { key: "unanswered", label: "คำถามที่ตอบไม่ได้" },
-  { key: "handed", label: "บอทถูกปิด" },
 ] as const;
 
 type Tab = (typeof TABS)[number]["key"];
@@ -30,16 +29,27 @@ function isRange(v: string | undefined): v is Range {
 }
 
 function isTab(v: string | undefined): v is Tab {
-  return v === "recent" || v === "follow" || v === "unanswered" || v === "handed";
+  return v === "recent" || v === "follow" || v === "unanswered";
 }
 
 export default async function CrmPage(
   { searchParams }: { searchParams: Promise<{ range?: string; tab?: string }> },
 ) {
+  /**
+   * No session, nothing to read.
+   *
+   * The layout has the PIN box up already — a page renders beside its layout, not after it —
+   * and the loaders below all throw at a missing session. That throw reached the browser as
+   * Next's error screen: an owner whose twelve hours had run out was told the back office had
+   * broken rather than being asked for the PIN. The actions still throw; they are a network
+   * boundary and this is a screen.
+   */
+  if (!(await isSignedIn())) return null;
+
   const params = await searchParams;
   const range = isRange(params.range) ? params.range : "7d";
   const tab = isTab(params.tab) ? params.tab : "recent";
-  const { summary, leads, unanswered, handedOver, aiCostThisMonth } = await loadCrm(range);
+  const { summary, leads, unanswered, aiCostThisMonth } = await loadCrm(range);
   const { counts } = summary;
 
   /** Everyone the bot quoted who then went quiet, plus everyone who asked to apply. */
@@ -75,11 +85,7 @@ export default async function CrmPage(
       <div>
         <nav className="flex gap-0.5 border-b border-slate-200">
           {TABS.map((t) => {
-            const n = t.key === "unanswered"
-              ? unanswered.length
-              : t.key === "handed"
-                ? handedOver.length
-                : t.key === "follow" ? following.length : leads.length;
+            const n = t.key === "unanswered" ? unanswered.length : t.key === "follow" ? following.length : leads.length;
             return (
               <Link
                 key={t.key}
@@ -95,15 +101,11 @@ export default async function CrmPage(
             );
           })}
         </nav>
-        {tab === "handed" ? (
-          <HandedOver rows={handedOver} />
-        ) : (
-          <Leads
-            tab={tab}
-            leads={tab === "follow" ? following : leads}
-            unanswered={unanswered}
-          />
-        )}
+        <Leads
+          tab={tab}
+          leads={tab === "follow" ? following : leads}
+          unanswered={unanswered}
+        />
       </div>
 
       <p className="rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-3 text-xs leading-relaxed text-sky-900">

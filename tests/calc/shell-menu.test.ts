@@ -29,7 +29,10 @@ describe("every place the menu says you can go", () => {
   it("names every sales page the site actually has", () => {
     // the pages are what a customer is sent; one missing from here is one the agent cannot
     // find from inside their own tool
-    const onDisk = ["lifeprotect", "legacy", "plb", "lifetreasure", "ishield", "ihealthy-ultra"];
+    const onDisk = [
+      "lifeprotect", "legacy", "plb", "easyprotect", "lifetreasure", "ishield", "ihealthy-ultra",
+      "group-insurance",
+    ];
     expect(SALES_PAGES.map((p) => p.href).sort()).toEqual(onDisk.map((s) => `/${s}`).sort());
   });
 
@@ -41,9 +44,26 @@ describe("every place the menu says you can go", () => {
     expect(work.links.some((l) => l.external)).toBe(false);
   });
 
-  it("has no duplicate destination", () => {
+  it("lists no destination twice inside one group", () => {
+    for (const group of menuGroups(true)) {
+      const hrefs = group.links.map((l) => l.href);
+      expect(new Set(hrefs).size, group.title ?? "(untitled)").toBe(hrefs.length);
+    }
+  });
+
+  /**
+   * The menu listed every destination exactly once until ประกันภัยกลุ่ม, which is in two
+   * groups on purpose: it is the agent's own calculator and it is the page they turn round
+   * and show the HR manager, and the owner was asked which and answered both.
+   *
+   * The rule that replaces "once, everywhere" is this one — a repeat has to be a repeat
+   * somebody meant. A second one appearing without being named here is the accident the old
+   * assertion was there to catch.
+   */
+  it("repeats only the one destination that is meant to be in two groups", () => {
     const all = menuGroups(true).flatMap((g) => g.links.map((l) => l.href));
-    expect(new Set(all).size).toBe(all.length);
+    const repeated = [...new Set(all.filter((h, i) => all.indexOf(h) !== i))];
+    expect(repeated).toEqual(["/group-insurance"]);
   });
 });
 

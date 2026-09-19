@@ -9,6 +9,8 @@ import lifetreasureRates from "../../../data/rates/lifetreasure.json";
 import lifetreasureRules from "../../../data/rules/lifetreasure.json";
 import lifeprotectRates from "../../../data/rates/lifeprotect.json";
 import lifeprotectRules from "../../../data/rules/lifeprotect.json";
+import easyprotectRates from "../../../data/rates/easyprotect.json";
+import easyprotectRules from "../../../data/rules/easyprotect.json";
 
 export interface PlanBundle {
   rates: PlanRates;
@@ -101,6 +103,19 @@ const PLANS: Record<string, PlanBundle> = {
   // หรือ 101% ของเบี้ยที่ชำระมาแล้ว แล้วแต่จำนวนใดจะมากกว่า
   ...wFamily("LIFETREASURE", lifetreasureRates, lifetreasureRules, "Life Treasure", undefined,
     { premiumPercent: 101, includeCashValue: true }),
+  EASYPROTECT: {
+    planLabel: "อีซี่ โพรเทค 6",
+    // The source calculator's benefit table: MAX(ทุน, 101% ของเบี้ยที่ชำระมาแล้ว, มูลค่าเวนคืน)
+    // — the same three amounts ไลฟ์เทรเชอร์ compares, and the same ones its sheet prints.
+    coverTopUp: { premiumPercent: 101, includeCashValue: true },
+    rates: easyprotectRates as unknown as PlanRates,
+    rules: easyprotectRules as unknown as PlanRules,
+    // Only the riders this plan sells. The six it does not — AP, ECARE, MEX, CPR, HIC and
+    // โรคร้ายโซชิลด์ — are absent from its rules as well, so neither the form nor the quote
+    // can offer one.
+    riderOrder: ["PB", "WP", "MEB", "DCI", "PLS", "IHU", "CI123"],
+    variantLabels: { W99F06A: "ชำระเบี้ย 6 ปี" },
+  },
   // Life Protect x 2 paid to age 99 is the one agents quote most, so it is the default here too.
   // ตารางแสดงผลประโยชน์ H: MAX(multiple × sumAssured, 101% × premiums paid, surrender value)
   ...wFamily("LIFEPROTECT", lifeprotectRates, lifeprotectRules, "Life Protect x 1.5 / x 2", "WLF99H",
@@ -108,7 +123,7 @@ const PLANS: Record<string, PlanBundle> = {
 };
 
 /** Display order for the plan picker; anything not listed follows in definition order. */
-const PLAN_ORDER = ["LIFEPROTECT", "ISMART", "LIFETREASURE", "ISHIELD", "PLB"];
+const PLAN_ORDER = ["LIFEPROTECT", "ISMART", "EASYPROTECT", "LIFETREASURE", "ISHIELD", "PLB"];
 
 export function listPlans(): { code: string; name: string }[] {
   const entries = Object.entries(PLANS).map(([code, p]) => ({ code, name: p.planLabel ?? p.rates.planName }));

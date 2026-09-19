@@ -168,7 +168,7 @@ describe("what the knowledge tells the model it can do", () => {
      */
     const { pricedHere } = await import("@/lib/copilot/price");
     const canPrice = pricedHere();
-    expect([...canPrice].sort()).toEqual(["ISMART", "LIFETREASURE", "PLB"]);
+    expect([...canPrice].sort()).toEqual(["EASYPROTECT", "ISMART", "LIFETREASURE", "PLB"]);
 
     for (const code of canPrice) {
       const label = openingGuide()[0].items.find((i) => planNamedIn(i.ask)?.code === code)!;

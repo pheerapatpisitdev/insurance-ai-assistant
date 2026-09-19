@@ -24,21 +24,13 @@ export interface LeadView extends LeadRow {
   picture?: string;
   /** whether this person can still be written to at all */
   reachable: boolean;
-}
-
-/**
- * One thread a person took over, and what the bot knew about it when they did.
- *
- * Named by `user_hash` rather than by anything that could write to the customer: the page
- * needs to say which thread to turn the bot back on in, and nothing more than that.
- */
-export interface HandedOverRow {
-  userHash: string;
-  handedOverAt: string;
-  updatedAt: string;
-  /** what the conversation had settled on, where one had */
-  product: string | null;
-  messages: number | null;
+  /**
+   * The bot has stopped in this thread because the form went out.
+   *
+   * Read for the screen rather than stored on the lead: the silence belongs to the chat
+   * session, and a lead is a report of what happened rather than the switch that did it.
+   */
+  botStopped: boolean;
 }
 
 export interface CrmPage {
@@ -46,8 +38,6 @@ export interface CrmPage {
   summary: Summary;
   leads: LeadView[];
   unanswered: UnansweredRow[];
-  /** threads the bot is switched off in, so a customer taken on cannot be quietly forgotten */
-  handedOver: HandedOverRow[];
   /** what the models have cost since the first of the month, in baht */
   aiCostThisMonth: number;
 }
@@ -59,7 +49,7 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
   const since = rangeStart(range).toISOString();
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-  const [conversations, leads, unanswered, spend, handed] = await Promise.all([
+  const [conversations, leads, unanswered, spend] = await Promise.all([
     supabase
       .from("ins_conversations")
       .select(
@@ -71,7 +61,10 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
     // whether this person can still be written to
     supabase
       .from("ins_leads")
-      .select("id, conversation_id, stage, product, last_quote, ad_id, created_at, updated_at, psid_cipher")
+      .select(
+        "id, conversation_id, stage, product, last_quote, ad_id, created_at, updated_at," +
+        " psid_cipher, channel, user_hash",
+      )
       .gte("created_at", since)
       .order("updated_at", { ascending: false })
       .limit(LEAD_LIMIT),
@@ -82,39 +75,31 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
       .order("at", { ascending: false })
       .limit(UNANSWERED_LIMIT),
     supabase.from("ins_usage_ledger").select("cost_thb").gte("created_at", monthStart),
-    /**
-     * Every thread the bot is off in, whatever its age and whatever range the page is showing.
-     *
-     * The range filters the report; it must not filter this. A thread handed over five weeks
-     * ago is still a thread with nobody answering it, and hiding it behind "7 วัน" is how it
-     * stays that way.
-     */
-    supabase
-      .from("ins_chat_sessions")
-      .select("user_hash, handed_over_at, updated_at, slots")
-      .not("handed_over_at", "is", null)
-      .order("handed_over_at", { ascending: false })
-      .limit(LEAD_LIMIT),
   ]);
 
   // the select list is long enough that the client infers an error shape rather than the row
   const rows = (conversations.data ?? []) as unknown as ConversationRow[];
-  const leadRows = ((leads.data ?? []) as unknown as (Omit<LeadRow, "has_psid"> & { psid_cipher: unknown })[])
-    .map(({ psid_cipher, ...rest }) => ({ ...rest, has_psid: psid_cipher !== null }));
+  type RawLead = Omit<LeadRow, "has_psid"> & { psid_cipher: unknown; channel: string; user_hash: string };
+  const raw = (leads.data ?? []) as unknown as RawLead[];
+
+  /**
+   * Which of these threads the bot has stopped in.
+   *
+   * One query for the whole page rather than one per row, and the hashes themselves stay on
+   * this side: what the screen is told is a yes or a no.
+   */
+  const stopped = await stoppedThreads(raw);
+  const leadRows = raw.map(({ psid_cipher, channel, user_hash, ...rest }) => ({
+    ...rest,
+    has_psid: psid_cipher !== null,
+    botStopped: stopped.has(`${channel}:${user_hash}`),
+  }));
 
   return {
     range,
     summary: summarise(rows, range),
     leads: await withNames(leadRows),
     unanswered: (unanswered.data ?? []) as unknown as UnansweredRow[],
-    handedOver: ((handed.data ?? []) as { user_hash: string; handed_over_at: string; updated_at: string; slots: { product?: string } | null }[])
-      .map((r) => ({
-        userHash: r.user_hash,
-        handedOverAt: r.handed_over_at,
-        updatedAt: r.updated_at,
-        product: r.slots?.product ?? null,
-        messages: null,
-      })),
     aiCostThisMonth: (spend.data ?? []).reduce((sum, r) => sum + Number(r.cost_thb ?? 0), 0),
   };
 }
@@ -125,7 +110,7 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
  * Fetched one render at a time and stored nowhere. A lead whose id has been pruned is past
  * being written to anyway, so it is shown by its figures and its date and left at that.
  */
-async function withNames(rows: (LeadRow & { psid?: string })[]): Promise<LeadView[]> {
+async function withNames(rows: (LeadRow & { botStopped: boolean; psid?: string })[]): Promise<LeadView[]> {
   return Promise.all(rows.map(async (lead) => {
     if (!lead.has_psid) return { ...lead, reachable: false };
     const psid = await psidFor(lead.id);
@@ -156,18 +141,58 @@ async function psidFor(leadId: string): Promise<string | null> {
 }
 
 /**
+ * The threads on this page the bot has been stopped in, as `channel:user_hash`.
+ *
+ * `handed_over_at` is stamped when the application form goes out and read past the session's
+ * own staleness, so it is the one thing that says whether the bot is still answering — a lead
+ * at stage form_sent whose column has since been cleared is a thread the bot has back.
+ */
+async function stoppedThreads(
+  leads: { channel: string; user_hash: string }[],
+): Promise<Set<string>> {
+  const hashes = [...new Set(leads.map((l) => l.user_hash))];
+  if (!hashes.length) return new Set();
+  const { data, error } = await supabaseAdmin()
+    .from("ins_chat_sessions")
+    .select("channel, user_hash, handed_over_at")
+    .in("user_hash", hashes)
+    .not("handed_over_at", "is", null);
+  if (error) {
+    console.error("อ่านสถานะบอทไม่สำเร็จ:", error.message);
+    return new Set();
+  }
+  return new Set(((data ?? []) as { channel: string; user_hash: string }[])
+    .map((r) => `${r.channel}:${r.user_hash}`));
+}
+
+/**
  * Give one thread back to the bot.
  *
- * The only way back: a hand-over does not time out, by the owner's own instruction, so
- * without this a thread switched off by a "สวัสดีครับ" would stay off for good. Guarded in
- * its own right — a server action is a network entry point whatever page it was written for.
+ * The silence after an application form does not expire on its own, on purpose: it ends when
+ * somebody who knows the application is over says so. This is that button, and it is the only
+ * thing that clears the stamp.
+ *
+ * The lead is named rather than the customer: the hash never leaves this side, and the row
+ * being pointed at is one the screen was already showing.
  */
-export async function resumeBot(userHash: string): Promise<void> {
+export async function letBotResume(leadId: string): Promise<{ ok: true } | { ok: false; error: string }> {
   await requireAdmin();
-  const { error } = await supabaseAdmin()
+  const supabase = supabaseAdmin();
+
+  const { data, error } = await supabase
+    .from("ins_leads")
+    .select("channel, user_hash")
+    .eq("id", leadId)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  const lead = data as { channel: string; user_hash: string } | null;
+  if (!lead) return { ok: false, error: "ไม่พบลูกค้ารายนี้" };
+
+  const cleared = await supabase
     .from("ins_chat_sessions")
     .update({ handed_over_at: null })
-    .eq("channel", "facebook")
-    .eq("user_hash", userHash);
-  if (error) throw new Error(error.message);
+    .eq("channel", lead.channel)
+    .eq("user_hash", lead.user_hash);
+  if (cleared.error) return { ok: false, error: cleared.error.message };
+  return { ok: true };
 }

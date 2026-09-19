@@ -17,6 +17,8 @@ const quoted = async (): Promise<Answer> => ({
   priced: true,
 });
 const answer = vi.fn(quoted);
+/** how many of the next picture sends Messenger will refuse */
+let imageFailures = 0;
 
 vi.mock("@/lib/facebook/client", () => ({
   sendMessage: async (_psid: string, text: string, replies?: string[]) => {
@@ -24,14 +26,17 @@ vi.mock("@/lib/facebook/client", () => ({
   },
   sendImage: async (_psid: string, url: string, replies?: string[]) => {
     sent.images.push(url); sent.replies.push(replies);
+    if (imageFailures > 0) { imageFailures -= 1; throw new Error("Messenger 400: อัพโหลดไฟล์แนบไม่สำเร็จ"); }
   },
   showTyping: async () => {},
 }));
 
 /** the follow-up the bot arms after a quotation, and drops the moment anyone speaks */
-const followups: { armed: string[]; dropped: string[] } = { armed: [], dropped: [] };
+const followups: { armed: { user: string; pageId?: string }[]; dropped: string[] } = { armed: [], dropped: [] };
 vi.mock("@/lib/chat/followup", () => ({
-  armFollowup: async (_c: string, u: string) => { followups.armed.push(u); },
+  armFollowup: async (_c: string, u: string, _psid: string, pageId?: string) => {
+    followups.armed.push({ user: u, pageId });
+  },
   dropFollowup: async (_c: string, u: string) => { followups.dropped.push(u); },
 }));
 
@@ -42,8 +47,8 @@ vi.mock("@/lib/chat/session", async () => {
     claimEvent: async () => true,
     loadSession: async (_c: string, u: string) => { hashesSeen.push(u); return session; },
     saveSession: async (
-      _c: string, u: string, _m: unknown, _s: unknown,
-      mutedUntil?: Date | null, _conv?: string | null, handedOverAt?: Date | null,
+      _c: string, u: string, _m: unknown, _s: unknown, mutedUntil?: Date | null,
+      _conversationId?: string | null, handedOverAt?: Date | null,
     ) => { hashesSeen.push(u); saved.push({ mutedUntil, handedOverAt }); },
   };
 });
@@ -56,6 +61,7 @@ beforeEach(() => {
   process.env.FB_APP_ID = "app-1";
   process.env.FB_APP_SECRET = "secret";
   sent.text = []; sent.images = []; sent.replies = []; saved.length = 0;
+  imageFailures = 0;
   followups.armed.length = 0; followups.dropped.length = 0;
   session.messages = []; session.slots = null; session.mutedUntil = null; session.handedOverAt = null;
   answer.mockReset();
@@ -134,8 +140,24 @@ describe("the question the bot arms for five minutes' time", () => {
       slots: { intent: "quote", product: "lifeprotect" },
       priced: true,
     }));
-    await handle({ sender: { id: "psid-arm" }, message: { mid: "mf1", text: "หญิง 40 ทุน 1 ล้าน" } });
+    await handle({ sender: { id: "psid-arm" }, message: { mid: "mf1", text: "หญิง 40 ทุน 1 ล้าน" } }, "page-1");
     expect(followups.armed).toHaveLength(1);
+  });
+
+  /**
+   * And addressed out of the Page it arrived on.
+   *
+   * Two Pages are connected, and a page-scoped id means nothing to the other one: a follow-up
+   * armed without a Page was sent with whichever token came first and refused by Meta.
+   */
+  it("carries the Page the conversation happened on", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "เบี้ยประมาณ…" }],
+      slots: { intent: "quote", product: "lifeprotect" },
+      priced: true,
+    }));
+    await handle({ sender: { id: "psid-arm3" }, message: { mid: "mf4", text: "หญิง 40 ทุน 1 ล้าน" } }, "page-7");
+    expect(followups.armed).toEqual([{ user: expect.any(String), pageId: "page-7" }]);
   });
 
   it("is not armed by an answer that carries no premium", async () => {
@@ -218,12 +240,35 @@ describe("the agent answering by hand", () => {
     expect(saved[0].mutedUntil).toBeInstanceOf(Date);
   });
 
-  it("hands the thread back the moment the customer writes again", async () => {
-    // the agent said hello an hour ago and the customer has just answered: the pause is over
+  /**
+   * One reply by hand and the thread is a person's, asked for by the owner in those words.
+   *
+   * The mute beside it is not redundant and is not the same thing: it is what stops an answer
+   * already in flight from landing on top of the agent's message a second later. The stamp is
+   * what stops the bot picking the conversation back up tomorrow.
+   */
+  it("hands the thread over for good, not for a day", async () => {
+    await handle({ sender: { id: "page" }, recipient: { id: "psid" }, message: { mid: "m2h", text: "สวัสดีครับ", is_echo: true } });
+    expect(saved[0].handedOverAt).toBeInstanceOf(Date);
+  });
+
+  /**
+   * A mute on its own still ends when the customer writes: it is the few seconds around a
+   * model call, and nothing about it says whose thread this is.
+   */
+  it("lets a bare mute end when the customer writes again", async () => {
     session.mutedUntil = new Date(Date.now() + 23 * 3600_000).toISOString();
     await handle({ sender: { id: "psid-back" }, message: { mid: "m3", text: "เกิด2522 เพศญ" } });
     expect(answer).toHaveBeenCalledOnce();
     expect(sent.text).toEqual(["เบี้ยประมาณ…"]);
+  });
+
+  /** but the stamp the agent's own reply leaves does not end, however long they wait */
+  it("stays the agent's however long the customer takes to answer", async () => {
+    session.handedOverAt = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    await handle({ sender: { id: "psid-back" }, message: { mid: "m3b", text: "ยังสนใจอยู่ครับ" } });
+    expect(answer).not.toHaveBeenCalled();
+    expect(sent.text).toEqual([]);
   });
 
   it("keeps the agent's mark on the thread rather than clearing it to speak", async () => {
@@ -239,44 +284,84 @@ describe("the agent answering by hand", () => {
 });
 
 /**
- * The owner asked for this after watching the other way round go wrong.
+ * Messenger fetches the card off the public internet itself, and sometimes refuses it.
  *
- * The bot used to pick a thread back up the moment the customer wrote again, so a lead the
- * agent was already talking to could get an agent and a bot answering the same message. One
- * reply typed by hand is now the whole signal, and it does not time out.
+ * The customer has been quoted in words by the time this happens, and what used to follow was
+ * nothing at all — the figures they were promised a picture of never arrived and no one knew.
  */
-describe("a thread the agent has answered in", () => {
-  const agentEcho = {
-    sender: { id: "PAGE" },
-    recipient: { id: "PSID" },
-    message: { mid: "m-echo", text: "สวัสดีครับ", is_echo: true },
-  };
-
-  it("is handed to the person who typed, on the first reply", async () => {
-    await handle(agentEcho as never);
-    expect(saved).toHaveLength(1);
-    expect(saved[0].handedOverAt).toBeInstanceOf(Date);
+describe("the picture of the quotation, when Messenger will not take it", () => {
+  it("is offered a second time before anything else is tried", async () => {
+    imageFailures = 1;
+    await handle({ sender: { id: "psid-card1" }, message: { mid: "mc1", text: "หญิง 40 ทุน 1 ล้าน" } });
+    expect(sent.images).toHaveLength(2);
+    expect(sent.images.every((u) => u.endsWith("/api/card?x=1"))).toBe(true);
+    expect(sent.text.join("\n")).not.toContain("เปิดดูได้ที่ลิงก์นี้");
   });
 
-  it("stays theirs when the customer writes again — the bot says nothing", async () => {
-    session.handedOverAt = new Date().toISOString();
-    await handle({
-      sender: { id: "PSID" }, recipient: { id: "PAGE" },
-      message: { mid: "m-2", text: "ชาย 35 ครับ" },
-    } as never);
+  it("goes as a link when both attempts are refused, rather than going nowhere", async () => {
+    imageFailures = 2;
+    await handle({ sender: { id: "psid-card2" }, message: { mid: "mc2", text: "หญิง 40 ทุน 1 ล้าน" } });
+    expect(sent.images).toHaveLength(2);
+    const last = sent.text[sent.text.length - 1];
+    expect(last).toContain("เปิดดูได้ที่ลิงก์นี้");
+    expect(last).toContain("/api/card?x=1");
+  });
+});
+
+/**
+ * What follows an application form is an agent — a name to check, a birthdate to read back,
+ * a question about the health declaration that no model may answer.
+ */
+describe("once the form has been handed over", () => {
+  it("says nothing more in that thread, whatever the customer writes", async () => {
+    session.slots = { product: "lifeprotect", formSent: true };
+    await handle({ sender: { id: "psid-done" }, message: { mid: "mg1", text: "กรอกแล้วครับ" } });
     expect(sent.text).toEqual([]);
     expect(sent.images).toEqual([]);
+    // and no model was asked to compose the silence
     expect(answer).not.toHaveBeenCalled();
   });
 
-  /** and never comes back on a clock: an hour later, a day later, the thread is still theirs */
-  it("does not expire", async () => {
-    session.handedOverAt = new Date(Date.now() - 30 * 86_400_000).toISOString();
-    await handle({
-      sender: { id: "PSID" }, recipient: { id: "PAGE" },
-      message: { mid: "m-3", text: "ยังสนใจอยู่ครับ" },
-    } as never);
+  /**
+   * A session is a day old and an application is not finished in a day. The stamp is read
+   * past the staleness that empties the slots, so Thursday's message is met by the same
+   * silence Tuesday's was.
+   */
+  it("stays quiet after the session itself has gone stale", async () => {
+    session.slots = null;
+    session.handedOverAt = new Date("2026-09-01T00:00:00.000Z").toISOString();
+    await handle({ sender: { id: "psid-old" }, message: { mid: "mg4", text: "ขอถามอีกเรื่องครับ" } });
     expect(sent.text).toEqual([]);
     expect(answer).not.toHaveBeenCalled();
+  });
+
+  it("stamps the thread on the turn the form goes out, and not on any other", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "ยินดีครับ 😊" }],
+      slots: { intent: "quote", product: "lifeprotect", formSent: true },
+    }));
+    await handle({ sender: { id: "psid-stamp" }, message: { mid: "mg5", text: "สนใจสมัคร" } });
+    expect(saved.at(-1)!.handedOverAt).toBeInstanceOf(Date);
+
+    // an ordinary turn leaves the column alone rather than writing null over a stamp
+    saved.length = 0;
+    await handle({ sender: { id: "psid-plain" }, message: { mid: "mg6", text: "ทุน 1 ล้าน" } });
+    expect(saved.at(-1)!.handedOverAt).toBeUndefined();
+  });
+
+  it("still answers the turn that sends the form", async () => {
+    answer.mockImplementationOnce(async (): Promise<Answer> => ({
+      messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }],
+      slots: { intent: "quote", product: "lifeprotect", formSent: true },
+    }));
+    await handle({ sender: { id: "psid-form" }, message: { mid: "mg2", text: "สนใจสมัคร" } });
+    expect(sent.text.join(" ")).toContain("ฟอร์ม");
+  });
+
+  /** A thread nobody has been handed anything in is untouched by this. */
+  it("leaves an ordinary thread alone", async () => {
+    session.slots = { product: "lifeprotect" };
+    await handle({ sender: { id: "psid-live" }, message: { mid: "mg3", text: "ขอตารางมูลค่า" } });
+    expect(sent.text.length).toBeGreaterThan(0);
   });
 });

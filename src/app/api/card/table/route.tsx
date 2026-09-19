@@ -25,6 +25,21 @@ const halfOf = (width: number) => (width - PAD * 2 - GUTTER) / 2;
 const HALF = halfOf(WIDTH);
 
 /**
+ * How many years a table can hold before it is dealt into two halves.
+ *
+ * Every table is one column now. The halving was for the sixty-row contracts, which in a
+ * narrow canvas make a picture three times taller than it is wide — but the answer to that is
+ * the canvas, not the gutter: a long table is drawn at the full width instead, with every
+ * column widened to fill it, so the figures are as large as they were when there were two of
+ * them side by side. What the reader no longer does is cross a gutter to find year four.
+ *
+ * Short tables keep the narrow canvas, because stretching five rows across sixteen hundred
+ * pixels is mostly rule and air.
+ */
+const SINGLE_MAX = 16;
+const isShort = (card: ValueTableCard) => card.rows.length <= SINGLE_MAX;
+
+/**
  * Every band of the card, in pixels. As on the quote card, the drawing library lays a fixed
  * canvas out in one pass and will squeeze one line on top of another rather than grow the
  * page, so each band is given a height here and the canvas is the sum of the bands.
@@ -132,7 +147,7 @@ const spacer = (height: number, background?: string) => (
   { display: "flex", height, flexShrink: 0, ...(background ? { background } : {}) }
 ) as const;
 
-/** Half the years, headed by their own row of column names so each half is read on its own. */
+/** The years, under one row of column names. */
 function Half(
   { columns, rows, p, cols, half }:
   { columns: string[]; rows: ValueTableRow[]; p: CardPalette; cols: typeof COLS; half: number },
@@ -183,7 +198,7 @@ function Half(
 }
 
 function heightOf(card: ValueTableCard): number {
-  const perHalf = Math.ceil(card.rows.length / 2);
+  const perHalf = card.rows.length;
   return PAD * 2
     + H.plan + H.insured + H.premium
     + H.gap + H.hairline + H.afterHairline
@@ -207,9 +222,8 @@ const loadFont = (file: string) => readFile(path.join(FONT_DIR, file));
  * the end — the table the sales page shows, in a form a chat can hand over and a customer
  * can show whoever else in the house has to agree to it.
  *
- * The years are dealt into two halves side by side rather than one long column: sixty-odd
- * rows in a single file makes a picture three times taller than it is wide, which a phone
- * shows as a sliver.
+ * The years run down one column, however many there are; a long contract is given the wider
+ * canvas so that column can carry its figures at full size — see SINGLE_MAX.
  */
 export async function GET(req: NextRequest) {
   const input = cardInputFrom(req.nextUrl.searchParams);
@@ -224,8 +238,18 @@ export async function GET(req: NextRequest) {
     loadFont("Trirong-SemiBold.ttf"),
   ]);
 
-  const cut = Math.ceil(card.rows.length / 2);
-  const { cols, half, width } = layoutFor(card);
+  const { cols: narrow, half, width: wide } = layoutFor(card);
+  /**
+   * The canvas, and the column widths that fill it.
+   *
+   * A short table is drawn in the half it was already sized for, on a canvas trimmed to it. A
+   * long one keeps the full width and spends it on the columns rather than on a second half:
+   * the same figures, at the same size, in one file.
+   */
+  const short = isShort(card);
+  const width = short ? half + PAD * 2 : wide;
+  const stretch = (width - PAD * 2) / half;
+  const cols = short ? narrow : narrow.map((c) => ({ ...c, w: Math.floor(c.w * stretch) }));
   const mark = await markDataUri();
 
   return new ImageResponse(
@@ -256,9 +280,7 @@ export async function GET(req: NextRequest) {
         </div>
 
         <div style={{ display: "flex", width: width - PAD * 2, flexShrink: 0 }}>
-          <Half columns={card.columns} rows={card.rows.slice(0, cut)} p={p} cols={cols} half={half} />
-          <div style={{ display: "flex", width: GUTTER, flexShrink: 0 }} />
-          <Half columns={card.columns} rows={card.rows.slice(cut)} p={p} cols={cols} half={half} />
+          <Half columns={card.columns} rows={card.rows} p={p} cols={cols} half={width - PAD * 2} />
         </div>
 
         <div style={spacer(H.gap)} />

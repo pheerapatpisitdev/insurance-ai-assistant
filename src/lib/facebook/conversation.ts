@@ -1,6 +1,6 @@
 import { siteUrl } from "@/lib/site-url";
 import { hashUserId } from "@/lib/facebook/verify";
-import { claimEvent, isMuted, loadSession, muteFor, saveSession, silenced } from "@/lib/chat/session";
+import { claimEvent, isMuted, loadSession, muteFor, saveSession } from "@/lib/chat/session";
 import { armFollowup, dropFollowup } from "@/lib/chat/followup";
 import { sendImage, sendMessage, showTyping } from "@/lib/facebook/client";
 import { answerAny } from "@/lib/assistant/dispatch";
@@ -41,6 +41,16 @@ async function answered(
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Whether the application form has already been handed to this customer. */
+function handedOver(slots: unknown): boolean {
+  return Boolean((slots as { formSent?: boolean } | null)?.formSent);
+}
+
+/** The arrangement a stored session was about, for the events that carry one. */
+function productOf(slots: unknown): string | null {
+  return (slots as { product?: string } | null)?.product ?? null;
+}
+
 const BUSY = "ตอนนี้มีคำถามเข้ามาเยอะครับ รบกวนรอสักครู่แล้วถามใหม่นะครับ";
 /**
  * What the customer sees when the bot cannot answer at all. It used to send them away —
@@ -50,15 +60,45 @@ const BUSY = "ตอนนี้มีคำถามเข้ามาเยอ
 const BROKEN = "ขออภัยครับ ระบบขัดข้องชั่วคราว เดี๋ยวแอดมินมาตอบให้นะครับ 🙏";
 const OUT_OF_BUDGET = "ตอนนี้ระบบผู้ช่วยปิดชั่วคราวครับ รบกวนติดต่อตัวแทนโดยตรงนะครับ";
 
+
+/**
+ * The quotation as a picture, with somewhere to go when the picture will not send.
+ *
+ * Messenger fetches the URL itself and now and then does not — "อัพโหลดไฟล์แนบไม่สำเร็จ" —
+ * and the failure used to end there: the customer had been quoted in words and the picture of
+ * the figures simply never arrived. So it is attempted twice, and if the second attempt fails
+ * the customer is given the link to the same card. The buttons ride along either way, because
+ * they were riding on the picture and a customer left without them has nothing to tap.
+ */
+const CARD_UNSENT = "ใบเสนอราคาเป็นรูปครับ เปิดดูได้ที่ลิงก์นี้เลย";
+
+async function sendCard(
+  psid: string, url: string, replies: string[] | undefined, pageId?: string,
+): Promise<void> {
+  try {
+    await sendImage(psid, url, replies, pageId);
+    return;
+  } catch (e) {
+    console.error("card failed, trying once more:", e);
+  }
+  try {
+    await sendImage(psid, url, replies, pageId);
+    return;
+  } catch (e) {
+    console.error("card failed twice, sending the link instead:", e);
+  }
+  await sendMessage(psid, `${CARD_UNSENT}\n${url}`, replies, { pageId })
+    .catch((e) => console.error("card link failed:", e));
+}
+
 export async function handle(event: Messaging, pageId?: string): Promise<void> {
   // on an echo the sender is the page, so the thread is named by who it was sent to
   const psid = customerOf(event);
   if (!psid) return;
   const userHash = hashUserId(psid);
 
-  // the agent has answered in the page's own inbox: the thread is marked as theirs until the
-  // customer writes again. Checked before the customer's words are read, because this event
-  // carries the page's words, not theirs.
+  // the agent has answered in the page's own inbox. Checked before the customer's words are
+  // read, because this event carries the page's words, not theirs.
   if (agentTyped(event)) {
     const session = await loadSession("facebook", userHash);
     /**
@@ -69,9 +109,9 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
      * talking to would get an agent and a bot answering the same message. One reply by hand
      * is the whole signal — whoever typed it is in this conversation now.
      *
-     * It does not time out. The way back is the button in the back office, which is also
-     * where the threads it has been used on are listed, because a bot switched off and
-     * forgotten is a customer nobody answers.
+     * It does not time out. The way back is the button in the back office — the same one the
+     * form's own hand-over already answers to, because a thread is a thread whichever of the
+     * two switched the bot off in it.
      *
      * The mute is set as well and is not redundant: it is the thing that stops an answer
      * already in flight from landing on top of the agent's words a second later.
@@ -118,19 +158,26 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     await attribute(conversationId, referral);
   }
   const ledger: RecordedEvent[] = [{ kind: "message" }];
-  const wantsIn = text.trim() === WANTS_IN;
 
   /**
-   * A thread a person took over: the customer's words are written down and nothing is said.
+   * The form has gone out. The bot has nothing left to do in this thread.
    *
-   * Recorded rather than dropped, because the report is the only place the owner can see that
-   * a customer they took on is still writing — a silent thread that also leaves no trace is
-   * how somebody gets forgotten.
+   * What follows a form is an agent: a name to check, a birthdate to read back, a question
+   * about the health declaration that no model may answer. The bot answering over the top of
+   * that is the failure this stops — and a customer who has been handed an application does
+   * not need another quotation.
+   *
+   * The message is still recorded, so the report shows a live thread rather than one that
+   * stopped. The silence does not expire: `handed_over_at` is read past the session's own
+   * staleness, because a session is a day old and an application is not finished in a day.
+   * Clearing that column is what gives the thread back to the bot.
    */
-  if (session.handedOverAt) {
-    await record(conversationId, ledger, null);
+  if (session.handedOverAt || handedOver(session.slots)) {
+    await record(conversationId, ledger, productOf(session.slots));
     return;
   }
+
+  const wantsIn = text.trim() === WANTS_IN;
 
   /**
    * The agent answering by hand pauses the bot, and this message ends the pause: the customer
@@ -170,8 +217,8 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     // the model takes seconds, and an agent watching the thread answers inside them. Their
     // words are already in the customer's phone by now, so the bot says nothing and records
     // nothing — a mark that was not there when this answer began is theirs, just now.
-    const now = await loadSession("facebook", userHash);
-    if (now.mutedUntil !== markedBefore && silenced(now)) return;
+    const marked = (await loadSession("facebook", userHash)).mutedUntil;
+    if (marked !== markedBefore && isMuted(marked)) return;
     for (const [i, said] of answer.messages.entries()) {
       // a second bubble arrives the way a person's would: after the dots, and after a pause
       // that scales with how much there was to type
@@ -184,16 +231,16 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
       await sendMessage(psid, said.text, last && !said.card ? answer.replies : undefined, { pageId });
       // the card follows its own words, so the customer reads the quote before the picture of
       // it — and a couple priced together gets the pair in the order they were named
-      if (said.card) {
-        await sendImage(psid, siteUrl(said.card), last ? answer.replies : undefined, pageId)
-          .catch((e) => console.error("card failed:", e));
-      }
+      if (said.card) await sendCard(psid, siteUrl(said.card), last ? answer.replies : undefined, pageId);
     }
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
+    // the turn that hands the form over is the turn that stamps the thread; every other save
+    // leaves the column alone, so a stamp already there is never wiped
+    const justSent = handedOver(answer.slots) && !handedOver(session.slots);
     // no mute argument: recording what was said must never clear one
     await saveSession(
       "facebook", userHash, [...history, { role: "assistant", content: spoken }],
-      answer.slots, undefined, conversationId,
+      answer.slots, undefined, conversationId, justSent ? new Date() : undefined,
     );
     /**
      * A quotation is where the conversation used to stop, so it is where the bot now arms one
@@ -205,15 +252,15 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
      */
     const product = (answer.slots as { product?: string }).product ?? null;
     if (answer.priced && product === "lifeprotect") {
-      await armFollowup("facebook", userHash, psid).catch((e) => console.error("followup:", e));
+      await armFollowup("facebook", userHash, psid, pageId)
+        .catch((e) => console.error("followup:", e));
     }
 
     if (answer.priced) ledger.push({ kind: "quoted", data: { ...answer.quote } });
     if (wantsIn) ledger.push({ kind: "handover" });
     // the form is sent once, and the turn that sends it is the one where the flag turns over
-    const formSent = Boolean((answer.slots as { formSent?: boolean }).formSent);
-    const hadForm = Boolean((session.slots as { formSent?: boolean } | null)?.formSent);
-    if (formSent && !hadForm) ledger.push({ kind: "form_sent" });
+    const formSent = handedOver(answer.slots);
+    if (justSent) ledger.push({ kind: "form_sent" });
     if (answer.formDone) ledger.push({ kind: "form_done" });
 
     // written last, and its failure is its own: the customer has already been answered

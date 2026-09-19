@@ -31,6 +31,66 @@ beforeEach(() => {
   worded = "ยินดีครับ";
 });
 
+/**
+ * The money a customer says they have.
+ *
+ * "ผมมีเดือนละ 1000 สามารถทำประกันแบบไหนได้บ้างครับ" was answered with a quotation for a
+ * million baht of cover at 2,781 a month. The figure he named is the one thing the rate table
+ * can be read backwards from, so it is.
+ */
+describe("a budget instead of a sum", () => {
+  it("prices the cover it buys, on all three terms, inside the money named", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(
+      said("ผมมีเดือนละ1000 สามารถทำประกันแบบไหนได้บ้างครับ"),
+      { intent: "quote", age: 38, sex: "M" },
+    );
+    const text = answer.messages.map((m) => m.text).join("\n");
+    const table = lifeProtectTable();
+    for (const variant of ["WLF09H", "WLF19H", "WLF99H"]) {
+      expect(text, variant).toContain(table.terms.find((t) => t.variant === variant)!.label);
+    }
+    // every premium quoted is at or under the budget: the sum is rounded down, never up
+    const premiums = [...text.matchAll(/เบี้ย ([\d,]+) บาท\/เดือน/g)].map((m) => Number(m[1].replace(/,/g, "")));
+    expect(premiums.length).toBe(3);
+    // the plan will not take a monthly instalment under its own floor, so the quote may land
+    // a few baht over the figure named — and says so where it does
+    for (const p of premiums) expect(p).toBeLessThanOrEqual(1100);
+    expect(text).toContain("ขั้นต่ำ");
+    // and the longest term buys the most cover for the same money
+    const sums = [...text.matchAll(/ทุน ([\d,]+) บาท/g)].map((m) => Number(m[1].replace(/,/g, "")));
+    expect(sums[2]).toBeGreaterThan(sums[0]);
+    // the figures are the table's own: only the cheap router was asked anything
+    expect(chat.mock.calls.map((c) => c[0].task)).toEqual(["route"]);
+  });
+
+  it("asks who it is pricing for when only the money is known, and remembers it", async () => {
+    routed = { intent: "other" };
+    const first = await answerQuestion(said("มีงบเดือนละ 2,000 ครับ"), null);
+    expect(first.messages[0].text).toContain("เพศกับอายุ");
+    expect(first.slots.budget).toEqual({ baht: 2000, per: "month" });
+
+    routed = { intent: "quote", age: 40, sex: "F" };
+    const then = await answerQuestion(said("หญิง 40"), first.slots);
+    expect(then.messages[0].text).toContain("ทุน");
+    expect(then.messages[0].text).toContain("2,000");
+  });
+
+  it("says so plainly when the money does not reach the smallest contract", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("งบเดือนละ 400"), { intent: "quote", age: 55, sex: "M" });
+    const text = answer.messages.map((m) => m.text).join("\n");
+    expect(text).toContain("ขั้นต่ำ");
+    expect(text).toContain("150,000");
+  });
+
+  it("leaves a sum said outright alone", async () => {
+    routed = { intent: "quote", age: 38, sex: "M", coverWanted: 1_000_000 };
+    const answer = await answerQuestion(said("ทุน 1 ล้าน จ่ายเดือนละได้ไหม"), { intent: "quote", age: 38, sex: "M" });
+    expect(answer.priced).toBe(true);
+  });
+});
+
 describe("a quote", () => {
   beforeEach(() => { routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 }; });
 
@@ -188,6 +248,31 @@ describe("who stands behind the policy", () => {
       routed = { intent: "other" };
       const answer = await answerQuestion(said(asked), null);
       expect(answer.messages[0].text, asked).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
+    }
+  });
+
+  /**
+   * The words a customer puts between "บริษัท" and "อะไร".
+   *
+   * One on the advertisement wrote "บริษัท ประกัน ของ อะไร" and was told what the bot was
+   * rather than who the insurer is — the question reached the model, which is forbidden to
+   * name one. The filler is spelled out, so a question about underwriting keeps going to the
+   * brain that can answer it.
+   */
+  it("hears the question with words in the middle of it", async () => {
+    for (const asked of ["บริษัท ประกัน ของ อะไร", "บริษัทนี้ชื่ออะไรครับ", "ประกัน ของ บริษัท ไหน"]) {
+      routed = { intent: "other" };
+      const answer = await answerQuestion(said(asked), null);
+      expect(answer.messages[0].text, asked).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
+    }
+  });
+
+  it("does not hear a question about the company's own doings as a question about its name", async () => {
+    for (const asked of ["บริษัทจะตรวจสุขภาพไหม", "บริษัทพิจารณากี่วัน"]) {
+      routed = { intent: "plan_info" };
+      worded = "ตอบตามข้อมูลครับ";
+      const answer = await answerQuestion(said(asked), null);
+      expect(answer.messages[0].text, asked).not.toContain("กรุงไทย-แอกซ่า");
     }
   });
 

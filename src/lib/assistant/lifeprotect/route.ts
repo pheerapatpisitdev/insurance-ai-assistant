@@ -1,3 +1,4 @@
+import type { Budget } from "../common";
 import { chat, parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { getPlan } from "@/calc/plans/registry";
@@ -56,6 +57,14 @@ export interface Routed {
   takenSum?: number;
   /** the application form has been handed over; "กรอกแล้ว" after this is about that form */
   formSent?: true;
+  /**
+   * What the customer said they can pay, when they said that instead of a sum.
+   *
+   * Kept because the two halves of the answer arrive in different turns: "ผมมีเดือนละ 1000"
+   * first, the age and the sex when they are asked for. Dropped the moment a sum is named,
+   * which is a customer who has stopped shopping by budget.
+   */
+  budget?: Budget;
 }
 
 const SYSTEM = `คุณเป็นตัวช่วยของตัวแทนประกันชีวิต อ่านข้อความล่าสุดแล้วบอกว่าลูกค้าต้องการอะไร ตอบเป็น JSON เท่านั้น
@@ -255,6 +264,8 @@ export function mergeSlots(previous: Routed | null, current: Routed): Routed {
   if (merged.offer === undefined) merged.offer = previous.offer;
   if (merged.takenSum === undefined && merged.coverWanted === previous.coverWanted) merged.takenSum = previous.takenSum;
   if (merged.formSent === undefined) merged.formSent = previous.formSent;
+  // a sum named outright ends the shopping by budget; until then it is carried
+  merged.budget = merged.coverWanted === undefined ? previous.budget : undefined;
 
   // decided last, because it asks what is known once everything has been carried over: a turn
   // that completes the three things a quotation needs is a request for one

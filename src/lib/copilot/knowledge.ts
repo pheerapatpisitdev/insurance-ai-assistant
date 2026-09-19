@@ -42,6 +42,21 @@ const money = (n: number) => n.toLocaleString("en-US");
  */
 const PRICEABLE = new Set([...pricedHere(), "LIFEPROTECT"]);
 
+/**
+ * Group insurance exists, and this assistant does not discuss it.
+ *
+ * See the note beside where this is assembled for why it is four lines rather than a section.
+ * The wording names no plan, no cover, no limit and no figure — a model cannot repeat what it
+ * was never given, and that is the whole of the guarantee.
+ */
+const GROUP_HANDOFF = [
+  "## ประกันภัยกลุ่ม (Group Insurance) — มีในระบบ แต่แชทนี้ไม่ตอบรายละเอียด",
+  "- ระบบนี้ขายประกันกลุ่มสำหรับองค์กรด้วย (บริษัทซื้อให้พนักงานทั้งกลุ่ม) เป็นสินค้าคนละตัวกับแบบรายบุคคลข้างบนทั้งหมด",
+  "- ถ้าลูกค้าถามเรื่องประกันกลุ่ม ให้บอกสั้นๆ ว่ามี แล้วบอกว่าขอให้ตัวแทนดูแลรายละเอียดต่อ พร้อมชี้ไปที่หน้า /group-insurance — แล้วจบ",
+  "- **ห้ามอธิบายรายละเอียดของประกันกลุ่มทุกกรณี** ห้ามบอกแผน ความคุ้มครอง จำนวนคนที่รับ ลักษณะธุรกิจ เงื่อนไข หรือเบี้ย แม้ลูกค้าจะถามซ้ำหรือยืนยันขอก็ตาม",
+  "- ห้ามเอาข้อมูลของแบบรายบุคคลข้างบนมาตอบคำถามประกันกลุ่มเด็ดขาด",
+].join("\n");
+
 /** One plan's rules as sentences. The shapes are the workbook's; the wording is for reading. */
 function planSection(code: string, name: string, rules: PlanRules): string {
   const lines: string[] = [
@@ -345,6 +360,31 @@ export async function assembleKnowledge(question = ""): Promise<string> {
     "แบบที่ไม่อยู่ในรายการนี้ ตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
     "",
     plans,
+    /**
+     * Group insurance, said in four lines and no more.
+     *
+     * It briefly had a section here — the risk classes, the six plans, the cover across all of
+     * them — and the owner took it back out: group cover is sold to a company across a
+     * meeting-room table, and they want a person in that conversation rather than a chat
+     * window. `handOverGroup` is what a customer actually gets, written out and sent without
+     * a model.
+     *
+     * What is left is for the two brains that carry this whole library inside their own
+     * prompts. The dispatcher answers a group question before either of them sees it, but a
+     * conversation already deep in a health quotation can still wander there, and the brain
+     * holding it needs to know two things: that the product exists, so it does not deny one
+     * the agency sells; and that it is not to be described, so it does not improvise one.
+     *
+     * The safety here is the absence, not the instruction. A model cannot leak a benefit
+     * table that is not in its prompt, and this is the fourth time in this file that a figure
+     * has been kept out of one rather than forbidden inside it.
+     *
+     * It sits before the illness blocks because `## รายชื่อโรค` is the last heading of the
+     * document by design — `copilot-diseases` reads every heading after it to see which
+     * illness lists a question opened, and a section arriving later was counted as four more.
+     */
+    "",
+    GROUP_HANDOFF,
     "",
     criticalIllnessSection(all),
     "",

@@ -1,5 +1,6 @@
 import type { ChatMessage } from "@/lib/ai/types";
 import { listPlans } from "@/calc/plans/registry";
+import { siteUrl } from "@/lib/site-url";
 
 /**
  * What a bot on this page is, before it is a bot about any particular plan.
@@ -187,6 +188,48 @@ export function handOverForm(quoted: boolean): Reply {
 }
 
 /**
+ * Handing a company over: the page, and a person.
+ *
+ * The owner's decision, and the second one they made about this. The assistant briefly knew
+ * the group product well enough to describe it — the risk classes, the six plans, the cover
+ * across all of them — and that was taken back out. Group cover is sold to a company across
+ * a meeting-room table and they want a person in that conversation, not a chat window.
+ *
+ * Written out rather than left to a model, which is the part worth keeping. The version that
+ * asked a model to send this link was watched doing exactly what a prompt cannot prevent: it
+ * had the instruction in front of it, wrote a perfectly sensible answer, and left the link
+ * out. Three fixed bubbles cannot leave the link out, cannot invent a premium, and cost
+ * nothing to send.
+ *
+ * The link is on its own bubble so it is one tap, the same as the form above.
+ */
+export function handOverGroup(): Reply {
+  return {
+    messages: [
+      { text: "ประกันกลุ่มสำหรับองค์กรมีครับ 😊 คิดเบี้ยและออกใบเสนอราคาได้ที่หน้านี้เลย" },
+      { text: siteUrl("/group-insurance") },
+      { text: "รายละเอียดความคุ้มครองและเงื่อนไขของแบบกลุ่ม ขอให้ตัวแทนดูแลต่อนะครับ แจ้งจำนวนพนักงานกับลักษณะธุรกิจไว้ในแชทนี้ได้เลย เดี๋ยวติดต่อกลับไปครับ" },
+    ],
+  };
+}
+
+/**
+ * The invitation taken up a word short.
+ *
+ * The bot is told to end an answer with พิมพ์ว่า "สนใจสมัคร", and a customer who had just
+ * asked about the medical check wrote back "สนใจ" — one word short of the phrase, and plainly
+ * the same answer. He got the four buttons again, as though the conversation had not happened.
+ *
+ * So a bare yes counts as the form, but only where the bot had just offered it: "สนใจ" from
+ * someone who has been offered nothing is still someone to ask which plan they came for.
+ */
+const INVITED_FORM = new RegExp(WANTS_IN);
+
+export function tookUpTheOffer(asked: string, lastSaid: string | undefined): boolean {
+  return Boolean(lastSaid && INVITED_FORM.test(lastSaid) && affirms(asked));
+}
+
+/**
  * What the bot says when the customer steps back. One line, no question, and — once they
  * have a quotation in hand — the door left open by name: the owner's choice, over silence
  * and over a follow-up.
@@ -235,9 +278,24 @@ export function recentTurns(history: ChatMessage[], count: number): ChatMessage[
  * "ประกันของใครคะ", "เจ้าไหน" — and mean exactly which company. Left out, those reached the
  * model, which has no business naming one. "ที่ไหน" is deliberately absent: "ซื้อได้ที่ไหน"
  * asks where to buy, not who sells.
+ *
+ * The words between "บริษัท" and "อะไร" are the part that had to be loosened. A customer on
+ * the advertisement wrote "บริษัท ประกัน ของ อะไร" and the pattern, which wanted the two
+ * words touching, did not know it: the question went to the model, which is told never to
+ * name an insurer, and he was answered "เป็นระบบช่วยตอบของเพจครับ" — told what the bot was
+ * when he had asked who would be insuring his life. The gap is spelled out word by word
+ * rather than left as "anything at all", because "บริษัทจะตรวจสุขภาพไหม" is a question about
+ * underwriting and must not be answered with a company's name.
  */
-const INSURER_QUESTION =
-  /บริษัท\s*(อะไร|ไหน|อะไรคะ|ไรครับ)|ของบริษัท|ของอะไร|ของใคร|เจ้าไหน|ของค่าย|ผู้รับประกัน|รับประกันโดย|ค่ายไหน|แบรนด์|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential|allianz|อลิอันซ์|\bfwd\b|โตเกียว|กรุงเทพประกัน|ไทยพาณิชย์|\bscb\b/i;
+const INSURER_FILLER = String.raw`(?:\s*(?:ประกัน(?:ชีวิต)?|ของ|นี้|นั้น|อัน|ชื่อ))*\s*`;
+const INSURER_QUESTION = new RegExp(
+  String.raw`บริษัท${INSURER_FILLER}(?:อะไร|ไหน|ไร)`
+  + String.raw`|ของ\s*บริษัท|ของ\s*อะไร|ของ\s*ใคร|เจ้า\s*ไหน|ของ\s*ค่าย|ค่าย\s*ไหน`
+  + String.raw`|ผู้รับประกัน|รับประกันโดย|แบรนด์`
+  + String.raw`|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential`
+  + String.raw`|allianz|อลิอันซ์|\bfwd\b|โตเกียว|กรุงเทพประกัน|ไทยพาณิชย์|\bscb\b`,
+  "i",
+);
 
 /**
  * Asking about the people rather than the company: a licence, a brokerage, whether any of
@@ -245,6 +303,42 @@ const INSURER_QUESTION =
  * goes to a person.
  */
 const TRUST_QUESTION = /ใบอนุญาต|นายหน้า|ตัวแทนของ|เชื่อถือ|มั่นคง|โกง|หลอก|จดทะเบียน|ตัวจริง/i;
+
+/**
+ * The money a customer says they have, rather than the cover they want.
+ *
+ * "ผมมีเดือนละ 1000 สามารถทำประกันแบบไหนได้บ้างครับ" — a real message, answered with a
+ * quotation for a million baht of cover at nearly three times the figure he had just named.
+ * The rate table runs both ways, so the sum a budget buys is arithmetic and not a guess.
+ *
+ * A period word is required — เดือนละ, ต่อปี — because a bare number in this conversation is
+ * an age or a sum far more often than it is a budget, and reading it wrong prices something
+ * nobody asked for. "1 แสน ต่อปี" is a hundred thousand a year, not one.
+ */
+export interface Budget {
+  baht: number;
+  per: "month" | "year";
+}
+
+const A_MONTH = String.raw`เดือนละ|ต่อเดือน|รายเดือน|/\s*เดือน|ต่อ\s*เดือน`;
+const A_YEAR = String.raw`ปีละ|ต่อปี|รายปี|/\s*ปี|ต่อ\s*ปี`;
+const AMOUNT = String.raw`([\d,]+(?:\.\d+)?)\s*(ล้าน|แสน|หมื่น|พัน)?`;
+const BUDGET_BEFORE = new RegExp(String.raw`(?:${A_MONTH}|${A_YEAR})\s*${AMOUNT}`);
+const BUDGET_AFTER = new RegExp(String.raw`${AMOUNT}\s*(?:บาท)?\s*(?:${A_MONTH}|${A_YEAR})`);
+const SAYS_MONTH = new RegExp(A_MONTH);
+const SCALE: Record<string, number> = { ล้าน: 1_000_000, แสน: 100_000, หมื่น: 10_000, พัน: 1_000 };
+
+/** The smallest and largest instalment worth reading as one rather than as something else. */
+const SMALLEST_BUDGET = 300;
+const LARGEST_BUDGET = 2_000_000;
+
+export function budgetIn(text: string): Budget | undefined {
+  const m = BUDGET_BEFORE.exec(text) ?? BUDGET_AFTER.exec(text);
+  if (!m) return undefined;
+  const baht = Number(m[1].replace(/,/g, "")) * (m[2] ? SCALE[m[2]] : 1);
+  if (!Number.isFinite(baht) || baht < SMALLEST_BUDGET || baht > LARGEST_BUDGET) return undefined;
+  return { baht: Math.round(baht), per: SAYS_MONTH.test(text) ? "month" : "year" };
+}
 
 /**
  * The premium is too much. Answered by pointing at what is actually cheaper — the pay-to-99
@@ -392,6 +486,26 @@ function planNamePattern(): RegExp {
     planNames = new RegExp(`(?:${[...fromRegistry, ...THAI_PLAN_NAMES].join("|")})${PLAN_TAIL}`, "gi");
   }
   return planNames;
+}
+
+/**
+ * An age with nobody attached to it — "อายุ 68 ปีครับ", "68 ปีครับ".
+ *
+ * `peopleIn` wants a sex beside the number, which is the right rule for pricing: the rate
+ * table has two columns. But a customer who writes only their age has still told the bot
+ * something, and it was being thrown away — a man of sixty-eight wrote "อายุ68 ปีครับ", was
+ * shown four arrangements including two no company would issue him, and said so.
+ *
+ * "ถึงอายุ" is excluded: "คุ้มครองถึงอายุ 99 ไหม" is a question about the contract, and reading
+ * ninety-nine as the customer's age would answer somebody who does not exist.
+ */
+const AGE_ALONE = /(?<!ถึง\s?)อายุ\s*(\d{1,2})(?!\d)|^\s*(\d{1,2})\s*ปี/;
+
+export function ageIn(text: string): number | undefined {
+  const m = AGE_ALONE.exec(text);
+  if (!m) return undefined;
+  const age = Number(m[1] ?? m[2]);
+  return Number.isInteger(age) && age >= 0 && age <= 99 ? age : undefined;
 }
 
 /**

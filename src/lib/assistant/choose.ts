@@ -1,4 +1,12 @@
 import type { Reply } from "./common";
+import { getPlan } from "@/calc/plans/registry";
+import { getBundle } from "@/calc/bundles/registry";
+import { bundleAgeRange } from "@/calc/bundles/quote";
+import { baseAgeRange } from "@/calc/rules";
+import { iHealthyTable } from "@/lib/ihealthy-table";
+
+/** The bundle the มรดก door opens on, by the code the registry knows it as. */
+const LEGACY_FAMILY = "LEGACY_FAMILY";
 
 /** What this page sells, as the session records which one a customer came for. */
 export type Product = "lifeprotect" | "ihealthy" | "legacy" | "ishield";
@@ -22,11 +30,40 @@ const NAMES: [Product, RegExp][] = [
 ];
 
 /**
+ * A message about a company's staff rather than about the person writing it.
+ *
+ * None of the four plans below is sold this way — they are contracts a person takes out on
+ * their own life — and the agency's group cover is a different product with different tables,
+ * priced at /group-insurance and answered out of the library.
+ *
+ * This exists because "ประกันสุขภาพกลุ่มมีไหม" contains "ประกันสุขภาพ", so `NAMES` read it as
+ * iHealthy Ultra and a company asking about thirty staff was asked its age and its sex and
+ * quoted one person's premium. Wrong, and wrong in a way that looks right — which is worse
+ * than the "สนใจแบบไหนครับ" the other group questions got, and is the reason this is a guard
+ * on the reading rather than a fifth entry in the list.
+ *
+ * Deliberately narrow. "กลุ่ม" alone is not enough — a customer asks about กลุ่มโรค and กลุ่ม
+ * อาการ — so it has to be the word this business uses for a body of employees, or the word
+ * กลุ่ม standing next to an insurance word. Everything here has a case in the test file.
+ */
+const ABOUT_A_GROUP =
+  /ประกัน\s*(?:ภัย)?\s*กลุ่ม|(?:สุขภาพ|อุบัติเหตุ|ชีวิต)\s*กลุ่ม|กลุ่ม\s*พนักงาน|หมู่คณะ|\bgroup\s*(?:health|pa|insurance)\b|พนักงาน(?:ประจำ|บริษัท|ทั้ง)|(?:บริษัท|องค์กร|โรงงาน|ห้างร้าน|นายจ้าง|hr)[^]{0,30}?พนักงาน|พนักงาน[^]{0,20}?\d+\s*คน|\d+\s*คน[^]{0,20}?พนักงาน/i;
+
+/** Whether a message is asking about cover for a company's staff. */
+export function aboutAGroup(text: string): boolean {
+  return ABOUT_A_GROUP.test(text);
+}
+
+/**
  * What a message is about when it says so in as many words, or nothing when it says neither —
  * or both, which is a question about the difference and belongs to whoever is already
  * answering rather than to a switch of brains.
+ *
+ * Nothing, too, when the message is about a company's staff: see `ABOUT_A_GROUP`. Answering
+ * nothing sends the question to the library, which has the group product's own section.
  */
 export function productNamedIn(text: string): Product | undefined {
+  if (aboutAGroup(text)) return undefined;
   const named = NAMES.filter(([, re]) => re.test(text));
   return named.length === 1 ? named[0][0] : undefined;
 }
@@ -43,8 +80,15 @@ const TOPICS: [Product, RegExp][] = [
   ["lifeprotect", /ทุน\s*\d|ทุนประกัน|\d+\s*ล้าน|\d+\s*แสน|(?:จ่าย|ชำระ)\s*(?:เบี้ย)?\s*\d+\s*ปี|อายุ\s*99|เวนคืน|เสียชีวิต/i],
 ];
 
-/** The subject of a message, when only one of the two recognises it. */
+/**
+ * The subject of a message, when only one of the two recognises it.
+ *
+ * A company's staff is nobody's subject here, for the reason `ABOUT_A_GROUP` gives: "ค่าห้อง
+ * ของประกันสุขภาพกลุ่ม" is the health *topic* as well as the health *name*, so guarding one
+ * reading and not the other would leave the same wrong answer one sentence away.
+ */
 export function productByTopic(text: string): Product | undefined {
+  if (aboutAGroup(text)) return undefined;
   const found = TOPICS.filter(([, re]) => re.test(text));
   return found.length === 1 ? found[0][0] : undefined;
 }
@@ -77,13 +121,67 @@ export const MAX_BUTTON = 20;
  * a person's life — money for the family after, against the bills while you are still here —
  * so a heading that called all four a legacy would be wrong about the one that is not.
  */
-export const CHOICES = [
-  "สวัสดีครับ 🙏 ที่ผมดูแลมี 4 แบบครับ",
-  "💰 มรดก เบี้ยไม่ทิ้ง — จ่ายแล้วสะสมเป็นเงินก้อน เลิกกลางทางได้เงินคืน",
-  "🛡 มรดก เบี้ยทิ้ง + โรคร้ายแรง — วงเงินใหญ่ เบี้ยเบา เจอโรคร้ายรับเงินสดก้อนโต",
-  "🌱 มรดก + ออม + โรคร้ายแรง — จ่ายสั้น 5–20 ปี อยู่ถึง 85 รับเงินคืนเต็มจำนวน",
-  "🏥 ประกันสุขภาพ — ค่าห้อง ค่าหมอ ค่ารักษา ทุกครั้งที่นอนโรงพยาบาล",
-].join("\n");
+const DOORS: { product: Product; title: string; line: string }[] = [
+  {
+    product: "lifeprotect",
+    title: CHOOSE_LIFE,
+    line: "💰 มรดก เบี้ยไม่ทิ้ง — จ่ายแล้วสะสมเป็นเงินก้อน เลิกกลางทางได้เงินคืน",
+  },
+  {
+    product: "legacy",
+    title: CHOOSE_LEGACY,
+    line: "🛡 มรดก เบี้ยทิ้ง + โรคร้ายแรง — วงเงินใหญ่ เบี้ยเบา เจอโรคร้ายรับเงินสดก้อนโต",
+  },
+  {
+    product: "ishield",
+    title: CHOOSE_ISHIELD,
+    line: "🌱 มรดก + ออม + โรคร้ายแรง — จ่ายสั้น 5–20 ปี อยู่ถึง 85 รับเงินคืนเต็มจำนวน",
+  },
+  {
+    product: "ihealthy",
+    title: CHOOSE_HEALTH,
+    line: "🏥 ประกันสุขภาพ — ค่าห้อง ค่าหมอ ค่ารักษา ทุกครั้งที่นอนโรงพยาบาล",
+  },
+];
+
+const HEADING = "สวัสดีครับ 🙏 ที่ผมดูแลมี 4 แบบครับ";
+
+export const CHOICES = [HEADING, ...DOORS.map((d) => d.line)].join("\n");
+
+/**
+ * The ages each arrangement is actually issued at, read from the plans themselves.
+ *
+ * Written down nowhere: the life contract's own table, the bundle's narrowest rider, the four
+ * paying terms of the third, and the health contract's table. A number typed here would be a
+ * number to keep in step with four files that already know.
+ */
+const ISHIELD_TERMS = ["WLCI05", "WLCI10", "WLCI15", "WLCI20"];
+const ANY_AGE = { min: 0, max: 99 };
+
+function issuedAt(product: Product): { min: number; max: number } {
+  if (product === "ihealthy") {
+    const t = iHealthyTable();
+    return { min: t.ageMin, max: t.ageMax };
+  }
+  if (product === "legacy") {
+    const bundle = getBundle(LEGACY_FAMILY);
+    return bundle ? bundleAgeRange(bundle) : ANY_AGE;
+  }
+  if (product === "ishield") {
+    const plan = getPlan("ISHIELD");
+    if (!plan) return ANY_AGE;
+    const spans = ISHIELD_TERMS.map((v) => baseAgeRange(plan.rules, v, plan.rates));
+    return { min: Math.min(...spans.map((s) => s.min)), max: Math.max(...spans.map((s) => s.max)) };
+  }
+  const plan = getPlan("LIFEPROTECT");
+  return plan ? baseAgeRange(plan.rules, "WLF99H", plan.rates) : ANY_AGE;
+}
+
+/** Whether this arrangement can be sold to someone of that age at all. */
+export function takesAge(product: Product, age: number): boolean {
+  const { min, max } = issuedAt(product);
+  return age >= min && age <= max;
+}
 
 /**
  * The one question the bot asks before it knows what it is selling.
@@ -91,12 +189,57 @@ export const CHOICES = [
  * Only when the message itself says nothing: the adverts open with buttons that name the plan
  * and most customers type a sum or a symptom, and a lead the campaign paid for should not have
  * to tap twice to be answered.
+ *
+ * The age narrows it where one is known. A man of sixty-eight wrote his age and then "ขอดูทั้ง
+ * 2 แบบ", and was shown all four twice — two of which no company would have issued him. Four
+ * doors, two of them painted on, is a worse answer than two doors.
  */
-export function askWhich(lead?: string): Reply {
+export function askWhich(lead?: string, age?: number): Reply {
+  const open = age === undefined ? DOORS : DOORS.filter((d) => takesAge(d.product, age));
+
+  /**
+   * Nothing on the shelf reaches them.
+   *
+   * Above eighty every one of these refuses, and a menu of four arrangements is then four
+   * wasted taps ending in four refusals. The agency sells more than the bot prices, so this
+   * is a person's job and the bot says so rather than pretending.
+   */
+  if (age !== undefined && !open.length) {
+    const text = `อายุ ${age} ปี แบบที่ผมคิดเบี้ยให้ได้ในแชทนี้ยังไม่มีครับ 🙏`
+      + "\nเดี๋ยวตัวแทนมาดูให้ว่ามีแบบไหนที่ยังสมัครได้บ้าง ทิ้งคำถามไว้ได้เลยครับ";
+    return { messages: lead ? [{ text: lead }, { text }] : [{ text }] };
+  }
+
+  const shown = open;
+  const heading = shown.length < DOORS.length
+    ? `อายุ ${age} ปี สมัครได้ ${shown.length} แบบนี้ครับ 🙏`
+    : HEADING;
+  const asked = [heading, ...shown.map((d) => d.line)].join("\n");
+
   // a customer who asked something first is answered first: "ของอะไร" met with "สนใจแบบไหนครับ"
   // is a question answered with a question, which is how it read in the inbox
   const messages = lead
-    ? [{ text: lead }, { text: `${CHOICES}\n\nสนใจแบบไหนครับ` }]
-    : [{ text: `${CHOICES}\n\nสนใจแบบไหนครับ` }];
-  return { messages, replies: [CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD, CHOOSE_HEALTH] };
+    ? [{ text: lead }, { text: `${asked}\n\nสนใจแบบไหนครับ` }]
+    : [{ text: `${asked}\n\nสนใจแบบไหนครับ` }];
+  return { messages, replies: shown.map((d) => d.title) };
+}
+
+/**
+ * What is said instead of the same menu a second time.
+ *
+ * The four doors answered twice in a row is a dead end: the customer did not choose, and
+ * nothing about repeating the list makes the choice easier. The agency watches this inbox, so
+ * the second time the bot says so — and leaves the buttons up, because some customers were
+ * only scrolling.
+ */
+export function askWhichAgain(age?: number): Reply {
+  const again = askWhich(undefined, age);
+  return {
+    messages: [{
+      text: "เลือกไม่ถูกไม่เป็นไรครับ 🙏 บอกมาคร่าวๆ ก็ได้ว่าอยากได้แบบไหน"
+        + " — เก็บเงินไว้ให้ครอบครัว หรือค่ารักษาตอนนอนโรงพยาบาล"
+        + "\nหรือจะให้ตัวแทนช่วยแนะนำก็ได้ครับ เดี๋ยวมีคนมาตอบในแชทนี้",
+    }],
+    replies: again.replies,
+  };
 }

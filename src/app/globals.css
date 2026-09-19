@@ -366,6 +366,13 @@ body:has(.theme-legacy) {
   .print-table table {
     border-collapse: collapse;
     font-size: 8.5pt;
+    /* The grid is laid out by the headings rather than by the widest figure that happens to
+       fall in a column. Two reasons, and neither is tidiness. The columns of money are then
+       the same width as each other whatever the plan puts in them — Life Treasure's eight
+       figures and Life Protect's six read as one table, not two. And whichever shape of this
+       table a plan draws, the money columns share what the two counting columns leave in
+       equal parts, without this file being told how many there are. */
+    table-layout: fixed;
   }
 
   /* the totals row the proposal closes its table with */
@@ -381,6 +388,21 @@ body:has(.theme-legacy) {
   .print-table th {
     position: static !important;
     background: transparent !important;
+  }
+
+  /* The quarter-of-the-sheet first column a hundred lines above is written for the
+     comparison table, where the first heading names a whole row of plans and wants the
+     room. This table's first column is a year number — two digits — and that rule was
+     handing it a quarter of the paper, which is what pushed the six columns of figures
+     into the right half and left the sheet looking lopsided.
+
+     So the two counting columns are held to what they actually hold — a year and an age are
+     two digits on every plan — and the fixed layout above hands the rest to the money
+     columns in equal share. A column of baht that lines up with the one beside it is the
+     whole point of the insurer's own layout. */
+  .print-table thead th:first-child,
+  .print-table thead th:nth-child(2) {
+    width: 7%;
   }
 
   .print-table tr[class*="gold-glow"] td {

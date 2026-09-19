@@ -14,6 +14,7 @@ import { illnessBenefit } from "@/lib/ishield-quote";
 import { plbTable } from "@/lib/plb-table";
 import { coverEndsAt } from "@/lib/plb-quote";
 import { lifeTreasureTable } from "@/lib/lifetreasure-table";
+import { easyProtectTable } from "@/lib/easyprotect-table";
 import { displayPremium, perDayText } from "@/lib/legacy-cta";
 
 /**
@@ -341,6 +342,13 @@ function planBenefitSection(input: PlanCardInput): CardSection | undefined {
       rows: [{ label: `ทุกช่วงอายุ ถึงอายุ ${table.coverToAge}`, amount: money(input.sumAssured) }],
     };
   }
+  if (input.planCode === "EASYPROTECT") {
+    const table = easyProtectTable();
+    return {
+      title: "ครอบครัวได้รับเมื่อเสียชีวิต",
+      rows: [{ label: `ทุกช่วงอายุ ถึงอายุ ${table.coverToAge}`, amount: money(input.sumAssured) }],
+    };
+  }
   if (input.planCode === "PLB") {
     const table = plbTable();
     const term = table.terms.find((t) => t.variant === input.variant);
@@ -367,6 +375,16 @@ function planNotes(input: PlanCardInput): string[] {
   if (input.planCode === "LIFETREASURE") {
     const { premiumPercent } = lifeTreasureTable().topUp;
     return [`จ่ายไม่น้อยกว่า ${premiumPercent}% ของเบี้ยที่ชำระมาแล้ว หรือมูลค่าเวนคืน แล้วแต่จำนวนใดมากกว่า`];
+  }
+  // the same floor as ไลฟ์เทรเชอร์, and said on the card for the same reason; what this plan
+  // adds is the year the premium stops, which is the whole reason somebody chose it
+  if (input.planCode === "EASYPROTECT") {
+    const table = easyProtectTable();
+    const term = table.terms.find((t) => t.variant === input.variant);
+    return [
+      ...(term ? [`ชำระเบี้ย ${term.payTerm} ปี แล้วคุ้มครองต่อถึงอายุ ${table.coverToAge} โดยไม่ต้องชำระอีก`] : []),
+      `จ่ายไม่น้อยกว่า ${table.topUp.premiumPercent}% ของเบี้ยที่ชำระมาแล้ว หรือมูลค่าเวนคืน แล้วแต่จำนวนใดมากกว่า`,
+    ];
   }
   return [];
 }
