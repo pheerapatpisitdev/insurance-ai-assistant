@@ -1,3 +1,4 @@
+import { BotResume } from "./BotResume";
 import type { LeadView } from "./actions";
 import type { UnansweredRow } from "@/lib/crm/types";
 
@@ -146,21 +147,29 @@ export function Leads(
                   <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${stage.className}`}>
                     {stage.label}
                   </span>
+                  {/* the state the button acts on, said in the row rather than left to a tooltip */}
+                  {lead.botStopped && (
+                    <span className="mt-1 block whitespace-nowrap text-xs text-slate-400">บอทหยุดตอบแล้ว</span>
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-3.5 py-3 text-xs text-slate-500">{ago(lead.updated_at)}</td>
                 <td className="px-3.5 py-3">
-                  {lead.reachable ? (
-                    <a
-                      href="https://business.facebook.com/latest/inbox/all"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="whitespace-nowrap rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
-                    >
-                      เปิดแชท ↗
-                    </a>
-                  ) : (
-                    <span className="text-xs text-slate-300">ติดต่อไม่ได้</span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {lead.reachable ? (
+                      <a
+                        href="https://business.facebook.com/latest/inbox/all"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="whitespace-nowrap rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+                      >
+                        เปิดแชท ↗
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-300">ติดต่อไม่ได้</span>
+                    )}
+                    {/* only where there is a silence to end: the bot is answering everyone else */}
+                    {lead.botStopped && <BotResume leadId={lead.id} />}
+                  </div>
                 </td>
               </tr>
             );

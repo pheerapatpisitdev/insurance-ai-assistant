@@ -24,6 +24,13 @@ export interface LeadView extends LeadRow {
   picture?: string;
   /** whether this person can still be written to at all */
   reachable: boolean;
+  /**
+   * The bot has stopped in this thread because the form went out.
+   *
+   * Read for the screen rather than stored on the lead: the silence belongs to the chat
+   * session, and a lead is a report of what happened rather than the switch that did it.
+   */
+  botStopped: boolean;
 }
 
 export interface CrmPage {
@@ -54,7 +61,10 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
     // whether this person can still be written to
     supabase
       .from("ins_leads")
-      .select("id, conversation_id, stage, product, last_quote, ad_id, created_at, updated_at, psid_cipher")
+      .select(
+        "id, conversation_id, stage, product, last_quote, ad_id, created_at, updated_at," +
+        " psid_cipher, channel, user_hash",
+      )
       .gte("created_at", since)
       .order("updated_at", { ascending: false })
       .limit(LEAD_LIMIT),
@@ -69,8 +79,21 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
 
   // the select list is long enough that the client infers an error shape rather than the row
   const rows = (conversations.data ?? []) as unknown as ConversationRow[];
-  const leadRows = ((leads.data ?? []) as unknown as (Omit<LeadRow, "has_psid"> & { psid_cipher: unknown })[])
-    .map(({ psid_cipher, ...rest }) => ({ ...rest, has_psid: psid_cipher !== null }));
+  type RawLead = Omit<LeadRow, "has_psid"> & { psid_cipher: unknown; channel: string; user_hash: string };
+  const raw = (leads.data ?? []) as unknown as RawLead[];
+
+  /**
+   * Which of these threads the bot has stopped in.
+   *
+   * One query for the whole page rather than one per row, and the hashes themselves stay on
+   * this side: what the screen is told is a yes or a no.
+   */
+  const stopped = await stoppedThreads(raw);
+  const leadRows = raw.map(({ psid_cipher, channel, user_hash, ...rest }) => ({
+    ...rest,
+    has_psid: psid_cipher !== null,
+    botStopped: stopped.has(`${channel}:${user_hash}`),
+  }));
 
   return {
     range,
@@ -87,7 +110,7 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
  * Fetched one render at a time and stored nowhere. A lead whose id has been pruned is past
  * being written to anyway, so it is shown by its figures and its date and left at that.
  */
-async function withNames(rows: (LeadRow & { psid?: string })[]): Promise<LeadView[]> {
+async function withNames(rows: (LeadRow & { botStopped: boolean; psid?: string })[]): Promise<LeadView[]> {
   return Promise.all(rows.map(async (lead) => {
     if (!lead.has_psid) return { ...lead, reachable: false };
     const psid = await psidFor(lead.id);
@@ -115,4 +138,61 @@ async function psidFor(leadId: string): Promise<string | null> {
     console.error("อ่านรหัสลูกค้าไม่สำเร็จ:", e);
     return null;
   }
+}
+
+/**
+ * The threads on this page the bot has been stopped in, as `channel:user_hash`.
+ *
+ * `handed_over_at` is stamped when the application form goes out and read past the session's
+ * own staleness, so it is the one thing that says whether the bot is still answering — a lead
+ * at stage form_sent whose column has since been cleared is a thread the bot has back.
+ */
+async function stoppedThreads(
+  leads: { channel: string; user_hash: string }[],
+): Promise<Set<string>> {
+  const hashes = [...new Set(leads.map((l) => l.user_hash))];
+  if (!hashes.length) return new Set();
+  const { data, error } = await supabaseAdmin()
+    .from("ins_chat_sessions")
+    .select("channel, user_hash, handed_over_at")
+    .in("user_hash", hashes)
+    .not("handed_over_at", "is", null);
+  if (error) {
+    console.error("อ่านสถานะบอทไม่สำเร็จ:", error.message);
+    return new Set();
+  }
+  return new Set(((data ?? []) as { channel: string; user_hash: string }[])
+    .map((r) => `${r.channel}:${r.user_hash}`));
+}
+
+/**
+ * Give one thread back to the bot.
+ *
+ * The silence after an application form does not expire on its own, on purpose: it ends when
+ * somebody who knows the application is over says so. This is that button, and it is the only
+ * thing that clears the stamp.
+ *
+ * The lead is named rather than the customer: the hash never leaves this side, and the row
+ * being pointed at is one the screen was already showing.
+ */
+export async function letBotResume(leadId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  await requireAdmin();
+  const supabase = supabaseAdmin();
+
+  const { data, error } = await supabase
+    .from("ins_leads")
+    .select("channel, user_hash")
+    .eq("id", leadId)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  const lead = data as { channel: string; user_hash: string } | null;
+  if (!lead) return { ok: false, error: "ไม่พบลูกค้ารายนี้" };
+
+  const cleared = await supabase
+    .from("ins_chat_sessions")
+    .update({ handed_over_at: null })
+    .eq("channel", lead.channel)
+    .eq("user_hash", lead.user_hash);
+  if (cleared.error) return { ok: false, error: cleared.error.message };
+  return { ok: true };
 }
