@@ -30,6 +30,7 @@ const PLANS: [code: string, label: string, re: RegExp][] = [
   ["ISMART", "iSmart 80/6", /i\s*-?\s*smart|ไอ\s*สมาร์ท/i],
   ["LIFETREASURE", "Life Treasure", /life\s*treasure|ไลฟ์\s*(?:เทรเชอร์|ทรีเชอร์|เทรชเชอร์)/i],
   ["ISHIELD", "iShield", /i\s*-?\s*shield|ไอ\s*ชิลด์/i],
+  ["EASYPROTECT", "อีซี่ โพรเทค 6", /easy\s*protect|อีซี่\s*โพรเทค|อีซี่\s*โปรเทค/i],
 ];
 
 /**

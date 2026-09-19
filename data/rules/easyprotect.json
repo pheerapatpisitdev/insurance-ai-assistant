@@ -1,0 +1,89 @@
+{
+ "planCode": "EASYPROTECT",
+ "base": {
+  "ageMin": 0,
+  "ageMax": 80,
+  "saMin": 500000,
+  "saZeroWhenIneligible": true,
+  "maturity": {
+   "age": 99,
+   "percentOfSumAssured": 100
+  }
+ },
+ "minMonthlyTotal": 1000,
+ "riders": {
+  "PB": {
+   "name": "สัญญาเพิ่มเติมพีบี (ผู้ชำระเบี้ย)",
+   "ageMin": 0,
+   "ageMax": 70,
+   "payer": {
+    "ageMin": 20,
+    "ageMax": 70
+   }
+  },
+  "WP": {
+   "name": "สัญญาเพิ่มเติมดับบลิวพี (ยกเว้นเบี้ย)",
+   "ageMin": 16,
+   "ageMax": 70
+  },
+  "MEB": {
+   "name": "สัญญาเพิ่มเติมค่ารักษาพยาบาล (MEB)",
+   "ageMin": 6,
+   "ageMax": 65,
+   "planMaxByAge": [
+    {
+     "ageMax": 10,
+     "planMax": 500
+    },
+    {
+     "ageMax": 15,
+     "planMax": 1000
+    },
+    {
+     "ageMax": 65,
+     "planMax": 5000
+    }
+   ]
+  },
+  "DCI": {
+   "name": "สัญญาเพิ่มเติมโรคร้ายแรง (DCI)",
+   "ageMin": 20,
+   "ageMax": 65,
+   "saMin": 200000,
+   "saMaxCap": 10000000,
+   "coverToAge": 75,
+   "paysOnDeath": true
+  },
+  "PLS": {
+   "name": "สัญญาเพิ่มเติม PLS",
+   "ageMin": 20,
+   "ageMax": 59,
+   "saMin": 300000,
+   "saMaxMultipleOfBase": 5
+  },
+  "IHU": {
+   "name": "ไอเฮลท์ตี้ อัลตร้า",
+   "ageMin": 6,
+   "ageMax": 80
+  },
+  "CI123": {
+   "name": "สัญญาเพิ่มเติมคุ้มครองโรคร้ายแรง (CI 123)",
+   "ageMin": 0,
+   "ageMax": 75,
+   "saMin": 100000,
+   "saMaxCap": 10000000
+  }
+ },
+ "combined": [],
+ "exclusive": [
+  {
+   "code": "PB_WP",
+   "riders": [
+    "PB",
+    "WP"
+   ],
+   "message": "กรุณาเลือก WP หรือ PB อย่างใดอย่างหนึ่ง"
+  }
+ ],
+ "packages": []
+}

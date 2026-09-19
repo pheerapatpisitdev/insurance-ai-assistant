@@ -29,7 +29,10 @@ describe("every place the menu says you can go", () => {
   it("names every sales page the site actually has", () => {
     // the pages are what a customer is sent; one missing from here is one the agent cannot
     // find from inside their own tool
-    const onDisk = ["lifeprotect", "legacy", "plb", "lifetreasure", "ishield", "ihealthy-ultra", "group-insurance"];
+    const onDisk = [
+      "lifeprotect", "legacy", "plb", "easyprotect", "lifetreasure", "ishield", "ihealthy-ultra",
+      "group-insurance",
+    ];
     expect(SALES_PAGES.map((p) => p.href).sort()).toEqual(onDisk.map((s) => `/${s}`).sort());
   });
 

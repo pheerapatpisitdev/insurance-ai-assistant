@@ -30,7 +30,8 @@ export type MenuIcon =
   | "gem"
   | "shieldCheck"
   | "heart"
-  | "building";
+  | "building"
+  | "clock";
 
 export interface MenuLink {
   href: string;
@@ -63,10 +64,10 @@ export interface MenuGroup {
 }
 
 /**
- * The seven sales pages.
+ * The eight sales pages.
  *
  * Written out rather than generated from the plan registry, which is what the design said
- * before the two were compared: there are seven pages and five plans, `/legacy` is a way of
+ * before the two were compared: there are eight pages and six plans, `/legacy` is a way of
  * selling Life Protect rather than a plan of its own, iSmart has no page at all, and
  * `/group-insurance` is not a life plan and is not in the registry. A list generated from
  * the registry would therefore invent a link to nowhere and miss three that exist.
@@ -83,6 +84,7 @@ export const SALES_PAGES: MenuLink[] = [
   { href: "/lifeprotect", label: "Life Protect x 2", icon: "shield", hue: "#e11d48" },
   { href: "/legacy", label: "มรดกเพื่อครอบครัว", icon: "home", hue: "#b45309" },
   { href: "/plb", label: "Protection Life", icon: "umbrella", hue: "#0f766e" },
+  { href: "/easyprotect", label: "อีซี่ โพรเทค 6", icon: "clock", hue: "#15803d" },
   { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์", icon: "gem", hue: "#7e22ce" },
   { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#c2410c" },
   { href: "/ihealthy-ultra", label: "iHealthy Ultra", icon: "heart", hue: "#0369a1" },
