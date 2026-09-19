@@ -3,6 +3,9 @@ import { valueTableCard } from "@/lib/quote-card";
 import { quote } from "@/calc/quote";
 import { getPlan } from "@/calc/plans/registry";
 import { cashValueSchedule } from "@/calc/cash-value";
+import { coverRows } from "@/lib/cover-rows";
+import { plbTable } from "@/lib/plb-table";
+import { plbModes, termAt } from "@/lib/plb-quote";
 
 /**
  * PLB's table, which is a table of cover rather than of value.
@@ -71,5 +74,33 @@ describe("the table PLB is drawn as", () => {
   it("is not drawn at all for an insured the plan will not take", () => {
     // PLB is sold from 20 to 59, and a table for a contract nobody can buy is a fiction
     expect(valueTableCard({ ...CARD, age: 65 })).toBeUndefined();
+  });
+});
+
+/**
+ * The page shows this table now, not only the picture of it.
+ *
+ * Both are built by `coverRows`, and this is the test that says so: the page computes its
+ * rows from what the calculator already has in hand, the card computes its own from the
+ * engine, and a customer reading the page while the agent sends the picture must be looking
+ * at the same twelve years. Two places computing one table eventually disagree by a baht or
+ * a year, and nothing says which is right.
+ */
+describe("the table on the page and the picture of it", () => {
+  it("are the same rows, built by the same loop", () => {
+    const table = plbTable();
+    const term = termAt(table, "PLB12");
+    const annual = plbModes(table, term, { sex: "M", age: 35, sumAssured: 1_000_000 })!
+      .find((m) => m.mode === "annual")!;
+
+    const onPage = coverRows({
+      years: term.years,
+      payYears: term.years,
+      age: 35,
+      annualSatang: annual.total,
+      coverSatang: 1_000_000 * 100,
+    });
+
+    expect(onPage).toEqual(valueTableCard(CARD)!.rows);
   });
 });

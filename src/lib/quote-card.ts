@@ -5,6 +5,7 @@ import { getPlan, type PlanBundle } from "@/calc/plans/registry";
 import { getBundle } from "@/calc/bundles/registry";
 import { bundleModePremiums, quoteBundle } from "@/calc/bundles/quote";
 import { formatBaht } from "@/calc/money";
+import { coverRows } from "@/lib/cover-rows";
 import { PAY_MODE_LABEL, type DeathBenefit, type PayMode, type QuoteInput, type QuoteResult, type Sex } from "@/calc/types";
 import type { BundleCardInput, CardInput, PlanCardInput } from "@/lib/card-link";
 import { deathBenefitRows } from "@/lib/death-benefit";
@@ -534,17 +535,10 @@ function coverTableCard(
   const payYears = payYearsFor(plan, input.variant, input.age);
   const cover = (result.deathBenefit?.sumFrom ?? result.sumAssured) * 100;
 
-  let paid = 0;
-  const rows: ValueTableRow[] = Array.from({ length: years }, (_, i) => {
-    const due = annualSatang === null ? null : i < payYears ? annualSatang : 0;
-    if (due !== null) paid += due;
-    return {
-      year: i + 1,
-      age: input.age + i,
-      due: due ? baht(due) : "—",
-      paid: due === null ? null : baht(paid),
-      cover: baht(cover),
-    };
+  // built by the same function the page's own table is built by, so the picture a customer
+  // saves and the table they are looking at cannot come to differ by a baht or a year
+  const rows: ValueTableRow[] = coverRows({
+    years, payYears, age: input.age, annualSatang, coverSatang: cover,
   });
 
   const variantLabel = plan.variantLabels[input.variant];

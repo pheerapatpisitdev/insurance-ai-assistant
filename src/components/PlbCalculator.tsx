@@ -8,6 +8,8 @@ import type { PlbTable } from "@/lib/plb-table";
 import { coverEndsAt, perMillion, plbModes, termAt, totalPaid } from "@/lib/plb-quote";
 import { plbMessage, plbQuoteText, type PlbAge } from "@/lib/plb-cta";
 import { cardPath, valueTablePath } from "@/lib/card-link";
+import { coverRows } from "@/lib/cover-rows";
+import { CoverTable } from "@/components/plb/CoverTable";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
@@ -80,6 +82,27 @@ export function PlbCalculator({ table, sticky = false }: PlbCalculatorProps) {
   const tableCard = who
     ? valueTablePath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured })
     : undefined;
+  /**
+   * The same years the card draws, for the page to show.
+   *
+   * Built by the shared loop rather than a second one: two places computing one table
+   * eventually disagree by a baht or a year, and nothing says which is right. Cover is flat
+   * on this plan — no booster, no top-up for premiums paid — so the sum assured is the whole
+   * of it, and the premium falls due in every year because the paying term and the cover term
+   * are the same formula in the company's own sheet.
+   */
+  const rows = who && annual && !table.expired
+    ? coverRows({
+      years: term.years,
+      payYears: term.years,
+      age: who.age,
+      annualSatang: annual.total,
+      // flat: this plan has no booster and no top-up for premiums paid, so the sum assured
+      // the customer chose is the whole of what the family receives, in every year of it
+      coverSatang: sumAssured * 100,
+    })
+    : [];
+
   const quoteText = who && headline && annual
     ? plbQuoteText({
         sumAssured, termLabel: term.label, age: who.age, sex, years: term.years,
@@ -248,6 +271,16 @@ export function PlbCalculator({ table, sticky = false }: PlbCalculatorProps) {
                 </div>
               </dl>
             </div>
+          )}
+
+          {rows.length > 0 && who && (
+            <CoverTable
+              rows={rows}
+              caption={`ทุนประกัน ${sumAssured.toLocaleString("en-US")} บาท · ${sex === "M" ? "ชาย" : "หญิง"} ${who.age} ปี · ${term.label}`}
+              endsNote={`คุ้มครอง ${term.years} ปี ถึงอายุ ${coverEndsAt(term, who.age)} ปี แล้วสัญญาสิ้นสุด`}
+              cardPath={tableCard}
+              planName="Protection Life"
+            />
           )}
 
           <p className="border-t border-[var(--lg-panel-line)] pt-4 text-xs leading-[1.8] text-[var(--lg-mute)] opacity-80">
