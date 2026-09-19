@@ -1,0 +1,155 @@
+/* ประกันภัยกลุ่ม — the corporate navy, kept as it was.
+
+   This page arrives from a tool that already existed and was already being shown to HR
+   managers, and the owner asked for its colours to come with it rather than be restyled into
+   the rose the life calculator wears. That is not nostalgia: group insurance is sold to a
+   company across a meeting-room table, the other five plans to a person across a coffee
+   table, and the navy-and-gold says which of the two conversations this is before a word of
+   it is read.
+
+   The tokens are --gi-* and set on the page's own wrapper. They are deliberately not the
+   --lg-* ones the sales components read: a page that defined those without wearing the satin
+   would be lying to anything that inherited them, which is the same reason other-plans/theme.css
+   gives for its --op-*.
+
+   Contrast, since every figure here is money: --gi-ink on --gi-panel is 14:1, --gi-mute on it
+   is 5.7:1, and --gi-navy carries white at 11:1. The gold is the one colour that does not
+   clear 4.5:1 as text on white — 3.1:1 — so it is only ever used on a navy ground, as a
+   border, or on a figure large enough to qualify as large text. */
+.group-insurance {
+  color-scheme: light;
+
+  --gi-navy: #292d78;
+  --gi-navy-deep: #1e2159;
+  /* the pale blue the navy panels use for their secondary text: 6.4:1 on the navy */
+  --gi-navy-soft: #ccd6eb;
+  --gi-gold: #a9914d;
+  --gi-gold-deep: #8a7539;
+  --gi-teal: #607f74;
+  --gi-teal-deep: #3f5e52;
+
+  --gi-ground: #fafbfc;
+  --gi-panel: #ffffff;
+  /* one step down from the panel: table stripes, input fills, the quiet row */
+  --gi-sunken: #f8fafc;
+  --gi-line: #e2e8f0;
+  /* a control's edge is the only thing saying "this is a control": 3.1:1 on both surfaces */
+  --gi-line-strong: #94a3b8;
+  --gi-ink: #0f172a;
+  --gi-ink-soft: #334155;
+  --gi-mute: #64748b;
+
+  /* the warning shown when a group is outside what the product will write */
+  --gi-warn-bg: #fffbeb;
+  --gi-warn-line: #fcd34d;
+  --gi-warn-ink: #92400e;
+
+  /* the four risk classes of the registrar's table, darkened until each clears 4.5:1 */
+  --gi-lv1-bg: #d1fae5; --gi-lv1-ink: #065f46;
+  --gi-lv2-bg: #ccfbf1; --gi-lv2-ink: #115e59;
+  --gi-lv3-bg: #fef3c7; --gi-lv3-ink: #92400e;
+  --gi-lv4-bg: #fee2e2; --gi-lv4-ink: #991b1b;
+
+  background: var(--gi-ground);
+  color: var(--gi-ink);
+  min-height: 100vh;
+}
+
+body:has(.group-insurance) { background: var(--gi-ground); }
+
+/* Every figure on this page is money, and money in a column has to line up. */
+.group-insurance .tabular { font-variant-numeric: tabular-nums; }
+
+/* The arrow the browser draws is a grey that belongs to no page; this one is the page's ink. */
+.group-insurance select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='1.5'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  appearance: none;
+  background-color: var(--gi-sunken);
+}
+
+.group-insurance :is(button, a, select, input, summary):focus-visible {
+  outline: 3px solid var(--gi-teal-deep);
+  outline-offset: 2px;
+}
+
+/* iOS Safari zooms the whole page when a focused field is under 16px, and this page is a
+   form of them. Ported from the standalone tool, where it was found the hard way. */
+.group-insurance :is(input, select, textarea) { font-size: 16px; }
+
+/* Apple's 44pt / Material's 48dp, on the things a thumb aims at: six plan buttons in a row
+   on a phone are 50px wide, so their height is the only hit area they have. */
+.group-insurance :is(button, [role="tab"]) { min-height: 44px; }
+
+/* The rider level a plan cannot reach. Marked disabled for the keyboard and for a screen
+   reader as well — this is only what it looks like. */
+.group-insurance button[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+/* A table wider than its box, saying so. The fade is decoration over the last 40px; the
+   scroll itself is the browser's, and a keyboard reaches the far columns by tabbing into
+   them. */
+.group-insurance .gi-hscroll { position: relative; }
+.group-insurance .gi-hscroll[data-scrollable="1"]::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 40px;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+/* While the quotation owns the screen, the page behind it does not scroll under it. */
+html.gi-modal-open, html.gi-modal-open body { overflow: hidden; }
+
+/* ── printing the quotation ──────────────────────────────────────────────────────────────
+ *
+ * The same pipeline the value tables use, and for the same reason PrintButton sets out at
+ * length: the browser shapes the Thai and keeps the text vector, where a canvas-and-jsPDF
+ * quotation — which is what the standalone tool did, at 560KB of vendor script — rasterises
+ * เบี้ยสะสม into something whose combining marks have drifted. "Save as PDF" in the print
+ * dialog is the file, and it is a better file.
+ *
+ * The sheet is laid out in absolute pixels on screen so that it looks like the A4 page it
+ * becomes. For print those widths are handed back to the paper, because a fixed 794px inside
+ * a 794px sheet with margins overflows onto a second, mostly empty page. */
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+
+  .group-insurance .gi-sheet {
+    width: auto !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  /* the dialog's own chrome: the grey surround, the scroll box, the scale-to-fit wrapper.
+     The wrapper's height is the scaled height in pixels, which on paper would crop the sheet
+     to whatever fraction the screen happened to be showing — so it is handed back too. */
+  .group-insurance .gi-sheet-frame,
+  .group-insurance .gi-sheet-box,
+  .group-insurance .gi-sheet-scale {
+    position: static !important;
+    overflow: visible !important;
+    background: none !important;
+    padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  .group-insurance .gi-dialog {
+    position: static !important;
+    display: block !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  /* A table cut through its middle is the one thing a printed quotation must not do. */
+  .group-insurance .gi-sheet tr { break-inside: avoid; }
+  .group-insurance .gi-sheet thead { display: table-header-group; }
+  /* Backgrounds are dropped by default, and the navy heading rows carry white text — without
+     this they print as white on white. */
+  .group-insurance .gi-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

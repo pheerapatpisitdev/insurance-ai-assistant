@@ -29,7 +29,8 @@ export type MenuIcon =
   | "umbrella"
   | "gem"
   | "shieldCheck"
-  | "heart";
+  | "heart"
+  | "building";
 
 export interface MenuLink {
   href: string;
@@ -62,20 +63,21 @@ export interface MenuGroup {
 }
 
 /**
- * The six sales pages.
+ * The seven sales pages.
  *
  * Written out rather than generated from the plan registry, which is what the design said
- * before the two were compared: there are six pages and five plans, `/legacy` is a way of
- * selling Life Protect rather than a plan of its own, and iSmart has no page at all. A list
- * generated from the registry would therefore invent a link to nowhere and miss two that
- * exist.
+ * before the two were compared: there are seven pages and five plans, `/legacy` is a way of
+ * selling Life Protect rather than a plan of its own, iSmart has no page at all, and
+ * `/group-insurance` is not a life plan and is not in the registry. A list generated from
+ * the registry would therefore invent a link to nowhere and miss three that exist.
  *
  * It was already written out — inside the calculator page, where nothing else could reach it.
  * It is here now so that the menu and the calculator cannot come to disagree about how many
  * pages there are.
  *
  * Each one's hue leans toward the page it opens — copper for iShield, gold for the legacy
- * bundle — so the menu and the page an agent lands on are plainly the same thing.
+ * bundle, the corporate navy for group insurance — so the menu and the page an agent lands
+ * on are plainly the same thing.
  */
 export const SALES_PAGES: MenuLink[] = [
   { href: "/lifeprotect", label: "Life Protect x 2", icon: "shield", hue: "#e11d48" },
@@ -84,6 +86,7 @@ export const SALES_PAGES: MenuLink[] = [
   { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์", icon: "gem", hue: "#7e22ce" },
   { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#c2410c" },
   { href: "/ihealthy-ultra", label: "iHealthy Ultra", icon: "heart", hue: "#0369a1" },
+  { href: "/group-insurance", label: "ประกันภัยกลุ่ม", icon: "building", hue: "#292d78" },
 ];
 
 /**
@@ -104,10 +107,21 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
 
   if (signedIn) groups.push({ links: [{ href: "/admin", label: "ภาพรวม", icon: "grid", hue: "#4f46e5" }] });
 
+  /**
+   * ประกันภัยกลุ่ม is in this group and in หน้าขาย below, and the repetition is deliberate.
+   *
+   * The page is both things, which no other page here is. It is the agent's own calculator —
+   * several groups of employees, a total, a quotation — and it is what gets turned around and
+   * shown to the HR manager on the other side of the table. So it appears twice and behaves
+   * differently in each place: here it opens in the tab the agent is already working in, and
+   * under หน้าขาย it opens in a new one, beside the six pages an agent sends a customer to.
+   * The owner was asked which of the two it was and answered both.
+   */
   groups.push({
     title: "งานขาย",
     links: [
       { href: "/other-plans", label: "คำนวณเบี้ย", icon: "calc", hue: "#0d9488" },
+      { href: "/group-insurance", label: "ประกันกลุ่ม", icon: "building", hue: "#292d78" },
       { href: "/", label: "ถาม AI", icon: "spark", hue: "#7c3aed" },
       ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า", icon: "users" as const, hue: "#d97706" }] : []),
     ],
