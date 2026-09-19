@@ -161,7 +161,11 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
   groups.push({
     title: "งานขาย",
     links: [
-      { href: "/other-plans", label: "คำนวณเบี้ย", icon: "calc", hue: "#0d9488" },
+      // "จัดแบบเอง" rather than "คำนวณเบี้ย": every sales page in this menu works out a
+      // premium too, so naming this one after the arithmetic said nothing about what is
+      // different here — which is that the agent builds the arrangement themselves, plan by
+      // rider, instead of being walked through one plan's own questions.
+      { href: "/other-plans", label: "จัดแบบเอง", icon: "calc", hue: "#0d9488" },
       { href: "/", label: "ถาม AI", icon: "spark", hue: "#7c3aed" },
       ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า", icon: "users" as const, hue: "#d97706" }] : []),
     ],
