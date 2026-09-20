@@ -125,7 +125,10 @@ export async function GET(req: NextRequest) {
       width: widthOf(card.columns.length),
       height: heightOf(card),
       fonts: await loadFonts(),
-      headers: CARD_HEADERS,
+      // The card is a customer-facing quote. Its URL already contains the complete
+      // arrangement, and the cache version in cardQuery invalidates older card formats.
+      // Do not let an old rendered image be reused after the selected base/sum changes.
+      headers: { ...CARD_HEADERS, "cache-control": "no-store" },
     },
   );
 }
