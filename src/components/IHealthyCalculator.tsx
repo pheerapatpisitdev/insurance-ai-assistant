@@ -27,6 +27,7 @@ import type { Attached } from "@/components/ihealthy/RiderPanel";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { LinkButton } from "@/components/sales/LinkButton";
 import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
+import dciDiseases from "../../data/riders/dci-diseases.json";
 
 const COVERAGE_LABEL: Record<string, string> = {
   "Full Coverage": "เต็มจำนวน",
@@ -259,6 +260,11 @@ export function IHealthyCalculator(
   };
   const quoteText = iHealthyQuoteText(cta);
   const message = iHealthyMessage(cta);
+  // Show the list from the moment DCI is ticked, not only after its premium round trip has
+  // returned. `answered` keeps the card's price honest; `picked` keeps this explanation in
+  // step with the choice the agent can already see.
+  const dciRider = (answered?.riders ?? picked ?? []).find((r) => r.code === "DCI");
+  const hasDci = Boolean(dciRider);
 
   const label = "block text-sm text-[var(--lg-mute)]";
   const field =
@@ -495,7 +501,7 @@ export function IHealthyCalculator(
                   hand-written version said "ตั้งแต่อายุ 60 คุ้มครองเท่าทุน" over a figure
                   half again the sum assured, and never mentioned the age it falls back at.
                   The same helper writes the copied quote, so the two cannot drift. */}
-              {deathBenefitRows(death).map((row) => (
+              {base.variant !== "WLF99HX" && deathBenefitRows(death).map((row) => (
                 <p key={row.label} className="mt-1">
                   {row.label}{" "}
                   <span className="lg-figure tabular-nums text-[var(--lg-white)]">
@@ -506,6 +512,19 @@ export function IHealthyCalculator(
               ))}
               {shown && (
                 <p className="mt-1 opacity-80">เบี้ยปีแรก ปีต่อไปคิดตามอายุที่เพิ่มขึ้น</p>
+              )}
+              {hasDci && (
+                <section className="mt-4 border-t border-[var(--lg-panel-line)] pt-4">
+                  <h3 className="font-medium text-[var(--lg-white)]">
+                    DCI คุ้มครองโรคร้ายแรง {dciRider?.sumAssured?.toLocaleString("en-US")} บาท · 31 โรค
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed">
+                    เป็นไปตามคำนิยามและเงื่อนไขในกรมธรรม์
+                  </p>
+                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-relaxed">
+                    {dciDiseases.diseases.map((disease) => <li key={disease}>{disease}</li>)}
+                  </ol>
+                </section>
               )}
             </div>
           </>

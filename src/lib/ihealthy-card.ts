@@ -10,6 +10,7 @@ import {
   MODES, dailyCashLabel, deathBenefitOf, iHealthyPricing, plansFor,
 } from "@/lib/ihealthy-quote";
 import { priceRiders } from "@/lib/ihealthy-rider-quote";
+import dciDiseases from "../../data/riders/dci-diseases.json";
 
 /**
  * The health quote as a picture: the card a customer is looking at, and the table under it,
@@ -88,6 +89,7 @@ const COVERAGE_WORD: Record<string, string> = {
   "Co-Payment": "ร่วมจ่าย",
 };
 const DASH = "-";
+const DCI_DISEASES = dciDiseases.diseases as string[];
 /**
  * How an instalment reads after a figure. The page's own `PER` is written for the middle of a
  * sentence — "47,230 บาท/ปี" — and a card sets the figure large with the unit beside it,
@@ -242,6 +244,13 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
   const cover = COVERAGE_WORD[v.coverage] ?? "";
   /** The company's categories this picture leaves out, counted from the sheet. */
   const hidden = categoryNumbers(facts.rows).filter((no) => !(no in PHONE_ROW_LABEL)).length;
+  const dciSumAssured = asked.find((r) => r.code === "DCI")?.sumAssured;
+  const dciNotes = priced.extraCodes.includes("DCI")
+    ? [
+        `สัญญา DCI คุ้มครองโรคร้ายแรง ${dciSumAssured?.toLocaleString("en-US") ?? ""} บาท · ${DCI_DISEASES.length} โรค (ตามคำนิยามในกรมธรรม์)`,
+        ...DCI_DISEASES.map((disease, index) => `${index + 1}. ${disease}`),
+      ]
+    : [];
 
   return {
     planLine: `iHealthy Ultra ${planLabel(v.plan)}`,
@@ -272,7 +281,10 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
     // The rider covers the illness; this is what the base plan under it is for, and the one
     // figure on the card that the table below has no column for. The same helper writes the
     // page's card and the copied quote, so the three cannot drift apart.
-    death: deathBenefitRows(death),
+    // Health Ultra Package is the fixed 50,000-baht health vehicle. Its card should not
+    // advertise the package's underlying life-death benefit; that line belongs to the
+    // selectable life base, while DCI remains described separately when it is attached.
+    death: v.base === "WLF99HX" ? [] : deathBenefitRows(death),
     columns,
     rows,
     premiumRows,
@@ -287,6 +299,7 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
         + `ตารางเต็มมีอีก ${hidden} หมวด ดูได้ในหน้าเว็บ`,
       "เบี้ยปีแรกของอาชีพชั้น 1 · เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
       "ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกันและที่ระบุในกรมธรรม์",
+      ...dciNotes,
     ],
   };
 }

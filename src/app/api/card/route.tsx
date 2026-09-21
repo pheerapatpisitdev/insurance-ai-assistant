@@ -35,6 +35,8 @@ const H = {
   afterHairline: 26,
   sectionTitle: 42,
   row: 54,
+  listLine: 29,
+  listPadding: 10,
   note: 32,
   /** the strip of colour keys under the drawing */
   legend: 46,
@@ -44,6 +46,20 @@ const H = {
 function sectionHeight(rows: CardRow[] | undefined): number {
   if (!rows?.length) return 0;
   return H.gap + H.hairline + H.afterHairline + H.sectionTitle + rows.length * H.row;
+}
+
+/** Thai disease names vary substantially in length, so the card reserves a second line for
+ * longer ones rather than allowing ImageResponse to compress adjacent rows. */
+function listItemHeight(item: string, index: number): number {
+  const charactersPerLine = 43;
+  const text = `${index + 1}. ${item}`;
+  return Math.ceil(text.length / charactersPerLine) * H.listLine + H.listPadding;
+}
+
+function listSectionHeight(items: string[] | undefined): number {
+  if (!items?.length) return 0;
+  return H.gap + H.hairline + H.afterHairline + H.sectionTitle
+    + items.reduce((height, item, index) => height + listItemHeight(item, index), 0);
 }
 
 function chartHeight(chart: CardChart | undefined): number {
@@ -57,7 +73,7 @@ function heightOf(card: QuoteCard): number {
     + (card.premium ? H.premium : H.noPrice)
     + (card.perDay ? H.perDay : 0)
     + card.others.length * H.others
-    + card.sections.reduce((h, s) => h + sectionHeight(s.rows), 0)
+    + card.sections.reduce((h, s) => h + (s.items?.length ? listSectionHeight(s.items) : sectionHeight(s.rows)), 0)
     + chartHeight(card.chart)
     + H.gap + H.hairline + H.afterHairline + card.notes.length * H.note
     + SIGNATURE_HEIGHT;
@@ -83,6 +99,29 @@ function Rows({ title, rows, p }: { title: string; rows: CardRow[]; p: CardPalet
         >
           <div style={{ display: "flex", fontSize: 27, color: p.mute }}>{r.label}</div>
           <div style={{ display: "flex", fontFamily: "Trirong", fontSize: 34, color: p.ink }}>{r.amount} บาท</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ListRows({ title, items, p }: { title: string; items: string[]; p: CardPalette }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
+      <div style={spacer(H.gap)} />
+      <div style={spacer(H.hairline, p.hair)} />
+      <div style={spacer(H.afterHairline)} />
+      <div style={{ ...band(H.sectionTitle), fontSize: 26, color: p.mute }}>{title}</div>
+      {items.map((item, index) => (
+        <div
+          key={item}
+          style={{
+            display: "flex", minHeight: listItemHeight(item, index), flexShrink: 0,
+            alignItems: "flex-start", fontSize: 21, lineHeight: 1.35, color: p.mute,
+          }}
+        >
+          <span style={{ display: "flex", width: 42, flexShrink: 0, color: p.accent }}>{index + 1}.</span>
+          <span style={{ display: "flex", flex: 1 }}>{item}</span>
         </div>
       ))}
     </div>
@@ -234,7 +273,11 @@ export async function GET(req: NextRequest) {
           <div key={line} style={{ ...band(H.others), fontSize: 25, color: p.mute }}>{line}</div>
         ))}
 
-        {card.sections.map((s) => <Rows key={s.title} title={s.title} rows={s.rows} p={p} />)}
+        {card.sections.map((s) => (
+          s.items?.length
+            ? <ListRows key={s.title} title={s.title} items={s.items} p={p} />
+            : <Rows key={s.title} title={s.title} rows={s.rows} p={p} />
+        ))}
         {card.chart && <Chart chart={card.chart} p={p} />}
 
         <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>

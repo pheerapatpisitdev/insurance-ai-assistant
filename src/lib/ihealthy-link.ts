@@ -260,7 +260,7 @@ export function cardQuery(table: IHealthyTable, v: IHealthyInitial): string {
   // Bump this when the card input contract changes. Without a cache key, an image already
   // cached by a browser, Messenger, or a CDN can survive after the calculator has switched
   // from the old 150,000-baht base to the 50,000-baht Health Ultra Package.
-  return `${queryFrom(table, v)}&v=${cardPaletteVersion(IHEALTHY_SATIN)}&cv=2`;
+  return `${queryFrom(table, v)}&v=${cardPaletteVersion(IHEALTHY_SATIN)}&cv=5`;
 }
 
 /**

@@ -17,6 +17,7 @@ import { coverEndsAt } from "@/lib/plb-quote";
 import { lifeTreasureTable } from "@/lib/lifetreasure-table";
 import { easyProtectTable } from "@/lib/easyprotect-table";
 import { displayPremium, perDayText } from "@/lib/legacy-cta";
+import { riderDiseases } from "@/calc/riders/diseases";
 
 /**
  * The quote as a picture: what a customer can keep, and what a chat can send them.
@@ -41,7 +42,10 @@ export interface CardRow {
  */
 export interface CardSection {
   title: string;
+  /** Amount rows, retained for every section so existing card consumers stay simple. */
   rows: CardRow[];
+  /** A compact numbered list for content such as covered diseases. */
+  items?: string[];
 }
 
 /**
@@ -678,9 +682,22 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
       title: "ตรวจพบโรคร้ายแรง รับเงินก้อน",
       rows: [{ label: "จ่ายครั้งเดียว", amount: money(ci.amount) }],
     });
+    const diseases = riderDiseases(ci.code)?.diseases ?? [];
+    if (diseases.length) {
+      sections.push({
+        title: `คุ้มครองโรคร้ายแรง ${diseases.length} โรค`,
+        rows: [],
+        items: diseases,
+      });
+    }
   }
   const cashRows = cashRowsFor(bundle.planCode, bundle.variant, input.sex, input.age, tier.sumAssured);
-  if (cashRows.length) sections.push({ title: CASH_TITLE, rows: cashRows });
+  // The Legacy sales card is about the immediate family and critical-illness protection.
+  // Its surrender figures are not part of the shared quote, while other bundle cards may
+  // still use the common cash-value block.
+  if (input.bundleCode !== "LEGACY_FAMILY" && cashRows.length) {
+    sections.push({ title: CASH_TITLE, rows: cashRows });
+  }
 
   return {
     planLine: `ชุด${bundle.name}`,

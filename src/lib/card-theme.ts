@@ -96,6 +96,13 @@ const SATIN_ROSE: CardPalette = {
   line: { cash: "#8c4a3f", premium: "#857a78", cover: "#948886" },
 };
 
+/** /legacy: the same terracotta hierarchy, on plain white for a cleaner shared quote. */
+const LEGACY_WHITE: CardPalette = {
+  ...SATIN_ROSE,
+  ground: "#ffffff",
+  groundDeep: "#ffffff",
+};
+
 /**
  * /ihealthy-ultra: the rose satin, because that is what the page wears now.
  *
@@ -111,6 +118,10 @@ const SATIN_ROSE: CardPalette = {
  */
 export const IHEALTHY_SATIN: CardPalette = {
   ...SATIN_ROSE,
+  // Quote cards travel as images and are often viewed beside white chat bubbles or printed.
+  // A true white ground keeps the figures crisp without changing the sales page's own theme.
+  ground: "#ffffff",
+  groundDeep: "#ffffff",
   mute: "#524645",
 };
 
@@ -122,7 +133,7 @@ export const IHEALTHY_SATIN: CardPalette = {
 const BY_CODE: Record<string, CardPalette> = {
   ISHIELD: COPPER_IVORY,
   PLB: SATIN_ROSE,
-  LEGACY_FAMILY: SATIN_ROSE,
+  LEGACY_FAMILY: LEGACY_WHITE,
   LIFEPROTECT: CHARCOAL_GOLD,
   LIFETREASURE: CHARCOAL_GOLD,
 };
@@ -138,15 +149,15 @@ export function cardPaletteFor(input: CardInput): CardPalette {
 }
 
 /**
- * A short fingerprint of a palette's colours, written into every card link.
+ * A short fingerprint of a card's palette and drawing revision, written into every card link.
  *
  * A card is cached by its address — an hour in the browser, a day at the edge — and the
  * palette is not part of the address, so re-colouring a plan leaves every card already
  * fetched serving the old colours until its cache expires. An agent who sent a quote
  * yesterday would keep getting yesterday's palette for a day after the change went out.
  *
- * Deriving it from the colours rather than bumping a number by hand means the cache clears
- * itself whenever the palette actually changes, and stays put when it does not. The route
+ * Deriving the palette part from the colours keeps it current whenever the palette changes;
+ * DRAWING_REVISION is bumped when the card's contents or layout change. The route
  * ignores the parameter: it is an address, not an instruction, and a card asked for under
  * any `v` is drawn in the palette the plan is currently sold under.
  *
@@ -169,7 +180,10 @@ export function cardPaletteVersion(palette: CardPalette): string {
   return h.toString(36);
 }
 
-/** The fingerprint of the palette this card will be drawn in. */
+/** Bump when a card gains or removes visible content without changing its palette. */
+const DRAWING_REVISION = "3";
+
+/** The fingerprint of the palette and layout this card will be drawn in. */
 export function cardVersionFor(input: CardInput): string {
-  return cardPaletteVersion(cardPaletteFor(input));
+  return `${cardPaletteVersion(cardPaletteFor(input))}-${DRAWING_REVISION}`;
 }

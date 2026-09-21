@@ -54,7 +54,7 @@ export interface MenuLink {
    * reading the word, on any page.
    */
   hue: string;
-  /** opened in a new tab: a sales page is something an agent shows, not somewhere they go */
+  /** True only for links that leave this application. */
   external?: boolean;
 }
 
@@ -155,8 +155,7 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
    * Then the sales pages were dealt into the four kinds of cover, and one of those headings
    * is ประกันกลุ่ม. Two links a few lines apart, one called ประกันกลุ่ม and one called
    * ประกันภัยกลุ่ม, read as a mistake however well meant — so the owner took this one out.
-   * The page is still both things; it is now reached from one place, which opens it in a new
-   * tab the way every other sales page does.
+   * The page is still both things; it is now reached from one place.
    */
   groups.push({
     title: "งานขาย",
@@ -188,8 +187,10 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
     });
   }
 
+  // Sales pages are part of the calculator, so the sidebar keeps the user in the same tab.
+  // `external` remains available for a genuinely off-site link added in the future.
   for (const section of SALES_SECTIONS) {
-    groups.push({ title: section.title, links: section.links.map((p) => ({ ...p, external: true })) });
+    groups.push({ title: section.title, links: section.links });
   }
   return groups;
 }
