@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { monthSpend, monthStart } from "./ledger";
 import { CALLERS, EMBEDDERS, JUDGE, type JudgeAnswer, type JudgeQuestion } from "./providers";
 import type { ChatMessage, ChatResult, ModelRow, Tier } from "./types";
 
@@ -82,12 +83,9 @@ export function clearAiConfigCache() {
   cached = null;
 }
 
-/** Spend so far this calendar month, in baht. */
+/** Spend so far this calendar month, in baht — summed in the database, never from rows. */
 async function spentThisMonth(): Promise<number> {
-  const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-  const { data } = await supabaseAdmin()
-    .from("ins_usage_ledger").select("cost_thb").gte("created_at", start);
-  return (data ?? []).reduce((s, r) => s + Number(r.cost_thb ?? 0), 0);
+  return (await monthSpend(monthStart())).baht;
 }
 
 async function assertWithinBudget(config: Config) {

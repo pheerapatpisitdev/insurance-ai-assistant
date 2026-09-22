@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { monthSpend, monthStart } from "@/lib/ai/ledger";
 import { rangeStart, summarise } from "@/lib/crm/summary";
 import { profileOf } from "@/lib/facebook/profile";
 import type { ConversationRow, LeadRow, Range, Summary, UnansweredRow } from "@/lib/crm/types";
@@ -38,7 +39,6 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
 
   const supabase = supabaseAdmin();
   const since = rangeStart(range).toISOString();
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
   const [conversations, leads, unanswered, spend] = await Promise.all([
     supabase
@@ -65,7 +65,7 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
       .gte("at", since)
       .order("at", { ascending: false })
       .limit(UNANSWERED_LIMIT),
-    supabase.from("ins_usage_ledger").select("cost_thb").gte("created_at", monthStart),
+    monthSpend(monthStart()),
   ]);
 
   // the select list is long enough that the client infers an error shape rather than the row
@@ -91,7 +91,7 @@ export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
     summary: summarise(rows, range),
     leads: await withNames(leadRows),
     unanswered: (unanswered.data ?? []) as unknown as UnansweredRow[],
-    aiCostThisMonth: (spend.data ?? []).reduce((sum, r) => sum + Number(r.cost_thb ?? 0), 0),
+    aiCostThisMonth: spend.baht,
   };
 }
 

@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { clearAiConfigCache, testProviders, type ProviderCheck } from "@/lib/ai/client";
+import { monthSpend, monthStart, type SpendLine } from "@/lib/ai/ledger";
 import { EMBEDDERS, JUDGE } from "@/lib/ai/providers";
 
 export type { ProviderCheck } from "@/lib/ai/client";
@@ -47,18 +48,16 @@ export async function loadAiPage(): Promise<{
   spentThisMonth: number; spend: ProviderSpend[];
 }> {
   const supabase = supabaseAdmin();
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const [keys, models, prefs, settings, spend] = await Promise.all([
     supabase.from("ins_api_keys").select("provider, tail, enabled"),
     supabase.from("model_configs").select("id, provider, kind, model_name, enabled").order("provider").order("model_name"),
     supabase.from("ins_model_prefs").select("model_id, enabled"),
     supabase.from("ins_ai_settings").select("small_model, large_model, monthly_budget_thb").maybeSingle(),
-    // the model rather than the provider is what the ledger records, so the rows are joined
+    // the model rather than the provider is what the ledger records, so the lines are joined
     // back to the model table below; the ledger has no column saying which company was paid
-    supabase.from("ins_usage_ledger").select("model, task, cost_thb").gte("created_at", monthStart),
+    monthSpend(monthStart()),
   ]);
   const disabled = new Set((prefs.data ?? []).filter((p) => !p.enabled).map((p) => p.model_id));
-  const rows = (spend.data ?? []) as { model: string | null; task: string | null; cost_thb: number | null }[];
   return {
     keys: ((keys.data ?? []) as { provider: string; tail: string; enabled: boolean | null }[])
       .map((k) => ({ provider: k.provider, tail: k.tail, enabled: k.enabled !== false })),
@@ -75,8 +74,8 @@ export async function loadAiPage(): Promise<{
     ],
     settings: settings.data ?? null,
     providers: [...PROVIDERS],
-    spentThisMonth: rows.reduce((sum, r) => sum + Number(r.cost_thb ?? 0), 0),
-    spend: byProvider(rows, (models.data ?? []) as { provider: string; model_name: string }[]),
+    spentThisMonth: spend.baht,
+    spend: byProvider(spend.lines, (models.data ?? []) as { provider: string; model_name: string }[]),
   };
 }
 
@@ -86,10 +85,7 @@ export async function loadAiPage(): Promise<{
  * A single total says the month is costing money; it does not say which of five keys is
  * doing it, and that is the question somebody looking at this card is actually asking.
  */
-function byProvider(
-  rows: { model: string | null; task: string | null; cost_thb: number | null }[],
-  models: { provider: string; model_name: string }[],
-): ProviderSpend[] {
+function byProvider(lines: SpendLine[], models: { provider: string; model_name: string }[]): ProviderSpend[] {
   // the embedders and the judge are priced in code, not in the table, and still cost money
   const providerOf = new Map([
     ...models.map((m) => [m.model_name, m.provider] as const),
@@ -97,15 +93,15 @@ function byProvider(
     [JUDGE.model, JUDGE.provider] as const,
   ]);
   const acc = new Map<string, { calls: number; baht: number; tasks: Map<string, number> }>();
-  for (const r of rows) {
+  for (const l of lines) {
     // a model the reference table no longer lists still cost money, and saying so under its
-    // own name beats dropping the row and quietly under-reporting the month
-    const provider = providerOf.get(r.model ?? "") ?? (r.model ? `${r.model} (ไม่รู้จักค่าย)` : "ไม่ทราบ");
+    // own name beats dropping the line and quietly under-reporting the month
+    const provider = providerOf.get(l.model ?? "") ?? (l.model ? `${l.model} (ไม่รู้จักค่าย)` : "ไม่ทราบ");
     const at = acc.get(provider) ?? { calls: 0, baht: 0, tasks: new Map<string, number>() };
-    at.calls += 1;
-    at.baht += Number(r.cost_thb ?? 0);
-    const task = r.task ?? "ไม่ระบุ";
-    at.tasks.set(task, (at.tasks.get(task) ?? 0) + 1);
+    at.calls += l.calls;
+    at.baht += l.baht;
+    const task = l.task ?? "ไม่ระบุ";
+    at.tasks.set(task, (at.tasks.get(task) ?? 0) + l.calls);
     acc.set(provider, at);
   }
   return [...acc.entries()]
