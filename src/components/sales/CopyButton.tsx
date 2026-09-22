@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { ContactWords } from "@/lib/ihealthy-words";
 
 /**
  * Puts the quote on the clipboard for the agent to paste into whatever chat the customer is
@@ -10,7 +11,8 @@ import { useEffect, useState } from "react";
  * hidden-textarea fallback still works there.
  */
 export function CopyButton(
-  { text, className, compact = false }: { text: string; className: string; compact?: boolean },
+  { text, className, compact = false, words }:
+    { text: string; className: string; compact?: boolean; words?: ContactWords["copy"] },
 ) {
   const [copied, setCopied] = useState(false);
 
@@ -39,7 +41,7 @@ export function CopyButton(
 
   return (
     <button type="button" onClick={copy} className={className} aria-live="polite">
-      {copied ? "คัดลอกแล้ว ✓" : compact ? "คัดลอก" : "คัดลอกข้อความ"}
+      {copied ? words?.copied ?? "คัดลอกแล้ว ✓" : compact ? words?.compact ?? "คัดลอก" : words?.full ?? "คัดลอกข้อความ"}
     </button>
   );
 }

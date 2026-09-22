@@ -2,6 +2,7 @@ import { messengerUrl } from "@/lib/legacy-cta";
 import { CopyButton } from "./CopyButton";
 import { SendButton } from "./SendButton";
 import { CardButton } from "./CardButton";
+import type { ContactWords } from "@/lib/ihealthy-words";
 
 /**
  * The way out of the page: a chat with a person on the agency's Facebook Page — and, once a
@@ -11,12 +12,14 @@ import { CardButton } from "./CardButton";
  * The message is prepared, never sent: pressing send stays the customer's own act.
  */
 export function ContactButtons(
-  { message, copyText, cardPath, tableCardPath, tableLabel, compact = false }:
+  { message, copyText, cardPath, tableCardPath, tableLabel, compact = false, words }:
     {
       message: string; copyText?: string; cardPath?: string; tableCardPath?: string;
       /** what the table's button says, for a plan whose table is not a table of values */
       tableLabel?: { full: string; compact: string };
       compact?: boolean;
+      /** the buttons' labels in another language; each button keeps its own Thai without it */
+      words?: ContactWords;
     },
 ) {
   const shape = compact
@@ -28,10 +31,10 @@ export function ContactButtons(
         href={messengerUrl(message)} target="_blank" rel="noopener noreferrer"
         className={`${shape} lg-metal-face${compact ? "" : " lg-sheen"}`}
       >
-        {compact ? "ทักเพจ" : "ทักเพจปรึกษาฟรี"}
+        {compact ? words?.chat.compact ?? "ทักเพจ" : words?.chat.full ?? "ทักเพจปรึกษาฟรี"}
       </a>
       {cardPath && (
-        <CardButton path={cardPath} compact={compact} className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`} />
+        <CardButton path={cardPath} compact={compact} words={words?.card} className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`} />
       )}
       {/* the table's own picture belongs here as well as beside the table: someone who has
           just read sixty rows is at the bottom of the page, looking at these */}
@@ -46,8 +49,8 @@ export function ContactButtons(
       )}
       {copyText && (
         <>
-          <SendButton text={copyText} compact={compact} className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`} />
-          <CopyButton text={copyText} compact={compact} className={`${shape} border border-[var(--lg-panel-line)] text-[var(--lg-mute)]`} />
+          <SendButton text={copyText} compact={compact} words={words?.send} className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`} />
+          <CopyButton text={copyText} compact={compact} words={words?.copy} className={`${shape} border border-[var(--lg-panel-line)] text-[var(--lg-mute)]`} />
         </>
       )}
     </div>

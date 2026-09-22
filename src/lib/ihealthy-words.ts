@@ -1,0 +1,765 @@
+import type { PayMode, Sex } from "@/calc/types";
+import type { DeathWords } from "@/lib/death-benefit";
+import type { Lang } from "@/lib/ihealthy-lang";
+
+/**
+ * Everything the iHealthy Ultra page says in its own voice, in each of its four languages.
+ *
+ * The company's own wording — the benefit rows, the terms, the disclaimer — is not here: it is
+ * translated on the server from data/riders/ihealthy-ultra.i18n.json, so the browser never
+ * downloads three languages of contract prose to show one. What is here is the page's own
+ * furniture, small enough to ship whole.
+ *
+ * The Thai is the page as it was before there were other languages, word for word, and the
+ * type makes every language say every line: a sentence added to Thai without its three
+ * readings fails the build rather than appearing in Thai on the English page.
+ */
+
+const n = (x: number) => x.toLocaleString("en-US");
+
+/** A ceiling in the unit a reader of that language counts large sums in. */
+export interface Big {
+  num: string;
+  unit: string;
+}
+
+export interface IHealthyWords {
+  // ---------- the page ----------
+  metaTitle: string;
+  metaDescription: string;
+  switchLabel: string;
+  /** that a translation is a reading of the Thai, and the Thai is what binds; empty in Thai */
+  translationNote: string;
+  expiredTable: (expiresOn: string) => string;
+
+  // ---------- hero ----------
+  eyebrow: string;
+  titleLabel: string;
+  intro: (minBaht: number, maxBaht: number, plans: number, renewalToAge: number) => string;
+  highlightsLabel: string;
+  maxPerYear: string;
+  choosePlans: string;
+  plansUnit: string;
+  renewTo: string;
+  yearsUnit: string;
+  designYours: string;
+
+  // ---------- money and people ----------
+  big: (baht: number) => Big;
+  /** `big` with the currency folded into the unit, for a sum standing on its own */
+  bigBaht: (baht: number) => Big;
+  baht: string;
+  years: (age: number) => string;
+  sex: Record<Sex, string>;
+  mode: Record<PayMode, string>;
+  coverage: Record<string, string>;
+  territory: Record<string, string>;
+
+  // ---------- the form ----------
+  age: string;
+  sexLabel: string;
+  base: string;
+  baseSum: string;
+  healthPlan: string;
+  coverageLabel: string;
+  /** what the base plan buttons say, by the rate key's variant, falling back to the table's */
+  baseLabel: Record<string, string>;
+  baseShort: Record<string, string>;
+  baseNote: Record<string, string>;
+  sumOf: (sum: number) => string;
+  /** the base plan and its sum, as one line on the card */
+  baseWithSum: (label: string, sum: number) => string;
+  fixedSum: (sum: number) => string;
+  onlyPlans: (age: number, plans: string[]) => string;
+  territoryOnly: (territory: string, coverage: string) => string;
+
+  // ---------- the card ----------
+  notSoldAtAge: (age: number) => string;
+  totalPremium: (mode: string) => string;
+  belowMinimum: (minMonthly: number) => string;
+  refused: (modes: string[], minMonthly: number) => string;
+  expiredCard: string;
+  annualLimit: string;
+  deductible: (baht: number) => string;
+  copay: (percent: number) => string;
+  firstYearOnly: string;
+  dailyCash: (perDay: number) => string;
+  /** the benefit table's row title for the same rider, which carries its figure in the cell */
+  dailyCashRow: string;
+  riderCount: (count: number) => string;
+  dciTitle: (sum: string) => string;
+  dciNote: string;
+  death: DeathWords;
+  printOrPdf: string;
+  copyLink: string;
+  linkCopied: string;
+
+  // ---------- the contact buttons ----------
+  contact: ContactWords;
+
+  // ---------- the rider fold ----------
+  foldTitle: string;
+  pricingFailed: string;
+  retry: string;
+  pricing: string;
+  optionOf: (rider: string) => string;
+  planOf: (rider: string) => string;
+  sumOfRider: (rider: string) => string;
+
+  // ---------- the benefit table ----------
+  tableScroll: string;
+  tableCaption: (plans: number) => string;
+  benefitColumn: string;
+  notSold: string;
+  upTo: (limit: string) => string;
+  perDay: string;
+  samePlans: string;
+  premiumHeading: string;
+  moreOnDesktop: (hidden: number) => string;
+  scrollHint: string;
+  phoneRow: Record<number, string>;
+
+  // ---------- terms and disclaimer ----------
+  termsHeading: string;
+  waitingSummary: (days: number, specialDays: number) => string;
+  waitingBody: (days: number, groups: number, specialDays: number) => string;
+  preExistingSummary: string;
+  noClaimSummary: (percent: number) => string;
+  renewalCopaySummary: string;
+  premiumChangesSummary: string;
+  outOfTerritorySummary: (days: number) => string;
+  exclusionsSummary: string;
+  firstYearDisclaimer: (rateVersion: string) => string;
+
+  /** the rider engine's Thai, read into this language where it is one of the known lines */
+  rider: (thai: string) => string;
+}
+
+/** The labels the shared sales buttons carry; each defaults to its Thai on every other page. */
+export interface ContactWords {
+  chat: { full: string; compact: string };
+  card: { full: string; compact: string; working: string; copied: string; failed: string };
+  send: { full: string; compact: string; copied: string; copiedCompact: string };
+  copy: { full: string; compact: string; copied: string };
+}
+
+// ---------- the rider engine's lines ----------
+
+/**
+ * The rider engine speaks Thai to every calculator in the building and should go on doing so;
+ * this page reads its lines into the reader's language on the way to the screen.
+ *
+ * Only lines it knows are read — its handful of names, and the few sentence shapes the rules
+ * build around a figure. Anything else is shown as the engine wrote it, which is a Thai line on
+ * an English page rather than a line that says something the engine did not.
+ */
+interface RiderPhrases {
+  names: Record<string, string>;
+  exact: Record<string, string>;
+  ages: (min: string, max: string) => string;
+  issueAges: (min: string, max: string) => string;
+  exceeds: (what: string) => string;
+  belowMin: (what: string, min: string) => string;
+  mustBe: (code: string, amount: string) => string;
+  notPriced: (line: string) => string;
+  unreadable: (count: string) => string;
+  paysTo: (plan: string, age: string) => string;
+  monthlyBelow: (min: string) => string;
+  packageNeeds: (code: string) => string;
+}
+
+function riderReader(p: RiderPhrases): (thai: string) => string {
+  const name = (s: string) => p.names[s] ?? s;
+  const read = (s: string): string => {
+    if (s in p.exact) return p.exact[s];
+    if (s in p.names) return p.names[s];
+    let m: RegExpExecArray | null;
+    if ((m = /^(.+) จึงไม่ได้คิดเบี้ยให้$/.exec(s))) {
+      const rest = m[1];
+      const unreadable = /^มีสัญญาเพิ่มเติม (\d+) รายการที่อ่านไม่ออก$/.exec(rest);
+      if (unreadable) return p.unreadable(unreadable[1]);
+      // "<rider name> <reason>" — the name has spaces of its own, so it is matched whole
+      const known = Object.keys(p.names).find((k) => rest.startsWith(`${k} `));
+      if (known) return p.notPriced(`${p.names[known]}: ${read(rest.slice(known.length + 1))}`);
+      return s;
+    }
+    if ((m = /^(\d+) - (\d+) ปี$/.exec(s))) return p.ages(m[1], m[2]);
+    if ((m = /^อายุรับประกัน (\d+) - (\d+) ปี$/.exec(s))) return p.issueAges(m[1], m[2]);
+    if ((m = /^(.+) เกินกว่าที่กำหนด$/.exec(s))) return p.exceeds(name(m[1]));
+    if ((m = /^(.+) ต่ำกว่าขั้นต่ำ ([\d,]+)$/.exec(s))) return p.belowMin(name(m[1]), m[2]);
+    if ((m = /^ต้องระบุทุน (\S+) ([\d,]+) บาทเท่านั้น$/.exec(s))) return p.mustBe(m[1], m[2]);
+    // the package's own wording counts in แสน, a hundred thousand
+    if ((m = /^ต้องระบุทุน (\S+) (\d+) แสนบาทเท่านั้น$/.exec(s))) {
+      return p.mustBe(m[1], n(Number(m[2]) * 100_000));
+    }
+    if ((m = /^(.+) — ชำระเบี้ยครบอายุ (\d+) ปี$/.exec(s))) return p.paysTo(m[1], m[2]);
+    if ((m = /^เบี้ยประกันภัยรายเดือนต่ำกว่า ([\d,]+) บาท$/.exec(s))) return p.monthlyBelow(m[1]);
+    if ((m = /^แพ็กเกจนี้ต้องซื้อ (\S+)$/.exec(s))) return p.packageNeeds(m[1]);
+    return s;
+  };
+  return read;
+}
+
+const THAI_CONTACT: ContactWords = {
+  chat: { full: "ทักเพจปรึกษาฟรี", compact: "ทักเพจ" },
+  card: { full: "ส่งการ์ด", compact: "การ์ด", working: "กำลังสร้าง…", copied: "คัดลอกรูปแล้ว ✓", failed: "เปิดรูปในแท็บใหม่" },
+  send: { full: "ส่งให้ลูกค้า", compact: "ส่งต่อ", copied: "คัดลอกแล้ว เปิด Inbox ✓", copiedCompact: "คัดลอกแล้ว ✓" },
+  copy: { full: "คัดลอกข้อความ", compact: "คัดลอก", copied: "คัดลอกแล้ว ✓" },
+};
+
+const th: IHealthyWords = {
+  metaTitle: "iHealthy Ultra — ค่ารักษาพยาบาลเหมาจ่ายถึง 100 ล้านต่อปี",
+  metaDescription:
+    "ประกันสุขภาพเหมาจ่าย 6 แผน วงเงิน 3 ถึง 100 ล้านบาทต่อปี ต่ออายุได้ถึงอายุ 98 ปี เทียบผลประโยชน์ครบ 28 หมวด และคำนวณเบี้ยของคุณเองได้ทันที",
+  switchLabel: "ภาษา",
+  translationNote: "",
+  expiredTable: (on) => `ตารางเบี้ยชุดนี้หมดอายุตั้งแต่ ${on} ขอเบี้ยปัจจุบันได้จากตัวแทน`,
+
+  eyebrow: "ประกันสุขภาพ · iHealthy Ultra",
+  titleLabel: "ค่ารักษาพยาบาล",
+  intro: (min, max, plans, age) =>
+    `เหมาจ่ายค่ารักษาต่อปี ตั้งแต่ ${n(min / 1e6)} ล้าน ถึงสูงสุด ${n(max / 1e6)} ล้านบาท เลือกได้ ${plans} แผน ต่ออายุได้ถึงอายุ ${age} ปี`,
+  highlightsLabel: "จุดเด่นความคุ้มครอง",
+  maxPerYear: "วงเงินสูงสุดต่อปี",
+  choosePlans: "เลือกความคุ้มครอง",
+  plansUnit: "แผน",
+  renewTo: "ต่ออายุได้ถึง",
+  yearsUnit: "ปี",
+  designYours: "ออกแบบความคุ้มครองของคุณ",
+
+  big: (baht) => ({ num: n(baht / 1e6), unit: "ล้าน" }),
+  bigBaht: (baht) => ({ num: n(baht / 1e6), unit: "ล้านบาท" }),
+  baht: "บาท",
+  years: (age) => `${age} ปี`,
+  sex: { M: "ชาย", F: "หญิง" },
+  mode: { annual: "รายปี", semi: "ราย 6 เดือน", monthly: "รายเดือน" },
+  coverage: { "Full Coverage": "เต็มจำนวน", Deductible: "มีความรับผิดส่วนแรก", "Co-Payment": "ร่วมจ่าย" },
+  territory: { ประเทศไทย: "ประเทศไทย", เอเชีย: "เอเชีย", ทั่วโลก: "ทั่วโลก" },
+
+  age: "อายุ",
+  sexLabel: "เพศ",
+  base: "สัญญาหลัก",
+  baseSum: "ทุนสัญญาหลัก",
+  healthPlan: "แผนสุขภาพ",
+  coverageLabel: "ความคุ้มครอง",
+  baseLabel: {},
+  baseShort: {},
+  baseNote: {},
+  sumOf: (sum) => `ทุน ${n(sum)}`,
+  baseWithSum: (label, sum) => `${label} ทุน ${n(sum)}`,
+  fixedSum: (sum) => `${n(sum)} บาท · แพ็กเกจกำหนดไว้ เปลี่ยนไม่ได้`,
+  onlyPlans: (age, plans) => `ที่อายุ ${age} ปี บริษัทขายเฉพาะแผน ${plans.join(" และ ")}`,
+  territoryOnly: (t, c) => `อาณาเขต${t}มีเฉพาะความคุ้มครองแบบ${c}`,
+
+  notSoldAtAge: (age) => `ที่อายุ ${age} ปี บริษัทยังไม่เปิดขายแบบที่เลือกไว้ ลองเปลี่ยนสัญญาหลักหรือแผนสุขภาพ`,
+  totalPremium: (mode) => `เบี้ยรวม ${mode}`,
+  belowMinimum: (min) => `ต่ำกว่าเบี้ยรายเดือนขั้นต่ำ ${n(min)} บาท ที่บริษัทรับชำระ`,
+  refused: (modes, min) => `${modes.join(" และ ")} ต่ำกว่าขั้นต่ำ ${n(min)} บาท บริษัทไม่รับชำระ`,
+  expiredCard: "ตารางเบี้ยชุดนี้หมดอายุแล้ว ขอเบี้ยปัจจุบันได้จากตัวแทน",
+  annualLimit: "วงเงินค่ารักษาต่อปี",
+  deductible: (baht) => `รับผิดส่วนแรก ${n(baht)} บาทต่อปี`,
+  copay: (pct) => `ร่วมจ่าย ${pct} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง`,
+  firstYearOnly: "เบี้ยปีแรก ปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
+  dailyCash: (perDay) => `ค่าชดเชยรายวัน ${n(perDay)} บาท`,
+  dailyCashRow: "ค่าชดเชยรายวัน",
+  riderCount: (count) => `สัญญาเพิ่มเติม ${count} รายการ`,
+  dciTitle: (sum) => `DCI คุ้มครองโรคร้ายแรง ${sum} บาท · 31 โรค`,
+  dciNote: "เป็นไปตามคำนิยามและเงื่อนไขในกรมธรรม์",
+  death: {
+    before: (age) => `เสียชีวิตก่อนอายุ ${age} ปี`,
+    between: (from, to) => `อายุ ${from}–${to} ปี`,
+    from: (age) => `อายุ ${age} ปีขึ้นไป`,
+    until: (age) => `จนถึงอายุ ${age} ปี`,
+    always: "ทุกช่วงอายุ",
+  },
+  printOrPdf: "พิมพ์ หรือบันทึก PDF",
+  copyLink: "คัดลอกลิงก์หน้านี้",
+  linkCopied: "คัดลอกแล้ว ✓",
+
+  contact: THAI_CONTACT,
+
+  foldTitle: "แนบสัญญาเพิ่มเติมอื่น",
+  pricingFailed: "คิดเบี้ยไม่สำเร็จ",
+  retry: "ลองอีกครั้ง",
+  pricing: "กำลังคิดเบี้ย",
+  optionOf: (r) => `แบบของ${r}`,
+  planOf: (r) => `แผนของ${r}`,
+  sumOfRider: (r) => `ทุนของ${r}`,
+
+  tableScroll: "เลื่อนตารางเพื่อดูแผนอื่น",
+  tableCaption: (plans) => `ตารางผลประโยชน์ iHealthy Ultra ทั้ง ${plans} แผน`,
+  benefitColumn: "ผลประโยชน์",
+  notSold: "ไม่ขายที่อายุนี้",
+  upTo: (limit) => `ไม่เกิน ${limit}`,
+  perDay: "ต่อวัน",
+  samePlans: "ทุกแผนเท่ากัน",
+  premiumHeading: "เบี้ยประกัน",
+  moreOnDesktop: (hidden) => `ตารางเต็มมีอีก ${hidden} หมวด ดูได้บนจอคอมพิวเตอร์ · `,
+  scrollHint: "เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · ",
+  phoneRow: {
+    1: "ค่าห้องและค่าอาหาร",
+    5: "Day Surgery",
+    7: "อุบัติเหตุ OPD 24 ชม",
+    10: "มะเร็ง รังสีรักษา",
+    18: "ผู้ป่วยนอก OPD",
+  },
+
+  termsHeading: "เงื่อนไขที่ต้องรู้ก่อนตัดสินใจ",
+  waitingSummary: (d, s) => `ไม่คุ้มครอง ${d} วันแรก และ ${s} วันแรกสำหรับบางโรค`,
+  waitingBody: (d, g, s) =>
+    `การป่วยที่เกิดใน ${d} วันแรกนับจากวันเริ่มคุ้มครองไม่ได้รับความคุ้มครอง และอีก ${g} กลุ่มโรคนี้ต้องรอถึง ${s} วัน`,
+  preExistingSummary: "สภาพที่เป็นมาก่อนทำประกัน",
+  noClaimSummary: (pct) => `ไม่เคลม 3 ปีติดต่อกัน ลดเบี้ย ${pct} เปอร์เซ็นต์`,
+  renewalCopaySummary: "บริษัทขอให้ร่วมจ่ายตอนต่ออายุได้",
+  premiumChangesSummary: "เบี้ยปีต่ออายุเปลี่ยนได้",
+  outOfTerritorySummary: (d) => `รักษานอกอาณาเขต คุ้มครองฉุกเฉิน ${d} วันแรกของการเดินทาง`,
+  exclusionsSummary: "ข้อยกเว้นที่บริษัทไม่คุ้มครอง",
+  firstYearDisclaimer: (v) =>
+    `เบี้ยที่แสดงเป็นเบี้ยปีแรกของอาชีพชั้น 1 เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น · ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกัน · อัตราเบี้ยชุด ${v}`,
+
+  rider: (s) => s,
+};
+
+const en: IHealthyWords = {
+  metaTitle: "iHealthy Ultra — lump-sum medical cover up to 100 million baht a year",
+  metaDescription:
+    "Health insurance with 6 plans and annual limits from 3 to 100 million baht, renewable to age 98. Compare all 28 benefit categories and work out your own premium instantly.",
+  switchLabel: "Language",
+  translationNote:
+    "This translation is provided for convenience only. If it differs from the Thai version, the Thai version and the policy prevail.",
+  expiredTable: (on) => `This premium table expired on ${on}. Please ask an agent for current premiums.`,
+
+  eyebrow: "Health insurance · iHealthy Ultra",
+  titleLabel: "Medical expenses",
+  intro: (min, max, plans, age) =>
+    `Lump-sum medical cover each year, from ${n(min / 1e6)} million up to ${n(max / 1e6)} million baht. Choose from ${plans} plans, renewable up to age ${age}.`,
+  highlightsLabel: "Coverage highlights",
+  maxPerYear: "Maximum per year",
+  choosePlans: "Choose your cover",
+  plansUnit: "plans",
+  renewTo: "Renewable to age",
+  yearsUnit: "",
+  designYours: "Design your cover",
+
+  big: (baht) => ({ num: n(baht / 1e6), unit: "million" }),
+  bigBaht: (baht) => ({ num: n(baht / 1e6), unit: "million baht" }),
+  baht: "baht",
+  years: (age) => `${age} yrs`,
+  sex: { M: "Male", F: "Female" },
+  mode: { annual: "Annual", semi: "Semi-annual", monthly: "Monthly" },
+  coverage: { "Full Coverage": "Full coverage", Deductible: "With deductible", "Co-Payment": "Co-payment" },
+  territory: { ประเทศไทย: "Thailand", เอเชีย: "Asia", ทั่วโลก: "Worldwide" },
+
+  age: "Age",
+  sexLabel: "Sex",
+  base: "Base policy",
+  baseSum: "Base sum assured",
+  healthPlan: "Health plan",
+  coverageLabel: "Coverage",
+  baseLabel: { WLF99H: "Life Protect+ x 2", WLF99HX: "Health Ultra Package" },
+  baseShort: { WLF99H: "x 2", WLF99HX: "Health package" },
+  baseNote: { WLF99H: "Choose your sum" },
+  sumOf: (sum) => `Sum ${n(sum)}`,
+  baseWithSum: (label, sum) => `${label}, sum assured ${n(sum)}`,
+  fixedSum: (sum) => `${n(sum)} baht · fixed by the package`,
+  onlyPlans: (age, plans) => `At age ${age} the company sells only ${plans.join(" and ")}`,
+  territoryOnly: (t, c) => `${t} cover is available only as ${c.toLowerCase()}`,
+
+  notSoldAtAge: (age) =>
+    `The company does not sell this combination at age ${age}. Try another base policy or health plan.`,
+  totalPremium: (mode) => `Total premium · ${mode}`,
+  belowMinimum: (min) => `Below the company's minimum monthly premium of ${n(min)} baht`,
+  refused: (modes, min) => `${modes.join(" and ")}: below the ${n(min)} baht minimum, not accepted by the company`,
+  expiredCard: "This premium table has expired. Please ask an agent for current premiums.",
+  annualLimit: "Annual medical limit",
+  deductible: (baht) => `deductible ${n(baht)} baht a year`,
+  copay: (pct) => `co-payment ${pct}% of covered expenses`,
+  firstYearOnly: "First-year premium; later years are priced on the higher age",
+  dailyCash: (perDay) => `Daily hospital cash ${n(perDay)} baht`,
+  dailyCashRow: "Daily hospital cash",
+  riderCount: (count) => `${count} additional riders`,
+  dciTitle: (sum) => `DCI critical illness cover ${sum} baht · 31 illnesses`,
+  dciNote: "As defined in, and subject to the conditions of, the policy",
+  death: {
+    before: (age) => `Death before age ${age}`,
+    between: (from, to) => `Age ${from}–${to}`,
+    from: (age) => `Age ${age} and over`,
+    until: (age) => `Up to age ${age}`,
+    always: "At any age",
+  },
+  printOrPdf: "Print or save as PDF",
+  copyLink: "Copy link to this page",
+  linkCopied: "Copied ✓",
+
+  contact: {
+    chat: { full: "Chat with us — free advice", compact: "Chat" },
+    card: { full: "Send card", compact: "Card", working: "Creating…", copied: "Image copied ✓", failed: "Open image in a new tab" },
+    send: { full: "Send to customer", compact: "Share", copied: "Copied — opening Inbox ✓", copiedCompact: "Copied ✓" },
+    copy: { full: "Copy text", compact: "Copy", copied: "Copied ✓" },
+  },
+
+  foldTitle: "Add other riders",
+  pricingFailed: "Could not calculate the premium",
+  retry: "Try again",
+  pricing: "Calculating…",
+  optionOf: (r) => `Option for ${r}`,
+  planOf: (r) => `Plan for ${r}`,
+  sumOfRider: (r) => `Sum assured for ${r}`,
+
+  tableScroll: "Scroll the table to see other plans",
+  tableCaption: (plans) => `iHealthy Ultra benefits, all ${plans} plans`,
+  benefitColumn: "Benefit",
+  notSold: "Not sold at this age",
+  upTo: (limit) => `Up to ${limit}`,
+  perDay: "per day",
+  samePlans: "same in every plan",
+  premiumHeading: "Premium",
+  moreOnDesktop: (hidden) => `The full table has ${hidden} more categories on a computer screen · `,
+  scrollHint: "Scroll the table right to see other plans · ",
+  phoneRow: {
+    1: "Room and board",
+    5: "Day Surgery",
+    7: "Accident OPD 24 hrs",
+    10: "Cancer radiotherapy",
+    18: "Outpatient (OPD)",
+  },
+
+  termsHeading: "Conditions to know before you decide",
+  waitingSummary: (d, s) => `No cover for the first ${d} days, and the first ${s} days for some illnesses`,
+  waitingBody: (d, g, s) =>
+    `Illness arising in the first ${d} days from the start of cover is not covered, and these ${g} groups of illness wait ${s} days`,
+  preExistingSummary: "Conditions you had before buying",
+  noClaimSummary: (pct) => `No claims for 3 years in a row: ${pct}% off the premium`,
+  renewalCopaySummary: "The company may require a co-payment on renewal",
+  premiumChangesSummary: "Renewal premiums can change",
+  outOfTerritorySummary: (d) => `Treatment abroad: emergencies covered for the first ${d} days of a trip`,
+  exclusionsSummary: "What the company does not cover",
+  firstYearDisclaimer: (v) =>
+    `Premiums shown are first-year premiums for occupational class 1; later years are priced on the higher age · Not a quotation: actual premiums and cover depend on underwriting · Rate set ${v}`,
+
+  rider: riderReader({
+    names: {
+      "สัญญาเพิ่มเติมค่ารักษาพยาบาล (MEB)": "Medical expense rider (MEB)",
+      "สัญญาเพิ่มเติมโรคร้ายแรง (DCI)": "Critical illness rider (DCI)",
+      "ไอเฮลท์ตี้ อัลตร้า": "iHealthy Ultra",
+    },
+    exact: {
+      "ไม่สามารถซื้อได้": "Not available",
+      "ไม่คุ้มครอง": "Not covered",
+      "กรุณาเลือกแบบ": "Please choose an option",
+    },
+    ages: (a, b) => `age ${a} – ${b}`,
+    issueAges: (a, b) => `Issue ages ${a} – ${b}`,
+    exceeds: (w) => `${w} exceeds the limit`,
+    belowMin: (w, m) => `${w} is below the minimum of ${m}`,
+    mustBe: (c, a) => `${c} sum assured must be exactly ${a} baht`,
+    notPriced: (l) => `${l} — not included in the premium`,
+    unreadable: (c) => `${c} riders could not be read and were not priced`,
+    paysTo: (p, a) => `${p} — premiums payable to age ${a}`,
+    monthlyBelow: (m) => `Monthly premium is below ${m} baht`,
+    packageNeeds: (c) => `This package requires ${c}`,
+  }),
+};
+
+/** 万 and 亿: a Chinese reader counts large sums in ten-thousands, not in millions. */
+function wan(baht: number): Big {
+  return baht >= 1e8 ? { num: n(baht / 1e8), unit: "亿" } : { num: n(baht / 1e4), unit: "万" };
+}
+
+const zh: IHealthyWords = {
+  metaTitle: "iHealthy Ultra — 每年医疗费用保障最高1亿泰铢",
+  metaDescription:
+    "健康保险共6个计划，每年保障额度300万至1亿泰铢，可续保至98岁。比较全部28类保障，并可立即自行计算保费。",
+  switchLabel: "语言",
+  translationNote: "本翻译仅供参考。如与泰文版本有任何不一致，以泰文版本及保单条款为准。",
+  expiredTable: (on) => `本保费表已于 ${on} 过期，请向代理人索取最新保费。`,
+
+  eyebrow: "健康保险 · iHealthy Ultra",
+  titleLabel: "医疗费用",
+  intro: (min, max, plans, age) => {
+    const a = wan(min);
+    const b = wan(max);
+    return `每年医疗费用保障额度从${a.num}${a.unit}到最高${b.num}${b.unit}泰铢，共${plans}个计划可选，可续保至${age}岁。`;
+  },
+  highlightsLabel: "保障亮点",
+  maxPerYear: "每年最高额度",
+  choosePlans: "可选保障",
+  plansUnit: "个计划",
+  renewTo: "可续保至",
+  yearsUnit: "岁",
+  designYours: "设计您的保障",
+
+  big: wan,
+  bigBaht: (baht) => {
+    const b = wan(baht);
+    return { num: b.num, unit: `${b.unit}泰铢` };
+  },
+  baht: "泰铢",
+  years: (age) => `${age}岁`,
+  sex: { M: "男", F: "女" },
+  mode: { annual: "年缴", semi: "半年缴", monthly: "月缴" },
+  coverage: { "Full Coverage": "全额保障", Deductible: "含免赔额", "Co-Payment": "共付" },
+  territory: { ประเทศไทย: "泰国", เอเชีย: "亚洲", ทั่วโลก: "全球" },
+
+  age: "年龄",
+  sexLabel: "性别",
+  base: "主合同",
+  baseSum: "主合同保额",
+  healthPlan: "健康计划",
+  coverageLabel: "保障方式",
+  baseLabel: { WLF99H: "Life Protect+ x 2", WLF99HX: "Health Ultra Package" },
+  baseShort: { WLF99H: "x 2", WLF99HX: "健康套餐" },
+  baseNote: { WLF99H: "自选保额" },
+  sumOf: (sum) => `保额 ${n(sum)}`,
+  baseWithSum: (label, sum) => `${label} 保额 ${n(sum)}`,
+  fixedSum: (sum) => `${n(sum)} 泰铢 · 套餐固定，不可更改`,
+  onlyPlans: (age, plans) => `${age}岁时公司仅销售 ${plans.join("、")} 计划`,
+  territoryOnly: (t, c) => `${t}区域仅提供${c}`,
+
+  notSoldAtAge: (age) => `公司在${age}岁时尚未销售所选组合，请更换主合同或健康计划。`,
+  totalPremium: (mode) => `总保费 · ${mode}`,
+  belowMinimum: (min) => `低于公司可接受的最低月缴保费 ${n(min)} 泰铢`,
+  refused: (modes, min) => `${modes.join("、")}低于最低 ${n(min)} 泰铢，公司不接受`,
+  expiredCard: "本保费表已过期，请向代理人索取最新保费。",
+  annualLimit: "每年医疗额度",
+  deductible: (baht) => `免赔额每年 ${n(baht)} 泰铢`,
+  copay: (pct) => `共付已保障费用的 ${pct}%`,
+  firstYearOnly: "首年保费，之后按增长的年龄计算",
+  dailyCash: (perDay) => `住院每日津贴 ${n(perDay)} 泰铢`,
+  dailyCashRow: "住院每日津贴",
+  riderCount: (count) => `附加合同 ${count} 项`,
+  dciTitle: (sum) => `DCI 重大疾病保障 ${sum} 泰铢 · 31种疾病`,
+  dciNote: "以保单中的定义及条件为准",
+  death: {
+    before: (age) => `${age}岁前身故`,
+    between: (from, to) => `${from}–${to}岁`,
+    from: (age) => `${age}岁及以上`,
+    until: (age) => `至${age}岁`,
+    always: "任何年龄",
+  },
+  printOrPdf: "打印或保存为PDF",
+  copyLink: "复制本页链接",
+  linkCopied: "已复制 ✓",
+
+  contact: {
+    chat: { full: "联系我们 · 免费咨询", compact: "联系" },
+    card: { full: "发送卡片", compact: "卡片", working: "正在生成…", copied: "图片已复制 ✓", failed: "在新标签页打开图片" },
+    send: { full: "发送给客户", compact: "分享", copied: "已复制，正在打开收件箱 ✓", copiedCompact: "已复制 ✓" },
+    copy: { full: "复制文字", compact: "复制", copied: "已复制 ✓" },
+  },
+
+  foldTitle: "添加其他附加合同",
+  pricingFailed: "保费计算失败",
+  retry: "重试",
+  pricing: "正在计算保费…",
+  optionOf: (r) => `${r}的类型`,
+  planOf: (r) => `${r}的计划`,
+  sumOfRider: (r) => `${r}的保额`,
+
+  tableScroll: "滑动表格查看其他计划",
+  tableCaption: (plans) => `iHealthy Ultra 全部${plans}个计划的保障表`,
+  benefitColumn: "保障项目",
+  notSold: "此年龄不销售",
+  upTo: (limit) => `最多 ${limit}`,
+  perDay: "每天",
+  samePlans: "各计划相同",
+  premiumHeading: "保费",
+  moreOnDesktop: (hidden) => `完整表格另有${hidden}类，请在电脑屏幕查看 · `,
+  scrollHint: "向右滑动表格查看其他计划 · ",
+  phoneRow: {
+    1: "住院房费及膳食费",
+    5: "日间手术",
+    7: "意外门诊 24小时",
+    10: "癌症放射治疗",
+    18: "门诊 OPD",
+  },
+
+  termsHeading: "决定前需要了解的条件",
+  waitingSummary: (d, s) => `前${d}天不保障，部分疾病前${s}天不保障`,
+  waitingBody: (d, g, s) => `自保障开始之日起前${d}天内发生的疾病不予保障，以下${g}类疾病须等待${s}天`,
+  preExistingSummary: "投保前已有的疾病",
+  noClaimSummary: (pct) => `连续3年无理赔，保费减 ${pct}%`,
+  renewalCopaySummary: "续保时公司可要求共付",
+  premiumChangesSummary: "续保保费可能变动",
+  outOfTerritorySummary: (d) => `区域外就医：出行前${d}天的紧急医疗受保障`,
+  exclusionsSummary: "公司不予保障的除外责任",
+  firstYearDisclaimer: (v) =>
+    `所示保费为职业等级1的首年保费，之后按增长的年龄计算 · 非正式报价，实际保费及保障以核保结果为准 · 费率版本 ${v}`,
+
+  rider: riderReader({
+    names: {
+      "สัญญาเพิ่มเติมค่ารักษาพยาบาล (MEB)": "医疗费用附加合同（MEB）",
+      "สัญญาเพิ่มเติมโรคร้ายแรง (DCI)": "重大疾病附加合同（DCI）",
+      "ไอเฮลท์ตี้ อัลตร้า": "iHealthy Ultra",
+    },
+    exact: {
+      "ไม่สามารถซื้อได้": "不可购买",
+      "ไม่คุ้มครอง": "不保障",
+      "กรุณาเลือกแบบ": "请选择类型",
+    },
+    ages: (a, b) => `${a} – ${b}岁`,
+    issueAges: (a, b) => `投保年龄 ${a} – ${b}岁`,
+    exceeds: (w) => `${w}超出规定`,
+    belowMin: (w, m) => `${w}低于最低 ${m}`,
+    mustBe: (c, a) => `${c}保额必须为 ${a} 泰铢`,
+    notPriced: (l) => `${l}，因此未计入保费`,
+    unreadable: (c) => `有${c}项附加合同无法读取，因此未计入保费`,
+    paysTo: (p, a) => `${p} — 缴费至${a}岁`,
+    monthlyBelow: (m) => `月缴保费低于 ${m} 泰铢`,
+    packageNeeds: (c) => `此套餐必须购买 ${c}`,
+  }),
+};
+
+const ru: IHealthyWords = {
+  metaTitle: "iHealthy Ultra — покрытие расходов на лечение до 100 млн бат в год",
+  metaDescription:
+    "Медицинское страхование: 6 планов с годовым лимитом от 3 до 100 млн бат, продление до 98 лет. Сравните все 28 разделов покрытия и сразу рассчитайте свой взнос.",
+  switchLabel: "Язык",
+  translationNote:
+    "Перевод предоставлен только для удобства. При расхождениях с версией на тайском языке преимущественную силу имеют тайская версия и полис.",
+  expiredTable: (on) => `Срок действия этой таблицы взносов истёк ${on}. Актуальные взносы уточните у агента.`,
+
+  eyebrow: "Медицинское страхование · iHealthy Ultra",
+  titleLabel: "Расходы на лечение",
+  intro: (min, max, plans, age) =>
+    `Покрытие расходов на лечение в год — от ${n(min / 1e6)} млн до ${n(max / 1e6)} млн бат. ${plans} планов на выбор, продление до ${age} лет.`,
+  highlightsLabel: "Главное о покрытии",
+  maxPerYear: "Максимум в год",
+  choosePlans: "Выбор покрытия",
+  plansUnit: "планов",
+  renewTo: "Продление до",
+  yearsUnit: "лет",
+  designYours: "Подберите своё покрытие",
+
+  big: (baht) => ({ num: n(baht / 1e6), unit: "млн" }),
+  bigBaht: (baht) => ({ num: n(baht / 1e6), unit: "млн бат" }),
+  baht: "бат",
+  years: (age) => `${age} лет`,
+  // short, because the two share half a phone's width with the age picker
+  sex: { M: "Муж.", F: "Жен." },
+  mode: { annual: "Ежегодно", semi: "Раз в полгода", monthly: "Ежемесячно" },
+  coverage: { "Full Coverage": "Полное покрытие", Deductible: "С франшизой", "Co-Payment": "С доплатой" },
+  territory: { ประเทศไทย: "Таиланд", เอเชีย: "Азия", ทั่วโลก: "Весь мир" },
+
+  age: "Возраст",
+  sexLabel: "Пол",
+  base: "Основной договор",
+  baseSum: "Страховая сумма основного договора",
+  healthPlan: "План медицинского страхования",
+  coverageLabel: "Покрытие",
+  baseLabel: { WLF99H: "Life Protect+ x 2", WLF99HX: "Health Ultra Package" },
+  baseShort: { WLF99H: "x 2", WLF99HX: "Пакет здоровья" },
+  baseNote: { WLF99H: "Своя сумма" },
+  sumOf: (sum) => `Сумма ${n(sum)}`,
+  baseWithSum: (label, sum) => `${label}, страховая сумма ${n(sum)}`,
+  fixedSum: (sum) => `${n(sum)} бат · задана пакетом, изменить нельзя`,
+  onlyPlans: (age, plans) => `В возрасте ${age} лет компания продаёт только планы ${plans.join(" и ")}`,
+  territoryOnly: (t, c) => `Для территории «${t}» доступно только: ${c.toLowerCase()}`,
+
+  notSoldAtAge: (age) =>
+    `В возрасте ${age} лет компания не продаёт выбранное сочетание. Выберите другой основной договор или план.`,
+  totalPremium: (mode) => `Общий взнос · ${mode.toLowerCase()}`,
+  belowMinimum: (min) => `Ниже минимального ежемесячного взноса компании — ${n(min)} бат`,
+  refused: (modes, min) => `${modes.join(" и ")}: ниже минимума ${n(min)} бат, компания не принимает`,
+  expiredCard: "Срок действия таблицы взносов истёк. Актуальные взносы уточните у агента.",
+  annualLimit: "Годовой лимит на лечение",
+  deductible: (baht) => `франшиза ${n(baht)} бат в год`,
+  copay: (pct) => `доплата ${pct}% покрываемых расходов`,
+  firstYearOnly: "Взнос за первый год; далее рассчитывается по возрасту",
+  dailyCash: (perDay) => `Суточные при госпитализации ${n(perDay)} бат`,
+  dailyCashRow: "Суточные при госпитализации",
+  riderCount: (count) => `Дополнительных договоров: ${count}`,
+  dciTitle: (sum) => `DCI — критические заболевания ${sum} бат · 31 заболевание`,
+  dciNote: "Согласно определениям и условиям полиса",
+  death: {
+    before: (age) => `Смерть до ${age} лет`,
+    between: (from, to) => `Возраст ${from}–${to} лет`,
+    from: (age) => `С ${age} лет`,
+    until: (age) => `До ${age} лет`,
+    always: "В любом возрасте",
+  },
+  printOrPdf: "Печать или PDF",
+  copyLink: "Скопировать ссылку",
+  linkCopied: "Скопировано ✓",
+
+  contact: {
+    // the compact four share one row at the bottom of a phone, so each is a single short word
+    chat: { full: "Написать нам — бесплатная консультация", compact: "Чат" },
+    card: { full: "Отправить карточку", compact: "Фото", working: "Создаём…", copied: "Изображение скопировано ✓", failed: "Открыть изображение в новой вкладке" },
+    send: { full: "Отправить клиенту", compact: "Послать", copied: "Скопировано, открываем Inbox ✓", copiedCompact: "Скопировано ✓" },
+    copy: { full: "Скопировать текст", compact: "Копия", copied: "Скопировано ✓" },
+  },
+
+  foldTitle: "Добавить другие дополнительные договоры",
+  pricingFailed: "Не удалось рассчитать взнос",
+  retry: "Повторить",
+  pricing: "Рассчитываем взнос…",
+  optionOf: (r) => `Вариант: ${r}`,
+  planOf: (r) => `План: ${r}`,
+  sumOfRider: (r) => `Страховая сумма: ${r}`,
+
+  tableScroll: "Прокрутите таблицу, чтобы увидеть другие планы",
+  tableCaption: (plans) => `Таблица покрытия iHealthy Ultra, все ${plans} планов`,
+  benefitColumn: "Покрытие",
+  notSold: "Не продаётся в этом возрасте",
+  upTo: (limit) => `Не более ${limit}`,
+  perDay: "в день",
+  samePlans: "одинаково во всех планах",
+  premiumHeading: "Страховой взнос",
+  moreOnDesktop: (hidden) => `В полной таблице ещё ${hidden} разделов — откройте на компьютере · `,
+  scrollHint: "Прокрутите таблицу вправо, чтобы увидеть другие планы · ",
+  phoneRow: {
+    1: "Палата и питание",
+    5: "Day Surgery",
+    7: "Амбулаторно при травме, 24 ч",
+    10: "Лучевая терапия рака",
+    18: "Амбулаторно (OPD)",
+  },
+
+  termsHeading: "Условия, которые нужно знать до решения",
+  waitingSummary: (d, s) => `Нет покрытия первые ${d} дней, для некоторых болезней — первые ${s} дней`,
+  waitingBody: (d, g, s) =>
+    `Болезни, возникшие в первые ${d} дней с начала покрытия, не покрываются, а для этих ${g} групп заболеваний срок ожидания — ${s} дней`,
+  preExistingSummary: "Заболевания до начала страхования",
+  noClaimSummary: (pct) => `Нет выплат 3 года подряд — скидка ${pct}% на взнос`,
+  renewalCopaySummary: "При продлении компания может ввести доплату",
+  premiumChangesSummary: "Взнос при продлении может меняться",
+  outOfTerritorySummary: (d) => `Лечение за границей: экстренные случаи в первые ${d} дней поездки`,
+  exclusionsSummary: "Что компания не покрывает",
+  firstYearDisclaimer: (v) =>
+    `Указаны взносы за первый год для 1-го класса профессии; далее взнос рассчитывается по возрасту · Не является коммерческим предложением: фактические взносы и покрытие зависят от андеррайтинга · Тарифы ${v}`,
+
+  rider: riderReader({
+    names: {
+      "สัญญาเพิ่มเติมค่ารักษาพยาบาล (MEB)": "Дополнительный договор медицинских расходов (MEB)",
+      "สัญญาเพิ่มเติมโรคร้ายแรง (DCI)": "Дополнительный договор критических заболеваний (DCI)",
+      "ไอเฮลท์ตี้ อัลตร้า": "iHealthy Ultra",
+    },
+    exact: {
+      "ไม่สามารถซื้อได้": "Недоступно",
+      "ไม่คุ้มครอง": "Не покрывается",
+      "กรุณาเลือกแบบ": "Выберите вариант",
+    },
+    ages: (a, b) => `${a} – ${b} лет`,
+    issueAges: (a, b) => `Возраст страхования ${a} – ${b} лет`,
+    exceeds: (w) => `${w}: превышен лимит`,
+    belowMin: (w, m) => `${w}: ниже минимума ${m}`,
+    mustBe: (c, a) => `Страховая сумма ${c} должна быть ровно ${a} бат`,
+    notPriced: (l) => `${l} — не включено во взнос`,
+    unreadable: (c) => `Не удалось прочитать дополнительных договоров: ${c}, они не включены во взнос`,
+    paysTo: (p, a) => `${p} — взносы до ${a} лет`,
+    monthlyBelow: (m) => `Ежемесячный взнос ниже ${m} бат`,
+    packageNeeds: (c) => `Этот пакет требует ${c}`,
+  }),
+};
+
+export const WORDS: Record<Lang, IHealthyWords> = { th, en, zh, ru };
+
+/** The engine's own Thai names and notes stay as they are where a language has no line for them. */
+export function baseWords(w: IHealthyWords, variant: string, table: { label: string; short: string; note?: string }) {
+  return {
+    label: w.baseLabel[variant] ?? table.label,
+    short: w.baseShort[variant] ?? table.short,
+    note: table.note === undefined ? undefined : w.baseNote[variant] ?? table.note,
+  };
+}

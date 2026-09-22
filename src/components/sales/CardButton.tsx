@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { ContactWords } from "@/lib/ihealthy-words";
 
 /**
  * Hands over the quote drawn as a picture — something a customer can keep, and show to
@@ -14,8 +15,12 @@ import { useEffect, useState } from "react";
 type State = "idle" | "working" | "copied" | "failed";
 
 export function CardButton(
-  { path, className, compact = false, label, filename = "quote.png" }:
-    { path: string; className: string; compact?: boolean; label?: { full: string; compact: string }; filename?: string },
+  { path, className, compact = false, label, filename = "quote.png", words }:
+    {
+      path: string; className: string; compact?: boolean; label?: { full: string; compact: string }; filename?: string;
+      /** every state's label in another language; Thai without it */
+      words?: ContactWords["card"];
+    },
 ) {
   const [state, setState] = useState<State>("idle");
 
@@ -47,10 +52,10 @@ export function CardButton(
     }
   };
 
-  const idle = label ?? { full: "ส่งการ์ด", compact: "การ์ด" };
-  const text = state === "working" ? "กำลังสร้าง…"
-    : state === "copied" ? "คัดลอกรูปแล้ว ✓"
-      : state === "failed" ? "เปิดรูปในแท็บใหม่"
+  const idle = label ?? words ?? { full: "ส่งการ์ด", compact: "การ์ด" };
+  const text = state === "working" ? words?.working ?? "กำลังสร้าง…"
+    : state === "copied" ? words?.copied ?? "คัดลอกรูปแล้ว ✓"
+      : state === "failed" ? words?.failed ?? "เปิดรูปในแท็บใหม่"
         : compact ? idle.compact : idle.full;
 
   return (

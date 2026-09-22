@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import type { PayMode, Sex } from "@/calc/types";
-import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
 import type { BenefitTableData } from "@/components/ihealthy/BenefitTable";
@@ -27,13 +26,8 @@ import type { Attached } from "@/components/ihealthy/RiderPanel";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { LinkButton } from "@/components/sales/LinkButton";
 import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
-import dciDiseases from "../../data/riders/dci-diseases.json";
-
-const COVERAGE_LABEL: Record<string, string> = {
-  "Full Coverage": "เต็มจำนวน",
-  Deductible: "มีความรับผิดส่วนแรก",
-  "Co-Payment": "ร่วมจ่าย",
-};
+import type { Lang } from "@/lib/ihealthy-lang";
+import { WORDS, baseWords } from "@/lib/ihealthy-words";
 
 export interface IHealthyCalculatorProps {
   table: IHealthyTable;
@@ -55,6 +49,10 @@ export interface IHealthyCalculatorProps {
   initialAttached?: Attached;
   /** pin a copy of the contact buttons to the bottom of a phone screen */
   sticky?: boolean;
+  /** the language the reader chose; `data` and the strings below arrive already in it */
+  lang?: Lang;
+  /** the thirty-one illnesses DCI names, in the reader's language */
+  dciDiseases: string[];
 }
 
 /**
@@ -67,8 +65,10 @@ export interface IHealthyCalculatorProps {
 export function IHealthyCalculator(
   {
     table, data, sharedLimit, participationNote, initial, initialAttached, sticky = false,
+    lang = "th", dciDiseases,
   }: IHealthyCalculatorProps,
 ) {
+  const w = WORDS[lang];
   const AGES = useMemo(
     () => Array.from({ length: table.ageMax - table.ageMin + 1 }, (_, i) => table.ageMin + i),
     [table.ageMin, table.ageMax],
@@ -154,7 +154,7 @@ export function IHealthyCalculator(
         ]));
         return MODES.map((m) => ({
           mode: m,
-          label: PAY_MODE_LABEL[m],
+          label: w.mode[m],
           byPlan: Object.fromEntries(table.plans.map((p) => {
             // Null, which the table prints as a dash: the company refuses a monthly
             // instalment under its own floor, and a column that printed the figure anyway
@@ -258,8 +258,22 @@ export function IHealthyCalculator(
     minMonthly: table.minMonthly,
     shown,
   };
+  // Both stay in Thai whatever the page is read in: the message lands in the Page's inbox,
+  // where the Messenger bot and the agents read Thai, and the copied quote is the agent's.
   const quoteText = iHealthyQuoteText(cta);
   const message = iHealthyMessage(cta);
+  /**
+   * What the card calls the attached riders, in the reader's language. `extras.label` and the
+   * table's own label are Thai because the quote text is built from them; this is the same
+   * decision — one rider by name, more than one as a count — said for the screen.
+   */
+  const standardLine = answered
+    ? answered.codes.length === 1 && answered.codes[0] === table.standard.code && answered.dailyCash !== null
+      ? w.dailyCash(answered.dailyCash)
+      : w.riderCount(answered.codes.length)
+    : standardPlan !== null ? w.dailyCash(standardPlan) : undefined;
+  const bases = (b: (typeof table.bases)[number]) => baseWords(w, b.variant, b);
+  const territoryName = (t: string) => w.territory[t] ?? t;
   // Show the list from the moment DCI is ticked, not only after its premium round trip has
   // returned. `answered` keeps the card's price honest; `picked` keeps this explanation in
   // step with the choice the agent can already see.
@@ -283,19 +297,18 @@ export function IHealthyCalculator(
           a benefit table with nothing naming who they are for is not a quote. */}
       <div className="hidden print:block">
         <h2 className="text-lg font-medium">
-          iHealthy Ultra {plan ? planLabel(plan.code) : "—"} · {territory ?? "—"}
-          {coverage && coverage !== "Full Coverage" ? ` · ${COVERAGE_LABEL[coverage]}` : ""}
+          iHealthy Ultra {plan ? planLabel(plan.code) : "—"} · {territory ? territoryName(territory) : "—"}
+          {coverage && coverage !== "Full Coverage" ? ` · ${w.coverage[coverage]}` : ""}
         </h2>
         <p className="mt-1 text-sm">
-          {sex === "M" ? "ชาย" : "หญิง"} {age} ปี · {base.label} ทุน{" "}
-          {sumAssured.toLocaleString("en-US")} บาท · {PAY_MODE_LABEL[mode]}
+          {w.sex[sex]} {w.years(age)} · {w.baseWithSum(bases(base).label, sumAssured)} {w.baht} · {w.mode[mode]}
         </p>
       </div>
 
       <div className="space-y-5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] p-5 print:hidden">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="ihu-age" className={label}>อายุ</label>
+            <label htmlFor="ihu-age" className={label}>{w.age}</label>
             {/* Seventy-five options, and still a picker rather than a number field, for the
                 reason its sibling on /lifeprotect gives: a phone opens the wheel instead of
                 the keypad, and one flick covers a decade. The list is the company's own
@@ -303,15 +316,15 @@ export function IHealthyCalculator(
                 and then have to be explained away — which is worth more here than on the
                 base plan, because half the arrangement changes with the age. */}
             <select id="ihu-age" className={field} value={age} onChange={(e) => setAge(Number(e.target.value))}>
-              {AGES.map((a) => <option key={a} value={a}>{a} ปี</option>)}
+              {AGES.map((a) => <option key={a} value={a}>{w.years(a)}</option>)}
             </select>
           </div>
           <div>
-            <span className={label}>เพศ</span>
+            <span className={label}>{w.sexLabel}</span>
             <div className="mt-1.5 grid grid-cols-2 gap-2">
               {(["M", "F"] as Sex[]).map((s) => (
                 <button key={s} type="button" aria-pressed={sex === s} onClick={() => setSex(s)} className={chip(sex === s)}>
-                  {s === "M" ? "ชาย" : "หญิง"}
+                  {w.sex[s]}
                 </button>
               ))}
             </div>
@@ -319,7 +332,7 @@ export function IHealthyCalculator(
         </div>
 
         <div>
-          <span className={label}>สัญญาหลัก</span>
+          <span className={label}>{w.base}</span>
           {/* One column per base the page sells, so dropping one closes the gap it left.
               Written out rather than composed: Tailwind reads these names out of the source
               and would not generate a class it never sees spelled. */}
@@ -329,11 +342,11 @@ export function IHealthyCalculator(
                 key={b.variant} type="button" aria-pressed={b.variant === base.variant}
                 onClick={() => setWantBase(b.variant)} className={chip(b.variant === base.variant)}
               >
-                <span className="block">{b.short}</span>
+                <span className="block">{bases(b).short}</span>
                 {/* the package carries no note: its subtitle is its pinned sum, read from
                     the field itself so the two can never disagree */}
                 <span className="mt-0.5 block text-xs opacity-80">
-                  {b.note ?? `ทุน ${b.fixedSum?.toLocaleString("en-US")}`}
+                  {bases(b).note ?? w.sumOf(b.fixedSum ?? 0)}
                 </span>
               </button>
             ))}
@@ -346,26 +359,26 @@ export function IHealthyCalculator(
               id and be named by it — and the pinned figure would be read out unnamed. */}
           {base.fixedSum !== undefined ? (
             <>
-              <span id="ihu-sum-label" className={label}>ทุนสัญญาหลัก</span>
+              <span id="ihu-sum-label" className={label}>{w.baseSum}</span>
               <p
                 aria-labelledby="ihu-sum-label"
                 className="mt-1.5 rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-base tabular-nums text-[var(--lg-mute)]"
               >
-                {base.fixedSum.toLocaleString("en-US")} บาท · แพ็กเกจกำหนดไว้ เปลี่ยนไม่ได้
+                {w.fixedSum(base.fixedSum)}
               </p>
             </>
           ) : (
             <>
-              <label htmlFor="ihu-sum" className={label}>ทุนสัญญาหลัก</label>
+              <label htmlFor="ihu-sum" className={label}>{w.baseSum}</label>
               <select id="ihu-sum" className={field} value={sumAssured} onChange={(e) => setWantSum(Number(e.target.value))}>
-                {sumOptions.map((s) => <option key={s} value={s}>{s.toLocaleString("en-US")} บาท</option>)}
+                {sumOptions.map((s) => <option key={s} value={s}>{s.toLocaleString("en-US")} {w.baht}</option>)}
               </select>
             </>
           )}
         </div>
 
         <div>
-          <span className={label}>แผนสุขภาพ</span>
+          <span className={label}>{w.healthPlan}</span>
           <div className="mt-1.5 grid grid-cols-3 gap-2">
             {plans.map((p) => (
               <button
@@ -377,7 +390,7 @@ export function IHealthyCalculator(
               >
                 <span className="block">{planLabel(p.code)}</span>
                 <span className="mt-0.5 block text-xs tabular-nums opacity-80">
-                  {(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน
+                  {w.big(p.annualMax).num} {w.big(p.annualMax).unit}
                 </span>
               </button>
             ))}
@@ -387,15 +400,15 @@ export function IHealthyCalculator(
               being a child. It names the age on screen and leaves the reason unsaid. */}
           {plans.length < table.plans.length && (
             <p className={hint}>
-              ที่อายุ {age} ปี บริษัทขายเฉพาะแผน {plans.map((p) => planLabel(p.code)).join(" และ ")}
+              {w.onlyPlans(age, plans.map((p) => planLabel(p.code)))}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="ihu-cover" className={label}>ความคุ้มครอง</label>
+          <label htmlFor="ihu-cover" className={label}>{w.coverageLabel}</label>
           <select id="ihu-cover" className={field} value={coverage ?? ""} onChange={(e) => setWantCoverage(e.target.value)}>
-            {coverages.map((c) => <option key={c} value={c}>{COVERAGE_LABEL[c] ?? c}</option>)}
+            {coverages.map((c) => <option key={c} value={c}>{w.coverage[c] ?? c}</option>)}
           </select>
           {/* The territory is not asked for: this page sells cover in Thailand, which is the
               only territory five of the six plans are written for anyway. It stays in the
@@ -403,7 +416,7 @@ export function IHealthyCalculator(
               prices if one arrives — there is simply no way to ask for one from here. */}
           {coverages.length === 1 && coverage && territory && (
             <p className={hint}>
-              อาณาเขต{territory}มีเฉพาะความคุ้มครองแบบ{COVERAGE_LABEL[coverage] ?? coverage}
+              {w.territoryOnly(territoryName(territory), w.coverage[coverage] ?? coverage)}
             </p>
           )}
         </div>
@@ -416,7 +429,7 @@ export function IHealthyCalculator(
           // the card names no ceiling and sends the reader back to the form rather than to
           // the health plan in particular.
           <p className="text-sm font-medium text-[var(--lg-gold)]">
-            ที่อายุ {age} ปี บริษัทยังไม่เปิดขายแบบที่เลือกไว้ ลองเปลี่ยนสัญญาหลักหรือแผนสุขภาพ
+            {w.notSoldAtAge(age)}
           </p>
         ) : (
           <>
@@ -428,23 +441,23 @@ export function IHealthyCalculator(
                     conversation on the larger half instead of on the cover. The total under
                     the rule is the price; these lines say what the price is for. */}
                 <ul className="space-y-2 text-sm text-[var(--lg-mute)]">
-                  <li>{base.label} ทุน {sumAssured.toLocaleString("en-US")}</li>
+                  <li>{w.baseWithSum(bases(base).label, sumAssured)}</li>
                   <li>iHealthy Ultra {planLabel(plan.code)}</li>
                   {/* The agency sells the daily cash with the health cover rather than beside
                       it, so it is priced into the figure the customer is quoted instead of
                       being added on afterwards. The fold below opens with it ticked, and its
                       premium is now read only to know whether it is on at all. */}
-                  {shown.standard && shown.standard.total > 0 && <li>{shown.standard.label}</li>}
+                  {shown.standard && shown.standard.total > 0 && <li>{standardLine ?? shown.standard.label}</li>}
                 </ul>
                 <div className="border-t border-[var(--lg-panel-line)] pt-4">
-                  <div className="text-sm text-[var(--lg-mute)]">เบี้ยรวม {PAY_MODE_LABEL[mode]}</div>
+                  <div className="text-sm text-[var(--lg-mute)]">{w.totalPremium(w.mode[mode])}</div>
                   <div className="lg-figure mt-1 text-[2.4rem] leading-none tabular-nums">
                     <span className="lg-metal-text">{formatBaht(shown.total)}</span>
-                    <span className="ml-2 text-base text-[var(--lg-mute)]">บาท</span>
+                    <span className="ml-2 text-base text-[var(--lg-mute)]">{w.baht}</span>
                   </div>
                   {shown.belowMinimum && (
                     <p className="mt-2 text-xs text-[var(--lg-gold)]">
-                      ต่ำกว่าเบี้ยรายเดือนขั้นต่ำ {table.minMonthly.toLocaleString("en-US")} บาท ที่บริษัทรับชำระ
+                      {w.belowMinimum(table.minMonthly)}
                     </p>
                   )}
                   {/* One instalment to a line, and laid out the way the two contract lines
@@ -454,17 +467,16 @@ export function IHealthyCalculator(
                   <dl className="mt-3 space-y-1.5 text-sm">
                     {shown.others.map((m) => (
                       <div key={m.mode} className="flex items-baseline justify-between gap-3">
-                        <dt className="text-[var(--lg-mute)]">{PAY_MODE_LABEL[m.mode]}</dt>
+                        <dt className="text-[var(--lg-mute)]">{w.mode[m.mode]}</dt>
                         <dd className="lg-figure tabular-nums text-[var(--lg-white)]">
-                          {formatBaht(m.total)} <span className="text-xs text-[var(--lg-mute)]">บาท</span>
+                          {formatBaht(m.total)} <span className="text-xs text-[var(--lg-mute)]">{w.baht}</span>
                         </dd>
                       </div>
                     ))}
                   </dl>
                   {shown.refused.length > 0 && (
                     <p className="mt-2 text-xs text-[var(--lg-gold)]">
-                      {shown.refused.map((m) => PAY_MODE_LABEL[m]).join(" และ ")}{" "}
-                      ต่ำกว่าขั้นต่ำ {table.minMonthly.toLocaleString("en-US")} บาท บริษัทไม่รับชำระ
+                      {w.refused(shown.refused.map((m) => w.mode[m]), table.minMonthly)}
                     </p>
                   )}
                 </div>
@@ -473,18 +485,18 @@ export function IHealthyCalculator(
               // The rate set below this page has lapsed. What the contract pays is still
               // true; what it costs is not ours to say any more.
               <p className="text-sm font-medium text-[var(--lg-gold)]">
-                ตารางเบี้ยชุดนี้หมดอายุแล้ว ขอเบี้ยปัจจุบันได้จากตัวแทน
+                {w.expiredCard}
               </p>
             )}
             <div className="border-t border-[var(--lg-panel-line)] pt-4 text-sm text-[var(--lg-mute)]">
               <p>
-                วงเงินค่ารักษาต่อปี{" "}
+                {w.annualLimit}{" "}
                 <span className="lg-figure tabular-nums text-[var(--lg-white)]">
                   {plan.annualMax.toLocaleString("en-US")}
                 </span>{" "}
-                บาท
-                {coverage === "Deductible" && ` · รับผิดส่วนแรก ${plan.deductible.toLocaleString("en-US")} บาทต่อปี`}
-                {coverage === "Co-Payment" && ` · ร่วมจ่าย ${data.copayPercent} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง`}
+                {w.baht}
+                {coverage === "Deductible" && ` · ${w.deductible(plan.deductible)}`}
+                {coverage === "Co-Payment" && ` · ${w.copay(data.copayPercent)}`}
               </p>
               {/* The rider covers the illness; this is the one thing the base plan is for.
                   Read as bands rather than written out here, because a rider attached in the
@@ -492,28 +504,28 @@ export function IHealthyCalculator(
                   hand-written version said "ตั้งแต่อายุ 60 คุ้มครองเท่าทุน" over a figure
                   half again the sum assured, and never mentioned the age it falls back at.
                   The same helper writes the copied quote, so the two cannot drift. */}
-              {base.variant !== "WLF99HX" && deathBenefitRows(death).map((row) => (
+              {base.variant !== "WLF99HX" && deathBenefitRows(death, w.death).map((row) => (
                 <p key={row.label} className="mt-1">
                   {row.label}{" "}
                   <span className="lg-figure tabular-nums text-[var(--lg-white)]">
                     {row.amount.toLocaleString("en-US")}
                   </span>{" "}
-                  บาท
+                  {w.baht}
                 </p>
               ))}
               {shown && (
-                <p className="mt-1 opacity-80">เบี้ยปีแรก ปีต่อไปคิดตามอายุที่เพิ่มขึ้น</p>
+                <p className="mt-1 opacity-80">{w.firstYearOnly}</p>
               )}
               {hasDci && (
                 <section className="mt-4 border-t border-[var(--lg-panel-line)] pt-4">
                   <h3 className="font-medium text-[var(--lg-white)]">
-                    DCI คุ้มครองโรคร้ายแรง {dciRider?.sumAssured?.toLocaleString("en-US")} บาท · 31 โรค
+                    {w.dciTitle(dciRider?.sumAssured?.toLocaleString("en-US") ?? "")}
                   </h3>
                   <p className="mt-1 text-xs leading-relaxed">
-                    เป็นไปตามคำนิยามและเงื่อนไขในกรมธรรม์
+                    {w.dciNote}
                   </p>
                   <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-relaxed">
-                    {dciDiseases.diseases.map((disease) => <li key={disease}>{disease}</li>)}
+                    {dciDiseases.map((disease) => <li key={disease}>{disease}</li>)}
                   </ol>
                 </section>
               )}
@@ -537,6 +549,7 @@ export function IHealthyCalculator(
           initialRiders={initial.riders}
           onAttached={setAttached}
           onPicked={setPicked}
+          w={w}
         />
       )}
 
@@ -550,7 +563,7 @@ export function IHealthyCalculator(
         <BenefitTable
           data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
           participationNote={participationNote}
-          sellable={plans.map((p) => p.code)} premiums={premiums}
+          sellable={plans.map((p) => p.code)} premiums={premiums} w={w}
           dailyCash={
             // `??` would be wrong here: null is the fold saying the agent took it off, not
             // the fold saying nothing yet, and falling through to the standard would put a
@@ -571,18 +584,18 @@ export function IHealthyCalculator(
           clipboard. Both are the agent working, not the customer deciding. */}
       <div className="grid grid-cols-2 gap-2 print:hidden">
         <button type="button" onClick={() => window.print()} className={tool}>
-          พิมพ์ หรือบันทึก PDF
+          {w.printOrPdf}
         </button>
-        <LinkButton className={tool} />
+        <LinkButton className={tool} words={{ copy: w.copyLink, copied: w.linkCopied }} />
       </div>
 
       <div className="print:hidden">
-        <ContactButtons message={message} copyText={quoteText} cardPath={picture} />
+        <ContactButtons message={message} copyText={quoteText} cardPath={picture} words={w.contact} />
       </div>
 
       {sticky && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden print:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={picture} compact />
+          <ContactButtons message={message} copyText={quoteText} cardPath={picture} words={w.contact} compact />
         </div>
       )}
     </div>

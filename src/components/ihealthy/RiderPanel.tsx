@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { formatBaht } from "@/calc/money";
-import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
+import type { PayMode } from "@/calc/types";
+import { WORDS, type IHealthyWords } from "@/lib/ihealthy-words";
 import { MoneyInput } from "@/components/MoneyInput";
 import { priceWithRiders } from "@/app/ihealthy-ultra/actions";
 import type { RiderChoice, RiderQuoteInput, RiderQuoteResult } from "@/app/ihealthy-ultra/actions";
@@ -41,6 +42,8 @@ export interface RiderPanelProps {
    * including when there are none, which is a link saying the fold was emptied.
    */
   initialRiders?: AttachedRider[];
+  /** the page's words in the reader's language, the engine's Thai lines read through `w.rider` */
+  w?: IHealthyWords;
 }
 
 /**
@@ -143,7 +146,7 @@ function range(c: RiderChoice): string {
  * arrangement it saw, and the card went on charging for it.
  */
 export function RiderPanel(
-  { request, standard, onAttached, onPicked, initialRiders }: RiderPanelProps,
+  { request, standard, onAttached, onPicked, initialRiders, w = WORDS.th }: RiderPanelProps,
 ) {
   // Taken apart at the door. The calculator builds `request` inline, so a fresh object
   // arrives on every render; an effect that listed it as a dependency would ask the server
@@ -255,7 +258,7 @@ export function RiderPanel(
   return (
     <details open className="group rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] print:hidden">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-medium text-[var(--lg-white)] marker:hidden">
-        แนบสัญญาเพิ่มเติมอื่น
+        {w.foldTitle}
         <span
           aria-hidden
           className="shrink-0 text-lg leading-none text-[var(--lg-gold)] transition-transform duration-300 group-open:rotate-45"
@@ -271,21 +274,22 @@ export function RiderPanel(
           // A button, because the fold no longer stops and starts with the disclosure arrow:
           // it was told to close and reopen to retry, and closing it does nothing any more.
           <p className="flex flex-wrap items-center gap-3 text-sm text-[var(--lg-gold)]">
-            คิดเบี้ยไม่สำเร็จ
+            {w.pricingFailed}
             <button
               type="button" onClick={() => setAttempt((n) => n + 1)}
               className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-[var(--lg-gold)]"
             >
-              ลองอีกครั้ง
+              {w.retry}
             </button>
           </p>
         ) : result === undefined ? (
-          <p className="text-sm text-[var(--lg-mute)]">กำลังคิดเบี้ย</p>
+          <p className="text-sm text-[var(--lg-mute)]">{w.pricing}</p>
         ) : (
           <>
             {result.available.map((c) => {
               const on = c.code in chosen && c.eligible;
               const picked = chosen[c.code];
+              const name = w.rider(c.name);
               return (
                 <div
                   key={c.code}
@@ -296,25 +300,25 @@ export function RiderPanel(
                       type="checkbox" checked={on} disabled={!c.eligible} onChange={() => toggle(c)}
                       className="h-4 w-4 shrink-0 accent-[var(--lg-gold)]"
                     />
-                    {c.name}
+                    {name}
                     {/* the rider's name wraps on a phone; "0 - 60 ปี" broken over two lines
                         reads as two different numbers */}
-                    <span className="shrink-0 whitespace-nowrap text-xs text-[var(--lg-mute)]">{c.ageRange}</span>
+                    <span className="shrink-0 whitespace-nowrap text-xs text-[var(--lg-mute)]">{w.rider(c.ageRange)}</span>
                   </label>
                   {!c.eligible && (
-                    <span className="text-xs text-[var(--lg-mute)]">{c.reason}</span>
+                    <span className="text-xs text-[var(--lg-mute)]">{c.reason && w.rider(c.reason)}</span>
                   )}
                   {on && c.options && c.options.length > 0 && (
                     <select
-                      aria-label={`แบบของ${c.name}`} className={control} value={picked.option ?? ""}
+                      aria-label={w.optionOf(name)} className={control} value={picked.option ?? ""}
                       onChange={(e) => amend(c.code, { option: e.target.value })}
                     >
-                      {c.options.map((o) => <option key={o.code} value={o.code}>{o.name}</option>)}
+                      {c.options.map((o) => <option key={o.code} value={o.code}>{w.rider(o.name)}</option>)}
                     </select>
                   )}
                   {on && c.plans && c.plans.length > 0 && (
                     <select
-                      aria-label={`แผนของ${c.name}`} className={control} value={picked.plan ?? ""}
+                      aria-label={w.planOf(name)} className={control} value={picked.plan ?? ""}
                       onChange={(e) => amend(c.code, { plan: Number(e.target.value) })}
                     >
                       {c.plans.map((p) => (
@@ -323,11 +327,11 @@ export function RiderPanel(
                     </select>
                   )}
                   {on && c.exactSumAssured !== undefined && (
-                    <span className="text-xs text-[var(--lg-mute)]">{c.exactMessage}</span>
+                    <span className="text-xs text-[var(--lg-mute)]">{c.exactMessage && w.rider(c.exactMessage)}</span>
                   )}
                   {on && c.exactSumAssured === undefined && c.saMin !== undefined && (
                     <label className="flex items-center gap-2">
-                      <span className="sr-only">ทุนของ{c.name}</span>
+                      <span className="sr-only">{w.sumOfRider(name)}</span>
                       <MoneyInput
                         className={`w-32 ${control}`} value={picked.sumAssured ?? ""} max={c.saMax}
                         onChange={(v) => amend(c.code, { sumAssured: v })}
@@ -349,22 +353,22 @@ export function RiderPanel(
               {result.items.map((i) => (
                 <div key={i.code} className="flex items-baseline justify-between gap-3">
                   <dt className="text-[var(--lg-mute)]">
-                    {i.code.startsWith(HEALTH_RIDER) ? HEALTH_RIDER_NAME : i.name}
+                    {i.code.startsWith(HEALTH_RIDER) ? HEALTH_RIDER_NAME : w.rider(i.name)}
                   </dt>
                   <dd
                     className={`lg-figure tabular-nums ${i.eligible ? "text-[var(--lg-white)]" : "text-[var(--lg-gold)]"}`}
                   >
-                    {i.eligible ? formatBaht(i.modal) : i.message}
+                    {i.eligible ? formatBaht(i.modal) : i.message && w.rider(i.message)}
                   </dd>
                 </div>
               ))}
               <div className="flex items-baseline justify-between gap-3 border-t border-[var(--lg-panel-line)] pt-2 font-medium">
-                <dt className="text-[var(--lg-white)]">เบี้ยรวม {PAY_MODE_LABEL[mode]}</dt>
+                <dt className="text-[var(--lg-white)]">{w.totalPremium(w.mode[mode])}</dt>
                 <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(result.totalModal)}</dd>
               </div>
             </dl>
-            {result.warnings.map((w) => (
-              <p key={w} className="text-xs text-[var(--lg-gold)]">{w}</p>
+            {result.warnings.map((warning) => (
+              <p key={warning} className="text-xs text-[var(--lg-gold)]">{w.rider(warning)}</p>
             ))}
           </>
         )}

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { PAGE_INBOX_URL } from "@/lib/legacy-cta";
+import type { ContactWords } from "@/lib/ihealthy-words";
 
 /**
  * Hands the quote to whoever the agent is talking to, by the shortest route the device has.
@@ -16,7 +17,8 @@ import { PAGE_INBOX_URL } from "@/lib/legacy-cta";
  * server rendering and tripping hydration.
  */
 export function SendButton(
-  { text, className, compact = false }: { text: string; className: string; compact?: boolean },
+  { text, className, compact = false, words }:
+    { text: string; className: string; compact?: boolean; words?: ContactWords["send"] },
 ) {
   const [canShare, setCanShare] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -46,7 +48,9 @@ export function SendButton(
 
   return (
     <button type="button" onClick={send} className={className} aria-live="polite">
-      {copied ? (compact ? "คัดลอกแล้ว ✓" : "คัดลอกแล้ว เปิด Inbox ✓") : compact ? "ส่งต่อ" : "ส่งให้ลูกค้า"}
+      {copied
+        ? (compact ? words?.copiedCompact ?? "คัดลอกแล้ว ✓" : words?.copied ?? "คัดลอกแล้ว เปิด Inbox ✓")
+        : compact ? words?.compact ?? "ส่งต่อ" : words?.full ?? "ส่งให้ลูกค้า"}
     </button>
   );
 }

@@ -122,8 +122,12 @@ export function isHeading(entry: BenefitEntry): entry is BenefitHeading {
   return "heading" in entry;
 }
 
-/** The company's own numbering, as it appears at the head of a row or a heading. */
-const CATEGORY_NO = /^หมวดที่ (\d+)/;
+/**
+ * The company's own numbering, as it appears at the head of a row or a heading — in Thai, and
+ * in each of the readings the page offers (see ihealthy-translate.ts), whose headings keep
+ * the number where the Thai has it so the phone's "N more categories" counts the same.
+ */
+const CATEGORY_NO = /^(?:หมวดที่ |Category |Раздел |第)(\d+)/;
 
 /**
  * Every หมวด the contract has, in order.

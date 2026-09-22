@@ -3,6 +3,7 @@ import { PHONE_PLANS, PHONE_ROW_LABEL } from "@/lib/ihealthy-phone";
 import {
   benefitValue, categoryNumbers, isHeading, planLabel, type BenefitEntry, type IHealthyFacts,
 } from "@/lib/ihealthy-facts";
+import { WORDS, type IHealthyWords } from "@/lib/ihealthy-words";
 
 /**
  * The half of the benefit data the browser needs. `terms` and `disclaimer` are three of the
@@ -43,6 +44,8 @@ export interface BenefitTableProps {
    * does not carry. It is also what a printed sheet has instead of a card.
    */
   premiums?: { mode: string; label: string; byPlan: Record<string, number | null> }[];
+  /** the page's own words in the reader's language; the rows arrive already translated */
+  w?: IHealthyWords;
 }
 
 
@@ -60,8 +63,6 @@ const WIDE_ONLY_CELL = "hidden sm:table-cell";
 const WIDE_ONLY_ROW = "hidden sm:table-row";
 
 const DASH = "-";
-/** What a column says, once in its header, when the company does not sell it at this age. */
-const NOT_SOLD = "ไม่ขายที่อายุนี้";
 
 export interface BenefitCell {
   /** what the cell prints */
@@ -202,7 +203,9 @@ function runAttrs(run: CellRun, selected: string): { "data-plan"?: string; "data
 }
 
 export function BenefitTable(
-  { data, selected, age, sellable, sharedLimit, participationNote, premiums, dailyCash }: BenefitTableProps,
+  {
+    data, selected, age, sellable, sharedLimit, participationNote, premiums, dailyCash, w = WORDS.th,
+  }: BenefitTableProps,
 ) {
   const plans = data.plans;
   /** A column a phone keeps: one of the three, or the one the card is pricing. */
@@ -234,7 +237,7 @@ export function BenefitTable(
         className="overflow-x-auto print:overflow-visible focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--lg-gold)]"
         tabIndex={0}
         role="region"
-        aria-label="เลื่อนตารางเพื่อดูแผนอื่น"
+        aria-label={w.tableScroll}
       >
         {/* A phone gets a table sized to its box, so three plans and their titles share the
               width and the Thai wraps; a wide screen gets one sized to its content. */}
@@ -244,13 +247,13 @@ export function BenefitTable(
               the extra-wide breakpoint the table stops growing and centres instead. */}
           <table className="ihu-benefit-table w-full border-collapse text-xs sm:w-max sm:min-w-full xl:w-full xl:min-w-0">
           <caption className="sr-only">
-            ตารางผลประโยชน์ iHealthy Ultra ทั้ง {plans.length} แผน
+            {w.tableCaption(plans.length)}
           </caption>
           <thead>
             <tr>
               {/* the corner is pinned in both directions at once, so it outranks both */}
               <th scope="col" className={`${PIN} ${HEAD} z-30 font-medium text-[var(--lg-mute)]`}>
-                ผลประโยชน์
+                {w.benefitColumn}
               </th>
               {plans.map((p) => {
                 const sold = sellable.includes(p.code);
@@ -276,13 +279,15 @@ export function BenefitTable(
                         carry it, and the colour is left alone — the table sets one on every
                         cell from its own stylesheet, and that rule outranks a utility class. */}
                     <span className="mt-1 hidden font-bold tabular-nums sm:block sm:text-[0.95rem] sm:leading-tight">
-                      {(p.annualMax / 1_000_000).toLocaleString("en-US")}
-                      <span className="ml-1 text-[0.62rem] font-normal opacity-70">ล้าน</span>
+                      {w.big(p.annualMax).num}
+                      <span className="ml-1 text-[0.62rem] font-normal opacity-70">{w.big(p.annualMax).unit}</span>
                     </span>
                     {/* The column out of play is dimmed in its cells, not here: this line is
                         the only place the reader is told why, and faded to match the dashes
                         below it, it would sit at 3:1 on the ground. */}
-                    {!sold && <span className="block text-[0.65rem] font-normal">{NOT_SOLD}</span>}
+                    {/* What a column says, once in its header, when the company does not sell
+                        it at this age. */}
+                    {!sold && <span className="block text-[0.65rem] font-normal">{w.notSold}</span>}
                   </th>
                 );
               })}
@@ -299,7 +304,7 @@ export function BenefitTable(
                 className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
               >
                 <Icon mark="🛡️" />
-                วงเงินค่ารักษาต่อปี
+                {w.annualLimit}
               </th>
               {plans.map((p) => (
                 <td
@@ -308,7 +313,7 @@ export function BenefitTable(
                   data-picked={p.code === selected ? "" : undefined}
                   className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2.5 text-center tabular-nums sm:px-3`}
                 >
-                  {(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน
+                  {w.big(p.annualMax).num} {w.big(p.annualMax).unit}
                 </td>
               ))}
             </tr>
@@ -342,7 +347,7 @@ export function BenefitTable(
                       {entry.no !== null && PHONE_ROW_LABEL[entry.no] ? (
                         <>
                           <Icon mark={PHONE_ROW_LABEL[entry.no].icon} />
-                          {PHONE_ROW_LABEL[entry.no].label}
+                          {w.phoneRow[entry.no] ?? PHONE_ROW_LABEL[entry.no].label}
                         </>
                       ) : entry.title}
                     </span>
@@ -354,7 +359,7 @@ export function BenefitTable(
                         an offer the contract does not make. */}
                     {entry.limit && (
                       <span className="mt-0.5 hidden text-[0.65rem] text-[var(--lg-gold)] sm:block">
-                        ไม่เกิน {entry.limit}
+                        {w.upTo(entry.limit)}
                       </span>
                     )}
                   </th>
@@ -399,7 +404,7 @@ export function BenefitTable(
                   className={`${PIN} z-10 py-2.5 text-[0.7rem] font-medium leading-relaxed text-[var(--lg-white)]`}
                 >
                   <span className="sm:hidden"><Icon mark="💵" /></span>
-                  ค่าชดเชยรายวัน
+                  {w.dailyCashRow}
                 </th>
                 <td
                   colSpan={plans.length}
@@ -409,8 +414,8 @@ export function BenefitTable(
                     DASH
                   ) : (
                     <>
-                      <span className="tabular-nums">{dailyCash.toLocaleString("en-US")}</span> ต่อวัน
-                      <span className="ml-2 text-[0.65rem] text-[var(--lg-mute)]">ทุกแผนเท่ากัน</span>
+                      <span className="tabular-nums">{dailyCash.toLocaleString("en-US")}</span> {w.perDay}
+                      <span className="ml-2 text-[0.65rem] text-[var(--lg-mute)]">{w.samePlans}</span>
                     </>
                   )}
                 </td>
@@ -429,7 +434,7 @@ export function BenefitTable(
                   scope="colgroup" colSpan={plans.length + 1}
                   className="bg-[var(--lg-ground-deep)] py-2 text-left text-[0.7rem] font-medium leading-relaxed text-[var(--lg-gold)]"
                 >
-                  <span className={`sticky left-0 print:static inline-block ${TITLE_W} px-3`}>เบี้ยประกัน</span>
+                  <span className={`sticky left-0 print:static inline-block ${TITLE_W} px-3`}>{w.premiumHeading}</span>
                 </th>
               </tr>
             )}
@@ -467,10 +472,10 @@ export function BenefitTable(
             plans, so a sentence promising cover in every category the phone hides would be
             promising one the contract refuses. */}
         <span className="sm:hidden">
-          ตารางเต็มมีอีก {hidden} หมวด ดูได้บนจอคอมพิวเตอร์ ·{" "}
+          {w.moreOnDesktop(hidden)}
         </span>
         {/* on paper there is nothing to scroll to, and the whole table is already there */}
-        <span className="hidden print:hidden sm:inline">เลื่อนตารางไปทางขวาเพื่อดูแผนอื่น · </span>
+        <span className="hidden print:hidden sm:inline">{w.scrollHint}</span>
         {sharedLimit}
       </p>
       <p className="pb-2.5 text-[0.7rem] leading-relaxed text-[var(--lg-mute)] opacity-80">

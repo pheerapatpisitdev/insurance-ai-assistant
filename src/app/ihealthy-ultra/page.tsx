@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { IHealthyCalculator } from "@/components/IHealthyCalculator";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import { iHealthyFacts } from "@/lib/ihealthy-facts";
@@ -7,12 +8,24 @@ import { Disclaimer, Hero, TermsSection } from "@/components/ihealthy/Sections";
 import { arrangementKey } from "@/components/ihealthy/rider-request";
 import { priceRiders } from "@/lib/ihealthy-rider-quote";
 import type { Attached } from "@/components/ihealthy/RiderPanel";
+import { LangSwitch } from "@/components/ihealthy/LangSwitch";
+import { HTML_LANG, LANG_COOKIE, parseLang, type Lang } from "@/lib/ihealthy-lang";
+import { WORDS } from "@/lib/ihealthy-words";
+import { dciDiseases, translateFacts } from "@/lib/ihealthy-translate";
 
-export const metadata = {
-  title: "iHealthy Ultra — ค่ารักษาพยาบาลเหมาจ่ายถึง 100 ล้านต่อปี",
-  description:
-    "ประกันสุขภาพเหมาจ่าย 6 แผน วงเงิน 3 ถึง 100 ล้านบาทต่อปี ต่ออายุได้ถึงอายุ 98 ปี เทียบผลประโยชน์ครบ 28 หมวด และคำนวณเบี้ยของคุณเองได้ทันที",
-};
+/** The language the reader picked with the switch; Thai for everyone who has not. */
+async function readerLang(): Promise<Lang> {
+  return parseLang((await cookies()).get(LANG_COOKIE)?.value);
+}
+
+/**
+ * Thai for a link preview, which is fetched without the reader's cookie, and the reader's own
+ * language in the tab they are reading it in.
+ */
+export async function generateMetadata() {
+  const w = WORDS[await readerLang()];
+  return { title: w.metaTitle, description: w.metaDescription };
+}
 
 /**
  * A link's own riders, priced here so that the first thing a reader sees is already right.
@@ -53,7 +66,11 @@ export default async function IHealthyPage(
   { searchParams }: { searchParams: Promise<IHealthyQuery> },
 ) {
   const table = iHealthyTable();
-  const facts = iHealthyFacts();
+  const lang = await readerLang();
+  const w = WORDS[lang];
+  // The sheet read into the reader's language here, on the server, so the browser is handed
+  // one language of the contract rather than four.
+  const facts = translateFacts(iHealthyFacts(), lang);
   // The address is read here rather than in the browser, so a shared link is already the
   // arrangement it asks for in the HTML that arrives — no first paint of somebody else's
   // quote, and a reader on a slow phone never watches the card change under them.
@@ -83,14 +100,22 @@ export default async function IHealthyPage(
   const { rows, plans, copayPercent } = facts;
   const initialAttached = foldQuote(table.standard.code, initial);
   return (
-    <main className="mx-auto max-w-lg px-4 pb-28 sm:max-w-2xl sm:pb-10">
-      <Hero facts={facts} />
+    <main lang={HTML_LANG[lang]} className="mx-auto max-w-lg px-4 pb-28 sm:max-w-2xl sm:pb-10">
+      <LangSwitch lang={lang} label={w.switchLabel} />
+      {/* Said at the top as well as under the disclaimer: a reader who acts on a translated
+          condition should have been told before reading it which version binds. */}
+      {w.translationNote && (
+        <p className="pt-3 text-right text-[0.7rem] leading-relaxed text-[var(--lg-mute)] opacity-80">
+          {w.translationNote}
+        </p>
+      )}
+      <Hero facts={facts} w={w} />
       {/* The customer's version of the same fact. `ExpiryBanner` tells the agency's own
           operator to go and fetch a new rate file, which is not a sentence to put at the top
           of a page a customer arrived at from an advert. */}
       {table.expired && (
         <p className="mb-4 rounded-sm border border-[var(--lg-gold)] px-4 py-3 text-sm text-[var(--lg-gold)]">
-          ตารางเบี้ยชุดนี้หมดอายุตั้งแต่ {table.expiresOn} ขอเบี้ยปัจจุบันได้จากตัวแทน
+          {w.expiredTable(table.expiresOn)}
         </p>
       )}
       <section id="calc" className="scroll-mt-4">
@@ -98,10 +123,11 @@ export default async function IHealthyPage(
           table={table} data={{ rows, plans, copayPercent }}
           sharedLimit={facts.terms.sharedLimit} participationNote={facts.terms.participationNote}
           initial={initial} initialAttached={initialAttached} sticky
+          lang={lang} dciDiseases={dciDiseases(lang)}
         />
       </section>
-      <TermsSection facts={facts} />
-      <Disclaimer facts={facts} rateVersion={table.rateVersion} />
+      <TermsSection facts={facts} w={w} />
+      <Disclaimer facts={facts} rateVersion={table.rateVersion} w={w} />
     </main>
   );
 }
