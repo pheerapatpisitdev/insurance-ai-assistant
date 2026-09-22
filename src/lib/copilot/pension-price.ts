@@ -13,7 +13,7 @@ import type { PriceReply } from "./price";
  * mostly asked for an income: "อยากได้เดือนละ 10,000 ตอน 60". So it reads three things the
  * others never need — which age the pension starts, whether the premiums run six years or
  * until then, and whether the figure given is a pension, a premium or a sum — and prices
- * through the same engine as the /pension page, so the two cannot disagree.
+ * through the same engine as the /bumnan95 page, so the two cannot disagree.
  *
  * Nothing is assumed. The paying term alone moves the premium several times over, and a
  * figure quoted on a guessed term arrives looking exactly like a right one.
@@ -158,7 +158,7 @@ export function pricePension(text: string): PriceReply {
   if (!result.ok) {
     return {
       priced: false,
-      text: `แบบ **${PENSION_LABEL}** ยังคิดให้ไม่ได้ด้วยเงื่อนไขนี้ครับ\n\n- ${result.error}\n\nลองปรับดู หรือใช้ [เครื่องคิดบำนาญ](/pension)`,
+      text: `แบบ **${PENSION_LABEL}** ยังคิดให้ไม่ได้ด้วยเงื่อนไขนี้ครับ\n\n- ${result.error}\n\nลองปรับดู หรือใช้ [เครื่องคิดบำนาญ](/bumnan95)`,
     };
   }
   const q = result.quote;
@@ -177,7 +177,7 @@ export function pricePension(text: string): PriceReply {
     `เพิ่มเป็นปีละ ${lastBand.annual.toLocaleString("en-US")} บาท ตั้งแต่อายุ ${lastBand.fromAge} · รับประกันจ่าย 15 ปีแรก`,
     `รวมรับบำนาญถึงอายุ 95 ประมาณ ${q.totalPension.toLocaleString("en-US")} บาท จากเบี้ยรวม ${floorBaht(q.totalPremium)} บาท`,
     "",
-    "เบี้ยใช้ลดหย่อนภาษีได้ตามเกณฑ์สรรพากร · ดูตารางรายปีและคำนวณภาษีได้ที่ [เครื่องคิดบำนาญ](/pension)",
+    "เบี้ยใช้ลดหย่อนภาษีได้ตามเกณฑ์สรรพากร · ดูตารางรายปีและคำนวณภาษีได้ที่ [เครื่องคิดบำนาญ](/bumnan95)",
     "เบี้ยมาตรฐาน ตารางเวอร์ชัน A2026-1 · อาจต่างไปตามผลพิจารณารับประกัน · ยังไม่รวมสัญญาเพิ่มเติม",
   ];
   const others = availablePensionAges(who!.age, pay!).filter((a) => a !== q.plan.annuityStartAge);

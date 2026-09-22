@@ -181,7 +181,7 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
       { href: "/other-plans", label: "จัดแบบเอง", icon: "calc", hue: "#327d86" },
       // a calculator rather than a sales page, so it sits with the other one; the hue is cut
       // between its neighbours on the arc
-      { href: "/pension", label: "บำนาญ 95", icon: "clock", hue: "#2e6e7c" },
+      { href: "/bumnan95", label: "บำนาญ 95", icon: "clock", hue: "#2e6e7c" },
       { href: "/", label: "ถาม AI", icon: "spark", hue: "#2b5f73" },
       ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า", icon: "users" as const, hue: "#33638a" }] : []),
     ],

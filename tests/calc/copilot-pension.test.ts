@@ -3,7 +3,7 @@ import { asksPensionPrice, pensionNamedIn, pricePension } from "@/lib/copilot/pe
 import { answerAny } from "@/lib/assistant/dispatch";
 import { quotePension } from "@/calc/pension/engine";
 
-/** The premium the /pension page shows for the same person, so the chat cannot drift from it. */
+/** The premium the /bumnan95 page shows for the same person, so the chat cannot drift from it. */
 function onThePage(age: number, sex: "M" | "F", annuityAge: number, pay: "6" | "untilAnnuity", monthly: number) {
   const r = quotePension({ age, sex, annuityAge, pay, mode: "annual", basis: "monthlyPension", amount: monthly });
   if (!r.ok) throw new Error(r.error);
