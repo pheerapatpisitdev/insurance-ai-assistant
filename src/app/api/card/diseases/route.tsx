@@ -3,7 +3,7 @@ import path from "node:path";
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { diseaseListFor } from "@/lib/copilot/knowledge";
-import { CHARCOAL_GOLD, IHEALTHY_SATIN, type CardPalette } from "@/lib/card-theme";
+import { CARD_PALETTE, type CardPalette } from "@/lib/card-theme";
 import { SIGNATURE_HEIGHT, SIGNATURE_TEXT, markDataUri } from "@/lib/card-signature";
 
 export const runtime = "nodejs";
@@ -149,16 +149,6 @@ function Group(
   );
 }
 
-/**
- * The palettes a list can be drawn in.
- *
- * Keyed by contract rather than by plan, because a list belongs to the rider and the rider is
- * sold under more than one plan. An unknown code falls back rather than failing: a card in
- * the wrong colours is a blemish, a card that does not draw is a customer left without an
- * answer — the same rule `cardPaletteFor` follows.
- */
-const PALETTE: Record<string, CardPalette> = { IHU: IHEALTHY_SATIN };
-
 const FONT_DIR = path.join(process.cwd(), "src/app/api/card");
 const loadFont = (file: string) => readFile(path.join(FONT_DIR, file));
 
@@ -167,7 +157,7 @@ export async function GET(req: NextRequest) {
   const list = diseaseListFor(code);
   if (!list) return new Response("ไม่พบรายชื่อโรคตามที่ระบุ", { status: 400 });
 
-  const p = PALETTE[code] ?? CHARCOAL_GOLD;
+  const p = CARD_PALETTE;
   const total = list.groups.reduce((n, g) => n + g.diseases.length, 0);
   /** one list needs no headings inside it, and no line above saying what it is made of */
   const grouped = list.groups.length > 1;

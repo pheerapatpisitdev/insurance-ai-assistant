@@ -228,7 +228,7 @@ export async function GET(req: NextRequest) {
   const card = input ? quoteCard(input) : undefined;
   if (!input || !card) return new Response("ไม่พบแบบประกันตามที่ระบุ", { status: 400 });
   /** the theme the plan is sold under, so the card matches the page it was quoted from */
-  const p = cardPaletteFor(input);
+  const p = cardPaletteFor();
 
   const [regular, semibold, display, mark] = await Promise.all([
     loadFont("IBMPlexSansThai-Regular.ttf"),

@@ -1,54 +1,68 @@
-/* ประกันภัยกลุ่ม — the corporate navy, kept as it was.
+/* ประกันภัยกลุ่ม, in the application's palette.
 
-   This page arrives from a tool that already existed and was already being shown to HR
-   managers, and the owner asked for its colours to come with it rather than be restyled into
-   the rose the life calculator wears. That is not nostalgia: group insurance is sold to a
-   company across a meeting-room table, the other five plans to a person across a coffee
-   table, and the navy-and-gold says which of the two conversations this is before a word of
-   it is read.
+   This page used to be the one exception: it arrived from a tool that was already being shown
+   to HR managers, and its corporate navy was kept while the life pages wore a rose. That
+   argument has been overtaken — the whole application is navy and sand now, and the thing the
+   navy used to say about this page ("this is the meeting-room conversation, not the coffee
+   table one") is no longer available to say in colour. The page says it in its own words.
+
+   What survives the move is that this file's navy was very nearly the deck's already; the
+   difference is that it now comes from the same place as everyone else's.
 
    The tokens are --gi-* and set on the page's own wrapper. They are deliberately not the
-   --lg-* ones the sales components read: a page that defined those without wearing the satin
+   --lg-* ones the sales components read: a page that defined those without wearing the theme
    would be lying to anything that inherited them, which is the same reason other-plans/theme.css
-   gives for its --op-*.
-
-   Contrast, since every figure here is money: --gi-ink on --gi-panel is 14:1, --gi-mute on it
-   is 5.7:1, and --gi-navy carries white at 11:1. The gold is the one colour that does not
-   clear 4.5:1 as text on white — 3.1:1 — so it is only ever used on a navy ground, as a
-   border, or on a figure large enough to qualify as large text. */
+   gives for its --op-*. */
 .group-insurance {
   color-scheme: light;
 
-  --gi-navy: #292d78;
-  --gi-navy-deep: #1e2159;
-  /* the pale blue the navy panels use for their secondary text: 6.4:1 on the navy */
-  --gi-navy-soft: #ccd6eb;
-  --gi-gold: #a9914d;
-  --gi-gold-deep: #8a7539;
-  --gi-teal: #607f74;
-  --gi-teal-deep: #3f5e52;
+  --gi-navy: var(--bot-navy);
+  --gi-navy-deep: var(--bot-navy-deep);
+  /* The pale blue the navy panels use for their secondary text: 7.0:1 on the navy. This is
+     the deck's own second chart series, which is the only other blue in the palette — a
+     secondary on a navy panel and a secondary in a navy chart are the same job. */
+  --gi-navy-soft: var(--bot-blue);
+  --gi-gold: var(--bot-sand);
+  --gi-gold-deep: var(--bot-sand-line);
+  /* Was a teal, and was the page's action colour: buttons, the checkbox, the links, the focus
+     ring. There is one accent in this application now and it is the navy. Nothing here puts
+     an action on top of a navy panel, so the two never meet. */
+  --gi-teal: var(--bot-navy-lift);
+  --gi-teal-deep: var(--bot-navy);
 
-  --gi-ground: #fafbfc;
-  --gi-panel: #ffffff;
+  --gi-ground: var(--bot-band);
+  --gi-panel: var(--bot-surface);
   /* one step down from the panel: table stripes, input fills, the quiet row */
-  --gi-sunken: #f8fafc;
-  --gi-line: #e2e8f0;
-  /* a control's edge is the only thing saying "this is a control": 3.1:1 on both surfaces */
-  --gi-line-strong: #94a3b8;
-  --gi-ink: #0f172a;
-  --gi-ink-soft: #334155;
-  --gi-mute: #64748b;
+  --gi-sunken: var(--bot-band);
+  --gi-line: var(--bot-line);
+  /* a control's edge is the only thing saying "this is a control": 3:1 on both surfaces */
+  --gi-line-strong: var(--bot-line-strong);
+  --gi-ink: var(--bot-ink);
+  --gi-ink-soft: var(--bot-ink-foot);
+  --gi-mute: var(--bot-ink-mute);
 
-  /* the warning shown when a group is outside what the product will write */
-  --gi-warn-bg: #fffbeb;
-  --gi-warn-line: #fcd34d;
-  --gi-warn-ink: #92400e;
+  /* The warning shown when a group is outside what the product will write. It was amber, and
+     amber is not in this palette; sand is what the palette has for "look at this one", and a
+     warning is exactly that. Red is not borrowed here — red is the error colour and this is
+     not an error, it is a group the underwriter will want to talk about. */
+  --gi-warn-bg: var(--bot-sand-soft);
+  --gi-warn-line: var(--bot-sand-line);
+  --gi-warn-ink: #5f5436;
 
-  /* the four risk classes of the registrar's table, darkened until each clears 4.5:1 */
-  --gi-lv1-bg: #d1fae5; --gi-lv1-ink: #065f46;
-  --gi-lv2-bg: #ccfbf1; --gi-lv2-ink: #115e59;
-  --gi-lv3-bg: #fef3c7; --gi-lv3-ink: #92400e;
-  --gi-lv4-bg: #fee2e2; --gi-lv4-ink: #991b1b;
+  /* The four risk classes of the registrar's table, as a ramp from the navy end of the
+     palette to the sand end: the further down the table, the warmer the chip.
+
+     A single ramp cannot be read the way the green-to-red it replaces could — nobody looks at
+     pale blue and knows it means "very low risk". It does not have to: every chip carries its
+     own wording, "ขั้น 1 (ความเสี่ยงต่ำมาก)" through "ขั้น 4 (ความเสี่ยงสูง/ไม่คุ้มครอง)", so the
+     colour was always the second way of saying it and is still the second way of saying it.
+     If that wording is ever shortened to a bare numeral, this ramp stops being enough.
+
+     Each pair clears 4.5:1, the sand end included, which the amber it replaces did not. */
+  --gi-lv1-bg: #e8ecf5; --gi-lv1-ink: var(--bot-navy);
+  --gi-lv2-bg: #cfdcef; --gi-lv2-ink: var(--bot-navy);
+  --gi-lv3-bg: #eae5d3; --gi-lv3-ink: #5f5436;
+  --gi-lv4-bg: #d4c8a3; --gi-lv4-ink: #4a411f;
 
   background: var(--gi-ground);
   color: var(--gi-ink);

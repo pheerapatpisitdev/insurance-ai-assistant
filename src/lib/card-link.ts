@@ -75,7 +75,7 @@ function cardQuery(input: CardInput): string {
    * address that did not change. Last, so the readable part of the link stays readable, and
    * ignored by the route — see cardPaletteVersion.
    */
-  q.set("v", cardVersionFor(input));
+  q.set("v", cardVersionFor());
   return q.toString();
 }
 

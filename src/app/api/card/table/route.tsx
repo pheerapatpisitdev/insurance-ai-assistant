@@ -230,7 +230,7 @@ export async function GET(req: NextRequest) {
   const card = input?.kind === "plan" ? valueTableCard(input) : undefined;
   if (!input || !card) return new Response("ไม่พบแบบประกันตามที่ระบุ", { status: 400 });
   /** the theme the plan is sold under, so the sheet matches the page it was quoted from */
-  const p = cardPaletteFor(input);
+  const p = cardPaletteFor();
 
   const [regular, semibold, display] = await Promise.all([
     loadFont("IBMPlexSansThai-Regular.ttf"),

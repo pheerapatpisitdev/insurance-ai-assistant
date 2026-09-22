@@ -1,24 +1,24 @@
-/* iHealthy Ultra wears the rose satin, the same as /plb and /legacy — the layout wraps the
-   page in .satin-rose, which brings the palette, the fabric, the engraved rule, the metal
-   lettering and the print block with it.
+/* iHealthy Ultra wears the shared sales skin, the same as every other plan — globals.css
+   brings the palette, the rule, the accent lettering and the print block with it.
 
    What is left here is the page's own furniture: a hero this plan alone has, and the six-plan
    benefit table, which is the reason this file did not simply disappear. Everything in it is
-   drawn from the satin tokens rather than from colours of its own, so re-tinting the satin
+   drawn from the palette rather than from colours of its own, so re-tinting the palette
    re-tints the table with it.
 
-   The exception is the table's two rules, which are darker than any token. The table is a
-   six-column comparison read across, where the gridline is what keeps a figure attached to
-   its plan — so both are picked to clear 3:1 against every surface they touch, the blush
-   colgroup band included, and --lg-panel-line does not (1.97:1 on that band). */
+   The exception is the table's two rules, which are heavier than the tokens a card would use.
+   The table is a six-column comparison read across, where the gridline is what keeps a figure
+   attached to its plan — so both are picked to clear 3:1 against every surface they touch,
+   the sand colgroup band included, which is where --bot-line-strong stops (2.93:1 on it). */
 .ihealthy-scope {
   /* the table's structural rules: outline, row-header edge, band borders */
-  --ihu-rule: #756563;
+  --ihu-rule: var(--bot-ink-mute);
   /* the quieter separator between one benefit row and the next */
-  --ihu-hairline: #938482;
-  /* the two header bands, deepening as they rise: rows, then plans, then the group above them */
-  --ihu-head: #e7dbd6;
-  --ihu-group: #dbc9c3;
+  --ihu-hairline: var(--bot-line-strong);
+  /* The two header bands. The deck stacks these the same way: the plain band carries the
+     column names, and the sand above it is what says these columns are one group. */
+  --ihu-head: var(--bot-band);
+  --ihu-group: var(--bot-sand-soft);
 }
 
 .ihu-hero { padding: 36px 0 20px; }

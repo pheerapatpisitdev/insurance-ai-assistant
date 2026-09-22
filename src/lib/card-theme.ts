@@ -1,17 +1,14 @@
-import type { CardInput } from "@/lib/card-link";
 
 /**
  * The palette a quote card is drawn in.
  *
- * A card is the sales page torn off and handed over, so it has to be the page's colours: a
- * customer who has just read /ishield in copper and then receives a charcoal-and-gold picture
- * has been sent something from somewhere else. One palette per sales theme, picked by the plan
- * the card is drawing.
+ * A card is the sales page torn off and handed over, so it has to be the page's colours. There
+ * used to be four of these, one per sales theme, because there used to be four sales themes.
+ * There is one now, so there is one here.
  *
- * Two slots change which end of the scale they sit at between a dark theme and a light one, so
- * they are named for their job rather than their colour: `figure` is whatever the premium is
- * set in — the brightest thing on the charcoal, the darkest on the ivory — and `ink` is the
- * body text. Anything named for a colour would have to lie in half the palettes.
+ * Two slots are named for their job rather than their colour, and the names are kept even
+ * though nothing swaps ends any more: `figure` is whatever the premium is set in, and `ink` is
+ * the body text. They read correctly whatever a later palette does to them.
  */
 export interface CardPalette {
   /** the two ends of the card's background wash */
@@ -42,110 +39,55 @@ export interface CardPalette {
 }
 
 /**
- * The original: charcoal and gold, worn by /lifeprotect and /lifetreasure, and by anything
- * whose plan has not been given a palette of its own. Kept to the exact values the card was
- * drawn in before there was more than one theme, so those two cards are unchanged.
+ * Navy and sand on white — the one palette, taken from the same Bank of Thailand deck the
+ * application's own pages are drawn from, so a card and the page it was quoted on are plainly
+ * the same business.
+ *
+ * The ground is flat white rather than a wash. A card travels as an image and is read beside
+ * chat bubbles and printed on office paper; a gradient is the first thing to band in a JPEG
+ * and the first thing to come out grey on a laser printer.
+ *
+ * Two values are the card's own rather than the page's, and both are here because a card is a
+ * picture the reader cannot zoom into:
+ *
+ * `mute` is darker than the page's muted ink. This drawing fades some cells to 85% — the
+ * ceiling row, whose figures sit in a column the age cannot buy but which are real figures all
+ * the same — and the page's #5b6472 comes out of that fade at 4.26:1. At this value the faded
+ * cells hold 5.1:1 and the difference at full strength is invisible.
+ *
+ * `accent` is the olive rather than the deck's display olive, for the same reason: a plan name
+ * on a card is set small.
  */
-export const CHARCOAL_GOLD: CardPalette = {
-  ground: "#26272a",
-  groundDeep: "#1c1d1f",
-  accent: "#c9a26f",
-  figure: "#f2e0bb",
-  ink: "#f5f5f5",
-  mute: "rgba(245,245,245,0.72)",
-  hair: "rgba(201,162,111,0.24)",
-  rule: "rgba(255,255,255,0.12)",
-  glow: "rgba(201,162,111,0.14)",
-  stripe: "rgba(255,255,255,0.035)",
-  grid: "rgba(201,162,111,0.22)",
-  tint: "rgba(201,162,111,0.11)",
-  line: { cash: "#c9a26f", premium: "rgba(245,245,245,0.5)", cover: "rgba(245,245,245,0.34)" },
-};
-
-/** /ishield: copper on warm cream. */
-const COPPER_IVORY: CardPalette = {
-  ground: "#f8f4ee",
-  groundDeep: "#efe6d9",
-  accent: "#85512f",
-  figure: "#6b3b22",
-  ink: "#3b2418",
-  mute: "#6b5647",
-  hair: "#b3a08b",
-  rule: "#a08a72",
-  glow: "rgba(169,113,75,0.10)",
-  stripe: "rgba(107,59,34,0.035)",
-  grid: "rgba(160,138,114,0.35)",
-  tint: "rgba(169,113,75,0.10)",
-  line: { cash: "#85512f", premium: "#8a8075", cover: "#9c8f82" },
-};
-
-/** /plb and /legacy: terracotta and silver on blush ivory. */
-const SATIN_ROSE: CardPalette = {
-  ground: "#f8f3f0",
-  groundDeep: "#ece4df",
-  accent: "#8c4a3f",
-  figure: "#5e2f28",
-  ink: "#36211f",
-  mute: "#635553",
-  hair: "#ab9c9a",
-  rule: "#9c8e8c",
-  glow: "rgba(160,90,76,0.10)",
-  stripe: "rgba(54,33,31,0.035)",
-  grid: "rgba(156,142,140,0.35)",
-  tint: "rgba(160,90,76,0.10)",
-  line: { cash: "#8c4a3f", premium: "#857a78", cover: "#948886" },
-};
-
-/** /legacy: the same terracotta hierarchy, on plain white for a cleaner shared quote. */
-const LEGACY_WHITE: CardPalette = {
-  ...SATIN_ROSE,
+export const CARD_PALETTE: CardPalette = {
   ground: "#ffffff",
   groundDeep: "#ffffff",
+  /* the plan's name — the deck's second headline line, which is the olive one */
+  accent: "#736c42",
+  /* the premium — the deck answers its own question in navy, and so does this */
+  figure: "#022162",
+  ink: "#15181d",
+  mute: "#4d5563",
+  hair: "#c3c6cd",
+  rule: "#7d8490",
+  /* the sand wash, which is the deck's one way of saying "this is the block you came for" */
+  glow: "rgba(198,188,153,0.28)",
+  stripe: "rgba(2,33,98,0.035)",
+  grid: "#c3c6cd",
+  tint: "rgba(198,188,153,0.35)",
+  /* The deck ranks its series navy, grey, sand, every time: the answer leads and the two
+     supporting quantities follow it in that order. */
+  line: { cash: "#022162", premium: "#7f7f7f", cover: "#c6bc99" },
 };
 
 /**
- * /ihealthy-ultra: the rose satin, because that is what the page wears now.
+ * The palette to draw this card in.
  *
- * Drawn by its own route rather than this one, and exported for it — the palettes belong
- * together even when the drawing does not.
- *
- * Everything is SATIN_ROSE's except the grey. This card fades some cells to 85% — the ceiling
- * row, whose figures sit in a column the age cannot buy but which are real figures all the
- * same — and the satin's own #635553 comes out of that fade at 4.5:1 on the lightest ground
- * and 4.1:1 at the deep end of the wash, which is under the bar on a picture the reader
- * cannot zoom out of. At this value the faded cells hold 5.5:1 and 5.0:1. The difference is
- * invisible at full strength and is the whole point at 85%.
+ * A function rather than the constant itself, because this used to choose by plan code and
+ * could again — a plan sold under a second brand would come back through here, and every
+ * caller already asks rather than reaching for a value.
  */
-export const IHEALTHY_SATIN: CardPalette = {
-  ...SATIN_ROSE,
-  // Quote cards travel as images and are often viewed beside white chat bubbles or printed.
-  // A true white ground keeps the figures crisp without changing the sales page's own theme.
-  ground: "#ffffff",
-  groundDeep: "#ffffff",
-  mute: "#524645",
-};
-
-/**
- * Which theme a plan is sold under. Keyed by the code the card link already carries, so a page
- * says nothing about its colours — adding a `theme=` parameter would let a link ask for a
- * palette the plan is not sold in.
- */
-const BY_CODE: Record<string, CardPalette> = {
-  ISHIELD: COPPER_IVORY,
-  PLB: SATIN_ROSE,
-  LEGACY_FAMILY: LEGACY_WHITE,
-  LIFEPROTECT: CHARCOAL_GOLD,
-  LIFETREASURE: CHARCOAL_GOLD,
-};
-
-/**
- * The palette to draw this card in. An unknown code falls back to the charcoal rather than
- * failing: a card in the wrong colours is a blemish, a card that does not draw is a customer
- * left without an answer.
- */
-export function cardPaletteFor(input: CardInput): CardPalette {
-  const code = input.kind === "bundle" ? input.bundleCode : input.planCode;
-  return BY_CODE[code] ?? CHARCOAL_GOLD;
+export function cardPaletteFor(): CardPalette {
+  return CARD_PALETTE;
 }
 
 /**
@@ -184,6 +126,6 @@ export function cardPaletteVersion(palette: CardPalette): string {
 const DRAWING_REVISION = "3";
 
 /** The fingerprint of the palette and layout this card will be drawn in. */
-export function cardVersionFor(input: CardInput): string {
-  return `${cardPaletteVersion(cardPaletteFor(input))}-${DRAWING_REVISION}`;
+export function cardVersionFor(): string {
+  return `${cardPaletteVersion(cardPaletteFor())}-${DRAWING_REVISION}`;
 }

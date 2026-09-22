@@ -36,7 +36,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th">
-      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">{children}</body>
+      {/* The ground under everything, including the back office, which paints no ground of
+          its own. Written as the palette rather than as a Tailwind grey so that there is one
+          place a colour is decided and this is not a second one. */}
+      <body className="min-h-screen bg-[var(--bot-band)] text-[var(--bot-ink)] antialiased">{children}</body>
     </html>
   );
 }

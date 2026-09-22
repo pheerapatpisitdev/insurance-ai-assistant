@@ -115,7 +115,7 @@ export function Calculator({ product }: { product: Product }) {
         <div
           role="status"
           className="fixed inset-x-4 bottom-6 z-[400] mx-auto flex max-w-md items-center justify-between gap-4 rounded-lg px-4 py-3 text-sm text-white shadow-lg"
-          style={{ background: notice.isError ? "#991b1b" : "var(--gi-teal-deep)" }}
+          style={{ background: notice.isError ? "var(--bot-red-ink)" : "var(--gi-teal-deep)" }}
         >
           <span>{notice.message}</span>
           <button type="button" aria-label={t("close")} onClick={() => setNotice(null)} className="shrink-0">

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { CardCell, CardColumn, CardTableRow } from "@/lib/ihealthy-card";
-import { IHEALTHY_SATIN } from "@/lib/card-theme";
+import { CARD_PALETTE } from "@/lib/card-theme";
 
 /**
  * The ink both health pictures are drawn with: the palette, the bands, and the three
@@ -18,20 +18,20 @@ import { IHEALTHY_SATIN } from "@/lib/card-theme";
  * registry rather than written out here: this route draws one plan under one theme, so it
  * needs no picking, but the colours still belong beside the other three.
  *
- * GOLD_LIT and WHITE keep their names for the drawing code below while changing which end of
- * the scale they sit at — on the ivory the premium is the darkest thing on the card, not the
- * brightest. The registry names them `figure` and `ink` for that reason.
+ * GOLD and GOLD_LIT are historical names: the palette they read is navy and olive now, and
+ * the registry calls the same two slots `accent` and `figure`. They are left alone because
+ * they are the drawing code's vocabulary below and renaming them would change no pixel.
  */
-export const GROUND = IHEALTHY_SATIN.ground;
-export const GROUND_DEEP = IHEALTHY_SATIN.groundDeep;
-export const GOLD = IHEALTHY_SATIN.accent;
-export const GOLD_LIT = IHEALTHY_SATIN.figure;
-export const WHITE = IHEALTHY_SATIN.ink;
-export const MUTE = IHEALTHY_SATIN.mute;
-export const RULE = IHEALTHY_SATIN.rule;
-export const GRID = IHEALTHY_SATIN.grid;
+export const GROUND = CARD_PALETTE.ground;
+export const GROUND_DEEP = CARD_PALETTE.groundDeep;
+export const GOLD = CARD_PALETTE.accent;
+export const GOLD_LIT = CARD_PALETTE.figure;
+export const WHITE = CARD_PALETTE.ink;
+export const MUTE = CARD_PALETTE.mute;
+export const RULE = CARD_PALETTE.rule;
+export const GRID = CARD_PALETTE.grid;
 /** the chosen plan's column, laid over the ground rather than instead of it */
-export const TINT = IHEALTHY_SATIN.tint;
+export const TINT = CARD_PALETTE.tint;
 
 /**
  * The canvas, and the table drawn on it.

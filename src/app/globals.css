@@ -13,59 +13,147 @@ body {
    sit on <body>, outside the themed wrapper — can reach it too. Declaring these inside
    .theme-legacy left the ground colour undefined on body, which made that background
    declaration invalid and dropped it to transparent: white showed through on overscroll. */
+/* ── the palette ──────────────────────────────────────────────────────────────
+ *
+ * Every colour in this application comes from here. The values were lifted pixel by pixel
+ * from a Bank of Thailand deck the owner chose as the model, so they are not a designer's
+ * approximation of a bank: they are what that bank actually prints.
+ *
+ * Nine of them are the deck's own. The rest are derived, and each derived one exists because
+ * a slide and a screen are not the same problem — a slide sets everything at 20pt and above,
+ * where a colour only has to clear 3:1, and this application sets tables of figures at 11px.
+ * Where the deck's colour could not carry small text, the derived token beside it can, and
+ * the comment says which is which. Nothing here is a taste adjustment.
+ */
 :root {
-  /* A neutral charcoal, not a slate: any blue in the grey turns the gold green-ish where
-     the two meet. The ground is a gradient rather than one fill — a large field of a single
-     dark colour reads as a wall, and the light needs somewhere to come from. */
-  --lg-ground: #2b2c2e;
-  --lg-ground-deep: #202123;
-  --lg-ground-lit: #3f4044;
-  /* one step up from the ground, for anything that should read as raised */
-  --lg-raise: #35363a;
-  /* the ink on a gold face */
-  --lg-ink: #1c1d1f;
-  --lg-gold: #c9a26f;
-  /* the two ends of the metal: the shadow side and the lit side of the same gold */
-  --lg-gold-deep: #9c7845;
-  --lg-gold-lit: #f2e0bb;
-  --lg-gold-glow: rgba(201, 162, 111, 0.13);
-  --lg-hair: rgba(201, 162, 111, 0.24);
-  --lg-white: #f5f5f5;
-  /* secondary text: still 8:1 on the navy, so it is quiet rather than faint */
-  --lg-mute: rgba(245, 245, 245, 0.72);
-  /* The soft grey of the brief, kept where it was asked for — behind things, never as text
-     on the ground, where it would sit at 2.5:1. Neutralised to match the charcoal. */
-  --lg-panel: rgba(255, 255, 255, 0.055);
-  --lg-panel-line: rgba(255, 255, 255, 0.12);
+  /* The deck's navy. It carries the headline, the leading bar of every chart and the label
+     block of every diagram — one colour doing the work three would usually be split across. */
+  --bot-navy: #022162;
+  /* the shadow and lit sides of it: pressed, and hovered */
+  --bot-navy-deep: #01143d;
+  --bot-navy-lift: #0a2f7a;
+  /* a tint to fill behind something without the navy shouting */
+  --bot-navy-soft: #dde3f0;
+
+  /* The deck's sand. Second in every chart, and the only thing it ever uses to say
+     "this row is the one we are about to talk about". */
+  --bot-sand: #c6bc99;
+  --bot-sand-soft: #e7e3d4;
+  /* Sand dark enough to be a border. The deck draws its sand frame at 2.4:1 against white,
+     which is fine around a block the size of a slide and is not fine around a 32px control. */
+  --bot-sand-line: #948763;
+
+  /* The deck's olive — the second line of every headline, and its line charts.
+     3.49:1 on white: large and bold only. Small olive text uses the token below it, which
+     is the same hue taken down until it clears 4.5:1. This pair is the single easiest
+     mistake to make in this palette, which is why they sit together. */
+  --bot-olive: #948a54;
+  --bot-olive-ink: #736c42;
+
+  /* The two extra chart series, straight from the deck. Both are fills and strokes only:
+     --bot-blue is 2.16:1 on white and --bot-grey will not carry white lettering, so a label
+     that lands on either takes --bot-ink. */
+  --bot-blue: #8fb3e3;
+  --bot-grey: #7f7f7f;
+
+  /* The deck spends this once per slide — on the one line that carries the argument, or the
+     one term being defined. Here it is the error colour, which is the same discipline by a
+     different name: if it is on screen twice, one of the two is not really an error. */
+  --bot-red: #c0504d;
+  --bot-red-ink: #b44340;
+  --bot-red-soft: #f7ecea;
+
+  /* Ground, band, panel — the deck's three surfaces and nothing else. The band is what a
+     caption sits on, the panel is what content sits in. */
+  --bot-surface: #ffffff;
+  --bot-band: #f2f2f2;
+  --bot-panel: #eaeaea;
+
+  /* Two line weights. --bot-line groups things a fill has already grouped and is allowed to
+     be faint; --bot-line-strong draws the edge of a control, where the boundary is the only
+     thing saying "this is a control", so it holds 3:1 on all three surfaces above — including
+     the panel, which is the darkest of them and the one a line is easiest to lose against. */
+  --bot-line: #c3c6cd;
+  --bot-line-strong: #7d8490;
+
+  /* The deck sets its axis figures in pure black. On paper that is ink; on a backlit screen
+     it vibrates against white, so the reading ink is taken a few points off it. The footnote
+     grey is the deck's own. */
+  --bot-ink: #15181d;
+  --bot-ink-mute: #5b6472;
+  --bot-ink-foot: #3f3f3f;
+}
+
+/* ── the sales pages, in the palette above ────────────────────────────────────
+ *
+ * These names were invented for a near-black page with gold on it, and the gold is gone.
+ * They are kept anyway, pointing at the tokens above, because about a thousand places read
+ * them: renaming would be a thousand-line diff to change nothing a reader sees, and every
+ * one of those lines a chance to miss one.
+ *
+ * Read `--lg-gold` as "the page's accent" and the mapping stops looking odd — it was never
+ * the colour gold that those call sites wanted, it was the one colour that means "this is
+ * the thing you came here for", and on this palette that colour is the navy.
+ */
+:root {
+  --lg-ground: var(--bot-surface);
+  --lg-ground-deep: var(--bot-band);
+  --lg-ground-lit: var(--bot-surface);
+  --lg-raise: var(--bot-surface);
+  /* the ink on an accent face — white on navy now, where it used to be charcoal on gold */
+  --lg-ink: var(--bot-surface);
+  --lg-gold: var(--bot-navy);
+  --lg-gold-deep: var(--bot-navy-deep);
+  /* Worn as small text in places as well as being the lit side of the accent, so it is the
+     readable navy rather than a pale one: 12.3:1 on white. */
+  --lg-gold-lit: var(--bot-navy-lift);
+  /* Was a glow behind things on the dark page. On white there is nothing to glow, and the
+     deck's own way of marking a row is a sand wash — which is what this now is. Kept opaque:
+     it lands on tinted table rows as often as on the ground. */
+  --lg-gold-glow: var(--bot-sand-soft);
+  --lg-hair: var(--bot-line);
+  --lg-white: var(--bot-ink);
+  --lg-mute: var(--bot-ink-mute);
+  --lg-panel: var(--bot-band);
+  --lg-panel-line: var(--bot-line-strong);
 
   /* The cash-value chart's two secondary series — what the policy has cost, and what the
-     family would receive — held below the gold line that answers the question being asked.
-     Tokens rather than a white at an opacity inside the component, because a theme on a light
-     ground has to make them darker, and there is no opacity of white that does that. */
-  --lg-series-paid: rgba(245, 245, 245, 0.5);
-  --lg-series-cover: rgba(245, 245, 245, 0.3);
+     family would receive — held below the accent line that answers the question being asked.
+     The deck ranks its own series exactly this way: navy leads, grey and sand follow. */
+  --lg-series-paid: var(--bot-grey);
+  --lg-series-cover: var(--bot-sand);
 }
 
 .theme-legacy {
-  color-scheme: dark;
-  /* light pooling high and left, falling away to the corners */
-  background:
-    radial-gradient(95% 55% at 28% 8%, var(--lg-ground-lit), transparent 62%),
-    linear-gradient(168deg, var(--lg-ground) 0%, var(--lg-ground-deep) 78%);
-  background-attachment: fixed;
+  color-scheme: light;
+  /* Flat. The gradient this replaces existed because a large field of one dark colour reads
+     as a wall and the light needed somewhere to come from; white has no such problem, and a
+     gradient under it would only announce itself. The deck's pages are white and stay white. */
+  background: var(--bot-surface);
   color: var(--lg-white);
   font-family: var(--lg-font-body), system-ui, "Noto Sans Thai", sans-serif;
-  font-weight: 300;
+  /* 300 was right for pale text on charcoal, where a thin stroke still reads because it is
+     the lit thing on the page. Dark on white it goes spindly, and Thai loses its tone marks
+     first. */
+  font-weight: 400;
 }
 
-/* the ground the page stands on, so overscroll and short pages never flash white */
+/* the ground the page stands on, so overscroll and short pages never flash a different colour */
 body:has(.theme-legacy) {
-  background: var(--lg-ground-deep);
+  background: var(--bot-surface);
 }
 
-/* Atmosphere: a low gold light behind the opening, and a grain that keeps a large
-   field of one dark colour from reading as flat. Both sit behind everything and
-   take no clicks. */
+/* Atmosphere, and the lack of it.
+ *
+ * The dark page carried two layers here: a low gold light behind the opening, and a grain to
+ * keep a large field of one dark colour from reading flat. Neither survives the move to white.
+ * A wash behind the opening turns the top of the page a different white than the bottom, and
+ * the grain — which read as texture on charcoal — reads on white as a page that has been left
+ * somewhere. The deck has no atmosphere at all; it has white, and things on it.
+ *
+ * The rules are kept rather than deleted because `.theme-legacy > *` below relies on these
+ * two boxes existing to sit above, and because the whole stacking order was hard won. They
+ * are emptied, not removed. */
 .theme-legacy::before,
 .theme-legacy::after {
   content: "";
@@ -73,13 +161,7 @@ body:has(.theme-legacy) {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-}
-.theme-legacy::before {
-  background: radial-gradient(125% 55% at 50% -8%, var(--lg-gold-glow), transparent 68%);
-}
-.theme-legacy::after {
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background: none;
 }
 .theme-legacy > * {
   position: relative;
@@ -92,95 +174,126 @@ body:has(.theme-legacy) {
   font-family: var(--lg-font-display), var(--lg-font-body), serif;
 }
 
-/* A hairline that fades at both ends and catches the light in the middle — an engraved rule
-   rather than a border. */
+/* A hairline that fades at both ends and is firmest in the middle.
+   On the dark page this was an engraved rule catching the light; here it is the deck's sand,
+   which is the one place that deck lets a second colour draw a line. Same shape, and the
+   middle now lands solid instead of glowing. */
 .lg-rule {
   height: 1px;
   border: 0;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(201, 162, 111, 0.18) 12%,
-    rgba(242, 224, 187, 0.5) 50%,
-    rgba(201, 162, 111, 0.18) 88%,
+    rgba(148, 135, 99, 0.3) 12%,
+    rgba(148, 135, 99, 0.85) 50%,
+    rgba(148, 135, 99, 0.3) 88%,
     transparent
   );
 }
 
-/* ── Metal ─────────────────────────────────────────────────────────────────────
-   Gold is a colour; metal is a colour that changes across a surface. One flat fill
-   reads as brown-yellow, so both the lettering and the buttons carry a ramp from
-   the shadow side of the gold through a lit band and back.
-
-   Kept to the large elements: at small sizes a ramp muddies the letterforms, and
-   its darkest stop would take the contrast on the navy below where body text has
-   to stay. Small gold text keeps the flat --lg-gold, which is 7.4:1 there. */
+/* ── what used to be metal ─────────────────────────────────────────────────────
+ *
+ * These three classes made gold behave like gold: a ramp across the lettering and the
+ * buttons so the colour changed over the surface, and one slow pass of light every six
+ * seconds. All of it was the language of a dark page, where a lit edge is how a thing tells
+ * you it is raised.
+ *
+ * On white there is no such thing as a lit edge, and the model this palette comes from does
+ * not have one anywhere in it: a bank's deck states, it does not glint. So the ramp is one
+ * flat navy, the button is the same navy with white on it, and the sweep is gone.
+ *
+ * The classes stay — they are on a lot of markup, and a headline that lost its class would
+ * lose its size and weight along with its finish. What they carry now is the accent, applied
+ * plainly.
+ *
+ * This also retires a whole failure mode. The ramp was painted behind the glyphs and shown
+ * through them, so the lettering itself was transparent, and anywhere that paint did not
+ * survive — forced colours, a browser without background-clip — the headline and every sum
+ * of money on the page were simply not there. Two fallback blocks existed to catch that.
+ * Flat colour cannot fail that way, so they are gone with it. */
 .lg-metal-text {
-  background: linear-gradient(
-    100deg,
-    var(--lg-gold-deep) 0%,
-    var(--lg-gold) 26%,
-    var(--lg-gold-lit) 47%,
-    var(--lg-gold) 66%,
-    var(--lg-gold-deep) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--lg-gold);
 }
 
-/* The ramp is painted behind the glyphs and shown through them, so the lettering itself
-   is transparent. Anywhere that paint does not survive — a forced-colours mode, a browser
-   without background-clip — transparent lettering leaves nothing at all, and the headline,
-   every sum of money and the deed's total would simply not be there. Both cases fall back
-   to the flat gold, which is what the ramp is made of anyway. */
-@media (forced-colors: active) {
-  .lg-metal-text {
-    background: none;
-    color: var(--lg-gold);
-    -webkit-text-fill-color: currentColor;
-  }
-}
-@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
-  .lg-metal-text {
-    background: none;
-    color: var(--lg-gold);
-  }
-}
-
-/* A struck face: lit along the top edge, shadowed at the bottom, throwing a little
-   of its own colour onto the navy underneath. */
 .lg-metal-face {
-  background: linear-gradient(180deg, #ddbe8c 0%, var(--lg-gold) 45%, #b38b57 100%);
+  background: var(--lg-gold);
   color: var(--lg-ink);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 10px 30px -14px rgba(201, 162, 111, 0.6);
+  /* One soft drop, no inset lip: the button is a block of navy on white, which is already
+     unmistakably a button, and a highlight along its top edge would be pretending the page
+     has a light source. */
+  box-shadow: 0 8px 20px -12px rgba(2, 33, 98, 0.45);
 }
 
-/* One slow pass of light across the primary button, then a long rest. Metal that
-   never moves is just a colour; metal that glitters constantly is a cheap advert. */
+/* Kept as a plain box so markup carrying it does not change shape. The sweep it is named for
+   belonged to the dark page. */
 .lg-sheen {
   position: relative;
   overflow: hidden;
   isolation: isolate;
 }
-.lg-sheen::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(105deg, transparent 36%, rgba(255, 255, 255, 0.5) 50%, transparent 64%);
-  transform: translateX(-130%);
-  animation: lg-sweep 6s ease-in-out 1.4s infinite;
+
+/* ── what a light ground needs that a dark one did not ────────────────────────
+ *
+ * These rules were written twice before, once in satin-rose.css and once in ishield's, each
+ * time because a route was being lifted off the charcoal onto something pale and kept hitting
+ * the same five problems. There is only one ground now, and it is pale, so they live here and
+ * those two files are gone.
+ *
+ * The one thing neither of them fixed and this does is the table. Its cell rules are written
+ * `border-white/5` and `border-l-white/10` in the shared component — literals, not tokens,
+ * which is the failure this project keeps meeting. On charcoal they were a hairline; on white
+ * they measure 1:1, meaning the grid was not being drawn at all. Both scoped themes patched
+ * it for their own route and the three plain sales pages went without. */
+
+/* The shared components make secondary text quieter by fading it, and about ninety spans
+   across these pages carry one of these four. On charcoal that worked — --lg-mute was a
+   translucent white, and fading white further over a dark ground barely moves the contrast.
+   On white it moves it the wrong way and drops the text under 4.5:1. The hierarchy is left
+   to the two ink tokens, which already carry it: --lg-white at 17.8:1 for what is being
+   said, --lg-mute at 6.0:1 for the aside.
+
+   opacity-35 is the disabled term button and is deliberately left alone: a control you
+   cannot use should look like one, and WCAG exempts it. */
+.theme-legacy :is(.opacity-55, .opacity-70, .opacity-75, .opacity-80) {
+  opacity: 1;
 }
-@keyframes lg-sweep {
-  0% { transform: translateX(-130%); }
-  20%, 100% { transform: translateX(130%); }
+
+/* The row rules stay lighter than the column rules: there is one per row, and at the column
+   weight the table reads as a grid of boxes rather than a list of figures. The header sits
+   above every row, so its underline is the one line here that carries weight. */
+.theme-legacy table td {
+  border-bottom-color: var(--bot-line);
 }
-@media (prefers-reduced-motion: reduce) {
-  .lg-sheen::after { animation: none; opacity: 0; }
+.theme-legacy table :is(th, td)[class*="border-l"] {
+  border-left-color: var(--lg-panel-line);
+}
+.theme-legacy table th {
+  border-bottom-color: var(--lg-panel-line);
+}
+
+/* The quote itself, carried on a sand edge — the deck's one way of saying "this is the block
+   we are here for", and the only place it lets a second colour draw a line.
+
+   Found by the engraved rule it is the only card to contain: :last-of-type counts the sticky
+   phone bar as the last div and matches nothing, and an nth- would move the day a card is
+   added above it. */
+.theme-legacy #calc > div > .border:has(hr.lg-rule) {
+  border-top: 3px solid var(--bot-sand-line);
+}
+
+/* appearance-none leaves a bare box, which on white reads as a text field rather than a
+   control — on charcoal the raised fill said "control" by itself. The chevron is drawn in
+   the muted ink, which is the same colour the label beside it is set in. */
+.theme-legacy select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235b6472' stroke-width='1.5'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.theme-legacy :is(button, a, select, input, summary):focus-visible {
+  outline: 3px solid var(--lg-gold);
+  outline-offset: 3px;
 }
 
 /* The opening reveals in order, so the eye is walked down to the button rather
@@ -228,16 +341,21 @@ body:has(.theme-legacy) {
     --lg-ground-lit: #fff;
     --lg-raise: #fff;
     --lg-panel: #fff;
+    /* The one token that has to disagree with the screen. On screen --lg-ink is the white
+       that sits on a navy button; on paper the browser drops that button's background, and
+       white lettering on white paper is a blank. */
     --lg-ink: #111;
     --lg-white: #111;
-    --lg-mute: #3a3a3a;
-    --lg-gold: #6b5320;
-    --lg-gold-deep: #6b5320;
-    --lg-gold-lit: #6b5320;
+    --lg-mute: var(--bot-ink-foot);
+    /* The accent goes to paper as itself. The gold this replaces had to be darkened for print
+       because gold on white is faint; navy is already ink. */
+    --lg-gold: var(--bot-navy);
+    --lg-gold-deep: var(--bot-navy);
+    --lg-gold-lit: var(--bot-navy);
     --lg-gold-glow: transparent;
     --lg-hair: #999;
     --lg-panel-line: #c4c4c4;
-    /* on paper a near-white series is no series at all */
+    /* on paper a pale series is no series at all */
     --lg-series-paid: #777;
     --lg-series-cover: #9a9a9a;
   }
@@ -407,8 +525,8 @@ body:has(.theme-legacy) {
 
   .print-table tr[class*="gold-glow"] td {
     font-weight: 600;
-    border-top: 1.5px solid #6b5320 !important;
-    border-bottom: 1.5px solid #6b5320 !important;
+    border-top: 1.5px solid var(--bot-navy) !important;
+    border-bottom: 1.5px solid var(--bot-navy) !important;
   }
 
   /* the ground's texture is painted by fixed pseudo-elements, which repeat on every sheet */
@@ -428,12 +546,12 @@ body:has(.theme-legacy) {
  * one skin is invisible on another. `HomeButton` carries the same note for the same reason.
  */
 :root {
-  --shell-bg: #ffffff;
-  --shell-ink: #1e293b;
-  --shell-mute: #64748b;
-  --shell-line: #e2e8f0;
-  --shell-active: #0f172a;
-  --shell-active-bg: #f1f5f9;
+  --shell-bg: var(--bot-band);
+  --shell-ink: var(--bot-ink);
+  --shell-mute: var(--bot-ink-mute);
+  --shell-line: var(--bot-line);
+  --shell-active: var(--bot-navy);
+  --shell-active-bg: var(--bot-surface);
 }
 
 .theme-legacy {
@@ -454,8 +572,10 @@ body:has(.theme-legacy) {
   --shell-active-bg: var(--hm-ground);
 }
 
-/* the drawer's backdrop, dark on every skin because it is the absence of the page */
-.shell-scrim { background: rgba(15, 23, 42, 0.45); }
+/* the drawer's backdrop, dark on every skin because it is the absence of the page — in the
+   palette's own navy rather than a slate, so the one dark thing in the application belongs
+   to it */
+.shell-scrim { background: rgba(2, 33, 98, 0.42); }
 
 @media (min-width: 1024px) {
   /* the menu is laid out beside the page rather than over it, so nothing is covered */

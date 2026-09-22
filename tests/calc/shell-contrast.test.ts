@@ -9,27 +9,16 @@ import { menuGroups } from "@/lib/shell/menu";
  *
  * This project has been caught by the opposite before — `HomeButton` carries the note, and
  * the memory of it: a colour picked to look right on the dark sales pages was invisible on
- * the cream ones. The sales pages run from near-black to warm cream under one class name, so
- * a menu that reaches for a literal is a menu that disappears on two pages out of six.
+ * the cream ones.
  *
- * The rule here is that the menu never names a colour. It declares `--shell-*` and each theme
- * points those at its own tokens, so the arithmetic below is really a check that every theme
- * remembered to point them somewhere legible.
+ * There is one skin now rather than three, which removes the failure this file was written
+ * for and leaves a different one in its place. Every token is a `var(--bot-*)` pointing at a
+ * palette declared once, so the way it breaks now is a token pointed at the wrong end of that
+ * palette — muted ink where the ground should be, and nobody notices until a customer opens
+ * it. So the arithmetic stays, and it resolves the indirection rather than reading literals.
  */
 
 const css = (p: string) => readFileSync(path.join(process.cwd(), p), "utf8");
-
-/** the last value wins, as the cascade would take it within one block */
-function tokensIn(text: string, selector: string): Record<string, string> {
-  const start = text.indexOf(selector);
-  if (start === -1) return {};
-  const open = text.indexOf("{", start);
-  const close = text.indexOf("}", open);
-  const body = text.slice(open + 1, close);
-  const out: Record<string, string> = {};
-  for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out[m[1]] = m[2].trim();
-  return out;
-}
 
 function channel(v: number): number {
   const s = v / 255;
@@ -61,26 +50,65 @@ function ratio(fg: [number, number, number], bg: [number, number, number]): numb
   return (a + 0.05) / (b + 0.05);
 }
 
-/** Every skin the menu has to sit on, and where its tokens are declared. */
-const THEMES: [name: string, file: string, selector: string][] = [
-  ["หน้าขายสีดำ", "src/app/globals.css", ":root {"],
-  ["หน้าขายสีโรส", "src/app/satin-rose.css", ".satin-rose .theme-legacy {"],
-  ["หน้าขายสีครีม", "src/app/ishield/theme.css", ".ishield-scope .theme-legacy {"],
-];
+/** Every `:root` block in a file, merged the way the cascade would merge them. */
+function rootTokens(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  let at = 0;
+  for (;;) {
+    const start = text.indexOf(":root {", at);
+    if (start === -1) break;
+    const open = text.indexOf("{", start);
+    const close = text.indexOf("}", open);
+    for (const m of text.slice(open + 1, close).matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+      out[m[1]] = m[2].trim();
+    }
+    at = close + 1;
+  }
+  return out;
+}
+
+/**
+ * Follow `var(--x)` until a colour falls out.
+ *
+ * Every sales token is one of these now, and a test that read the literal would be reading
+ * the string "var(--bot-navy)" and passing on it. The depth limit is a cycle guard: a token
+ * pointed at itself would otherwise hang the suite rather than fail it.
+ */
+function resolve(value: string, tokens: Record<string, string>, depth = 0): string {
+  const ref = value.match(/^var\((--[\w-]+)\)$/);
+  if (!ref) return value;
+  if (depth > 8) throw new Error(`${value} does not resolve to a colour`);
+  const next = tokens[ref[1]];
+  if (!next) throw new Error(`${ref[1]} is not declared`);
+  return resolve(next, tokens, depth + 1);
+}
+
+/**
+ * The one skin, and where its tokens are declared.
+ *
+ * Kept as a list because the shape of this file is the argument: if a second skin is ever
+ * added, it is added here and every assertion below runs against it too.
+ */
+const THEMES: [name: string, file: string][] = [["หน้าขาย", "src/app/globals.css"]];
 
 describe("the menu can be read on every skin the site wears", () => {
-  for (const [name, file, selector] of THEMES) {
+  for (const [name, file] of THEMES) {
+    const tokensFor = () => {
+      const t = rootTokens(css(file));
+      const read = (n: string) => resolve(t[n], t);
+      return { read };
+    };
+
     it(`${name}: the labels and the lit one both stand off the ground`, () => {
-      const t = tokensIn(css(file), selector);
-      const ground = rgb(t["--lg-ground"]);
-      // the sidebar sits on the plan's own panel colour, which on the dark skin is a
-      // translucent white and has to be composited before it means anything
-      const bg = over(t["--lg-panel"], ground);
+      const { read } = tokensFor();
+      const ground = rgb(read("--lg-ground"));
+      // the sidebar sits on the page's own panel colour
+      const bg = over(read("--lg-panel"), ground);
 
       // an ordinary label, the lit one, and the quieter group heading
-      expect(ratio(over(t["--lg-white"], bg), bg), `${name} ตัวอักษร`).toBeGreaterThanOrEqual(4.5);
-      expect(ratio(over(t["--lg-gold"], bg), bg), `${name} เมนูที่เลือก`).toBeGreaterThanOrEqual(4.5);
-      expect(ratio(over(t["--lg-mute"], bg), bg), `${name} หัวข้อกลุ่ม`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(over(read("--lg-white"), bg), bg), `${name} ตัวอักษร`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(over(read("--lg-gold"), bg), bg), `${name} เมนูที่เลือก`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(over(read("--lg-mute"), bg), bg), `${name} หัวข้อกลุ่ม`).toBeGreaterThanOrEqual(4.5);
     });
 
     /**
@@ -93,9 +121,9 @@ describe("the menu can be read on every skin the site wears", () => {
      * the hairline has lost nothing they needed.
      */
     it(`${name}: the rule between groups is visible as decoration`, () => {
-      const t = tokensIn(css(file), selector);
-      const bg = over(t["--lg-panel"], rgb(t["--lg-ground"]));
-      expect(ratio(over(t["--lg-panel-line"], bg), bg), `${name} เส้นคั่น`).toBeGreaterThan(1.2);
+      const { read } = tokensFor();
+      const bg = over(read("--lg-panel"), rgb(read("--lg-ground")));
+      expect(ratio(over(read("--lg-panel-line"), bg), bg), `${name} เส้นคั่น`).toBeGreaterThan(1.2);
     });
   }
 });

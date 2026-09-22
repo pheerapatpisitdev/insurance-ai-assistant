@@ -50,8 +50,22 @@ export interface MenuLink {
    * A hue is safe from that because it is never laid on the page's ground: it fills a chip
    * of its own, the chip carries white ink, and the chip's edge is drawn by the relief in
    * `globals.css` rather than by the difference between the hue and whatever is behind it.
-   * What it buys is recognition — after a week the agent reaches for the orange one without
-   * reading the word, on any page.
+   * What it buys is recognition — after a week the agent reaches for one of these without
+   * reading the word.
+   *
+   * These used to be a full spectrum, one hue per item picked to lean toward the page it
+   * opened. That worked when six sales pages ran from near-black to warm cream and the menu
+   * was the only thing tying them together. The application is one palette now, and a
+   * sixteen-colour rainbow down the side of a navy-and-sand page is the loudest thing on it.
+   *
+   * So they are one arc instead of a spectrum: teal at the top of the menu through the
+   * palette's own navy in the middle to plum at the bottom, in the order the menu is read.
+   * Nothing warm, because warm is the sand's, and the sand means something. Every chip still
+   * has its own colour and its own place on the arc, every one carries white at 4.7:1 or
+   * better, and the sidebar as a whole now reads as one object rather than as a paintbox.
+   *
+   * Assigned by position rather than by subject, so adding a link means re-cutting the arc
+   * rather than choosing a colour — which is the point: no one here is picking colours.
    */
   hue: string;
   /** True only for links that leave this application. */
@@ -90,29 +104,29 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
   {
     title: "ประกันชีวิต",
     links: [
-      { href: "/lifeprotect", label: "Life Protect x 2", icon: "shield", hue: "#e11d48" },
-      { href: "/plb", label: "Protection Life", icon: "umbrella", hue: "#0f766e" },
-      { href: "/easyprotect", label: "อีซี่ โพรเทค 6", icon: "clock", hue: "#15803d" },
-      { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์", icon: "gem", hue: "#7e22ce" },
+      { href: "/lifeprotect", label: "Life Protect x 2", icon: "shield", hue: "#412b73" },
+      { href: "/plb", label: "Protection Life", icon: "umbrella", hue: "#5c338a" },
+      { href: "/easyprotect", label: "อีซี่ โพรเทค 6", icon: "clock", hue: "#5a2b73" },
+      { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์", icon: "gem", hue: "#7a338a" },
     ],
   },
   {
     title: "ประกันโรคร้ายแรง",
     links: [
-      { href: "/legacy", label: "มรดกเพื่อครอบครัว", icon: "home", hue: "#b45309" },
-      { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#c2410c" },
+      { href: "/legacy", label: "มรดกเพื่อครอบครัว", icon: "home", hue: "#722b73" },
+      { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#8a337c" },
     ],
   },
   {
     title: "ประกันสุขภาพ",
     links: [
-      { href: "/ihealthy-ultra", label: "iHealthy Ultra", icon: "heart", hue: "#0369a1" },
+      { href: "/ihealthy-ultra", label: "iHealthy Ultra", icon: "heart", hue: "#732b5b" },
     ],
   },
   {
     title: "ประกันกลุ่ม",
     links: [
-      { href: "/group-insurance", label: "ประกันภัยกลุ่ม", icon: "building", hue: "#292d78" },
+      { href: "/group-insurance", label: "ประกันภัยกลุ่ม", icon: "building", hue: "#8a335e" },
     ],
   },
 ];
@@ -143,7 +157,7 @@ export const SALES_PAGES: MenuLink[] = SALES_SECTIONS.flatMap((s) => s.links);
 export function menuGroups(signedIn: boolean): MenuGroup[] {
   const groups: MenuGroup[] = [];
 
-  if (signedIn) groups.push({ links: [{ href: "/admin", label: "ภาพรวม", icon: "grid", hue: "#4f46e5" }] });
+  if (signedIn) groups.push({ links: [{ href: "/admin", label: "ภาพรวม", icon: "grid", hue: "#2b736f" }] });
 
   /**
    * ประกันภัยกลุ่ม used to be here as well as under its own heading below.
@@ -164,9 +178,9 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
       // premium too, so naming this one after the arithmetic said nothing about what is
       // different here — which is that the agent builds the arrangement themselves, plan by
       // rider, instead of being walked through one plan's own questions.
-      { href: "/other-plans", label: "จัดแบบเอง", icon: "calc", hue: "#0d9488" },
-      { href: "/", label: "ถาม AI", icon: "spark", hue: "#7c3aed" },
-      ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า", icon: "users" as const, hue: "#d97706" }] : []),
+      { href: "/other-plans", label: "จัดแบบเอง", icon: "calc", hue: "#327d86" },
+      { href: "/", label: "ถาม AI", icon: "spark", hue: "#2b5f73" },
+      ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า", icon: "users" as const, hue: "#33638a" }] : []),
     ],
   });
 
@@ -174,15 +188,15 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
     groups.push({
       title: "ผู้ช่วย AI",
       links: [
-        { href: "/admin/ai", label: "ตั้งค่า", icon: "sliders", hue: "#0284c7" },
-        { href: "/admin/knowledge", label: "สอน AI", icon: "book", hue: "#be185d" },
+        { href: "/admin/ai", label: "ตั้งค่า", icon: "sliders", hue: "#2b4673" },
+        { href: "/admin/knowledge", label: "สอน AI", icon: "book", hue: "#33458a" },
       ],
     });
     groups.push({
       title: "ช่องทาง",
       links: [
-        { href: "/admin/messenger", label: "Messenger", icon: "chat", hue: "#2563eb" },
-        { href: "/admin/api", label: "API", icon: "code", hue: "#059669" },
+        { href: "/admin/messenger", label: "Messenger", icon: "chat", hue: "#2b2e73" },
+        { href: "/admin/api", label: "API", icon: "code", hue: "#3e338a" },
       ],
     });
   }

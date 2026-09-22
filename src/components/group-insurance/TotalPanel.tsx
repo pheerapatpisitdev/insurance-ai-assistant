@@ -61,7 +61,7 @@ export function TotalPanel({
         {blocked && (
           <p
             className="mb-4 flex items-start gap-2 rounded-lg border px-4 py-3 text-sm"
-            style={{ background: "rgba(252,211,77,0.16)", borderColor: "rgba(252,211,77,0.5)", color: "#fef3c7" }}
+            style={{ background: "rgba(198,188,153,0.18)", borderColor: "rgba(198,188,153,0.55)", color: "#e7e3d4" }}
           >
             <Icon name="warning" className="mt-0.5 h-5 w-5 shrink-0" />
             <span>

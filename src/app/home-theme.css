@@ -1,46 +1,52 @@
-/* The home page — the chat — in the satin's colours.
+/* The home page — the chat — in the application's palette.
 
-   Colours only, like the calculator: a conversation is read, and fabric behind a column of
-   answers is noise in the one place on the site where nothing should compete with the words.
-   What it takes is the family resemblance, so that arriving here from an advertisement and
-   then opening a sales page is plainly the same business.
+   Colours only: a conversation is read, and anything textured behind a column of answers is
+   noise in the one place on the site where nothing should compete with the words. What it
+   takes is the family resemblance, so that arriving here from an advertisement and then
+   opening a sales page is plainly the same business.
 
    Named --hm-* and set on the page's own wrapper. The --lg-* tokens belong to the sales
    components and are read by shared code; a page that defined them without wearing the theme
    would be lying to anything that inherited them. */
 .home-chat {
   color-scheme: light;
-  --hm-ground: #f5f0ec;
-  --hm-panel: #fffcfa;
-  /* 3.6:1 on the ground, 4.0:1 on a panel — the edge of a control is the only thing saying
-     "this is a control", so it clears 3:1 on both surfaces it is ever drawn on */
-  --hm-line: #8a7a78;
-  --hm-line-strong: #6e5c5a;
+  /* The deck's two surfaces used the way it uses them: the band is the ground, and what has
+     content in it sits on white above the band. A chat is a column of blocks, which is the
+     shape that arrangement was made for. */
+  --hm-ground: var(--bot-band);
+  --hm-panel: var(--bot-surface);
+  /* the edge of a control is the only thing saying "this is a control", so it clears 3:1 on
+     both surfaces it is ever drawn on */
+  --hm-line: var(--bot-line-strong);
+  --hm-line-strong: var(--bot-ink-mute);
   /* the quiet divider inside a card, where a fill has already done the grouping */
-  --hm-hair: #ded2ce;
-  --hm-ink: #36211f;
-  --hm-mute: #635553;
-  --hm-accent: #8c4a3f;
+  --hm-hair: var(--bot-line);
+  --hm-ink: var(--bot-ink);
+  --hm-mute: var(--bot-ink-mute);
+  --hm-accent: var(--bot-navy);
 
-  /* The filled things: the question you typed, and the button that sends it. Terracotta at
-     the weight satin's own buttons are cut from, carrying cream at 6.7:1. */
-  --hm-solid: #8a4539;
-  --hm-solid-ink: #fff9f6;
+  /* The filled things: the question you typed, and the button that sends it. */
+  --hm-solid: var(--bot-navy);
+  --hm-solid-ink: var(--bot-surface);
 
   /* Live, and only live: the hands-free toggle while it is on, and the line that says a
      figure came from the rate tables rather than from a model.
 
-     This one stays green on purpose. Everything else on the page is terracotta, and "the
-     microphone is open" is the one state a person must be able to see at a glance from
-     across a desk — a second brown badge among brown buttons is not that. The green is
-     pulled toward the family until it sits with them: 5.9:1 under cream, 5.4:1 as text. */
-  --hm-live: #3f6b52;
+     This one stays green, and it is the single colour in the application that is not in the
+     palette. Everything else on the page is navy, and "the microphone is open" is the one
+     state a person must be able to see at a glance from across a desk — a second navy badge
+     among navy buttons is not that. It is pulled down to the palette's own weight until it
+     sits beside the navy rather than against it: 7.2:1 under white, 6.4:1 as text. */
+  --hm-live: #356048;
 
-  /* A refusal, and a microphone that could not start. Red, because it is the one thing here
-     that must not read as decoration. */
-  --hm-alert: #991b1b;
-  --hm-alert-bg: #fbeae7;
-  --hm-alert-line: #e7bfb8;
+  /* A refusal, and a microphone that could not start.
+
+     The deck this palette comes from spends its red once per slide — on the one line that
+     carries the argument. Here that discipline has a name: red is the error colour and
+     nothing else, so if it is on screen twice, one of the two is not really an error. */
+  --hm-alert: var(--bot-red-ink);
+  --hm-alert-bg: var(--bot-red-soft);
+  --hm-alert-line: var(--bot-red);
 
   background: var(--hm-ground);
   color: var(--hm-ink);

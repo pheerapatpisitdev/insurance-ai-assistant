@@ -27,18 +27,20 @@ export function QuoteSheetDoc({
   const { t, fmt } = useLang();
   const { result, columns } = sheet;
 
-  const NAVY = "#292d78";
-  const GOLD = "#a9914d";
-  const TEAL = "#4a6359";
+  const NAVY = "#022162";
+  /* sand dark enough to rule a line on paper */
+  const GOLD = "#948763";
+  /* was a teal; the sheet has one accent now, so this is simply the muted ink */
+  const TEAL = "#5b6472";
 
   // The label column gives way as groups are added; below 34% the Thai wording wraps to three
   // lines and the sheet grows a page.
   const labelWidth = `${Math.max(34, 60 - columns.length * 6)}%`;
 
-  const labelCell: React.CSSProperties = { padding: "7px 12px", color: "#334155", fontSize: 12, textAlign: "left" };
+  const labelCell: React.CSSProperties = { padding: "7px 12px", color: "#5b6472", fontSize: 12, textAlign: "left" };
   const numCell: React.CSSProperties = {
-    padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#0f172a", fontSize: 12,
-    whiteSpace: "nowrap", borderLeft: "1px solid #eef2f6", fontVariantNumeric: "tabular-nums",
+    padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#15181d", fontSize: 12,
+    whiteSpace: "nowrap", borderLeft: "1px solid #e2e4e8", fontVariantNumeric: "tabular-nums",
   };
 
   const premiumRows: { label: string; value: (c: (typeof columns)[number]) => string; accent?: string; strong?: boolean }[] = [
@@ -60,8 +62,8 @@ export function QuoteSheetDoc({
 
   const infoRow = (label: string, value: string) => (
     <div style={{ display: "flex", gap: 8, fontSize: 13 }}>
-      <span style={{ color: "#475569", minWidth: 96 }}>{label}:</span>
-      <span style={{ fontWeight: 600, color: "#0f172a" }}>{value}</span>
+      <span style={{ color: "#5b6472", minWidth: 96 }}>{label}:</span>
+      <span style={{ fontWeight: 600, color: "#15181d" }}>{value}</span>
     </div>
   );
 
@@ -78,7 +80,7 @@ export function QuoteSheetDoc({
     <article
       className="gi-sheet"
       style={{
-        width: 794, boxSizing: "border-box", background: "#ffffff", color: "#0f172a",
+        width: 794, boxSizing: "border-box", background: "#ffffff", color: "#15181d",
         padding: "40px 44px", fontFamily: '"Noto Sans Thai", system-ui, -apple-system, sans-serif',
       }}
     >
@@ -87,7 +89,7 @@ export function QuoteSheetDoc({
           <div style={{ fontSize: 20, fontWeight: 800, color: NAVY, lineHeight: 1.2 }}>{t("groupInsurance")}</div>
           <div style={{ fontSize: 12, color: TEAL, marginTop: 2 }}>{t("groupInsuranceSystem")}</div>
         </div>
-        <div style={{ textAlign: "right", fontSize: 12, color: "#475569" }}>
+        <div style={{ textAlign: "right", fontSize: 12, color: "#5b6472" }}>
           <div style={{ fontWeight: 700 }}>
             {t("quoteNoLabel")}: {quoteNo}
           </div>
@@ -104,7 +106,7 @@ export function QuoteSheetDoc({
       <div
         style={{
           marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 20px",
-          background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "14px 18px",
+          background: "#f7f7f8", border: "1px solid #c3c6cd", borderRadius: 8, padding: "14px 18px",
         }}
       >
         {infoRow(t("customerName"), customerName || "—")}
@@ -114,7 +116,7 @@ export function QuoteSheetDoc({
       </div>
 
       {sectionTitle(t("benefits"))}
-      <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e2e8f0", tableLayout: "fixed" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #c3c6cd", tableLayout: "fixed" }}>
         {colgroup}
         <thead>
           <tr style={{ background: NAVY, color: "#fff" }}>
@@ -131,7 +133,7 @@ export function QuoteSheetDoc({
                   {t("groupNo")} {c.no}
                   {c.name ? ` · ${c.name}` : ""}
                 </div>
-                <div style={{ fontSize: 10, fontWeight: 500, color: "#ccd6eb", marginTop: 2, lineHeight: 1.35 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, color: "#8fb3e3", marginTop: 2, lineHeight: 1.35 }}>
                   {c.bizTypeLabel}
                   <br />
                   {c.planLabel}
@@ -145,7 +147,7 @@ export function QuoteSheetDoc({
         </thead>
         <tbody>
           {sheet.benefits.map((row, i) => (
-            <tr key={row.label} style={{ background: i % 2 === 0 ? "#ffffff" : "#f8fafc", borderTop: "1px solid #eef2f6" }}>
+            <tr key={row.label} style={{ background: i % 2 === 0 ? "#ffffff" : "#f7f7f8", borderTop: "1px solid #e2e4e8" }}>
               <th scope="row" style={{ ...labelCell, fontWeight: 400 }}>
                 {row.label}
               </th>
@@ -160,22 +162,22 @@ export function QuoteSheetDoc({
       </table>
 
       {sectionTitle(t("premiumSummary"))}
-      <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e2e8f0", tableLayout: "fixed" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #c3c6cd", tableLayout: "fixed" }}>
         {colgroup}
         <tbody>
           {premiumRows.map((row, i) => (
             <tr
               key={row.label}
               style={{
-                background: row.strong ? "#eef2f6" : i % 2 === 0 ? "#ffffff" : "#f8fafc",
-                borderTop: row.strong ? `1px solid ${GOLD}` : "1px solid #eef2f6",
+                background: row.strong ? "#e2e4e8" : i % 2 === 0 ? "#ffffff" : "#f7f7f8",
+                borderTop: row.strong ? `1px solid ${GOLD}` : "1px solid #e2e4e8",
               }}
             >
               <th scope="row" style={{ ...labelCell, fontWeight: row.accent ? 700 : 400 }}>
                 {row.label}
               </th>
               {columns.map((c) => (
-                <td key={c.no} style={{ ...numCell, color: row.accent ?? "#0f172a" }}>
+                <td key={c.no} style={{ ...numCell, color: row.accent ?? "#15181d" }}>
                   {row.value(c)}
                 </td>
               ))}
@@ -190,16 +192,16 @@ export function QuoteSheetDoc({
           display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16,
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#ccd6eb" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#8fb3e3" }}>
           {t("totalPremiumYear")} · {fmt(result.totalCount)} {t("people")}
         </div>
         <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
           {fmt(result.grandTotal)}{" "}
-          <span style={{ fontSize: 15, fontWeight: 600, color: "#ccd6eb" }}>{t("perYear")}</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "#8fb3e3" }}>{t("perYear")}</span>
         </div>
       </div>
 
-      <footer style={{ marginTop: 20, fontSize: 11, color: "#475569", lineHeight: 1.7 }}>
+      <footer style={{ marginTop: 20, fontSize: 11, color: "#5b6472", lineHeight: 1.7 }}>
         <p>{t("premiumNote")}</p>
         <p>
           * {t("bandUsed")}: {result.band} ({t("totalPeople")} {fmt(result.totalCount)} {t("people")})
