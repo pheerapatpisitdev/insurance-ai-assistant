@@ -100,20 +100,34 @@ export interface MenuGroup {
  * bundle, the corporate navy for group insurance — so the menu and the page an agent lands
  * on are plainly the same thing.
  */
+/**
+ * The eight names are English; the four headings above them are not.
+ *
+ * Four of these read as Thai transliterations of English names the company already owns —
+ * อีซี่ โพรเทค 6 is Easy Protect 6 — and set beside Life Protect x 2, iShield and iHealthy
+ * Ultra they made one column look like two conventions. The headings stay Thai because they
+ * are not names: they are the question an agent is answering when they reach for a page, and
+ * that question is asked in Thai.
+ *
+ * Family Legacy is the one name here the company did not supply. The bundle is the agency's
+ * own and มรดกเพื่อครอบครัว is what it calls it, so the English is this menu's alone — which
+ * is why it stops at this menu. Every page, quotation and message still says the Thai name,
+ * because that is the name the customer was sold.
+ */
 export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
   {
     title: "ประกันชีวิต",
     links: [
       { href: "/lifeprotect", label: "Life Protect x 2", icon: "shield", hue: "#412b73" },
       { href: "/plb", label: "Protection Life", icon: "umbrella", hue: "#5c338a" },
-      { href: "/easyprotect", label: "อีซี่ โพรเทค 6", icon: "clock", hue: "#5a2b73" },
-      { href: "/lifetreasure", label: "ไลฟ์เทรเชอร์", icon: "gem", hue: "#7a338a" },
+      { href: "/easyprotect", label: "Easy Protect 6", icon: "clock", hue: "#5a2b73" },
+      { href: "/lifetreasure", label: "Life Treasure", icon: "gem", hue: "#7a338a" },
     ],
   },
   {
     title: "ประกันโรคร้ายแรง",
     links: [
-      { href: "/legacy", label: "มรดกเพื่อครอบครัว", icon: "home", hue: "#722b73" },
+      { href: "/legacy", label: "Family Legacy", icon: "home", hue: "#722b73" },
       { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#8a337c" },
     ],
   },
@@ -133,7 +147,7 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
   {
     title: "ประกันกลุ่ม",
     links: [
-      { href: "/group-insurance", label: "ประกันภัยกลุ่ม", icon: "building", hue: "#8a335e" },
+      { href: "/group-insurance", label: "Group Insurance", icon: "building", hue: "#8a335e" },
     ],
   },
 ];

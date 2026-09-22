@@ -65,6 +65,22 @@ describe("every place the menu says you can go", () => {
     expect(new Set(SALES_PAGES.map((p) => p.href)).size).toBe(SALES_PAGES.length);
   });
 
+  /**
+   * Half these names were Thai transliterations of English the company already owns — อีซี่
+   * โพรเทค 6 beside Life Protect x 2 — and one column in two conventions reads as an
+   * oversight. The headings are not names and stay Thai: they are the question the agent is
+   * answering when they reach for a page.
+   */
+  it("names every sales page in English, under headings that stay Thai", () => {
+    const THAI = /[\u0E00-\u0E7F]/;
+    for (const page of SALES_PAGES) {
+      expect(page.label, page.href).not.toMatch(THAI);
+    }
+    for (const section of SALES_SECTIONS) {
+      expect(section.title, section.title).toMatch(THAI);
+    }
+  });
+
   it("lists no destination twice inside one group", () => {
     for (const group of menuGroups(true)) {
       const hrefs = group.links.map((l) => l.href);
