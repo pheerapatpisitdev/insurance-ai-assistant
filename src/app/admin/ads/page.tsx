@@ -4,7 +4,7 @@ import { loadAds } from "./actions";
 import { AccountPicker } from "./AccountPicker";
 import { SyncButton } from "./SyncButton";
 import { DisconnectAdAccountButton } from "./DisconnectAdAccountButton";
-import { ADS_SCOPES, oauthIsConfigured } from "@/lib/facebook/oauth";
+import { ADS_SCOPES, adsOauthIsConfigured } from "@/lib/facebook/oauth";
 import { OTHER_CAMPAIGN } from "@/lib/ads/summary";
 import type { AdsRange, Tally } from "@/lib/ads/types";
 import { siteOrigin } from "@/lib/site-url";
@@ -32,7 +32,7 @@ const OUTCOMES: Record<string, { tone: "ok" | "warn" | "bad"; text: string }> = 
   state: { tone: "bad", text: "ลิงก์เชื่อมต่อหมดอายุแล้ว กดเชื่อมต่อใหม่อีกครั้ง" },
   noscope: { tone: "bad", text: "Facebook ไม่ได้ให้สิทธิ์ ads_read — ต้องเพิ่ม ads_read ใน Login Configuration บน Meta dashboard ก่อน (ดูขั้นตอนข้างล่าง)" },
   noaccounts: { tone: "bad", text: "บัญชี Facebook นี้ไม่มีสิทธิ์ดูบัญชีโฆษณาไหนเลย" },
-  unconfigured: { tone: "bad", text: "ยังไม่ได้ตั้งค่า FB_APP_ID กับ FB_APP_SECRET" },
+  unconfigured: { tone: "bad", text: "ยังไม่ได้ตั้งค่าการเชื่อมบัญชีโฆษณา — ต้องมี FB_APP_ID, FB_APP_SECRET และ FB_ADS_LOGIN_CONFIG_ID" },
   failed: { tone: "bad", text: "เชื่อมต่อไม่สำเร็จ" },
 };
 
@@ -55,7 +55,8 @@ function Setup() {
     <div className="mt-4 rounded-md bg-[var(--bot-sand-soft)] px-3 py-2 text-sm text-[var(--bot-sand-ink)]">
       <p className="font-medium">ก่อนกดเชื่อม ต้องทำบน Meta ครั้งเดียว:</p>
       <ol className="mt-1 list-decimal space-y-1 pl-5">
-        <li>developers.facebook.com → แอปนี้ → Facebook Login for Business → Configurations → config ที่ใช้อยู่ → Edit → Permissions → ติ๊ก <code>ads_read</code> → Save</li>
+        <li>developers.facebook.com → แอปนี้ → กรณีการใช้งาน → เพิ่ม “วัดผลข้อมูลประสิทธิภาพของโฆษณาด้วย API การตลาด”</li>
+        <li>Facebook Login for Business → Configurations → สร้าง config <strong>ใหม่แยกต่างหาก</strong> สิทธิ์ <code>ads_read</code> อย่างเดียว แล้วเอา ID ไปใส่ <code>FB_ADS_LOGIN_CONFIG_ID</code> — ห้ามใช้ config เดียวกับเพจ เพราะการล็อกอินใหม่ผ่าน config ของเพจจะถอนสิทธิ์เพจที่ไม่ได้ติ๊ก</li>
         <li>เข้าสู่ระบบด้วยบัญชี Facebook ที่เป็นผู้ดูแลบัญชีโฆษณาที่ยิง Life Protect / iHealthy</li>
         <li>ถ้า Meta ขอ Business Verification ระหว่างทาง ต้องทำก่อนถึงจะเห็นบัญชี</li>
       </ol>
@@ -65,7 +66,7 @@ function Setup() {
 }
 
 function ConnectButton() {
-  return oauthIsConfigured() ? (
+  return adsOauthIsConfigured() ? (
     <a href="/api/facebook/connect?for=ads" className="inline-block rounded-md bg-[#0866FF] px-4 py-2 text-sm font-medium text-white no-underline hover:bg-[#0653cc]">
       เชื่อมบัญชีโฆษณา
     </a>

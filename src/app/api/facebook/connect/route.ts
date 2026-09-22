@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authorizeUrl, makeState, oauthIsConfigured, type LoginPurpose } from "@/lib/facebook/oauth";
+import { adsOauthIsConfigured, authorizeUrl, makeState, oauthIsConfigured, type LoginPurpose } from "@/lib/facebook/oauth";
 import { requestOrigin } from "@/lib/facebook/origin";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,8 @@ export async function GET(req: Request) {
   const origin = requestOrigin(req);
   const purpose: LoginPurpose = new URL(req.url).searchParams.get("for") === "ads" ? "ads" : "pages";
   const home = purpose === "ads" ? "/admin/ads" : "/admin/messenger";
-  if (!oauthIsConfigured()) {
+  const ready = purpose === "ads" ? adsOauthIsConfigured() : oauthIsConfigured();
+  if (!ready) {
     return NextResponse.redirect(`${origin}${home}?fb=unconfigured`);
   }
   return NextResponse.redirect(authorizeUrl(origin, makeState(purpose), purpose));

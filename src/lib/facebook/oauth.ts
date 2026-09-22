@@ -68,6 +68,31 @@ export function oauthIsConfigured(): boolean {
   return Boolean(process.env.FB_APP_ID && process.env.FB_APP_SECRET);
 }
 
+/**
+ * The login configuration the advertising login goes through.
+ *
+ * Deliberately not the Page one. A Business login replaces the whole grant every time it is
+ * used: the Pages left unticked on Meta's screen are revoked, which has twice taken this
+ * agency's live inbox down. The Page configuration carries Page assets, so going through it
+ * to read advertising figures would put that screen — and that risk — in front of somebody
+ * whose only errand was a spend report. This configuration asks for `ads_read` and nothing
+ * else, and has no Page assets to lose.
+ */
+export function adsLoginConfigId(): string | undefined {
+  return process.env.FB_ADS_LOGIN_CONFIG_ID || undefined;
+}
+
+/**
+ * Whether the ads login can be offered at all.
+ *
+ * Without its own configuration the answer is no, and the ADS page says so rather than
+ * falling back to the Page configuration — a fallback that works is exactly how the Page
+ * picker would end up in this flow.
+ */
+export function adsOauthIsConfigured(): boolean {
+  return oauthIsConfigured() && Boolean(adsLoginConfigId());
+}
+
 /** Meta matches this against its allow-list character for character. */
 export function redirectUri(origin: string): string {
   return `${origin}/api/facebook/connect/callback`;
@@ -129,7 +154,7 @@ export function authorizeUrl(origin: string, state: string, purpose: LoginPurpos
     state,
     response_type: "code",
   });
-  const config = process.env.FB_LOGIN_CONFIG_ID;
+  const config = purpose === "ads" ? adsLoginConfigId() : process.env.FB_LOGIN_CONFIG_ID;
   if (config) {
     params.set("config_id", config);
     params.set("override_default_response_type", "true");
