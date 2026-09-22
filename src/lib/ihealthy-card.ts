@@ -64,8 +64,14 @@ export interface IHealthyCard {
    * them again would be saying the same thing twice on the same picture.
    */
   premium?: { amount: string; per: string };
-  /** what the headline is made of: the base plan, the health cover, the riders attached */
-  lines: { label: string; amount: string }[];
+  /**
+   * What the headline is made of: the base plan, the health cover, the riders attached.
+   *
+   * Names only. Each line used to carry its own premium beside it, and on this arrangement
+   * that put 710 next to 43,800 — a reader asked what the cover costs and was shown, instead,
+   * which half of it to argue with. The total is the price; this is what the price is for.
+   */
+  lines: { label: string }[];
   /** the company will not take the monthly instalment this arrangement comes to */
   belowMinimum?: string;
   /**
@@ -250,19 +256,12 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
     lines: here === undefined ? [] : [
       {
         label: `${table.bases.find((b) => b.variant === v.base)?.label ?? v.base} ทุน ${v.sumAssured.toLocaleString("en-US")}`,
-        amount: formatBaht(here.base.find((m) => m.mode === v.mode)?.total ?? 0),
       },
-      {
-        label: `iHealthy Ultra ${planLabel(v.plan)}`,
-        amount: formatBaht(here.rider.find((m) => m.mode === v.mode)?.total ?? 0),
-      },
-      // An emptied fold still carries a subtotal, of nothing. The page's own card hides that
-      // line on the same test rather than printing "0" under a name.
+      { label: `iHealthy Ultra ${planLabel(v.plan)}` },
+      // An emptied fold is not on the arrangement at all, so it is not named. Its premium is
+      // still what says so, which is the one thing a premium is still read for here.
       ...(here.standard && (here.standard.premiums.find((m) => m.mode === v.mode)?.total ?? 0) > 0
-        ? [{
-            label: here.standard.label,
-            amount: formatBaht(here.standard.premiums.find((m) => m.mode === v.mode)!.total),
-          }]
+        ? [{ label: here.standard.label }]
         : []),
     ],
     ...(headline?.belowMinimum

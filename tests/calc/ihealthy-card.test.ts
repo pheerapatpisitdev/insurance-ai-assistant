@@ -94,6 +94,20 @@ describe("iHealthyCard", () => {
     expect(card.premiumRows[0].cells[3].text).toBe(card.premium?.amount);
   });
 
+  /**
+   * The picture headlines one premium. Under it the lines name the halves it is made of, and
+   * naming is all they do: beside 43,800 for the health cover, the life half's 710 read as
+   * the part of the arrangement worth arguing about.
+   */
+  it("names what the premium is made of without pricing each half", () => {
+    const card = cardAt(OPENING);
+    expect(card.lines.length).toBeGreaterThan(0);
+    for (const line of card.lines) {
+      expect(Object.keys(line)).toEqual(["label"]);
+    }
+    expect(card.premium?.amount).toBeDefined();
+  });
+
   it("quotes the agency's standard daily cash where the fold has not spoken", () => {
     const card = cardAt(OPENING);
     expect(spanOf(card, "ค่าชดเชยรายวัน")).toContain("1,000 ต่อวัน");

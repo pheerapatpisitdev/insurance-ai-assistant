@@ -422,29 +422,20 @@ export function IHealthyCalculator(
           <>
             {shown ? (
               <>
-                <dl className="space-y-2 text-sm">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-[var(--lg-mute)]">
-                      {base.label} ทุน {sumAssured.toLocaleString("en-US")}
-                    </dt>
-                    <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(shown.base)}</dd>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-[var(--lg-mute)]">iHealthy Ultra {planLabel(plan.code)}</dt>
-                    <dd className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(shown.rider)}</dd>
-                  </div>
+                {/* What the total is made of, named and not priced.
+                    Each line used to carry its own premium on the right, which on this
+                    arrangement set 710 beside 43,800 and invited the reader to spend the
+                    conversation on the larger half instead of on the cover. The total under
+                    the rule is the price; these lines say what the price is for. */}
+                <ul className="space-y-2 text-sm text-[var(--lg-mute)]">
+                  <li>{base.label} ทุน {sumAssured.toLocaleString("en-US")}</li>
+                  <li>iHealthy Ultra {planLabel(plan.code)}</li>
                   {/* The agency sells the daily cash with the health cover rather than beside
                       it, so it is priced into the figure the customer is quoted instead of
-                      being added on afterwards. The fold below opens with it ticked. */}
-                  {shown.standard && shown.standard.total > 0 && (
-                    <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-[var(--lg-mute)]">{shown.standard.label}</dt>
-                      <dd className="lg-figure tabular-nums text-[var(--lg-white)]">
-                        {formatBaht(shown.standard.total)}
-                      </dd>
-                    </div>
-                  )}
-                </dl>
+                      being added on afterwards. The fold below opens with it ticked, and its
+                      premium is now read only to know whether it is on at all. */}
+                  {shown.standard && shown.standard.total > 0 && <li>{shown.standard.label}</li>}
+                </ul>
                 <div className="border-t border-[var(--lg-panel-line)] pt-4">
                   <div className="text-sm text-[var(--lg-mute)]">เบี้ยรวม {PAY_MODE_LABEL[mode]}</div>
                   <div className="lg-figure mt-1 text-[2.4rem] leading-none tabular-nums">

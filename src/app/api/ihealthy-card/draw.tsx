@@ -81,11 +81,10 @@ export const spacer = (height: number, background?: string) => (
 ) as const;
 
 /** One of the card's own figures: what it is on the left, what it costs on the right. */
-export function Line({ label, amount }: { label: string; amount: string }) {
+export function Line({ label }: { label: string }) {
   return (
-    <div style={{ ...band(H.line), alignItems: "baseline", justifyContent: "space-between" }}>
+    <div style={{ ...band(H.line), alignItems: "baseline" }}>
       <div style={{ display: "flex", fontSize: 25, color: MUTE }}>{label}</div>
-      <div style={{ display: "flex", fontSize: 25, color: WHITE }}>{amount}</div>
     </div>
   );
 }

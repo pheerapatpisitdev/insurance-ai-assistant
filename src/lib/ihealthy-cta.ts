@@ -122,18 +122,15 @@ export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
     `${ceiling} · อาณาเขต${a.territory}`,
     "",
     `${SEX_WORD[f.sex]} อายุ ${f.age} ปี`,
-    // the total first and its two halves under it: a customer asked what it costs, and the
-    // split is what an agent needs when they are asked why
+    // the total, and under it what that total buys — named, not priced. This text is pasted
+    // into a customer's chat, and a split there reads as an invitation to take one half out
     `💰 เบี้ยรวมประมาณ ${formatBaht(shown.total)} บาท${PER[f.mode]}`,
-    `- ${f.baseLabel} ทุน ${baht(f.sumAssured)} บาท · ${formatBaht(shown.base)} บาท`,
-    `- ค่ารักษาพยาบาล · ${formatBaht(shown.rider)} บาท`,
+    `- ${f.baseLabel} ทุน ${baht(f.sumAssured)} บาท`,
+    "- ค่ารักษาพยาบาล",
     // the daily cash the agency attaches as standard; above the age it is written at there
-    // is no line rather than a line of nothing
-    // An emptied fold still carries a subtotal, of nothing. Both cards hide that line on the
-    // same test rather than pasting "0 บาท" under a name into a customer's chat.
-    ...(shown.standard && shown.standard.total > 0
-      ? [`- ${shown.standard.label} · ${formatBaht(shown.standard.total)} บาท`]
-      : []),
+    // is no line rather than a line of nothing. Its premium is what says whether it is on the
+    // arrangement at all, which is the last thing a premium is read for here.
+    ...(shown.standard && shown.standard.total > 0 ? [`- ${shown.standard.label}`] : []),
     "",
     // one instalment a line, smallest first, whichever the card is showing
     ...INSTALMENT_ORDER.flatMap((mode) => {

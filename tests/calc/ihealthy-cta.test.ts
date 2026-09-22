@@ -84,8 +84,8 @@ describe("iHealthyQuoteText", () => {
       "",
       "หญิง อายุ 35 ปี",
       "💰 เบี้ยรวมประมาณ 45,930 บาท/ปี",
-      "- ไลฟ์ โพรเทค+ x 2 ทุน 150,000 บาท · 2,130 บาท",
-      "- ค่ารักษาพยาบาล · 43,800 บาท",
+      "- ไลฟ์ โพรเทค+ x 2 ทุน 150,000 บาท",
+      "- ค่ารักษาพยาบาล",
       "",
       "รายเดือน 4,133 บาท",
       "ราย 6 เดือน 23,883 บาท",
@@ -151,12 +151,26 @@ describe("iHealthyQuoteText", () => {
   it("has nothing to copy when no price may be shown", () => {
     expect(iHealthyQuoteText({ ...facts, shown: undefined })).toBeUndefined();
   });
+
+  /**
+   * The split used to sit under the total — 2,130 for the life half against 43,800 for the
+   * health half — and it is out because this text is pasted into a customer's chat, where
+   * two figures of that size beside each other are read as one of them being optional.
+   */
+  it("carries one premium only: the total", () => {
+    const text = iHealthyQuoteText(facts)!;
+    expect(text).toContain("💰 เบี้ยรวมประมาณ 45,930 บาท/ปี");
+    expect(text).toContain("- ไลฟ์ โพรเทค+ x 2 ทุน 150,000 บาท");
+    expect(text).not.toContain("2,130");
+    expect(text).not.toContain("43,800");
+  });
 });
 
 describe("the fold's own line in the copied quote", () => {
-  it("names the rider and what it costs", () => {
+  it("names the rider, and the 1,000 บาท in its name is the benefit, not a premium", () => {
     const text = iHealthyQuoteText({ ...facts, shown: WITH_DAILY_CASH })!;
-    expect(text).toContain("- ค่าชดเชยรายวัน 1,000 บาท · 1,300 บาท");
+    expect(text).toContain("- ค่าชดเชยรายวัน 1,000 บาท");
+    expect(text).not.toContain("1,300");
     expect(text).toContain("เบี้ยรวมประมาณ 47,230 บาท/ปี");
   });
 

@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
             ขอราคาปัจจุบันได้ทางแชท
           </div>
         )}
-        {card.lines.map((l) => <Line key={l.label} label={l.label} amount={l.amount} />)}
+        {card.lines.map((l) => <Line key={l.label} label={l.label} />)}
         {card.belowMinimum && (
           <div style={{ ...band(H.warn), fontSize: 22, color: GOLD }}>{card.belowMinimum}</div>
         )}
