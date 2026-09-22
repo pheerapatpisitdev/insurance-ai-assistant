@@ -51,7 +51,7 @@ export function summariseAds(rows: DailyRow[], leads: AdLead[], conversations: A
   const formByAd = count(conversations, (c) => c.ad_id, (c) => Boolean(c.form_sent_at));
 
   /** ad → its figures over the window, and the campaign it belongs to */
-  const ads = new Map<string, { ad: AdSummary; campaignId: string; campaignName: string }>();
+  const ads = new Map<string, { ad: AdSummary; campaignId: string; campaignName: string; accountId: string | null }>();
   for (const r of rows) {
     let entry = ads.get(r.ad_id);
     if (!entry) {
@@ -61,6 +61,7 @@ export function summariseAds(rows: DailyRow[], leads: AdLead[], conversations: A
         // but a row written by hand might
         campaignId: r.campaign_id ?? r.ad_id,
         campaignName: r.campaign_name ?? r.ad_name ?? r.ad_id,
+        accountId: r.account_id,
       };
       ads.set(r.ad_id, entry);
     }
@@ -70,19 +71,19 @@ export function summariseAds(rows: DailyRow[], leads: AdLead[], conversations: A
   const crmAdIds = new Set([...leadsByAd.keys(), ...pricedByAd.keys(), ...formByAd.keys()]);
   for (const adId of crmAdIds) {
     if (!ads.has(adId)) {
-      ads.set(adId, { ad: { adId, name: adId, ...tally() }, campaignId: OTHER_CAMPAIGN, campaignName: OTHER_NAME });
+      ads.set(adId, { ad: { adId, name: adId, ...tally() }, campaignId: OTHER_CAMPAIGN, campaignName: OTHER_NAME, accountId: null });
     }
   }
 
   const campaigns = new Map<string, CampaignSummary>();
   const total = tally();
-  for (const { ad, campaignId, campaignName } of ads.values()) {
+  for (const { ad, campaignId, campaignName, accountId } of ads.values()) {
     addCrm(ad, leadsByAd.get(ad.adId) ?? 0, pricedByAd.get(ad.adId) ?? 0, formByAd.get(ad.adId) ?? 0);
     settle(ad);
 
     let c = campaigns.get(campaignId);
     if (!c) {
-      c = { campaignId, name: campaignName, ads: [], ...tally() };
+      c = { campaignId, name: campaignName, accountId, ads: [], ...tally() };
       campaigns.set(campaignId, c);
     }
     c.ads.push(ad);

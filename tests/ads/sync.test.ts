@@ -75,8 +75,11 @@ describe("syncing the ad figures", () => {
     expect(first.searchParams.get("access_token")).toBeNull();
 
     expect(result).toEqual({ accounts: 2, rows: 3, errors: [] });
-    const written = upserts.flat() as { ad_id: string; date: string }[];
+    const written = upserts.flat() as { ad_id: string; date: string; account_id: string }[];
     expect(written.map((r) => `${r.ad_id}@${r.date}`)).toEqual(["a@2026-09-20", "a@2026-09-21", "b@2026-09-21"]);
+    // each row carries the account it was fetched for, which is what tells two campaigns
+    // of the same name apart on the page
+    expect(written.map((r) => r.account_id)).toEqual(["act_1", "act_1", "act_2"]);
   });
 
   it("lets one account fail without stopping the other", async () => {

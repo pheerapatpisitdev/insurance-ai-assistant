@@ -99,6 +99,11 @@ export default async function AdsPage({ searchParams }: { searchParams: Promise<
   const range: AdsRange = params.range === "30d" ? "30d" : "7d";
   const outcome = OUTCOMES[params.fb ?? ""];
   const { accounts, choices, summary: figures, lastFetchedAt } = await loadAds(range);
+  /**
+   * Campaign names repeat across ad accounts — the agency has "มรดก" and "Life Protect x 2"
+   * in more than one — so the account is what tells two identical-looking rows apart.
+   */
+  const accountName = new Map(accounts.map((a) => [a.id, a.name]));
   const connected = accounts.length > 0;
   const stale = lastFetchedAt !== null && Date.now() - new Date(lastFetchedAt).getTime() > STALE_MS;
 
@@ -188,7 +193,14 @@ export default async function AdsPage({ searchParams }: { searchParams: Promise<
                       <tr className={c.campaignId === OTHER_CAMPAIGN ? "text-[var(--bot-ink-mute)]" : ""}>
                         <td className="px-2 py-1.5">
                           <details>
-                            <summary className="cursor-pointer font-medium">{c.name}</summary>
+                            <summary className="cursor-pointer font-medium">
+                              {c.name}
+                              {c.accountId && accounts.length > 1 && (
+                                <span className="ml-2 font-normal text-xs text-[var(--bot-ink-mute)]">
+                                  {accountName.get(c.accountId) ?? c.accountId}
+                                </span>
+                              )}
+                            </summary>
                             <ul className="mt-1 space-y-0.5 pl-3 text-xs text-[var(--bot-ink-foot)]">
                               {c.ads.map((a) => (
                                 <li key={a.adId} className="flex flex-wrap justify-between gap-x-3">

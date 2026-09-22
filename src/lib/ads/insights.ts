@@ -39,12 +39,13 @@ function num(v: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function dailyRowFromInsight(i: Insight, fetchedAt: string): DailyRow {
+export function dailyRowFromInsight(i: Insight, fetchedAt: string, accountId: string | null = null): DailyRow {
   const actions = i.actions ?? [];
   const started = actions.find((a) => a.action_type === MESSAGING_STARTED);
   return {
     date: i.date_start,
     ad_id: i.ad_id,
+    account_id: accountId,
     ad_name: i.ad_name ?? null,
     adset_id: i.adset_id ?? null,
     adset_name: i.adset_name ?? null,

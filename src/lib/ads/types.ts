@@ -2,6 +2,8 @@
 export interface DailyRow {
   date: string;
   ad_id: string;
+  /** the ad account this row came from; null on rows written before the column existed */
+  account_id: string | null;
   ad_name: string | null;
   adset_id: string | null;
   adset_name: string | null;
@@ -50,6 +52,14 @@ export interface AdSummary extends Tally {
 export interface CampaignSummary extends Tally {
   campaignId: string;
   name: string;
+  /**
+   * The ad account the campaign belongs to.
+   *
+   * On screen this is the difference between a readable table and an unreadable one: the
+   * agency names campaigns the same way in more than one account, so "มรดก" appears twice
+   * and only the account tells them apart.
+   */
+  accountId: string | null;
   ads: AdSummary[];
 }
 

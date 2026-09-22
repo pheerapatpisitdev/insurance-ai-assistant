@@ -10,7 +10,7 @@ import type { AdConversation, AdLead, DailyRow } from "@/lib/ads/types";
 
 function row(ad: string, date: string, over: Partial<DailyRow> = {}): DailyRow {
   return {
-    date, ad_id: ad, ad_name: `ad ${ad}`, adset_id: "s", adset_name: "set",
+    date, ad_id: ad, account_id: "act_1", ad_name: `ad ${ad}`, adset_id: "s", adset_name: "set",
     campaign_id: "c1", campaign_name: "แคมเปญหนึ่ง",
     spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0, messaging_started: 0,
     actions: [], currency: "THB", fetched_at: "2026-09-22T03:00:00.000Z", ...over,
@@ -74,6 +74,25 @@ describe("summing the advertising", () => {
     const s = summariseAds([row("a", "2026-09-21", { campaign_id: null, campaign_name: null, spend: 5 })], [], []);
     expect(s.campaigns[0].campaignId).toBe("a");
     expect(s.campaigns[0].name).toBe("ad a");
+  });
+
+  /**
+   * Two accounts, both with a campaign called "มรดก". Before the account travelled with the
+   * row the page drew two identical lines and the owner could not tell which advertising
+   * account had spent the money.
+   */
+  it("keeps campaigns of the same name in different accounts apart", () => {
+    const s = summariseAds(
+      [
+        row("a", "2026-09-21", { account_id: "act_1", campaign_id: "c1", campaign_name: "มรดก", spend: 500 }),
+        row("b", "2026-09-21", { account_id: "act_2", campaign_id: "c2", campaign_name: "มรดก", spend: 250 }),
+      ],
+      [], [],
+    );
+    expect(s.campaigns.map((c) => [c.campaignId, c.name, c.accountId, c.spend])).toEqual([
+      ["c1", "มรดก", "act_1", 500],
+      ["c2", "มรดก", "act_2", 250],
+    ]);
   });
 
   it("is empty without pretending otherwise", () => {

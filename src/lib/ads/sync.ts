@@ -67,7 +67,7 @@ export async function syncAds(opts: { days?: number; now?: Date; fetchFn?: typeo
       if (!token) throw new Error(EXPIRED);
       const rows: DailyRow[] = [];
       for await (const i of insights(account.id, token, since, until, fetchFn)) {
-        rows.push(dailyRowFromInsight(i, fetchedAt));
+        rows.push(dailyRowFromInsight(i, fetchedAt, account.id));
       }
       if (rows.length > 0) {
         const { error } = await supabaseAdmin().from("ins_ad_daily").upsert(rows, { onConflict: "date,ad_id" });
