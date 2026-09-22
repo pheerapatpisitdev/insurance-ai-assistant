@@ -5,7 +5,6 @@ import {
   band, CARD_HEADERS, GOLD, GROUND, GROUND_DEEP, H, loadFonts, MUTE, PAD, PlanTable, RULE,
   spacer, WHITE, widthOf,
 } from "../draw";
-import { SIGNATURE_HEIGHT, SIGNATURE_TEXT, markDataUri } from "@/lib/card-signature";
 
 export const runtime = "nodejs";
 /** The figures come from a dated rate table, so a day of caching is as far as it can go. */
@@ -17,9 +16,7 @@ function heightOf(card: IHealthyTableCard): number {
     + (card.premiumRows.length > 0 ? H.section + card.premiumRows.length * H.row : 0);
   return PAD * 2
     + H.plan + H.insured
-    + H.gap + H.hairline + H.afterHairline + table
-    + H.gap + H.hairline + H.afterHairline + card.notes.length * H.note
-    + SIGNATURE_HEIGHT;
+    + H.gap + H.hairline + H.afterHairline + table;
 }
 
 /**
@@ -35,7 +32,6 @@ function heightOf(card: IHealthyTableCard): number {
 export async function GET(req: NextRequest) {
   const card = iHealthyTableCard(req.nextUrl.searchParams);
 
-  const mark = await markDataUri();
 
   return new ImageResponse(
     (
@@ -61,20 +57,6 @@ export async function GET(req: NextRequest) {
           <PlanTable card={card} selected={-1} />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
-          <div style={spacer(H.gap)} />
-          <div style={spacer(H.hairline, RULE)} />
-          <div style={spacer(H.afterHairline)} />
-          {/* where it came from, on the thing that travels furthest from here */}
-          <div style={{ ...band(SIGNATURE_HEIGHT), alignItems: "flex-end", gap: 12 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={mark} height={34} alt="" />
-            <span style={{ fontSize: 21, color: MUTE }}>{SIGNATURE_TEXT}</span>
-          </div>
-          {card.notes.map((n) => (
-            <div key={n} style={{ ...band(H.note), fontSize: 21, color: MUTE }}>{n}</div>
-          ))}
-        </div>
       </div>
     ),
     {

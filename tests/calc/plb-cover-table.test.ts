@@ -44,11 +44,6 @@ describe("the table PLB is drawn as", () => {
     expect(card.rows.every((r) => r.due !== "—")).toBe(true);
   });
 
-  it("says the year the cover ends, which is what a term plan is misread about", () => {
-    expect(card.notes[0]).toBe("คุ้มครอง 12 ปี ถึงอายุ 47 ปี แล้วสัญญาสิ้นสุด");
-    expect(card.notes).toContain("คุ้มครองล้วน ไม่มีมูลค่าเวนคืนและไม่มีเงินคืนเมื่อครบสัญญา");
-  });
-
   it("carries the engine's own premium, and adds it up", () => {
     const expected = quote({
       planCode: "PLB", variant: "PLB12", age: 35, sex: "M", mode: "annual", sumAssured: 1_000_000, riders: [],
@@ -67,7 +62,6 @@ describe("the table PLB is drawn as", () => {
     for (const [variant, years] of [["PLB05", 5], ["PLB10", 10], ["PLB15", 15]] as const) {
       const other = valueTableCard({ ...CARD, variant })!;
       expect(other.rows, variant).toHaveLength(years);
-      expect(other.notes[0], variant).toContain(`คุ้มครอง ${years} ปี`);
     }
   });
 

@@ -112,17 +112,12 @@ describe("quoteCard", () => {
     expect(rows.map((r) => r.label)).toEqual(["อายุ 80 ปี", "อายุ 99 ปี"]);
   });
 
-  it("names the rate table it priced from", () => {
-    expect(quoteCard(MAN35, WHILE_CURRENT)!.notes[0]).toBe("เบี้ยมาตรฐานโดยประมาณ · ตารางเบี้ยฉบับ A2026-1");
-  });
-
   /** A card is a picture of a price, and a lapsed table has no price to show. */
   it("shows no premium once the rate table has lapsed", () => {
     const card = quoteCard(MAN35, new Date("2027-04-01"))!;
     expect(card.premium).toBeNull();
     expect(card.perDay).toBeNull();
     expect(card.others).toEqual([]);
-    expect(card.notes[0]).toContain("หมดอายุ");
     // the benefits do not come from the rate table, so they are still true and still drawn
     expect(section(card, DEATH)!.rows[0].amount).toBe("2,000,000");
   });
@@ -147,9 +142,6 @@ describe("quoteCard", () => {
     // the surrender table was extracted for this plan, so the card carries it and the chart
     expect(section(card, CASH)).toBeDefined();
     expect(card.chart).toBeDefined();
-    expect(card.notes).toContain(
-      "จ่ายไม่น้อยกว่า 101% ของเบี้ยที่ชำระมาแล้ว หรือมูลค่าเวนคืน แล้วแต่จำนวนใดมากกว่า",
-    );
     // a four-figure day rate is grouped like every other figure on the card
     expect(card.perDay).toBe("ตกวันละ 1,014 บาท");
   });
@@ -162,8 +154,6 @@ describe("quoteCard", () => {
     expect(card.planLine).toBe("Protection Life (PLB) · ชำระเบี้ย 10 ปี");
     // PLB has no cash-value table extracted, so the card simply has no such section
     expect(section(card, CASH)).toBeUndefined();
-    // and it says so, rather than leaving the absence to be read as an oversight
-    expect(card.notes).toContain("คุ้มครองล้วน ไม่มีมูลค่าเวนคืนและไม่มีเงินคืนเมื่อครบสัญญา");
     // the engine finds no death benefit for a plan with no booster, so the card states it
     expect(section(card, "ครอบครัวได้รับเมื่อเสียชีวิต")).toEqual({
       title: "ครอบครัวได้รับเมื่อเสียชีวิต",
@@ -189,7 +179,6 @@ describe("the value table card", () => {
     const card = valueTableCard(NINE_YEARS, WHILE_CURRENT)!;
     expect(card.rows[0]).toMatchObject({ year: 1, age: 35 });
     expect(card.rows.at(-1)!.year).toBe(card.rows.length);
-    expect(card.notes.some((n) => n.includes("ครบสัญญาอายุ 99"))).toBe(true);
   });
 
   it("shows the premium falling due each year, and stops when the paying does", () => {

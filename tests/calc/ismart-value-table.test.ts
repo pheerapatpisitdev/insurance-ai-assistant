@@ -60,7 +60,6 @@ describe("the table iSmart is drawn as", () => {
     // its column is headed "เงินจ่ายคืน… และเงินครบกำหนดสัญญา", and 200% of the sum is what it holds
     expect(card.rows[35].payout).toBe("2,000,000");
     expect(card.rows[35].cash).toBe("2,000,000");
-    expect(card.notes.some((n) => n.includes("ครบสัญญา"))).toBe(true);
   });
 
   it("covers twice the sum assured, not once", () => {

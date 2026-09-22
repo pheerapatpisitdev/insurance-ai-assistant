@@ -28,13 +28,6 @@ describe("the comparison table on its own", () => {
     expect(table.premiumRows).toEqual(quote.premiumRows);
   });
 
-  it("says what the premium rows are made of", () => {
-    const card = iHealthyTableCard(query());
-    expect(card.notes[0]).toContain("เบี้ยรวมสัญญาหลัก ค่ารักษา และค่าชดเชยรายวัน");
-    expect(card.notes.some((n) => n.includes("เบี้ยปีแรก"))).toBe(true);
-    expect(card.notes.some((n) => n.includes("ไม่ใช่ใบเสนอราคา"))).toBe(true);
-  });
-
   it("shows a child only the plans a child may buy", () => {
     const card = iHealthyTableCard(query({ age: "8", plan: "SMART" }));
     expect(card.columns.map((c) => c.name)).toEqual(["Smart", "Bronze"]);

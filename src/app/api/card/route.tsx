@@ -4,7 +4,6 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { cardInputFrom, quoteCard, type CardChart, type CardRow, type QuoteCard } from "@/lib/quote-card";
 import { cardPaletteFor, type CardPalette } from "@/lib/card-theme";
-import { SIGNATURE_HEIGHT, SIGNATURE_TEXT, markDataUri } from "@/lib/card-signature";
 
 export const runtime = "nodejs";
 /** The figures come from a dated rate table, so a day of caching is as far as it can go. */
@@ -37,7 +36,6 @@ const H = {
   row: 54,
   listLine: 29,
   listPadding: 10,
-  note: 32,
   /** the strip of colour keys under the drawing */
   legend: 46,
 };
@@ -74,9 +72,7 @@ function heightOf(card: QuoteCard): number {
     + (card.perDay ? H.perDay : 0)
     + card.others.length * H.others
     + card.sections.reduce((h, s) => h + (s.items?.length ? listSectionHeight(s.items) : sectionHeight(s.rows)), 0)
-    + chartHeight(card.chart)
-    + H.gap + H.hairline + H.afterHairline + card.notes.length * H.note
-    + SIGNATURE_HEIGHT;
+    + chartHeight(card.chart);
 }
 
 /** A band that keeps its height whatever else is on the card. */
@@ -230,11 +226,10 @@ export async function GET(req: NextRequest) {
   /** the theme the plan is sold under, so the card matches the page it was quoted from */
   const p = cardPaletteFor();
 
-  const [regular, semibold, display, mark] = await Promise.all([
+  const [regular, semibold, display] = await Promise.all([
     loadFont("IBMPlexSansThai-Regular.ttf"),
     loadFont("IBMPlexSansThai-SemiBold.ttf"),
     loadFont("Trirong-SemiBold.ttf"),
-    markDataUri(),
   ]);
 
   return new ImageResponse(
@@ -280,20 +275,6 @@ export async function GET(req: NextRequest) {
         ))}
         {card.chart && <Chart chart={card.chart} p={p} />}
 
-        <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
-          <div style={spacer(H.gap)} />
-          <div style={spacer(H.hairline, p.rule)} />
-          <div style={spacer(H.afterHairline)} />
-          {/* where it came from, on the thing that travels furthest from here */}
-          <div style={{ ...band(SIGNATURE_HEIGHT), alignItems: "flex-end", gap: 12 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={mark} height={34} alt="" />
-            <span style={{ fontSize: 21, color: p.mute }}>{SIGNATURE_TEXT}</span>
-          </div>
-          {card.notes.map((n) => (
-            <div key={n} style={{ ...band(H.note), fontSize: 21, color: p.mute }}>{n}</div>
-          ))}
-        </div>
       </div>
     ),
     {

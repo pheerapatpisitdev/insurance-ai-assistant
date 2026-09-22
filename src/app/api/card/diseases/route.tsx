@@ -4,7 +4,6 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { diseaseListFor } from "@/lib/copilot/knowledge";
 import { CARD_PALETTE, type CardPalette } from "@/lib/card-theme";
-import { SIGNATURE_HEIGHT, SIGNATURE_TEXT, markDataUri } from "@/lib/card-signature";
 
 export const runtime = "nodejs";
 /** The names come from a benefit sheet, which changes with a rate revision and not oftener. */
@@ -45,7 +44,6 @@ const H = {
   afterHairline: 22,
   groupHead: 46,
   row: 34,
-  note: 30,
   afterGroup: 26,
 };
 
@@ -166,15 +164,11 @@ export async function GET(req: NextRequest) {
     loadFont("IBMPlexSansThai-SemiBold.ttf"),
     loadFont("Trirong-SemiBold.ttf"),
   ]);
-  const mark = await markDataUri();
 
   const height = PAD * 2
     + H.title + (grouped ? H.count : 0)
     + H.gap + H.hairline + H.afterHairline
-    + list.groups.reduce((n, g) => n + groupHeight(g.diseases, grouped), 0)
-    + H.hairline + H.afterHairline
-    + H.note * 2
-    + SIGNATURE_HEIGHT;
+    + list.groups.reduce((n, g) => n + groupHeight(g.diseases, grouped), 0);
 
   return new ImageResponse(
     (
@@ -207,18 +201,6 @@ export async function GET(req: NextRequest) {
           <Group key={g.title} title={g.title} names={g.diseases} p={p} heading={grouped} />
         ))}
 
-        <div style={spacer(H.hairline, p.rule)} />
-        <div style={spacer(H.afterHairline)} />
-        {/* the sentence that has to travel with any list of illnesses, on the thing that travels */}
-        <div style={{ ...band(H.note), fontSize: 20, color: p.ink }}>{list.note}</div>
-        <div style={{ ...band(H.note), fontSize: 20, color: p.ink }}>
-          คำนิยามของแต่ละโรคเป็นไปตามที่ระบุในกรมธรรม์ · ไม่ใช่ใบเสนอราคา
-        </div>
-        <div style={{ ...band(SIGNATURE_HEIGHT), alignItems: "flex-end", gap: 12 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mark} height={34} alt="" />
-          <span style={{ fontSize: 20, color: p.mute }}>{SIGNATURE_TEXT}</span>
-        </div>
       </div>
     ),
     {

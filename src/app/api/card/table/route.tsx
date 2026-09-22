@@ -4,7 +4,6 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { cardInputFrom, valueTableCard, type ValueTableCard, type ValueTableRow } from "@/lib/quote-card";
 import { cardPaletteFor, type CardPalette } from "@/lib/card-theme";
-import { SIGNATURE_HEIGHT, SIGNATURE_TEXT, markDataUri } from "@/lib/card-signature";
 
 export const runtime = "nodejs";
 /** The figures come from a dated rate table, so a day of caching is as far as it can go. */
@@ -54,7 +53,6 @@ const H = {
   caption: 40,
   head: 44,
   row: 36,
-  note: 30,
 };
 
 const CAPTION = "มูลค่าทุกปี ตั้งแต่ปีแรกจนครบสัญญา";
@@ -202,10 +200,7 @@ function heightOf(card: ValueTableCard): number {
   return PAD * 2
     + H.plan + H.insured + H.premium
     + H.gap + H.hairline + H.afterHairline
-    + H.caption + H.head + perHalf * H.row
-    + H.gap + H.hairline + H.afterHairline
-    + card.notes.length * H.note
-    + SIGNATURE_HEIGHT;
+    + H.caption + H.head + perHalf * H.row;
 }
 
 /**
@@ -250,7 +245,6 @@ export async function GET(req: NextRequest) {
   const width = short ? half + PAD * 2 : wide;
   const stretch = (width - PAD * 2) / half;
   const cols = short ? narrow : narrow.map((c) => ({ ...c, w: Math.floor(c.w * stretch) }));
-  const mark = await markDataUri();
 
   return new ImageResponse(
     (
@@ -283,18 +277,6 @@ export async function GET(req: NextRequest) {
           <Half columns={card.columns} rows={card.rows} p={p} cols={cols} half={width - PAD * 2} />
         </div>
 
-        <div style={spacer(H.gap)} />
-        <div style={spacer(H.hairline, p.rule)} />
-        <div style={spacer(H.afterHairline)} />
-        {/* where it came from, on the thing that travels furthest from here */}
-        <div style={{ ...band(SIGNATURE_HEIGHT), alignItems: "flex-end", gap: 12 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mark} height={34} alt="" />
-          <span style={{ fontSize: 20, color: p.mute }}>{SIGNATURE_TEXT}</span>
-        </div>
-        {card.notes.map((n) => (
-          <div key={n} style={{ ...band(H.note), fontSize: 20, color: p.ink }}>{n}</div>
-        ))}
       </div>
     ),
     {

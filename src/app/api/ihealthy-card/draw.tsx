@@ -72,7 +72,6 @@ export const H = {
   row: 54,
   /** the strip that says everything below it is price and not cover */
   section: 44,
-  note: 34,
 };
 
 /** A band that keeps its height whatever else is on the card. */

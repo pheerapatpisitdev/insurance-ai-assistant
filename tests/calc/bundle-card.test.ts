@@ -129,17 +129,6 @@ describe("quoteCard, for a bundle", () => {
       .toEqual([PARTS, DEATH, ILLNESS, DISEASES]);
   });
 
-  /**
-   * DCI is priced on attained age, so the premium climbs every year. A picture outlives the
-   * sentence that framed it, so the card has to say so itself.
-   */
-  it("says the premium is a first-year premium, and why it rises", () => {
-    const notes = quoteCard(MAN40, WHILE_CURRENT)!.notes;
-    expect(notes[0]).toBe("เบี้ยปีแรกโดยประมาณ · ตารางเบี้ยฉบับ A2026-1");
-    expect(notes[1]).toBe("สัญญาโรคร้ายแรงคิดตามอายุ เบี้ยจึงปรับขึ้นในปีถัดไป");
-    expect(notes[2]).toBe("ไม่ใช่ใบเสนอราคา ผลประโยชน์เป็นไปตามที่ระบุในกรมธรรม์");
-  });
-
   it("draws no card for an insured the bundle cannot be issued to", () => {
     // DCI leaves the bundle a 20-65 window
     expect(quoteCard({ ...MAN40, age: 19 }, WHILE_CURRENT)).toBeUndefined();
@@ -160,7 +149,6 @@ describe("quoteCard, for a bundle", () => {
     expect(card.premium).toBeNull();
     expect(card.perDay).toBeNull();
     expect(card.others).toEqual([]);
-    expect(card.notes[0]).toContain("หมดอายุ");
     expect(section(card, DEATH)!.rows[0].amount).toBe("1,150,000");
   });
 

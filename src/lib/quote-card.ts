@@ -85,8 +85,6 @@ export interface QuoteCard {
   others: string[];
   /** the titled blocks of figures, in the order they are read */
   sections: CardSection[];
-  /** the small print, one line per entry */
-  notes: string[];
   /** drawn under the figures, for the plans whose cover rule has been read off their sheet */
   chart?: CardChart;
 }
@@ -221,17 +219,6 @@ function premiumLines(modes: ModePremium[] | undefined, expired: boolean): {
     perDay: headline && annual && !expired ? `ตกวันละ ${perDayText(annual.total)} บาท` : null,
     others,
   };
-}
-
-/**
- * The small print, which is the same small print whatever was priced. Written once because
- * the two builders had already drifted apart on the expired case once, and the words a card
- * ends on are the words a customer quotes back.
- */
-function cardNotes(expired: boolean, version: string, headline: string, extra: string[] = []): string[] {
-  return expired
-    ? ["ตารางเบี้ยชุดนี้หมดอายุแล้ว ขอราคาปัจจุบันได้ทางแชท", "ไม่ใช่ใบเสนอราคา และไม่ใช่ส่วนหนึ่งของสัญญาประกันภัย"]
-    : [`${headline} · ตารางเบี้ยฉบับ ${version}`, ...extra, "ไม่ใช่ใบเสนอราคา ผลประโยชน์เป็นไปตามที่ระบุในกรมธรรม์"];
 }
 
 /** 1,112,000 → "1.1 ล้าน", for the two labels the chart's vertical scale carries. */
@@ -370,31 +357,6 @@ function planBenefitSection(input: PlanCardInput): CardSection | undefined {
 }
 
 /**
- * The small print a plan adds to its own card. A picture outlives the chat that framed it,
- * so what a customer would otherwise find out from the agent has to be on the card itself:
- * PLB pays nothing at all if the insured is still alive at the end, and ไลฟ์เทรเชอร์ never
- * pays back less than what went into it.
- */
-function planNotes(input: PlanCardInput): string[] {
-  if (input.planCode === "PLB") return ["คุ้มครองล้วน ไม่มีมูลค่าเวนคืนและไม่มีเงินคืนเมื่อครบสัญญา"];
-  if (input.planCode === "LIFETREASURE") {
-    const { premiumPercent } = lifeTreasureTable().topUp;
-    return [`จ่ายไม่น้อยกว่า ${premiumPercent}% ของเบี้ยที่ชำระมาแล้ว หรือมูลค่าเวนคืน แล้วแต่จำนวนใดมากกว่า`];
-  }
-  // the same floor as ไลฟ์เทรเชอร์, and said on the card for the same reason; what this plan
-  // adds is the year the premium stops, which is the whole reason somebody chose it
-  if (input.planCode === "EASYPROTECT") {
-    const table = easyProtectTable();
-    const term = table.terms.find((t) => t.variant === input.variant);
-    return [
-      ...(term ? [`ชำระเบี้ย ${term.payTerm} ปี แล้วคุ้มครองต่อถึงอายุ ${table.coverToAge} โดยไม่ต้องชำระอีก`] : []),
-      `จ่ายไม่น้อยกว่า ${table.topUp.premiumPercent}% ของเบี้ยที่ชำระมาแล้ว หรือมูลค่าเวนคืน แล้วแต่จำนวนใดมากกว่า`,
-    ];
-  }
-  return [];
-}
-
-/**
  * The card for an arrangement, or undefined when the company would not issue it — a card
  * that says nothing is worse than no card, and the chat still has its own words for why.
  */
@@ -448,7 +410,6 @@ function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
     perDay: perDayLine,
     others,
     sections,
-    notes: cardNotes(result.meta.expired, result.meta.version, "เบี้ยมาตรฐานโดยประมาณ", planNotes(input)),
     ...(chart ? { chart } : {}),
   };
 }
@@ -479,7 +440,6 @@ export interface ValueTableCard {
   premiumLine: string;
   columns: string[];
   rows: ValueTableRow[];
-  notes: string[];
 }
 
 /** The same headings as the table on the sales page, in the same order. */
@@ -555,12 +515,6 @@ function coverTableCard(
       : `เบี้ย ${baht(annualSatang)} บาทต่อปี · ชำระ ${payYears} ปี`,
     columns: COVER_COLUMNS,
     rows,
-    notes: [
-      `คุ้มครอง ${years} ปี ถึงอายุ ${input.age + years} ปี แล้วสัญญาสิ้นสุด`,
-      // and why there is no surrender column at all comes from planNotes, which has said it
-      // since the quote card was first drawn
-      ...cardNotes(result.meta.expired, result.meta.version, "เบี้ยมาตรฐานโดยประมาณ", planNotes(input)),
-    ],
   };
 }
 
@@ -622,13 +576,6 @@ export function valueTableCard(input: PlanCardInput, today: Date = new Date()): 
       ...(p.breakEven?.policyYear === r.policyYear ? { breakEven: true } : {}),
       ...(r.cashValue === 0 ? { empty: true } : {}),
     })),
-    notes: [
-      ...(p.zeroYears > 0
-        ? [`${p.zeroYears === 1 ? "ปีที่ 1" : `ปีที่ 1-${p.zeroYears}`} ยังไม่มีมูลค่าเวนคืน เบี้ยช่วงต้นถูกใช้ไปกับค่าใช้จ่ายในการออกกรมธรรม์`]
-        : []),
-      `แถวสุดท้าย (ปีที่ ${p.rows.length}) คือเงินที่ได้รับเมื่ออยู่ครบสัญญาอายุ ${p.maturityAge} ปี`,
-      ...cardNotes(result.meta.expired, result.meta.version, "เบี้ยมาตรฐานโดยประมาณ", planNotes(input)),
-    ],
   };
 }
 
@@ -706,11 +653,5 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
     perDay: perDayLine,
     others,
     sections,
-    // DCI is priced on attained age, so every figure here is a first-year figure. A picture
-    // outlives the sentence that framed it, so it has to carry the caveat itself.
-    notes: cardNotes(
-      result.meta.expired, result.meta.version, "เบี้ยปีแรกโดยประมาณ",
-      ci ? ["สัญญาโรคร้ายแรงคิดตามอายุ เบี้ยจึงปรับขึ้นในปีถัดไป"] : [],
-    ),
   };
 }

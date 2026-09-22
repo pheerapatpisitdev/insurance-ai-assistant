@@ -221,17 +221,6 @@ describe("iHealthyCard", () => {
     // the yearly instalment for the same plan is still a real figure
     expect(card.premiumRows.find((r) => r.label === "รายปี")!.cells[0].text).not.toBe("-");
   });
-
-  it("counts the categories the picture leaves out, headings included", () => {
-    // 28 in the contract, 5 on the picture; the three that live as headings were missed
-    expect(cardAt(OPENING).notes[0]).toContain("อีก 23 หมวด");
-  });
-
-  it("says it is not a quotation", () => {
-    const notes = cardAt(OPENING).notes.join(" ");
-    expect(notes).toContain("ไม่ใช่ใบเสนอราคา");
-    expect(notes).toContain("เบี้ยปีแรก");
-  });
 });
 
 describe("a card sized for a chat", () => {

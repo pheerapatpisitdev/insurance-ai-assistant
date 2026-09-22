@@ -2,7 +2,7 @@ import { formatBaht } from "@/calc/money";
 import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
 import { benefitCell } from "@/components/ihealthy/BenefitTable";
 import { PHONE_ROW_LABEL, phoneColumns } from "@/lib/ihealthy-phone";
-import { categoryNumbers, iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
+import { iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
 import { deathBenefitRows, type BenefitRow as DeathRow } from "@/lib/death-benefit";
 import { initialFrom, ridersFrom } from "@/lib/ihealthy-link";
 import { iHealthyTable } from "@/lib/ihealthy-table";
@@ -10,7 +10,6 @@ import {
   MODES, dailyCashLabel, deathBenefitOf, iHealthyPricing, plansFor,
 } from "@/lib/ihealthy-quote";
 import { priceRiders } from "@/lib/ihealthy-rider-quote";
-import dciDiseases from "../../data/riders/dci-diseases.json";
 
 /**
  * The health quote as a picture: the card a customer is looking at, and the table under it,
@@ -78,7 +77,6 @@ export interface IHealthyCard {
   rows: CardTableRow[];
   /** what the whole arrangement costs under each plan, one instalment to a row */
   premiumRows: { label: string; cells: CardCell[] }[];
-  notes: string[];
 }
 
 const SEX_WORD: Record<string, string> = { M: "ชาย", F: "หญิง" };
@@ -89,7 +87,6 @@ const COVERAGE_WORD: Record<string, string> = {
   "Co-Payment": "ร่วมจ่าย",
 };
 const DASH = "-";
-const DCI_DISEASES = dciDiseases.diseases as string[];
 /**
  * How an instalment reads after a figure. The page's own `PER` is written for the middle of a
  * sentence — "47,230 บาท/ปี" — and a card sets the figure large with the unit beside it,
@@ -236,21 +233,11 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
     }),
   }));
 
-  const plan = facts.plans.find((p) => p.code === v.plan);
   // The engine's answer where it has one: a rider that pays on death adds its sum to what
   // the family receives, which `deathBenefitOf` knows nothing about — its own comment says
   // it answers for a contract with no such rider attached.
   const death = priced.deathBenefit ?? deathBenefitOf(table, v.base, v.age, v.sumAssured);
   const cover = COVERAGE_WORD[v.coverage] ?? "";
-  /** The company's categories this picture leaves out, counted from the sheet. */
-  const hidden = categoryNumbers(facts.rows).filter((no) => !(no in PHONE_ROW_LABEL)).length;
-  const dciSumAssured = asked.find((r) => r.code === "DCI")?.sumAssured;
-  const dciNotes = priced.extraCodes.includes("DCI")
-    ? [
-        `สัญญา DCI คุ้มครองโรคร้ายแรง ${dciSumAssured?.toLocaleString("en-US") ?? ""} บาท · ${DCI_DISEASES.length} โรค (ตามคำนิยามในกรมธรรม์)`,
-        ...DCI_DISEASES.map((disease, index) => `${index + 1}. ${disease}`),
-      ]
-    : [];
 
   return {
     planLine: `iHealthy Ultra ${planLabel(v.plan)}`,
@@ -288,19 +275,6 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
     columns,
     rows,
     premiumRows,
-    notes: [
-      // The annual ceiling is the first row of the table and is not said again; what is said
-      // here is the part of the bill the customer keeps, which no column carries.
-      (v.coverage === "Deductible" && plan
-        ? `รับผิดส่วนแรก ${plan.deductible.toLocaleString("en-US")} บาทต่อปี · `
-        : v.coverage === "Co-Payment"
-          ? `ร่วมจ่าย ${facts.copayPercent} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง · `
-          : "")
-        + `ตารางเต็มมีอีก ${hidden} หมวด ดูได้ในหน้าเว็บ`,
-      "เบี้ยปีแรกของอาชีพชั้น 1 · เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
-      "ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกันและที่ระบุในกรมธรรม์",
-      ...dciNotes,
-    ],
   };
 }
 
@@ -322,13 +296,10 @@ export interface IHealthyTableCard {
   columns: CardColumn[];
   rows: CardTableRow[];
   premiumRows: { label: string; cells: CardCell[] }[];
-  notes: string[];
 }
 
 export function iHealthyTableCard(query: URLSearchParams, today: Date = new Date()): IHealthyTableCard {
   const card = iHealthyCard(query, today);
-  // the card's first note counts the categories this picture leaves out, which is as true here
-  const hidden = card.notes[0];
   return {
     headLine: "iHealthy Ultra · เปรียบเทียบแผน",
     insuredLine: card.insuredLine,
@@ -336,9 +307,5 @@ export function iHealthyTableCard(query: URLSearchParams, today: Date = new Date
     columns: card.columns.map((c) => ({ ...c, selected: false })),
     rows: card.rows,
     premiumRows: card.premiumRows,
-    notes: [
-      "เบี้ยรวมสัญญาหลัก ค่ารักษา และค่าชดเชยรายวัน" + (hidden ? ` · ${hidden}` : ""),
-      ...card.notes.slice(1),
-    ],
   };
 }
