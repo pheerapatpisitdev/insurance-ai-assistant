@@ -85,6 +85,15 @@ export async function loadAiPage(): Promise<{
  * A single total says the month is costing money; it does not say which of five keys is
  * doing it, and that is the question somebody looking at this card is actually asking.
  */
+/**
+ * The judge is asked for by an alias and answers under its version — "jev-latest" out,
+ * "jev-1.13.0" back — and the ledger keeps the version, because that is what was paid for.
+ * The card is asked which company, so any version of Jev is TypeSafe's.
+ */
+function judgeVersionOf(model: string | null): string | undefined {
+  return model && model.startsWith(JUDGE.model.split("-")[0]) ? JUDGE.provider : undefined;
+}
+
 function byProvider(lines: SpendLine[], models: { provider: string; model_name: string }[]): ProviderSpend[] {
   // the embedders and the judge are priced in code, not in the table, and still cost money
   const providerOf = new Map([
@@ -96,7 +105,7 @@ function byProvider(lines: SpendLine[], models: { provider: string; model_name: 
   for (const l of lines) {
     // a model the reference table no longer lists still cost money, and saying so under its
     // own name beats dropping the line and quietly under-reporting the month
-    const provider = providerOf.get(l.model ?? "") ?? (l.model ? `${l.model} (ไม่รู้จักค่าย)` : "ไม่ทราบ");
+    const provider = providerOf.get(l.model ?? "") ?? judgeVersionOf(l.model) ?? (l.model ? `${l.model} (ไม่รู้จักค่าย)` : "ไม่ทราบ");
     const at = acc.get(provider) ?? { calls: 0, baht: 0, tasks: new Map<string, number>() };
     at.calls += l.calls;
     at.baht += l.baht;

@@ -13,6 +13,8 @@ const rows = [
   ...Array.from({ length: 1150 }, () => ({ model: "gemini-3.1-flash-lite", task: "route", cost_thb: 0.03 })),
   ...Array.from({ length: 20 }, () => ({ model: "gemini-3.1-flash-lite", task: "copilot", cost_thb: 0.05 })),
   ...Array.from({ length: 10 }, () => ({ model: "claude-sonnet-5", task: "copilot", cost_thb: 0.5 })),
+  // the judge answers under its version, not the alias it was asked for by
+  ...Array.from({ length: 50 }, () => ({ model: "jev-1.13.0", task: "route_shadow", cost_thb: 0.001 })),
 ];
 
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
@@ -58,8 +60,8 @@ const { loadAiPage } = await import("@/app/admin/ai/actions");
 describe("the spend card", () => {
   it("counts the whole month, not the first thousand calls", async () => {
     const page = await loadAiPage();
-    expect(page.spentThisMonth).toBeCloseTo(1150 * 0.03 + 20 * 0.05 + 10 * 0.5, 6);
-    expect(page.spend.reduce((n, p) => n + p.calls, 0)).toBe(1180);
+    expect(page.spentThisMonth).toBeCloseTo(1150 * 0.03 + 20 * 0.05 + 10 * 0.5 + 50 * 0.001, 6);
+    expect(page.spend.reduce((n, p) => n + p.calls, 0)).toBe(1230);
   });
 
   it("still says which company was paid, and for what, busiest task first", async () => {
@@ -71,5 +73,11 @@ describe("the spend card", () => {
     expect(anthropic).toMatchObject({ calls: 10, tasks: ["copilot"] });
     // dearest company first, as before
     expect(page.spend[0].provider).toBe("google");
+  });
+
+  it("puts every version of Jev under TypeSafe, not under a name the card does not know", async () => {
+    const page = await loadAiPage();
+    expect(page.spend.find((p) => p.provider === "typesafe")).toMatchObject({ calls: 50, tasks: ["route_shadow"] });
+    expect(page.spend.some((p) => p.provider.includes("ไม่รู้จักค่าย"))).toBe(false);
   });
 });
