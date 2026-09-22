@@ -35,7 +35,7 @@ describe("cardInputFrom, for a bundle", () => {
 describe("cardPath, for a bundle", () => {
   it("writes the arrangement into the address", () => {
     expect(cardPath(MAN40))
-      .toMatch(/^\/api\/card\?bundle=LEGACY_FAMILY&tier=1&age=40&sex=M&mode=annual&v=[0-9a-z]+$/);
+      .toMatch(/^\/api\/card\?bundle=LEGACY_FAMILY&tier=1&age=40&sex=M&mode=annual&v=[0-9a-z]+-[0-9]+$/);
   });
 
   it("survives the round trip back into an input", () => {
@@ -52,6 +52,7 @@ const PARTS = "ชุดนี้ประกอบด้วย";
 const DEATH = "ครอบครัวได้รับเมื่อเสียชีวิต";
 const ILLNESS = "ตรวจพบโรคร้ายแรง รับเงินก้อน";
 const CASH = "มูลค่าเงินสดสะสม (หากเวนคืน)";
+const DISEASES = "คุ้มครองโรคร้ายแรง 31 โรค";
 
 describe("quoteCard, for a bundle", () => {
   it("names the bundle and the tier the customer picked", () => {
@@ -104,19 +105,28 @@ describe("quoteCard, for a bundle", () => {
     });
   });
 
-  /** The surrender value belongs to the 150,000 base alone, which is why it reads small. */
-  it("quotes the surrender value of the base plan", () => {
-    expect(section(quoteCard(MAN40, WHILE_CURRENT)!, CASH)!.rows).toEqual([
-      { label: "อายุ 60 ปี", amount: "31,500" },
-      { label: "อายุ 70 ปี", amount: "64,050" },
-      { label: "อายุ 80 ปี", amount: "101,250" },
-      { label: "อายุ 99 ปี", amount: "182,400" },
-    ]);
+  /**
+   * Names the illnesses rather than the surrender value.
+   *
+   * The surrender figures belong to the 150,000 base alone, so on this card they read as a
+   * small number beside a million of cover — which is the arrangement's least interesting
+   * fact and, next to the death benefit, its most misreadable. This bundle is sold on what
+   * the family receives and what a diagnosis pays, so the block that shares the space lists
+   * the illnesses that trigger the lump sum above it. Other bundles still take the common
+   * cash-value block; the exception is Legacy's alone.
+   */
+  it("lists the illnesses the lump sum answers to, in place of a surrender value", () => {
+    const card = quoteCard(MAN40, WHILE_CURRENT)!;
+    expect(section(card, CASH)).toBeUndefined();
+    const listed = section(card, DISEASES)!;
+    expect(listed.rows).toEqual([]);
+    expect(listed.items).toHaveLength(31);
+    expect(listed.items).toContain("โรคสมองเสื่อมชนิดอัลไซเมอร์");
   });
 
   it("reads the four blocks in the order the customer needs them", () => {
     expect(quoteCard(MAN40, WHILE_CURRENT)!.sections.map((s) => s.title))
-      .toEqual([PARTS, DEATH, ILLNESS, CASH]);
+      .toEqual([PARTS, DEATH, ILLNESS, DISEASES]);
   });
 
   /**

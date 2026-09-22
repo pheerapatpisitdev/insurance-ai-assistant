@@ -36,14 +36,20 @@ describe("every place the menu says you can go", () => {
     expect(SALES_PAGES.map((p) => p.href).sort()).toEqual(onDisk.map((s) => `/${s}`).sort());
   });
 
-  it("opens a sales page in its own tab and an agent's own page in place", () => {
+  /**
+   * A sales page is a page of this tool, not a place off it.
+   *
+   * They used to open in a new tab, on the reading that a sales page is for the customer and
+   * the calculator is for the agent. It is the same person: an agent works out a premium on
+   * the sales page itself, and every jump left another tab behind until the browser was a row
+   * of the same site. The `external` flag stays in the type for a genuinely off-site link;
+   * nothing in the menu is one today.
+   */
+  it("keeps every page in the menu in the same tab", () => {
     const groups = menuGroups(true);
-    // the sales pages are dealt into four sections now, and every one of them opens away
     const sales = groups.filter((g) => SALES_SECTIONS.some((s) => s.title === g.title));
     expect(sales).toHaveLength(SALES_SECTIONS.length);
-    expect(sales.flatMap((g) => g.links).every((l) => l.external)).toBe(true);
-    const work = groups.find((g) => g.title === "งานขาย")!;
-    expect(work.links.some((l) => l.external)).toBe(false);
+    expect(groups.flatMap((g) => g.links).some((l) => l.external)).toBe(false);
   });
 
   /**

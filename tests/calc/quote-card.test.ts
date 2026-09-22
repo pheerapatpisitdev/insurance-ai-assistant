@@ -41,7 +41,7 @@ describe("cardInputFrom", () => {
 describe("cardPath and cardUrl", () => {
   it("writes the arrangement into the address", () => {
     expect(cardPath(MAN35))
-      .toMatch(/^\/api\/card\?plan=LIFEPROTECT&variant=WLF19H&age=35&sex=M&sum=1000000&mode=monthly&v=[0-9a-z]+$/);
+      .toMatch(/^\/api\/card\?plan=LIFEPROTECT&variant=WLF19H&age=35&sex=M&sum=1000000&mode=monthly&v=[0-9a-z]+-[0-9]+$/);
   });
 
   /**
@@ -51,7 +51,7 @@ describe("cardPath and cardUrl", () => {
    */
   it("carries the palette's fingerprint, so a re-coloured card is not served from cache", () => {
     const v = new URLSearchParams(cardPath(MAN35).split("?")[1]).get("v");
-    expect(v).toMatch(/^[0-9a-z]+$/);
+    expect(v).toMatch(/^[0-9a-z]+-[0-9]+$/);
     // the same arrangement always asks for the same address, or nothing would ever cache
     expect(cardPath(MAN35)).toBe(cardPath(MAN35));
   });
