@@ -1,0 +1,112 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { rangeStart } from "@/lib/crm/summary";
+import { summariseAds } from "@/lib/ads/summary";
+import { syncAds, type SyncResult } from "@/lib/ads/sync";
+import type { AdConversation, AdLead, AdsRange, AdsSummary, DailyRow } from "@/lib/ads/types";
+import {
+  adAccounts, clearAdAccount, clearPendingAds, readPendingAds, saveAdAccount, type AdAccount,
+} from "@/lib/facebook/ads-connection";
+import { listAdAccounts } from "@/lib/facebook/oauth";
+
+/** Everything the page draws. No token in it. */
+export interface AdsPage {
+  range: AdsRange;
+  accounts: AdAccount[];
+  /** the ad accounts a half-finished login is waiting to choose between */
+  choices: { id: string; name: string }[];
+  summary: AdsSummary;
+  /** when the newest row was fetched; nothing before the first sync */
+  lastFetchedAt: string | null;
+}
+
+/** A local calendar day as `YYYY-MM-DD`, for a `date` column. */
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+async function pendingChoices(): Promise<{ id: string; name: string }[]> {
+  const pending = await readPendingAds();
+  if (!pending) return [];
+  try {
+    return (await listAdAccounts(pending.token)).map((a) => ({ id: a.id, name: a.name }));
+  } catch {
+    return [];
+  }
+}
+
+export async function loadAds(range: AdsRange = "7d"): Promise<AdsPage> {
+  const supabase = supabaseAdmin();
+  const start = rangeStart(range);
+  const since = start.toISOString();
+
+  const [accounts, choices, rows, leads, conversations, newest] = await Promise.all([
+    adAccounts().catch(() => []),
+    pendingChoices(),
+    supabase.from("ins_ad_daily").select("*").gte("date", dayKey(start)),
+    supabase.from("ins_leads").select("ad_id").gte("created_at", since),
+    supabase.from("ins_conversations").select("ad_id, priced_at, form_sent_at").gte("started_at", since),
+    supabase.from("ins_ad_daily").select("fetched_at").order("fetched_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+
+  /**
+   * A conversation that did not come from an advertisement has no ad_id, and keying the
+   * tally by it would file every organic customer under one imaginary advertisement called
+   * "null" — a campaign that never ran, credited with most of the week.
+   */
+  const fromAds = <T extends { ad_id: string | null }>(v: unknown): T[] =>
+    ((v ?? []) as T[]).filter((r) => Boolean(r.ad_id));
+
+  const summary = summariseAds(
+    (rows.data ?? []) as DailyRow[],
+    fromAds<AdLead & { ad_id: string | null }>(leads.data) as AdLead[],
+    fromAds<AdConversation & { ad_id: string | null }>(conversations.data) as AdConversation[],
+  );
+  return {
+    range,
+    accounts,
+    choices,
+    summary,
+    lastFetchedAt: (newest.data as { fetched_at: string } | null)?.fetched_at ?? null,
+  };
+}
+
+/** The button. Same code the cron runs, called directly rather than through its own route. */
+export async function syncNow(): Promise<SyncResult> {
+  const result = await syncAds();
+  revalidatePath("/admin/ads");
+  return result;
+}
+
+/** Finishes a login where the person may read more than one ad account — all the chosen ones. */
+export async function connectAdAccounts(ids: string[]): Promise<string[]> {
+  if (ids.length === 0) throw new Error("ยังไม่ได้เลือกบัญชีโฆษณา");
+  const pending = await readPendingAds();
+  if (!pending) throw new Error("การเชื่อมต่อหมดอายุแล้ว กดเชื่อมบัญชีโฆษณาใหม่อีกครั้ง");
+
+  const available = await listAdAccounts(pending.token);
+  const failures: string[] = [];
+  for (const id of ids) {
+    const a = available.find((x) => x.id === id);
+    if (!a) { failures.push(`${id} — ไม่พบในบัญชีที่เพิ่งเข้าสู่ระบบ`); continue; }
+    try {
+      await saveAdAccount({ id: a.id, name: a.name, currency: a.currency, token: pending.token, scopes: pending.scopes });
+    } catch (e) {
+      failures.push(`${a.name} — ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  if (failures.length === 0) await clearPendingAds();
+  revalidatePath("/admin/ads");
+  return failures;
+}
+
+export async function cancelPendingAds(): Promise<void> {
+  await clearPendingAds();
+  revalidatePath("/admin/ads");
+}
+
+export async function disconnectAdAccount(actId: string): Promise<void> {
+  await clearAdAccount(actId);
+  revalidatePath("/admin/ads");
+}
