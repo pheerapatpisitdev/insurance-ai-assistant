@@ -6,6 +6,9 @@ import rrssDiseases from "../../../data/riders/rrss-diseases.json";
 import { pricedHere } from "./price";
 import { FAQ as LIFE_FAQ } from "@/lib/assistant/lifeprotect/faq";
 import { FAQ as HEALTH_FAQ } from "@/lib/assistant/ihealthy/faq";
+import {
+  healthKnowledgeDetail, healthKnowledgeSummary, healthTopicsFor,
+} from "@/lib/health-knowledge";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { PlanRules } from "@/calc/types";
 
@@ -364,6 +367,7 @@ export async function assembleKnowledge(question = ""): Promise<string> {
   const all = diseaseLists();
   const opened = listsFor(question);
   const faq = faqSection(question);
+  const healthDetail = healthKnowledgeDetail(question);
 
   const text = [
     "# คลังความรู้ของระบบนี้",
@@ -404,6 +408,18 @@ export async function assembleKnowledge(question = ""): Promise<string> {
     "",
     GROUP_HANDOFF,
     "",
+    /**
+     * The health contract's own words, and the regulator's admission table.
+     *
+     * Split the same way the illness lists are, and placed here for the same reason the group
+     * handoff is: these blocks head their sections with `### `, and `## รายชื่อโรค` has to
+     * stay the last `##` of the document — `copilot-diseases` reads every `### ` after it to
+     * see which illness lists a question opened, and a block arriving later was counted as
+     * four more of them.
+     */
+    healthKnowledgeSummary(),
+    ...(healthDetail ? ["", healthDetail] : []),
+    "",
     criticalIllnessSection(all),
     "",
     diseaseSummary(all),
@@ -419,6 +435,7 @@ export async function assembleKnowledge(question = ""): Promise<string> {
    */
   console.info(
     `[knowledge] ${text.length} ตัวอักษร · โรค: ${opened.length ? opened.map((l) => l.name.slice(0, 18)).join("+") : "สรุปเท่านั้น"}`
+    + ` · สุขภาพ: ${healthTopicsFor(question).map((t) => t.code).join("+") || "สรุปเท่านั้น"}`
     + ` · faq: ${faq ? faq.split("\n").length - 1 : 0}`,
   );
   return text;
