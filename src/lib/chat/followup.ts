@@ -52,6 +52,19 @@ export const FOLLOWUP_LAST_TEXT = [
 
 export const FOLLOWUP_LAST_REPLIES = ["ขอตารางมูลค่า", "ขอแบบถูกลง", "สนใจสมัคร"];
 
+/**
+ * Whether the second one goes out at all.
+ *
+ * Off since 2026-09-22, by the owner's decision: one message into a silence is enough, and a
+ * customer who has already let the first one pass is not waiting to be told once more that
+ * nobody will bother them. The text above is kept, not deleted, because this is a switch and
+ * not a removal — flip it back and the message returns exactly as it was written.
+ *
+ * Only the sending stops. The queue still comes due at its hour and the thread is still
+ * written down as stalled, so the agent still learns which quotations went cold.
+ */
+export const SECOND_FOLLOWUP = false;
+
 /** How long a quotation is left to speak for itself. */
 export const SILENCE_MS = 5 * 60_000;
 
@@ -117,11 +130,12 @@ export interface Due {
   stage: number;
 }
 
-/** What to send at each stage, and the buttons under it. */
-export function followupMessage(stage: number): { text: string; replies: string[] } {
-  return stage >= 2
-    ? { text: FOLLOWUP_LAST_TEXT, replies: FOLLOWUP_LAST_REPLIES }
-    : { text: FOLLOWUP_TEXT, replies: FOLLOWUP_REPLIES };
+/** What to send at each stage, and the buttons under it — or nothing, when the stage is off. */
+export function followupMessage(stage: number): { text: string; replies: string[] } | null {
+  if (stage >= 2) {
+    return SECOND_FOLLOWUP ? { text: FOLLOWUP_LAST_TEXT, replies: FOLLOWUP_LAST_REPLIES } : null;
+  }
+  return { text: FOLLOWUP_TEXT, replies: FOLLOWUP_REPLIES };
 }
 
 /**

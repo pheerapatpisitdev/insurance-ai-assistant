@@ -19,7 +19,8 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 const {
   armFollowup, claimDueFollowups, dropFollowup, followupMessage,
-  FOLLOWUP_LAST_REPLIES, FOLLOWUP_LAST_TEXT, FOLLOWUP_REPLIES, FOLLOWUP_TEXT, SILENCE_MS,
+  FOLLOWUP_LAST_REPLIES, FOLLOWUP_LAST_TEXT, FOLLOWUP_REPLIES, FOLLOWUP_TEXT, SECOND_FOLLOWUP,
+  SILENCE_MS,
 } = await import("@/lib/chat/followup");
 const { cronCallerIsOurs } = await import("@/lib/chat/cron-token");
 const { asksCheaper, wantsToBuy } = await import("@/lib/assistant/common");
@@ -103,11 +104,15 @@ describe("the last question, before the window shuts", () => {
     }
   });
 
-  it("is what the second stage sends, and the first stage sends the first", () => {
+  it("is switched off, so the second stage sends nothing at all", () => {
+    expect(SECOND_FOLLOWUP).toBe(false);
+    expect(followupMessage(2)).toBeNull();
+    // anything beyond two was the last message too, and is just as silent
+    expect(followupMessage(3)).toBeNull();
+  });
+
+  it("takes nothing away from the first stage, which still speaks", () => {
     expect(followupMessage(1)).toEqual({ text: FOLLOWUP_TEXT, replies: FOLLOWUP_REPLIES });
-    expect(followupMessage(2)).toEqual({ text: FOLLOWUP_LAST_TEXT, replies: FOLLOWUP_LAST_REPLIES });
-    // anything beyond two is the last message, not a new one
-    expect(followupMessage(3).text).toBe(FOLLOWUP_LAST_TEXT);
   });
 });
 

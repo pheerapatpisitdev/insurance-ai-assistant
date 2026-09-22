@@ -27,17 +27,22 @@ export async function POST(req: NextRequest) {
   const due = await claimDueFollowups("facebook");
   after(async () => {
     for (const { userHash, psid, pageId, stage } of due) {
-      const { text, replies } = followupMessage(stage);
-      // proactive, not a reply to anything: Meta has a name for that and this is it — and it
-      // goes out of the Page the conversation happened on, which is the only Page that knows
-      // who this id is
-      await sendMessage(psid, text, replies, { proactive: true, pageId: pageId ?? undefined })
-        .catch((e) => console.error("followup failed:", e));
+      // a stage whose message is switched off is still claimed and still counted; it simply
+      // says nothing
+      const message = followupMessage(stage);
+      if (message) {
+        // proactive, not a reply to anything: Meta has a name for that and this is it — and it
+        // goes out of the Page the conversation happened on, which is the only Page that knows
+        // who this id is
+        await sendMessage(psid, message.text, message.replies, { proactive: true, pageId: pageId ?? undefined })
+          .catch((e) => console.error("followup failed:", e));
+      }
       // the second question is the last one, and reaching it means the first went unanswered —
-      // which is the one outcome worth reporting that nothing else leaves a trace of
+      // which is the one outcome worth reporting that nothing else leaves a trace of. It is
+      // recorded whether or not that message is the one being sent
       if (stage >= 2) await markStalled("facebook", userHash);
     }
     await sweepFollowups();
   });
-  return Response.json({ sent: due.length });
+  return Response.json({ sent: due.filter((d) => followupMessage(d.stage)).length });
 }
