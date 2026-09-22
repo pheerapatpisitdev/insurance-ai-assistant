@@ -1,12 +1,4 @@
 import type { Reply } from "./common";
-import { getPlan } from "@/calc/plans/registry";
-import { getBundle } from "@/calc/bundles/registry";
-import { bundleAgeRange } from "@/calc/bundles/quote";
-import { baseAgeRange } from "@/calc/rules";
-import { iHealthyTable } from "@/lib/ihealthy-table";
-
-/** The bundle the มรดก door opens on, by the code the registry knows it as. */
-const LEGACY_FAMILY = "LEGACY_FAMILY";
 
 /** What this page sells, as the session records which one a customer came for. */
 export type Product = "lifeprotect" | "ihealthy" | "legacy" | "ishield";
@@ -104,9 +96,9 @@ export function productByTopic(text: string): Product | undefined {
  * arrangements actually are is said in the message above them, which has no such limit.
  */
 export const CHOOSE_HEALTH = "🏥 ประกันสุขภาพ";
-export const CHOOSE_LIFE = "💰 มรดกเบี้ยไม่ทิ้ง";
-export const CHOOSE_LEGACY = "🛡 มรดก+โรคร้ายแรง";
-export const CHOOSE_ISHIELD = "🌱 มรดก+ออม+โรคร้าย";
+export const CHOOSE_LIFE = "💰 Life Protect";
+export const CHOOSE_LEGACY = "🛡 มรดกเพื่อครอบครัว";
+export const CHOOSE_ISHIELD = "🌱 iShield";
 
 /** Longer than this and Messenger truncates the title mid-word. */
 export const MAX_BUTTON = 20;
@@ -115,72 +107,76 @@ export const MAX_BUTTON = 20;
  * What the customer is choosing between, said before they are asked to choose.
  *
  * The buttons cannot carry it — twenty characters each — and a customer asked "สนใจแบบไหนครับ"
- * under four names they have never seen is being asked to guess. Each one gets a sentence.
+ * under names they have never seen is being asked to guess. Each one gets a sentence.
  *
- * The heading no longer says มรดก. Three of these are, and the fourth is the opposite half of
- * a person's life — money for the family after, against the bills while you are still here —
- * so a heading that called all four a legacy would be wrong about the one that is not.
+ * Three, not four. The health contract is still sold, still priced, and still reached by
+ * name, by subject and by advertisement — it is simply not offered to somebody who has said
+ * nothing yet. A menu is a question, and the three left are one question: money for the
+ * family after. The fourth asked a different one — the bills while you are still here — and
+ * a stranger made to choose between the two at once is being asked to sort themselves before
+ * they have said a word. It is one sentence away for anybody who wants it.
+ *
+ * The heading counts this list rather than saying a number, so a door added or taken away
+ * cannot leave the greeting claiming a figure it no longer has.
  */
 const DOORS: { product: Product; title: string; line: string }[] = [
   {
     product: "lifeprotect",
     title: CHOOSE_LIFE,
-    line: "💰 มรดก เบี้ยไม่ทิ้ง — จ่ายแล้วสะสมเป็นเงินก้อน เลิกกลางทางได้เงินคืน",
+    line: "Life Protect — ประกันชีวิต เบี้ยไม่ทิ้ง ขายคืนได้",
   },
   {
     product: "legacy",
     title: CHOOSE_LEGACY,
-    line: "🛡 มรดก เบี้ยทิ้ง + โรคร้ายแรง — วงเงินใหญ่ เบี้ยเบา เจอโรคร้ายรับเงินสดก้อนโต",
+    line: "มรดกเพื่อครอบครัว — วงเงินใหญ่ เบี้ยเบา เจอโรคร้ายรับเงินก้อน",
   },
   {
     product: "ishield",
     title: CHOOSE_ISHIELD,
-    line: "🌱 มรดก + ออม + โรคร้ายแรง — จ่ายสั้น 5–20 ปี อยู่ถึง 85 รับเงินคืนเต็มจำนวน",
-  },
-  {
-    product: "ihealthy",
-    title: CHOOSE_HEALTH,
-    line: "🏥 ประกันสุขภาพ — ค่าห้อง ค่าหมอ ค่ารักษา ทุกครั้งที่นอนโรงพยาบาล",
+    line: "iShield — ประกันโรคร้าย เบี้ยไม่ทิ้ง รับเงินคืนเต็ม",
   },
 ];
 
-const HEADING = "สวัสดีครับ 🙏 ที่ผมดูแลมี 4 แบบครับ";
-
-export const CHOICES = [HEADING, ...DOORS.map((d) => d.line)].join("\n");
-
 /**
- * The ages each arrangement is actually issued at, read from the plans themselves.
+ * The list as it is read out, numbered.
  *
- * Written down nowhere: the life contract's own table, the bundle's narrowest rider, the four
- * paying terms of the third, and the health contract's table. A number typed here would be a
- * number to keep in step with four files that already know.
+ * The number is counted here rather than typed into each line, because a line that carries
+ * its own "2." is a line that says 2 wherever it is moved to.
  */
-const ISHIELD_TERMS = ["WLCI05", "WLCI10", "WLCI15", "WLCI20"];
-const ANY_AGE = { min: 0, max: 99 };
-
-function issuedAt(product: Product): { min: number; max: number } {
-  if (product === "ihealthy") {
-    const t = iHealthyTable();
-    return { min: t.ageMin, max: t.ageMax };
-  }
-  if (product === "legacy") {
-    const bundle = getBundle(LEGACY_FAMILY);
-    return bundle ? bundleAgeRange(bundle) : ANY_AGE;
-  }
-  if (product === "ishield") {
-    const plan = getPlan("ISHIELD");
-    if (!plan) return ANY_AGE;
-    const spans = ISHIELD_TERMS.map((v) => baseAgeRange(plan.rules, v, plan.rates));
-    return { min: Math.min(...spans.map((s) => s.min)), max: Math.max(...spans.map((s) => s.max)) };
-  }
-  const plan = getPlan("LIFEPROTECT");
-  return plan ? baseAgeRange(plan.rules, "WLF99H", plan.rates) : ANY_AGE;
+function numbered(): string {
+  return DOORS.map((d, i) => `${i + 1}. ${d.line}`).join("\n");
 }
 
-/** Whether this arrangement can be sold to someone of that age at all. */
-export function takesAge(product: Product, age: number): boolean {
-  const { min, max } = issuedAt(product);
-  return age >= min && age <= max;
+const HEADING = `สวัสดีครับ 🙏 ที่ผมดูแลมี ${DOORS.length} แบบครับ`;
+
+export const CHOICES = `${HEADING}\n\n${numbered()}`;
+
+/**
+ * The number a customer typed instead of tapping.
+ *
+ * The list is numbered, so it invites this, and until now it was a dead end: "2" named no
+ * plan, was about no plan's subject, and fell through to the menu again — a customer who had
+ * chosen shown the same three lines and then offered a person. Numbering a list and not
+ * reading the numbers back is the worst of both.
+ *
+ * A single digit only, and only one within the list. An age is two digits, a sum carries ล้าน
+ * or แสน, and a paying term is written with ปี — so nothing else a customer types at this
+ * point is a bare 1, 2 or 3. Thai numerals are read too, because a Thai keyboard offers them.
+ *
+ * Whether the menu was actually on screen is not decided here: the caller knows what it said
+ * last, and out of that context a lone "2" is not an answer to anything.
+ */
+const PICKED =
+  /^(?:(?:ขอ|เอา|สนใจ|เลือก)\s*)?(?:(?:ข้อ|แบบที่|แบบ|อันที่|อัน|ตัวที่)\s*)?([1-9๑-๙])\s*[.)]?\s*(?:ครับผม|ครับ|ค่ะ|คะ|ค่า|นะ|จ้า|เลย)?$/;
+
+const THAI_DIGITS = "๑๒๓๔๕๖๗๘๙";
+
+export function pickedFromMenu(text: string): Product | undefined {
+  const m = PICKED.exec(text.trim());
+  if (!m) return undefined;
+  const d = m[1];
+  const n = THAI_DIGITS.includes(d) ? THAI_DIGITS.indexOf(d) + 1 : Number(d);
+  return DOORS[n - 1]?.product;
 }
 
 /**
@@ -190,38 +186,22 @@ export function takesAge(product: Product, age: number): boolean {
  * and most customers type a sum or a symptom, and a lead the campaign paid for should not have
  * to tap twice to be answered.
  *
- * The age narrows it where one is known. A man of sixty-eight wrote his age and then "ขอดูทั้ง
- * 2 แบบ", and was shown all four twice — two of which no company would have issued him. Four
- * doors, two of them painted on, is a worse answer than two doors.
+ * The same three doors whatever age is on the session. They were narrowed by issue age for a
+ * while, which is honest arithmetic and was the wrong screen for it: a man of sixty-six was
+ * shown one door and still asked which one he wanted, and a man of eighty-five was handed
+ * off before anyone had heard what he came for. The agency sells more than the bot prices,
+ * the plans refuse for themselves further in, and a person reads this inbox — so the menu
+ * says what is on the shelf and lets the customer speak first.
  */
-export function askWhich(lead?: string, age?: number): Reply {
-  const open = age === undefined ? DOORS : DOORS.filter((d) => takesAge(d.product, age));
-
-  /**
-   * Nothing on the shelf reaches them.
-   *
-   * Above eighty every one of these refuses, and a menu of four arrangements is then four
-   * wasted taps ending in four refusals. The agency sells more than the bot prices, so this
-   * is a person's job and the bot says so rather than pretending.
-   */
-  if (age !== undefined && !open.length) {
-    const text = `อายุ ${age} ปี แบบที่ผมคิดเบี้ยให้ได้ในแชทนี้ยังไม่มีครับ 🙏`
-      + "\nเดี๋ยวตัวแทนมาดูให้ว่ามีแบบไหนที่ยังสมัครได้บ้าง ทิ้งคำถามไว้ได้เลยครับ";
-    return { messages: lead ? [{ text: lead }, { text }] : [{ text }] };
-  }
-
-  const shown = open;
-  const heading = shown.length < DOORS.length
-    ? `อายุ ${age} ปี สมัครได้ ${shown.length} แบบนี้ครับ 🙏`
-    : HEADING;
-  const asked = [heading, ...shown.map((d) => d.line)].join("\n");
+export function askWhich(lead?: string): Reply {
+  const asked = `${HEADING}\n\n${numbered()}`;
 
   // a customer who asked something first is answered first: "ของอะไร" met with "สนใจแบบไหนครับ"
   // is a question answered with a question, which is how it read in the inbox
   const messages = lead
     ? [{ text: lead }, { text: `${asked}\n\nสนใจแบบไหนครับ` }]
     : [{ text: `${asked}\n\nสนใจแบบไหนครับ` }];
-  return { messages, replies: shown.map((d) => d.title) };
+  return { messages, replies: DOORS.map((d) => d.title) };
 }
 
 /**
@@ -232,8 +212,8 @@ export function askWhich(lead?: string, age?: number): Reply {
  * the second time the bot says so — and leaves the buttons up, because some customers were
  * only scrolling.
  */
-export function askWhichAgain(age?: number): Reply {
-  const again = askWhich(undefined, age);
+export function askWhichAgain(): Reply {
+  const again = askWhich();
   return {
     messages: [{
       text: "เลือกไม่ถูกไม่เป็นไรครับ 🙏 บอกมาคร่าวๆ ก็ได้ว่าอยากได้แบบไหน"

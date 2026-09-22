@@ -1,5 +1,5 @@
 import type { ChatMessage } from "@/lib/ai/types";
-import { aboutAGroup, askWhich, askWhichAgain, productByTopic, productNamedIn, type Product } from "./choose";
+import { aboutAGroup, askWhich, askWhichAgain, pickedFromMenu, productByTopic, productNamedIn, type Product } from "./choose";
 import {
   aboutCompany, ageIn, asksAboutCompany, handOverForm, handOverGroup, peopleIn, tookUpTheOffer,
   wantsToBuy, type Reply,
@@ -205,6 +205,22 @@ export async function answerAny(
    * to make.
    */
   const lastSaid = [...history].reverse().find((m) => m.role === "assistant")?.content;
+
+  /**
+   * "2", from a customer looking at a numbered list.
+   *
+   * Read only where the list was actually put up. The same two characters mean nothing on
+   * their own, and a conversation that never saw the menu should not have a stray digit
+   * turned into a plan — so the history is asked whether the question was ever put, rather
+   * than the digit being trusted on its own.
+   *
+   * Not just the turn before: the bot answers a second silence with a person and leaves the
+   * buttons up, and a customer who scrolls back and types the number then has still chosen.
+   */
+  const putUp = history.some((m) => m.role === "assistant" && m.content.includes(ASKED_WHICH));
+  const picked = putUp ? pickedFromMenu(asked) : undefined;
+  if (picked) return run(picked, history, personIn(stored), true, channel);
+
   if (wantsToBuy(asked, false) || tookUpTheOffer(asked, lastSaid)) {
     const form = handOverForm(false);
     return {
@@ -225,7 +241,7 @@ export async function answerAny(
     const answer = await answerFromLibrary(history, asked, channel);
     if (answer) {
       return {
-        messages: [{ text: answer }], replies: askWhich(undefined, undecided.age).replies,
+        messages: [{ text: answer }], replies: askWhich().replies,
         slots: undecided, fromLibrary: true,
       };
     }
@@ -240,10 +256,10 @@ export async function answerAny(
    * a person, and the agency is watching this inbox.
    */
   if (!lead && lastSaid?.includes(ASKED_WHICH)) {
-    return { ...askWhichAgain(undecided.age), slots: undecided };
+    return { ...askWhichAgain(), slots: undecided };
   }
 
-  return { ...askWhich(lead, undecided.age), slots: undecided };
+  return { ...askWhich(lead), slots: undecided };
 }
 
 /**

@@ -24,7 +24,7 @@ describe("a customer who has not said what they came for", () => {
     expect(answer.messages[0].text).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
     // the question is still put, and the buttons still offered
     expect(answer.messages.at(-1)!.text).toContain("สนใจแบบไหน");
-    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD, CHOOSE_HEALTH]);
+    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD]);
     expect(chat).not.toHaveBeenCalled();
   });
 
@@ -60,20 +60,21 @@ describe("a customer who has not said what they came for", () => {
    * A man of sixty-eight, on the page this morning.
    *
    * He gave his age, was shown four arrangements, wrote "ขอดูทั้ง2แบบ" and was shown the same
-   * four again. Two of them no company would have issued him, and the second telling was the
-   * same dead end as the first.
+   * four again — the second telling as much of a dead end as the first.
+   *
+   * What fixed it is not arithmetic about his age: the menu is three doors, it is the same
+   * three for everybody, and what it must not do is put them up twice. A customer who did
+   * not choose is not helped by the list again, so the second time he is offered a person.
    */
-  it("offers only the arrangements that would take them, once an age is known", async () => {
+  it("shows the same three whatever age is on the session", async () => {
     const answer = await answerAny(said("อายุ 68 ปีครับ"), null);
-    const text = answer.messages.at(-1)!.text;
-    expect(text).toContain("อายุ 68");
-    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_HEALTH]);
-    expect(text).not.toContain("จ่ายสั้น 5–20 ปี");
+    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD]);
+    expect(answer.messages.at(-1)!.text).toContain("สนใจแบบไหน");
   });
 
-  it("shows all four when no age says otherwise", async () => {
+  it("shows all three when nothing has been said", async () => {
     const answer = await answerAny(said("สนใจครับ"), null);
-    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD, CHOOSE_HEALTH]);
+    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD]);
   });
 
   it("does not put the same menu up twice; it offers a person instead", async () => {
@@ -85,14 +86,51 @@ describe("a customer who has not said what they came for", () => {
     ], first.slots);
     expect(again.messages[0].text).not.toContain("สนใจแบบไหนครับ");
     expect(again.messages[0].text).toContain("ตัวแทน");
-    // the buttons stay up, still only the two he can have
-    expect(again.replies).toEqual([CHOOSE_LIFE, CHOOSE_HEALTH]);
+    // the buttons stay up, because some customers were only scrolling
+    expect(again.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD]);
   });
 
-  it("stops offering anything at an age every arrangement refuses", async () => {
+  /**
+   * The list is numbered, so the number has to be an answer.
+   *
+   * A customer on a phone types faster than they scroll to a button, and "2" was falling
+   * through to the menu again — the one reply that proved they had read it treated as if they
+   * had said nothing.
+   */
+  it("takes the number a customer types at the menu", async () => {
+    const menu = await answerAny(said("สนใจครับ"), null);
+    const after = await answerAny([
+      { role: "user" as const, content: "สนใจครับ" },
+      { role: "assistant" as const, content: menu.messages.at(-1)!.text },
+      { role: "user" as const, content: "2" },
+    ], menu.slots);
+    expect(after.slots).toMatchObject({ product: "legacy" });
+    expect(after.messages.at(-1)!.text).not.toContain("สนใจแบบไหน");
+  });
+
+  /**
+   * The same two characters, with no list behind them.
+   *
+   * A digit is only an answer to a question that was asked, and reading one out of nowhere
+   * would put a customer onto a plan they never heard named.
+   */
+  it("does not read a number out of a conversation that never saw the menu", async () => {
+    const answer = await answerAny(said("2"), null);
+    expect(answer.slots).toMatchObject({ product: "undecided" });
+    expect(answer.messages.at(-1)!.text).toContain("สนใจแบบไหน");
+  });
+
+  /**
+   * Every arrangement here is issued below eighty-one, and this customer is eighty-five.
+   *
+   * He is shown the menu all the same. The bot is not the underwriter — the plans refuse for
+   * themselves once there is a plan, and an inbox a person reads is a better place to be
+   * turned down than a greeting.
+   */
+  it("still shows the menu at an age every arrangement would refuse", async () => {
     const answer = await answerAny(said("อายุ 85 ปีครับ"), null);
-    expect(answer.messages.at(-1)!.text).toContain("ตัวแทน");
-    expect(answer.replies).toBeUndefined();
+    expect(answer.messages.at(-1)!.text).toContain("สนใจแบบไหน");
+    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD]);
   });
 
   /** "คุ้มครองถึงอายุ 99 ไหม" is a question about the contract, not a customer of ninety-nine. */
@@ -134,9 +172,9 @@ describe("a customer who has not said what they came for", () => {
     expect(answer.messages[2].card).toContain("age=53&sex=M");
   });
 
-  it("is asked, with the four buttons, and no model is paid", async () => {
+  it("is asked, with the three buttons, and no model is paid", async () => {
     const answer = await answerAny(said("สนใจค่ะ"), null);
-    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD, CHOOSE_HEALTH]);
+    expect(answer.replies).toEqual([CHOOSE_LIFE, CHOOSE_LEGACY, CHOOSE_ISHIELD]);
     expect(answer.slots).toMatchObject({ product: "undecided" });
     expect(chat).not.toHaveBeenCalled();
   });

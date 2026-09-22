@@ -1,4 +1,5 @@
 import { pageToken } from "./connection";
+import { spokenBy, voiceOf } from "@/lib/assistant/voice";
 
 const GRAPH = "https://graph.facebook.com/v23.0/me";
 
@@ -106,8 +107,17 @@ export interface SendOptions {
 export async function sendMessage(
   psid: string, text: string, replies?: string[], options?: SendOptions,
 ): Promise<void> {
+  /**
+   * Every word this system says to a customer leaves through here, which is the one place
+   * that knows both the sentence and the Page it is going out of — so it is where the Page's
+   * voice is applied. Doing it in the writing instead would mean a second copy of every
+   * sentence, and a follow-up sent days later from another file would still be in the first
+   * voice. The buttons are deliberately left alone: see `spokenBy`.
+   */
+  const said = spokenBy(voiceOf(options?.pageId), text);
+
   // parts go one after another, because Messenger shows them in the order they arrive
-  const parts = toParts(text);
+  const parts = toParts(said);
   for (const [i, part] of parts.entries()) {
     // the buttons belong to the last thing on the screen: a message sent after them takes
     // them away again

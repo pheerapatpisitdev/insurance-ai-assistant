@@ -162,8 +162,8 @@ describe("what is offered after a premium", () => {
    * change of product — the customer is carried across without being asked anything twice.
    */
   it("offers the other arrangement by a name the dispatcher will route on", async () => {
-    const { productNamedIn } = await import("@/lib/assistant/choose");
-    const cross = priced.replies?.find((r) => r.includes("เบี้ยไม่ทิ้ง"));
+    const { productNamedIn, CHOOSE_LIFE } = await import("@/lib/assistant/choose");
+    const cross = priced.replies?.find((r) => r === CHOOSE_LIFE);
     expect(cross).toBeDefined();
     expect(productNamedIn(cross!)).toBe("lifeprotect");
   });
