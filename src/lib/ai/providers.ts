@@ -161,3 +161,51 @@ function normalise(v: number[]): number[] {
   const len = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
   return len > 0 ? v.map((x) => x / len) : v;
 }
+
+/**
+ * TypeSafe's "System One" model, Jev. Not a chat model and not in CALLERS on purpose.
+ *
+ * It never writes a sentence. It reads a piece of state and a set of typed questions and
+ * answers each with a probability — yes/no, one of a list, or a level on a rubric — plus a
+ * confidence figure that says how sure it is. That makes it useless for answering a customer
+ * and useful for deciding what a message is, which is what `route` spends most of the month
+ * doing. Added on 2026-09-22 with nothing wired to it yet: the owner wanted the key in and
+ * the tests green first, and the use decided afterwards.
+ *
+ * Priced on input only — the provider gives output tokens away — so the ledger line for it
+ * carries an output count but never an output cost.
+ */
+export type JudgeQuestion =
+  | { type: "noul"; instructions: string; criteria?: { true: string; false: string } }
+  | { type: "choice"; instructions: string; criteria: Record<string, string> }
+  | { type: "score"; instructions: string; criteria: string[] };
+
+export type JudgeAnswer =
+  | { type: "noul"; noul: number }
+  | { type: "choice"; choice: string; probabilities: Record<string, number>; confidence: number }
+  | { type: "score"; score: number; legend: Record<string, string>; probabilities: Record<string, number>; confidence: number };
+
+export interface JudgeResult {
+  /** the version that actually answered — the request names an alias */
+  model: string;
+  answers: Record<string, JudgeAnswer>;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export const JUDGE = {
+  provider: "typesafe",
+  model: "jev-latest",
+  usdPerMTokIn: 0.042,
+  async ask(apiKey: string, state: unknown, questions: Record<string, JudgeQuestion>, signal?: AbortSignal): Promise<JudgeResult> {
+    const data = await postJson("https://api.typesafe.ai/v1/systemone", {
+      Authorization: `Bearer ${apiKey}`,
+    }, { state, model: JUDGE.model, questions }, signal);
+    return {
+      model: typeof data.model === "string" && data.model ? data.model : JUDGE.model,
+      answers: data.answers ?? {},
+      inputTokens: data.usage?.input_tokens ?? 0,
+      outputTokens: data.usage?.output_tokens ?? 0,
+    };
+  },
+};

@@ -65,7 +65,11 @@ function Status({ check }: { check?: ProviderCheck }) {
 
 const PROVIDER_LABEL: Record<string, string> = {
   anthropic: "Anthropic (Claude)", openai: "OpenAI (GPT)", google: "Google (Gemini)", zai: "Z.ai (GLM)",
+  typesafe: "TypeSafe (Jev)",
 };
+
+/** How a model's kind reads on the page. A judge answers in probabilities, never in words. */
+const KIND_LABEL: Record<string, string> = { text: "ข้อความ", image: "รูปภาพ", judge: "ตัดสิน (ไม่สร้างข้อความ)" };
 
 export function AiClient({ keys, models, settings, providers, spentThisMonth, spend }: {
   keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[];
@@ -167,10 +171,11 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
                 {models.map((m) => (
                   <tr key={m.id} className="border-b">
                     <td className="py-1.5">{m.provider}</td>
-                    <td className="py-1.5 pl-3">{m.kind === "text" ? "ข้อความ" : "รูปภาพ"}</td>
+                    <td className="py-1.5 pl-3">{KIND_LABEL[m.kind] ?? m.kind}</td>
                     <td className="py-1.5 pl-3 font-mono text-xs">{m.model_name}</td>
                     <td className="py-1.5 pl-3">
-                      <input type="checkbox" checked={m.enabled} disabled={pending}
+                      <input type="checkbox" checked={m.enabled} disabled={pending || m.kind === "judge"}
+                             title={m.kind === "judge" ? "ยังไม่มีงานไหนเรียกใช้ เปิดปิดด้วยการใส่หรือลบกุญแจ" : undefined}
                              onChange={(e) => run(() => setModelEnabled(m.id, e.target.checked), "อัปเดตโมเดลแล้ว")} />
                     </td>
                   </tr>

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin/guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { clearAiConfigCache, testProviders, type ProviderCheck } from "@/lib/ai/client";
+import { EMBEDDERS, JUDGE } from "@/lib/ai/providers";
 
 export type { ProviderCheck } from "@/lib/ai/client";
 
@@ -11,11 +12,19 @@ export type { ProviderCheck } from "@/lib/ai/client";
  * for want of credit, so every Grok call failed, and the owner asked for it to go rather than
  * sit in the chain costing a failed attempt whenever the fallback reached it.
  */
-const PROVIDERS = ["anthropic", "openai", "google", "zai"] as const;
+const PROVIDERS = ["anthropic", "openai", "google", "zai", "typesafe"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
 export interface KeyRow { provider: string; tail: string }
 export interface ModelRow { id: string; provider: string; kind: string; model_name: string; enabled: boolean }
+
+/**
+ * The one model that is not in the reference table, because that table is shared with
+ * another product and its provider list is a database constraint. Listed here so the page
+ * shows it beside the others; it cannot be switched off from the page, since nothing calls
+ * it yet and the key itself is the switch.
+ */
+const JUDGE_ROW: ModelRow = { id: `${JUDGE.provider}-${JUDGE.model}`, provider: JUDGE.provider, kind: "judge", model_name: JUDGE.model, enabled: true };
 export interface Settings { small_model: string | null; large_model: string | null; monthly_budget_thb: number | null }
 
 /** What one provider has cost since the first of the month, and what it was asked to do. */
@@ -65,9 +74,12 @@ export async function loadAiPage(): Promise<{
      * models this system has no key for and no code to call — Grok is in it still, and would
      * otherwise go on being offered here as something to switch on.
      */
-    models: (models.data ?? [])
-      .filter((m) => (PROVIDERS as readonly string[]).includes(m.provider))
-      .map((m) => ({ ...m, enabled: m.enabled && !disabled.has(m.id) })),
+    models: [
+      ...(models.data ?? [])
+        .filter((m) => (PROVIDERS as readonly string[]).includes(m.provider))
+        .map((m) => ({ ...m, enabled: m.enabled && !disabled.has(m.id) })),
+      JUDGE_ROW,
+    ],
     settings: settings.data ?? null,
     providers: [...PROVIDERS],
     spentThisMonth: rows.reduce((sum, r) => sum + Number(r.cost_thb ?? 0), 0),
@@ -85,7 +97,12 @@ function byProvider(
   rows: { model: string | null; task: string | null; cost_thb: number | null }[],
   models: { provider: string; model_name: string }[],
 ): ProviderSpend[] {
-  const providerOf = new Map(models.map((m) => [m.model_name, m.provider]));
+  // the embedders and the judge are priced in code, not in the table, and still cost money
+  const providerOf = new Map([
+    ...models.map((m) => [m.model_name, m.provider] as const),
+    ...EMBEDDERS.map((e) => [e.model, e.provider] as const),
+    [JUDGE.model, JUDGE.provider] as const,
+  ]);
   const acc = new Map<string, { calls: number; baht: number; tasks: Map<string, number> }>();
   for (const r of rows) {
     // a model the reference table no longer lists still cost money, and saying so under its

@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { CALLERS, EMBEDDERS } from "./providers";
+import { CALLERS, EMBEDDERS, JUDGE, type JudgeAnswer, type JudgeQuestion } from "./providers";
 import type { ChatMessage, ChatResult, ModelRow, Tier } from "./types";
 
 const USD_TO_THB = 36;
@@ -220,6 +220,39 @@ export async function embedTexts(texts: string[], task = "embed"): Promise<numbe
   throw new Error(`แปลงข้อความเป็นเวกเตอร์ไม่สำเร็จ\n${tried.join("\n")}`);
 }
 
+export interface JudgeOptions {
+  task: string;
+  /** what is being judged: a message, a record, a short transcript */
+  state: unknown;
+  questions: Record<string, JudgeQuestion>;
+}
+
+export interface Judged {
+  answers: Record<string, JudgeAnswer>;
+  model: string;
+  inputTokens: number;
+  costThb: number;
+}
+
+/**
+ * Puts typed questions to TypeSafe and records what it cost.
+ *
+ * No fallback chain here: nothing else in the account answers in probabilities, so a call
+ * that fails is a failure the caller has to handle — by asking a chat model the old way, or
+ * by deciding without. It still sits behind the month's budget, because a judge that keeps
+ * running after the assistant has switched itself off is spending on nobody.
+ */
+export async function judge({ task, state, questions }: JudgeOptions): Promise<Judged> {
+  const config = await loadConfig();
+  await assertWithinBudget(config);
+  const apiKey = config.keys[JUDGE.provider];
+  if (!apiKey) throw new Error("ยังไม่ได้ตั้งกุญแจ TypeSafe");
+  const r = await JUDGE.ask(apiKey, state, questions);
+  const costThb = r.inputTokens / 1e6 * JUDGE.usdPerMTokIn * USD_TO_THB;
+  await record(r.model, task, r.inputTokens, r.outputTokens, costThb);
+  return { answers: r.answers, model: r.model, inputTokens: r.inputTokens, costThb };
+}
+
 /** Reads the first JSON object out of a model's reply, tolerating code fences. */
 export function parseJsonReply<T>(text: string): T | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -287,11 +320,34 @@ function scrub(message: string): string {
  * somebody presses the button. The result is not written to the usage ledger: it is a
  * diagnostic about the keys, not work done for a customer.
  */
+/**
+ * The judge has no chat model to ping, so it is asked the smallest question it can take: one
+ * word of state and one yes/no. Same shape of answer as the others, same rule that nothing
+ * is written to the ledger.
+ */
+async function checkJudge(apiKey: string): Promise<ProviderCheck> {
+  const provider = JUDGE.provider;
+  const began = Date.now();
+  try {
+    const r = await JUDGE.ask(apiKey, "ping", {
+      alive: { type: "noul", instructions: "Is this a greeting?" },
+    }, AbortSignal.timeout(CHECK_TIMEOUT_MS));
+    return { provider, state: "ok", ms: Date.now() - began, model: r.model };
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    return {
+      provider, state: "failed", ms: Date.now() - began, model: JUDGE.model,
+      error: scrub(raw.includes("timeout") || raw.includes("abort") ? `ไม่ตอบภายใน ${CHECK_TIMEOUT_MS / 1000} วินาที` : raw),
+    };
+  }
+}
+
 export async function testProviders(providers: string[]): Promise<ProviderCheck[]> {
   const config = await loadConfig();
   return Promise.all(providers.map(async (provider): Promise<ProviderCheck> => {
     const apiKey = config.keys[provider];
     if (!apiKey) return { provider, state: "no-key", ms: 0 };
+    if (provider === JUDGE.provider) return checkJudge(apiKey);
 
     // an enabled model first, because that is what the bot would actually reach for; a
     // disabled one still proves the key, which is the question being asked
