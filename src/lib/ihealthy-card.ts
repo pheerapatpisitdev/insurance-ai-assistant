@@ -54,7 +54,9 @@ export interface CardTableRow {
 export interface IHealthyCard {
   /** "iHealthy Ultra Gold" */
   planLine: string;
-  /** who it is for and what it rides on */
+  /** who it is for, e.g. "ชาย 35 ปี"; drawn large in the corner */
+  insuredWho: string;
+  /** what it rides on: the base plan, its sum, the territory */
   insuredLine: string;
   /**
    * The instalment the card headlines; absent where no price may be quoted. The other two
@@ -241,7 +243,8 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
 
   return {
     planLine: `iHealthy Ultra ${planLabel(v.plan)}`,
-    insuredLine: `${SEX_WORD[v.sex]} ${v.age} ปี · ${table.bases.find((b) => b.variant === v.base)?.label ?? v.base}`
+    insuredWho: `${SEX_WORD[v.sex]} ${v.age} ปี`,
+    insuredLine: `${table.bases.find((b) => b.variant === v.base)?.label ?? v.base}`
       + ` ทุน ${v.sumAssured.toLocaleString("en-US")} บาท · ${v.territory}${cover ? ` · ${cover}` : ""}`,
     ...(headline ? { premium: { amount: formatBaht(headline.total), per: PER_WORD[v.mode] } } : {}),
     lines: here === undefined ? [] : [
@@ -291,7 +294,9 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
  */
 export interface IHealthyTableCard {
   headLine: string;
-  /** who it is for and what it rides on */
+  /** who it is for, e.g. "ชาย 35 ปี"; drawn large in the corner */
+  insuredWho: string;
+  /** what it rides on: the base plan, its sum, the territory */
   insuredLine: string;
   columns: CardColumn[];
   rows: CardTableRow[];
@@ -302,6 +307,7 @@ export function iHealthyTableCard(query: URLSearchParams, today: Date = new Date
   const card = iHealthyCard(query, today);
   return {
     headLine: "iHealthy Ultra · เปรียบเทียบแผน",
+    insuredWho: card.insuredWho,
     insuredLine: card.insuredLine,
     // nothing is chosen yet, so nothing is lit
     columns: card.columns.map((c) => ({ ...c, selected: false })),

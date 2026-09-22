@@ -246,8 +246,28 @@ export async function GET(req: NextRequest) {
           color: p.ink,
         }}
       >
-        <div style={{ ...band(H.plan), fontSize: 27, fontWeight: 600, color: p.accent }}>{card.planLine}</div>
-        <div style={{ ...band(H.insured), fontSize: 27, color: p.mute }}>{card.insuredLine}</div>
+        {/* The insured sits opposite the plan rather than under it: who a card is for is what
+            an agent checks before forwarding it, and at this size a glance answers it. The row
+            keeps the two bands' combined height, so the canvas arithmetic is unchanged. */}
+        <div
+          style={{
+            display: "flex", height: H.plan + H.insured, flexShrink: 0,
+            width: "100%", justifyContent: "space-between", alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ ...band(H.plan), fontSize: 27, fontWeight: 600, color: p.accent }}>{card.planLine}</div>
+            <div style={{ ...band(H.insured), fontSize: 27, color: p.mute }}>{card.insuredLine}</div>
+          </div>
+          <div
+            style={{
+              display: "flex", flexShrink: 0, marginLeft: 24,
+              fontSize: 44, fontWeight: 600, lineHeight: 1, color: p.figure,
+            }}
+          >
+            {card.insuredWho}
+          </div>
+        </div>
 
         {card.premium ? (
           <div style={{ ...band(H.premium), alignItems: "baseline", paddingTop: 14 }}>

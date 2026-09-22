@@ -260,8 +260,26 @@ export async function GET(req: NextRequest) {
           color: p.ink,
         }}
       >
-        <div style={{ ...band(H.plan), fontSize: 27, fontWeight: 600, color: p.accent }}>{card.planLine}</div>
-        <div style={{ ...band(H.insured), fontSize: 25, color: p.ink }}>{card.insuredLine}</div>
+        {/* The insured opposite the plan, at a size a glance answers — see the card route. */}
+        <div
+          style={{
+            display: "flex", height: H.plan + H.insured, flexShrink: 0,
+            width: "100%", justifyContent: "space-between", alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ ...band(H.plan), fontSize: 27, fontWeight: 600, color: p.accent }}>{card.planLine}</div>
+            <div style={{ ...band(H.insured), fontSize: 25, color: p.ink }}>{card.insuredLine}</div>
+          </div>
+          <div
+            style={{
+              display: "flex", flexShrink: 0, marginLeft: 24,
+              fontSize: 42, fontWeight: 600, lineHeight: 1, color: p.figure,
+            }}
+          >
+            {card.insuredWho}
+          </div>
+        </div>
         <div style={{ ...band(H.premium), fontFamily: "Trirong", fontSize: 30, color: p.figure }}>
           {card.premiumLine}
         </div>

@@ -60,8 +60,26 @@ export async function GET(req: NextRequest) {
           color: WHITE,
         }}
       >
-        <div style={{ ...band(H.plan), fontSize: 30, fontWeight: 600, color: GOLD }}>{card.planLine}</div>
-        <div style={{ ...band(H.insured), fontSize: 25, color: MUTE }}>{card.insuredLine}</div>
+        {/* The insured opposite the plan, at a size a glance answers — see the quote card. */}
+        <div
+          style={{
+            display: "flex", height: H.plan + H.insured, flexShrink: 0,
+            width: "100%", justifyContent: "space-between", alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ ...band(H.plan), fontSize: 30, fontWeight: 600, color: GOLD }}>{card.planLine}</div>
+            <div style={{ ...band(H.insured), fontSize: 25, color: MUTE }}>{card.insuredLine}</div>
+          </div>
+          <div
+            style={{
+              display: "flex", flexShrink: 0, marginLeft: 24,
+              fontSize: 44, fontWeight: 600, lineHeight: 1, color: GOLD_LIT,
+            }}
+          >
+            {card.insuredWho}
+          </div>
+        </div>
 
         {card.premium ? (
           <div style={{ ...band(H.premium), alignItems: "baseline", paddingTop: 12 }}>

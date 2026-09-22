@@ -58,7 +58,8 @@ describe("quoteCard, for a bundle", () => {
   it("names the bundle and the tier the customer picked", () => {
     const card = quoteCard(MAN40, WHILE_CURRENT)!;
     expect(card.planLine).toBe("ชุดมรดกเพื่อครอบครัว");
-    expect(card.insuredLine).toBe("ชาย 40 ปี · มรดก 1 ล้าน");
+    expect(card.insuredWho).toBe("ชาย 40 ปี");
+    expect(card.insuredLine).toBe("มรดก 1 ล้าน");
   });
 
   /**
@@ -155,7 +156,8 @@ describe("quoteCard, for a bundle", () => {
   /** Every tier is the same 150,000 base, so only the rider and the totals move. */
   it("prices the top tier off the same base", () => {
     const card = quoteCard({ ...MAN40, tier: 10 }, WHILE_CURRENT)!;
-    expect(card.insuredLine).toBe("ชาย 40 ปี · มรดก 10 ล้าน");
+    expect(card.insuredWho).toBe("ชาย 40 ปี");
+    expect(card.insuredLine).toBe("มรดก 10 ล้าน");
     expect(card.premium).toEqual({ amount: "5,168", per: "ต่อเดือน" });
     expect(section(card, ILLNESS)!.rows[0].amount).toBe("9,850,000");
   });

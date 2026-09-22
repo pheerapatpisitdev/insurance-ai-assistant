@@ -76,7 +76,8 @@ describe("quoteCard", () => {
   it("draws what the sales page shows for the same insured", () => {
     const card = quoteCard(MAN35, WHILE_CURRENT)!;
     expect(card.planLine).toBe("Life Protect x 2 · ชำระเบี้ย 19 ปี");
-    expect(card.insuredLine).toBe("ชาย 35 ปี · ทุน 1,000,000 บาท");
+    expect(card.insuredWho).toBe("ชาย 35 ปี");
+    expect(card.insuredLine).toBe("ทุน 1,000,000 บาท");
     expect(card.premium).toEqual({ amount: "2,583", per: "ต่อเดือน" });
     expect(card.perDay).toBe("ตกวันละ 79 บาท");
     // smallest instalment first, one to a line

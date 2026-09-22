@@ -9,7 +9,7 @@ describe("the comparison table on its own", () => {
   it("says who it is for and what it rides on", () => {
     const card = iHealthyTableCard(query());
     expect(card.headLine).toBe("iHealthy Ultra · เปรียบเทียบแผน");
-    expect(card.insuredLine).toContain("หญิง 35 ปี");
+    expect(card.insuredWho).toBe("หญิง 35 ปี");
     expect(card.insuredLine).toContain(IHEALTHY_OPENING.sumAssured.toLocaleString("en-US"));
     expect(card.insuredLine).toContain("ประเทศไทย");
   });

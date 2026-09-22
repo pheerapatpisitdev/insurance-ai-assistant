@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { iHealthyTableCard, type IHealthyTableCard } from "@/lib/ihealthy-card";
 import {
-  band, CARD_HEADERS, GOLD, GROUND, GROUND_DEEP, H, loadFonts, MUTE, PAD, PlanTable, RULE,
+  band, CARD_HEADERS, GOLD, GOLD_LIT, GROUND, GROUND_DEEP, H, loadFonts, MUTE, PAD, PlanTable, RULE,
   spacer, WHITE, widthOf,
 } from "../draw";
 
@@ -47,8 +47,26 @@ export async function GET(req: NextRequest) {
           color: WHITE,
         }}
       >
-        <div style={{ ...band(H.plan), fontSize: 30, fontWeight: 600, color: GOLD }}>{card.headLine}</div>
-        <div style={{ ...band(H.insured), fontSize: 25, color: MUTE }}>{card.insuredLine}</div>
+        {/* The insured opposite the heading, at a size a glance answers — see the quote card. */}
+        <div
+          style={{
+            display: "flex", height: H.plan + H.insured, flexShrink: 0,
+            width: "100%", justifyContent: "space-between", alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ ...band(H.plan), fontSize: 30, fontWeight: 600, color: GOLD }}>{card.headLine}</div>
+            <div style={{ ...band(H.insured), fontSize: 25, color: MUTE }}>{card.insuredLine}</div>
+          </div>
+          <div
+            style={{
+              display: "flex", flexShrink: 0, marginLeft: 24,
+              fontSize: 44, fontWeight: 600, lineHeight: 1, color: GOLD_LIT,
+            }}
+          >
+            {card.insuredWho}
+          </div>
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={spacer(H.gap)} />

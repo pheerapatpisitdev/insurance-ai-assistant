@@ -52,7 +52,7 @@ describe("iHealthyCard", () => {
   it("names the arrangement it is drawing", () => {
     const card = cardAt(OPENING);
     expect(card.planLine).toBe("iHealthy Ultra Gold");
-    expect(card.insuredLine).toContain("หญิง 35 ปี");
+    expect(card.insuredWho).toBe("หญิง 35 ปี");
     expect(card.insuredLine).toContain("150,000");
     expect(card.insuredLine).toContain("ประเทศไทย");
   });

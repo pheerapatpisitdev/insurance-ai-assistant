@@ -75,7 +75,13 @@ export interface CardChart {
 export interface QuoteCard {
   /** the product and its payment term, e.g. "Life Protect x 2 · ชำระเบี้ย 19 ปี" */
   planLine: string;
-  /** the insured and the sum, e.g. "ชาย 35 ปี · ทุน 1,000,000 บาท" */
+  /**
+   * Who the quote is for, e.g. "ชาย 35 ปี". Kept apart from the sum because it is the one
+   * thing an agent has to check before forwarding a card — it is set large in the corner,
+   * where a glance finds it without reading the card.
+   */
+  insuredWho: string;
+  /** what was bought, e.g. "ทุน 1,000,000 บาท" — the insured is in insuredWho */
   insuredLine: string;
   /** the instalment in the largest type; null when no price may be shown */
   premium: { amount: string; per: string } | null;
@@ -405,7 +411,8 @@ function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
   const planLabel = plan.planLabel ?? result.meta.planName;
   return {
     planLine: variantLabel.includes("·") ? variantLabel : `${planLabel} · ${variantLabel}`,
-    insuredLine: `${SEX_WORD[input.sex]} ${input.age} ปี · ทุน ${money(result.sumAssured)} บาท`,
+    insuredWho: `${SEX_WORD[input.sex]} ${input.age} ปี`,
+    insuredLine: `ทุน ${money(result.sumAssured)} บาท`,
     premium,
     perDay: perDayLine,
     others,
@@ -435,6 +442,9 @@ export interface ValueTableRow {
 
 export interface ValueTableCard {
   planLine: string;
+  /** who the quote is for, e.g. "ชาย 35 ปี"; drawn large in the corner */
+  insuredWho: string;
+  /** what was bought, e.g. "ทุน 1,000,000 บาท" */
   insuredLine: string;
   /** "เบี้ย 23,200 บาทต่อปี · ชำระ 53 ปี" */
   premiumLine: string;
@@ -509,7 +519,8 @@ function coverTableCard(
   const planLabel = plan.planLabel ?? result.meta.planName;
   return {
     planLine: variantLabel.includes("·") ? variantLabel : `${planLabel} · ${variantLabel}`,
-    insuredLine: `${SEX_WORD[input.sex]} ${input.age} ปี · ทุน ${money(result.sumAssured)} บาท`,
+    insuredWho: `${SEX_WORD[input.sex]} ${input.age} ปี`,
+    insuredLine: `ทุน ${money(result.sumAssured)} บาท`,
     premiumLine: annualSatang === null
       ? "ขอราคาปัจจุบันได้ทางแชท"
       : `เบี้ย ${baht(annualSatang)} บาทต่อปี · ชำระ ${payYears} ปี`,
@@ -558,7 +569,8 @@ export function valueTableCard(input: PlanCardInput, today: Date = new Date()): 
   const planLabel = plan.planLabel ?? result.meta.planName;
   return {
     planLine: variantLabel.includes("·") ? variantLabel : `${planLabel} · ${variantLabel}`,
-    insuredLine: `${SEX_WORD[input.sex]} ${input.age} ปี · ทุน ${money(result.sumAssured)} บาท`,
+    insuredWho: `${SEX_WORD[input.sex]} ${input.age} ปี`,
+    insuredLine: `ทุน ${money(result.sumAssured)} บาท`,
     premiumLine: annualSatang === null
       ? "ขอราคาปัจจุบันได้ทางแชท"
       : `เบี้ย ${baht(annualSatang)} บาทต่อปี · ชำระ ${payYears} ปี`,
@@ -648,7 +660,8 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
 
   return {
     planLine: `ชุด${bundle.name}`,
-    insuredLine: `${SEX_WORD[input.sex]} ${input.age} ปี · ${tier.name}`,
+    insuredWho: `${SEX_WORD[input.sex]} ${input.age} ปี`,
+    insuredLine: tier.name,
     premium,
     perDay: perDayLine,
     others,
