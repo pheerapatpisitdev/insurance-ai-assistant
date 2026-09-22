@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { monthSpend, monthStart } from "@/lib/ai/ledger";
 import { pageConnection } from "@/lib/facebook/connection";
 import { SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
 import { tablesMeta } from "@/lib/api/service";
@@ -51,18 +52,17 @@ const EXPIRY_WARNING_DAYS = 60;
 export async function loadOverview(): Promise<Overview> {
   const supabase = supabaseAdmin();
   const since = new Date(Date.now() - DAYS * 86_400_000).toISOString();
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
   const [connection, unanswered, conversations, spend, settings] = await Promise.all([
     pageConnection().catch(() => null),
     supabase.from("ins_unanswered").select("id", { count: "exact", head: true }).gte("at", since),
     supabase.from("ins_conversations").select("priced_at, form_sent_at").gte("started_at", since),
-    supabase.from("ins_usage_ledger").select("cost_thb").gte("created_at", monthStart),
+    monthSpend(monthStart()),
     supabase.from("ins_ai_settings").select("monthly_budget_thb").maybeSingle(),
   ]);
 
   const rows = (conversations.data ?? []) as { priced_at: string | null; form_sent_at: string | null }[];
-  const aiCost = ((spend.data ?? []) as { cost_thb: number }[]).reduce((s, r) => s + Number(r.cost_thb ?? 0), 0);
+  const aiCost = spend.baht;
   const budget = settings.data?.monthly_budget_thb ?? null;
 
   const attention: Attention[] = [];
