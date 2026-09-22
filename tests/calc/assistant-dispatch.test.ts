@@ -205,6 +205,26 @@ describe("a customer whose message says what they came for", () => {
     const answer = await answerAny(said("ค่าห้องวันละเท่าไหร่ หญิง 35"), null);
     expect(answer.slots.product).toBe("ihealthy");
   });
+
+  /**
+   * A first line that holds everything a quotation needs is priced, whatever the model called it.
+   *
+   * "ทุน 1,000,000 ญ อายุ 40" as an opening line was read right — a woman of forty, a million —
+   * and answered with a paragraph, because only a turn with a turn before it was checked for
+   * being complete.
+   */
+  it("is priced on the first line when it names a sex, an age and a sum", async () => {
+    routed = { intent: "other" };
+    const answer = await answerAny(said("ทุน 1,000,000 ญ อายุ 40"), null);
+    expect(answer.slots).toMatchObject({ product: "lifeprotect", intent: "quote", age: 40, sex: "F", coverWanted: 1_000_000 });
+    expect(answer.priced).toBe(true);
+  });
+
+  it("is not priced on a first line that is missing one of the three", async () => {
+    routed = { intent: "other" };
+    const answer = await answerAny(said("ทุน 1,000,000 อายุ 40"), null);
+    expect(answer.priced).toBeFalsy();
+  });
 });
 
 describe("a conversation already under way", () => {
