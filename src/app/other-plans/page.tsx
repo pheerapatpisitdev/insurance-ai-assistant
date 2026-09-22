@@ -17,12 +17,15 @@ import { ExpiryBanner } from "@/components/ExpiryBanner";
 import { quoteModePremiums } from "@/calc/mode-premiums";
 
 /**
- * The picker's names, in the menu's one convention. The registry keeps อีซี่ โพรเทค 6 because
- * the chat recognises a customer's typing from it and the quote card prints it; only this
- * page, which an agent reads beside the English menu, takes the English.
+ * The picker's names, in the menu's one convention. The registries keep อีซี่ โพรเทค 6 and
+ * มรดกเพื่อครอบครัว because the chat recognises a customer's typing from them and the quote
+ * cards print them; only this page, which an agent reads beside the English menu, takes the
+ * English.
  */
 const PICKER_NAME: Record<string, string> = { EASYPROTECT: "Easy Protect 6" };
+const BUNDLE_PICKER_NAME: Record<string, string> = { LEGACY_FAMILY: "Family Legacy" };
 const pickerPlans = () => listPlans().map((p) => ({ ...p, name: PICKER_NAME[p.code] ?? p.name }));
+const pickerBundles = () => listBundles().map((b) => ({ ...b, name: BUNDLE_PICKER_NAME[b.code] ?? b.name }));
 
 /** Life Protect x 2 paid to age 99 is the plan agents quote most, so start there. */
 const INITIAL: FormState = {
@@ -158,7 +161,7 @@ export default function Home() {
           <Link href="/privacy" className="underline">ความเป็นส่วนตัว</Link>
         </span>
       </div>
-      <p className="text-sm text-[var(--op-mute)]">{bundle ? `ชุด${bundle.name}` : PICKER_NAME[state.planCode] ?? plan.planLabel ?? plan.rates.planName}</p>
+      <p className="text-sm text-[var(--op-mute)]">{bundle ? BUNDLE_PICKER_NAME[bundle.code] ?? `ชุด${bundle.name}` : PICKER_NAME[state.planCode] ?? plan.planLabel ?? plan.rates.planName}</p>
       {/* the calculator is the agent's tool; these are the pages an agent sends a customer to */}
       <p className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-[var(--op-mute)]">
         <span>หน้าขายสำหรับลูกค้า</span>
@@ -172,10 +175,10 @@ export default function Home() {
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-[var(--op-line)] bg-[var(--op-panel)] p-4">
           {bundle ? (
-            <BundleForm state={state} bundle={bundle} plans={pickerPlans()} bundles={listBundles()}
+            <BundleForm state={state} bundle={bundle} plans={pickerPlans()} bundles={pickerBundles()}
                         onChange={setState} onPlanChange={onPlanChange} />
           ) : (
-            <QuoteForm state={state} plan={plan} plans={pickerPlans()} bundles={listBundles()}
+            <QuoteForm state={state} plan={plan} plans={pickerPlans()} bundles={pickerBundles()}
                        availability={availability} onChange={setState} onPlanChange={onPlanChange} />
           )}
         </div>
