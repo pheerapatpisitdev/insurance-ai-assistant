@@ -155,7 +155,9 @@ describe("the three riders", () => {
         expect((lp.DCI.rates.DCI as Record<string, Record<string, number>>)[sex][String(age)]).toBe(own.DCI[String(age)][sex]);
       }
     }
-    expect(compared).toBeGreaterThan(30_000);
+    // the table is cut to what this plan can reach — spouse PB only, terms 5–50 — so this is
+    // every rate it can ever read
+    expect(compared).toBeGreaterThan(15_000);
   });
 
   it("prices WP and PB the way the other plans' own code does, for this plan's paying term", () => {
@@ -174,6 +176,26 @@ describe("the three riders", () => {
         expect(r.quote.riders[0]).toMatchObject({ annual: wp.annual / 100, modePremium: wp.modal / 100 });
         expect(p.quote.riders[0]).toMatchObject({ annual: pb.annual / 100, modePremium: pb.modal / 100 });
         expect(r.quote.riders[0].annual).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("has a WP and a PB rate for every arrangement the plan can be sold on", () => {
+    for (const pay of ["6", "untilAnnuity"] as const) {
+      for (let age = 20; age <= 65; age++) {
+        for (const annuityAge of availablePensionAges(age, pay)) {
+          const input = { ...at40, age, pay, annuityAge };
+          for (const option of ["FIT", "BEYOND"] as const) {
+            const wp = quotePension({ ...input, riders: { wp: { option } } });
+            if (!wp.ok) throw new Error(wp.error);
+            expect(wp.quote.riders[0].error, `WP ${option} ${pay} ${age}→${annuityAge}`).toBeUndefined();
+            for (const payerAge of [20, 45, 70]) {
+              const pb = quotePension({ ...input, riders: { pb: { option, payerAge, payerSex: "F" } } });
+              if (!pb.ok) throw new Error(pb.error);
+              expect(pb.quote.riders[0].error, `PB ${option} ${pay} ${age}→${annuityAge} payer ${payerAge}`).toBeUndefined();
+            }
+          }
+        }
       }
     }
   });
