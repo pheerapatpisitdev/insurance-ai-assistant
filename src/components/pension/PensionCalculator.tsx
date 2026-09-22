@@ -38,7 +38,6 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
   const [mode, setMode] = useState<PensionMode>("annual");
   const [basis, setBasis] = useState<PensionBasis>("monthlyPension");
   const [amount, setAmount] = useState<number | "">(10_000);
-  const [showYears, setShowYears] = useState(false);
   // riders: WP and PB are one or the other, so they share a single choice
   const [waiver, setWaiver] = useState<"none" | "WP" | "PB">("none");
   const [waiverOption, setWaiverOption] = useState<WaiverOption>("FIT");
@@ -244,10 +243,8 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
 
         {q && (
           <section className="mt-6 rounded-lg border border-[var(--op-line)] bg-[var(--op-panel)] p-4">
-            <button className="text-sm font-medium underline" onClick={() => setShowYears(!showYears)}>
-              {showYears ? "ซ่อน" : "ดู"}ตารางผลประโยชน์รายปี
-            </button>
-            {showYears && (
+            {/* open by default: the owner wants the year-by-year figures in view, not behind a press */}
+            <h3 className="text-sm font-semibold">ตารางผลประโยชน์รายปี</h3>
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full text-sm tabular-nums">
                   <thead>
@@ -279,7 +276,6 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
                   </tbody>
                 </table>
               </div>
-            )}
           </section>
         )}
 
