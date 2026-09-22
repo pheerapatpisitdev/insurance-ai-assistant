@@ -1,4 +1,4 @@
-import { Card, Empty } from "../ui";
+import { Card } from "../ui";
 import { facebookStatuses } from "@/lib/facebook/status";
 import { pageConnections, readPending } from "@/lib/facebook/connection";
 import { listPages, oauthIsConfigured, SCOPES, SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
@@ -6,6 +6,7 @@ import { DisconnectButton } from "./DisconnectButton";
 import { PagePicker, type Choice } from "./PagePicker";
 import { RefreshSubscriptionButton } from "./RefreshSubscriptionButton";
 import { isSignedIn } from "@/lib/admin/session";
+import { siteOrigin } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,36 @@ const TONES = {
   warn: "bg-amber-50 text-amber-800",
   bad: "bg-red-50 text-red-700",
 };
+
+/**
+ * Stands where the connect button would be when this deployment has no OAuth secret.
+ *
+ * On a developer's machine that is the normal state, not a fault: Meta matches the callback
+ * against its allow-list character for character and localhost is not on it, so the
+ * connection was never going to start from here however the environment is filled in. What
+ * the box used to say — the names of two environment variables — was addressed to somebody
+ * who does not set environment variables, and it was a dead end. The live back office, where
+ * the button does work, is the thing worth handing over.
+ *
+ * The variable names stay, small and last, because this box also appears if the live site
+ * ever loses its secret, and then they are the whole diagnosis.
+ */
+function ConnectOnTheLiveSite() {
+  return (
+    <div className="rounded-md border border-dashed px-3 py-5 text-center">
+      <p className="text-sm text-slate-600">
+        ต่อเพจจากเครื่องนี้ไม่ได้ — Facebook ยอมให้ต่อจากเว็บจริงเท่านั้น
+      </p>
+      <a
+        href={`${siteOrigin()}/admin/messenger`}
+        className="mt-3 inline-block rounded-md bg-[#0866FF] px-4 py-2 text-sm font-medium text-white no-underline hover:bg-[#0653cc]"
+      >
+        ไปต่อเพจที่เว็บจริง →
+      </a>
+      <p className="mt-3 text-xs text-slate-400">เครื่องนี้ยังไม่ได้ตั้ง FB_APP_ID กับ FB_APP_SECRET</p>
+    </div>
+  );
+}
 
 /** The Pages a half-finished login is waiting to choose between. */
 async function pendingChoices(): Promise<Choice[]> {
@@ -181,7 +212,7 @@ export default async function MessengerAdminPage({
                   เชื่อมต่อเพจเพิ่ม
                 </a>
               ) : (
-                <Empty>ยังตั้งค่า FB_APP_ID กับ FB_APP_SECRET ไม่ครบ</Empty>
+                <ConnectOnTheLiveSite />
               )}
             </div>
           </div>
@@ -199,7 +230,7 @@ export default async function MessengerAdminPage({
                 เชื่อมต่อกับ Facebook
               </a>
             ) : (
-              <Empty>ยังตั้งค่า FB_APP_ID กับ FB_APP_SECRET ไม่ครบ</Empty>
+              <ConnectOnTheLiveSite />
             )}
             <p className="mt-3 text-xs text-slate-500">สิทธิ์ที่ขอ: {SCOPES.join(", ")}</p>
           </div>
