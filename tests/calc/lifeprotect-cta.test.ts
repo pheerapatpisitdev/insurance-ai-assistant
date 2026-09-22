@@ -17,6 +17,12 @@ describe("lifeProtectMessage", () => {
       .toBe("สนใจ Life Protect+ 100 ทุน 1,000,000 จ่ายถึงอายุ 99 อายุแรกเกิด ชาย เบี้ยประมาณ 6,000 บาท/ปี");
   });
 
+  it("names the rider on the card, so the agent is not asked what the figure covers", () => {
+    expect(lifeProtectMessage({ ...base, age: 35, premium: MONTHLY, rider: "สัญญาเพิ่มเติมพีบี ฟิต" }))
+      .toBe("สนใจ Life Protect+ 100 ทุน 1,000,000 จ่าย 19 ปี อายุ 35 ชาย + สัญญาเพิ่มเติมพีบี ฟิต"
+        + " เบี้ยประมาณ 2,583 บาท/เดือน");
+  });
+
   it("asks for something else for an age past the plan's last", () => {
     expect(lifeProtectMessage({ ...base, sex: "F", age: "over", premium: undefined }))
       .toBe("สนใจ Life Protect+ 100 ทุน 1,000,000 อายุเกิน 80 ปี ขอแบบที่เหมาะกับอายุนี้");
@@ -64,6 +70,37 @@ describe("lifeProtectQuoteText", () => {
       "📌 เบี้ยคงที่ตลอดระยะเวลาชำระ",
       "เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน",
     ].join("\n"));
+  });
+
+  /**
+   * The figure a customer reads first is what they pay altogether, with the plan's own price
+   * and the rider's share spelled out directly under it — the same two lines, in the same
+   * order, as the card on the page.
+   */
+  it("breaks the headline into the plan and its rider when one is quoted", () => {
+    const text = lifeProtectQuoteText({
+      sumAssured: 1_000_000, termLabel: "จ่ายถึงอายุ 99", age: 35, sex: "M", modes, death, cash: [],
+      rider: {
+        name: "สัญญาเพิ่มเติมพีบี ฟิต",
+        base: { mode: "monthly", total: 71_600, belowMinimum: false },
+        own: { mode: "monthly", total: 83_200, belowMinimum: false },
+      },
+    });
+    expect(text).toContain([
+      "💰 เบี้ยประมาณ 1,548 บาท/เดือน (ตกวันละ 48 บาท)",
+      "- สัญญาหลัก 716 บาท/เดือน",
+      "- สัญญาเพิ่มเติมพีบี ฟิต 832 บาท/เดือน",
+      "",
+      "รายเดือน 1,548 บาท",
+    ].join("\n"));
+  });
+
+  it("says nothing of a rider when none is quoted", () => {
+    const text = lifeProtectQuoteText({
+      sumAssured: 1_000_000, termLabel: "จ่าย 9 ปี", age: 35, sex: "M", modes, death, cash: [],
+    });
+    expect(text).not.toContain("สัญญาหลัก");
+    expect(text).toContain("💰 เบี้ยประมาณ 1,548 บาท/เดือน (ตกวันละ 48 บาท)\n\nรายเดือน 1,548 บาท");
   });
 
   it("promises no doubling to an insured already past the age it stops at", () => {

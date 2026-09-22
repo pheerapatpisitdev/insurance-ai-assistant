@@ -19,6 +19,8 @@ export interface LifeProtectCtaFacts {
   ageMax: number;
   /** the instalment on the card, or undefined when no price is being shown */
   premium: ModePremium | undefined;
+  /** the rider on the card, named as the contract names it; absent when none is chosen */
+  rider?: string;
 }
 
 const SEX_WORD: Record<Sex, string> = { M: "ชาย", F: "หญิง" };
@@ -35,7 +37,8 @@ export function ageWord(age: number): string {
 export function lifeProtectMessage(f: LifeProtectCtaFacts): string {
   const head = `สนใจ Life Protect+ 100 ทุน ${f.sumAssured.toLocaleString("en-US")}`;
   if (f.age === "over") return `${head} อายุเกิน ${f.ageMax} ปี ขอแบบที่เหมาะกับอายุนี้`;
-  const who = `${head} ${f.termLabel} อายุ${f.age === 0 ? "" : " "}${ageWord(f.age)} ${SEX_WORD[f.sex]}`;
+  const who = `${head} ${f.termLabel} อายุ${f.age === 0 ? "" : " "}${ageWord(f.age)} ${SEX_WORD[f.sex]}`
+    + (f.rider ? ` + ${f.rider}` : "");
   if (!f.premium) return `${who} ขอราคาปัจจุบัน`;
   return `${who} เบี้ยประมาณ ${formatBaht(f.premium.total)} บาท${PER[f.premium.mode]}`;
 }
@@ -45,8 +48,14 @@ export interface LifeProtectQuoteFacts {
   termLabel: string;
   age: number;
   sex: Sex;
-  /** every instalment the company will take, headline first */
+  /** every instalment the company will take, headline first; the whole of what is paid */
   modes: ModePremium[];
+  /**
+   * What the headline instalment is made of, when a rider is part of it: the base plan's
+   * share and the rider's own, both in the headline's mode. The total above is the figure
+   * the customer pays, so the parts go under it rather than in place of it.
+   */
+  rider?: { name: string; base: ModePremium; own: ModePremium };
   death: DeathBenefit;
   cash: CashRow[];
 }
@@ -72,6 +81,14 @@ export function lifeProtectQuoteText(f: LifeProtectQuoteFacts): string {
     "",
     `${SEX_WORD[f.sex]} อายุ ${ageWord(f.age)} · ${f.termLabel}`,
     `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDayText(annual.total)} บาท)` : ""),
+    // the parts of that figure, so a customer reading a bigger number than the plan's own
+    // price can see at once what the rest of it buys
+    ...(f.rider
+      ? [
+        `- สัญญาหลัก ${formatBaht(f.rider.base.total)} บาท${PER[f.rider.base.mode]}`,
+        `- ${f.rider.name} ${formatBaht(f.rider.own.total)} บาท${PER[f.rider.own.mode]}`,
+      ]
+      : []),
     "",
     // one instalment a line, smallest first, whichever the card headlines
     ...INSTALMENT_ORDER.flatMap((mode) => {

@@ -1,7 +1,10 @@
 import type { ModePremium } from "@/calc/mode-premiums";
 import { applyModeFactor, toHundredths } from "@/calc/money";
 import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
-import type { LifeProtectTable, LifeProtectTerm } from "@/lib/lifeprotect-table";
+import { premiumBasedAmounts } from "@/calc/riders/premium-based";
+import type {
+  LifeProtectRider, LifeProtectRiderOption, LifeProtectTable, LifeProtectTerm,
+} from "@/lib/lifeprotect-table";
 
 /** The ages the page quotes a surrender value at, besides the end of the contract. */
 export const CASH_AGES = [60, 70, 80];
@@ -37,6 +40,64 @@ export function lifeProtectModes(
   return MODES.map((mode) => {
     const total = applyModeFactor(rate100, who.sumAssured, toHundredths(table.modeFactors[mode]));
     return { mode, total, belowMinimum: mode === "monthly" && total < table.minMonthly * 100 };
+  });
+}
+
+/** A rider and the flavour of it, as the page's buttons name them. */
+export interface RiderPick {
+  code: string;
+  option: string;
+}
+
+export interface PickedRider {
+  rider: LifeProtectRider;
+  option: LifeProtectRiderOption;
+}
+
+/** The contract a pick names, when the table still carries it. */
+export function pickedRider(table: LifeProtectTable, pick: RiderPick | undefined): PickedRider | undefined {
+  if (!pick) return undefined;
+  const rider = table.riders.find((r) => r.code === pick.code);
+  const option = rider?.options.find((o) => o.code === pick.option);
+  return rider && option ? { rider, option } : undefined;
+}
+
+/**
+ * The rider's own premium in every payment mode, worked out the way premium-based.ts does
+ * from the base plan's yearly premium in satang.
+ *
+ * Undefined when the table holds no rate for this insured on this term — a missing rate is
+ * the page's only permission to quote the contract, so it refuses rather than guesses.
+ *
+ * `belowMinimum` is false on every instalment here: the company's monthly floor is a floor
+ * on what the customer pays altogether, never on one contract's share of it.
+ */
+export function riderModes(
+  table: LifeProtectTable, term: LifeProtectTerm, who: Insured, picked: PickedRider, baseAnnual: number,
+): ModePremium[] | undefined {
+  const rate = picked.option.rates[term.variant]?.[who.sex]?.[who.age - table.ageMin];
+  if (rate === null || rate === undefined) return undefined;
+  return MODES.map((mode) => ({
+    mode,
+    total: premiumBasedAmounts(rate, baseAnnual, toHundredths(table.modeFactors[mode])).modal,
+    belowMinimum: false,
+  }));
+}
+
+/**
+ * What the customer pays each instalment: the base plan and its rider added up.
+ *
+ * The monthly floor is judged here rather than on the base alone, because the total is what
+ * the company judges it against (quote.ts hands checkMonthlyMinimum the total). A base
+ * premium just under the floor can therefore become payable monthly once a rider is added,
+ * which is what the company does too.
+ */
+export function totalModes(
+  table: LifeProtectTable, base: ModePremium[], rider: ModePremium[] | undefined,
+): ModePremium[] {
+  return base.map((m) => {
+    const total = m.total + (rider?.find((r) => r.mode === m.mode)?.total ?? 0);
+    return { mode: m.mode, total, belowMinimum: m.mode === "monthly" && total < table.minMonthly * 100 };
   });
 }
 

@@ -22,16 +22,35 @@ export interface PremiumBasedResult {
   modal: number; // satang
 }
 
+/** Which row of the rider's table an arrangement is read off, and the rate written there. */
+export type PremiumBasedRate = Pick<PremiumBasedResult, "plancode" | "period" | "rate">;
+
+/** Everything the lookup needs; the money is applied to it afterwards. */
+export type PremiumBasedLookup = Omit<PremiumBasedInput, "baseAnnual" | "mode">;
+
 const PARENT_MAX_INSURED_AGE = 15;
 
 /**
- * Excel Cal!F10/F11, D14/D15, G14/G15, H14/H15:
- *   plancode = insured ≤15 ? parent : spouse
- *   period   = payer-keyed and insured ≤15 ? MIN(payTerm, 25 − insuredAge) : payTerm
- *   annual   = TRUNC(rate × TRUNC(baseAnnual/100, 3), 2)
- *   modal    = TRUNC(annual × factor, 2)          (from the rounded annual)
+ * Excel Cal!F10/F11, D14/D15, G14/G15, H14/H15 — the row, then the money on it. The two
+ * halves are exported separately below and this is the whole of it.
  */
 export function premiumBasedRiderPremium(rates: PlanRates, code: string, input: PremiumBasedInput): PremiumBasedResult | undefined {
+  const found = premiumBasedRate(rates, code, input);
+  if (!found) return undefined;
+  const factor100 = toHundredths(rates.modeFactors[input.mode]);
+  return { ...found, ...premiumBasedAmounts(found.rate, input.baseAnnual, factor100) };
+}
+
+/**
+ * The first half on its own: the row and its rate, with no money in it.
+ *   plancode = insured ≤15 ? parent : spouse
+ *   period   = payer-keyed and insured ≤15 ? MIN(payTerm, 25 − insuredAge) : payTerm
+ *
+ * Split out because a rate depends on nothing the customer drags — not the sum assured, not
+ * the instalment — so a page that prices itself in the browser can be handed the handful of
+ * rates its pickers can reach instead of the rider's whole table.
+ */
+export function premiumBasedRate(rates: PlanRates, code: string, input: PremiumBasedLookup): PremiumBasedRate | undefined {
   const rider = rates.riders[code];
   if (!rider || (rider.kind !== "premiumBased" && rider.kind !== "payorBenefit")) return undefined;
   const opt = rider.options[input.option];
@@ -44,8 +63,18 @@ export function premiumBasedRiderPremium(rates: PlanRates, code: string, input: 
   if (!who) return undefined;
   const rate = rider.rates[plancode]?.[who.sex]?.[String(who.age)]?.[String(period)];
   if (rate === undefined) return undefined;
+  return { plancode, period, rate };
+}
+
+/**
+ * The second half: Excel G14/H14, from a rate and the base plan's yearly premium.
+ *   annual = TRUNC(rate × TRUNC(baseAnnual/100, 3), 2)
+ *   modal  = TRUNC(annual × factor, 2)          (from the rounded annual)
+ */
+export function premiumBasedAmounts(
+  rate: number, baseAnnual: number, factor100: number,
+): { annual: number; modal: number } {
   // TRUNC(baseAnnual/100, 3) expressed in thousandths of a baht = floor(satang / 10)
-  const annual = floorDiv(toHundredths(rate) * floorDiv(input.baseAnnual, 10), 1000);
-  const factor100 = toHundredths(rates.modeFactors[input.mode]);
-  return { plancode, period, rate, annual, modal: applyModeFactorToFixed(annual, factor100) };
+  const annual = floorDiv(toHundredths(rate) * floorDiv(baseAnnual, 10), 1000);
+  return { annual, modal: applyModeFactorToFixed(annual, factor100) };
 }

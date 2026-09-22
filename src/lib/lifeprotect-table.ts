@@ -2,6 +2,8 @@ import { hasExpired } from "@/calc/calendar";
 import { getPlan } from "@/calc/plans/registry";
 import { baseRate } from "@/calc/lookup";
 import { baseAgeRange } from "@/calc/rules";
+import { premiumBasedRate } from "@/calc/riders/premium-based";
+import { waiverBenefit } from "@/calc/riders/waivers";
 import { cashValueSchedule, maturityValue } from "@/calc/cash-value";
 import type { CoverTopUp, PayMode, Sex } from "@/calc/types";
 
@@ -39,6 +41,45 @@ export interface LifeProtectTerm {
   schedule: Record<Sex, (number[] | null)[]>;
 }
 
+/**
+ * One flavour of a rider — พีบี ฟิต, พีบี บียอนด์ — with the rates the page's pickers can
+ * reach and nothing else.
+ *
+ * A premium-based rider's rate turns on the row it is read off, never on the sum assured or
+ * the instalment, so the sum slider and the mode buttons move without needing another rate.
+ * That leaves one rate per term, sex and age: about a thousand numbers, against the three
+ * hundred thousand in the contract's whole table.
+ */
+export interface LifeProtectRiderOption {
+  /** the code the rate table knows it by, e.g. "FIT" */
+  code: string;
+  /** the contract's own name, e.g. "สัญญาเพิ่มเติมพีบี ฟิต" */
+  name: string;
+  /** what this flavour is written against, when the agency has worded it; else absent */
+  covers?: string;
+  /** rate per 100 baht of yearly base premium, [variant][sex][age - ageMin]; null where unsold */
+  rates: Record<string, Record<Sex, (number | null)[]>>;
+}
+
+/**
+ * A rider the page offers beside the base plan.
+ *
+ * Only the two that waive premiums: they cost a share of the base premium rather than
+ * carrying a sum assured of their own, so the page can offer them without asking the
+ * customer a single new question about money.
+ */
+export interface LifeProtectRider {
+  code: string;
+  /** the family's name, e.g. "สัญญาเพิ่มเติมพีบี (ผู้ชำระเบี้ย)" */
+  name: string;
+  /** what the contract does, in one sentence, when the agency has worded it; else absent */
+  what?: string;
+  /** the ages the page may offer it at — the payer window already folded in, where there is one */
+  ageMin: number;
+  ageMax: number;
+  options: LifeProtectRiderOption[];
+}
+
 export interface LifeProtectTable {
   planCode: string;
   ageMin: number;
@@ -58,6 +99,11 @@ export interface LifeProtectTable {
   topUp: CoverTopUp;
   modeFactors: Record<PayMode, number>;
   terms: LifeProtectTerm[];
+  /**
+   * The riders the page offers, in the order it offers them. Empty when the plan has none
+   * the page can price without asking a new question.
+   */
+  riders: LifeProtectRider[];
 }
 
 const PLAN_CODE = "LIFEPROTECT";
@@ -68,6 +114,13 @@ const TERMS: { variant: string; label: string; short: string }[] = [
   { variant: "WLF19H", label: "จ่าย 19 ปี", short: "จ่าย 19 ปี" },
   { variant: "WLF99H", label: "จ่ายถึงอายุ 99", short: "ถึงอายุ 99" },
 ];
+
+/**
+ * The riders the page offers, in the order it offers them. Both waive premiums and both are
+ * priced off the base premium, so neither adds a question the page does not already ask —
+ * and the company sells them one or the other, which is why the page offers a choice of one.
+ */
+const RIDERS = ["PB", "WP"];
 
 /** Built once per process; `expired` is asked again on every call, as in legacy-table.ts. */
 let cached: Omit<LifeProtectTable, "expired"> | undefined;
@@ -110,6 +163,56 @@ export function lifeProtectTable(today: Date = new Date()): LifeProtectTable {
     };
   });
 
+  /**
+   * Premium-paying years for a term at an age — the term itself, or the years left to the
+   * age it pays to. Read off `rates.base` rather than off the package, because that is the
+   * cell quote.ts prices from and the two must not drift.
+   */
+  const payTermAt = (variant: string, age: number): number => {
+    const toAge = rates.base.payTermToAge?.[variant];
+    if (toAge !== undefined) return Math.max(0, toAge - age);
+    return rates.base.payTerm?.[variant] ?? 0;
+  };
+
+  const riders: LifeProtectRider[] = RIDERS.flatMap((code) => {
+    const rule = rules.riders[code];
+    const rider = rates.riders[code];
+    if (!rule || rider?.kind !== "premiumBased") return [];
+    /**
+     * The page asks for no payer of its own, so the insured is taken to pay their own
+     * premium — the same reading as everywhere else the app quotes without one. For a
+     * payer-keyed rider that makes the payer's own age window the page's, which is why พีบี
+     * starts at 20 here though the contract itself is written from birth.
+     */
+    const byPayer = rider.by === "payer";
+    const lo = Math.max(ageMin, rule.ageMin, byPayer ? rule.payer?.ageMin ?? 0 : 0);
+    const hi = Math.min(ageMax, rule.ageMax, byPayer ? rule.payer?.ageMax ?? ageMax : ageMax);
+    const rateAt = (option: string, variant: string, sex: Sex, age: number): number | null => {
+      if (age < lo || age > hi) return null;
+      const found = premiumBasedRate(rates, code, {
+        option, insuredAge: age, insuredSex: sex, payer: { age, sex }, payTerm: payTermAt(variant, age),
+      });
+      return found?.rate ?? null;
+    };
+    const words = waiverBenefit(code);
+    return [{
+      code,
+      name: rule.name,
+      what: words?.what,
+      ageMin: lo,
+      ageMax: hi,
+      options: Object.entries(rider.options).map(([option, o]) => ({
+        code: option,
+        name: o.name,
+        covers: words?.covers[option],
+        rates: Object.fromEntries(TERMS.map((t) => [t.variant, {
+          M: ages.map((age) => rateAt(option, t.variant, "M", age)),
+          F: ages.map((age) => rateAt(option, t.variant, "F", age)),
+        }])),
+      })),
+    }];
+  });
+
   cached = {
     planCode: PLAN_CODE,
     ageMin,
@@ -122,6 +225,7 @@ export function lifeProtectTable(today: Date = new Date()): LifeProtectTable {
     topUp: plan.coverTopUp!,
     modeFactors: rates.modeFactors,
     terms,
+    riders,
   };
   return { ...cached, expired };
 }

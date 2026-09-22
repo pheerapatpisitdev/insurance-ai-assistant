@@ -1,11 +1,14 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { PER, displayPremium, perDayText } from "@/lib/legacy-cta";
-import type { LifeProtectTable } from "@/lib/lifeprotect-table";
-import { cashAt, deathBenefitOf, lifeProtectModes, payYears, termAt } from "@/lib/lifeprotect-quote";
+import type { LifeProtectRider, LifeProtectTable } from "@/lib/lifeprotect-table";
+import {
+  cashAt, deathBenefitOf, lifeProtectModes, payYears, pickedRider, riderModes, termAt, totalModes,
+  type RiderPick,
+} from "@/lib/lifeprotect-quote";
 import { cashProjection } from "@/lib/cash-projection";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
 import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
@@ -44,6 +47,53 @@ const AGE_START = 35;
 /** the last age the "bought for a child" note shows at */
 const CHILD_MAX_AGE = 15;
 
+/**
+ * A rider's name as it fits on a button: every one of them opens with the same four words,
+ * and what the contract actually does is in the bracket after it. So the shared opening
+ * comes off and the bracket becomes the caption under the name — "พีบี" over "ผู้ชำระเบี้ย"
+ * rather than one line too long to read at a glance.
+ */
+const RIDER_PREFIX = "สัญญาเพิ่มเติม";
+function riderWords(name: string): { short: string; what: string } {
+  const bare = name.replace(RIDER_PREFIX, "").trim();
+  const bracketed = /^(.*?)\s*\((.*)\)$/.exec(bare);
+  return bracketed ? { short: bracketed[1], what: bracketed[2] } : { short: bare, what: "" };
+}
+
+/** A flavour's name with the contract's own name taken off the front: "ฟิต", "บียอนด์". */
+function optionWord(riderName: string, optionName: string): string {
+  return optionName.replace(riderName.split(" (")[0], "").trim() || optionName;
+}
+
+/**
+ * What a button means, shown while the pointer rests on it.
+ *
+ * A rider's name is four syllables that tell a stranger nothing, and the panel has no room
+ * for the sentence that would. On a mouse there is a spare gesture for exactly this, so the
+ * explanation lives here rather than as prose nobody reads before they have a question.
+ *
+ * From `sm` up only: a phone has no hover, and a popup opened by the tap that picks the
+ * rider would cover the flavours it is asking about. A phone is left with the line under the
+ * price, which says the one thing it would be costly to assume — that none of this money
+ * reaches the family.
+ *
+ * It is anchored to whichever edge of the button keeps it inside the panel, and takes no
+ * pointer events, so it can never sit between the cursor and the button underneath it.
+ */
+function Hint({ align, children }: { align: "left" | "right"; children: ReactNode }) {
+  return (
+    <span
+      role="tooltip"
+      className={`pointer-events-none absolute top-full z-20 mt-2 hidden w-64 rounded-sm border border-[var(--lg-hair)]
+        bg-[var(--lg-raise)] p-3 text-left shadow-xl sm:group-hover:block sm:group-focus-within:block ${
+        align === "left" ? "left-0" : "right-0"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
 export interface LifeProtectCalculatorProps {
   /** the rates and factors the browser prices from; the engine never leaves the server */
   table: LifeProtectTable;
@@ -65,6 +115,8 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
   const [variant, setVariant] = useState(TERM_START);
   const [age, setAge] = useState<LifeProtectAge>(AGE_START);
   const [sex, setSex] = useState<Sex>("M");
+  /** the one rider the page is quoting beside the plan, or none — the company sells one or the other */
+  const [pick, setPick] = useState<RiderPick | null>(null);
 
   const term = termAt(table, variant);
   // the picker only offers ages the plan takes, so a number here is always one of them
@@ -73,10 +125,34 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
   const who = ageNum !== undefined ? { sex, age: ageNum, sumAssured } : undefined;
 
   const modes = who ? lifeProtectModes(table, term, who) : undefined;
-  const headline = displayPremium(modes, table.expired);
   const annual = modes?.find((m) => m.mode === "annual");
+
+  /**
+   * A rider is written over its own ages, which are narrower than the plan's. An age outside
+   * them leaves the choice standing but unquoted rather than silently switching it off: the
+   * button greys out and says so, and moving the age picker back restores it.
+   */
+  const riderOffered = (r: LifeProtectRider) => ageNum !== undefined && ageNum >= r.ageMin && ageNum <= r.ageMax;
+  const chosen = pickedRider(table, pick ?? undefined);
+  const picked = chosen && riderOffered(chosen.rider) ? chosen : undefined;
+  const riderPrice = who && picked && annual && !table.expired
+    ? riderModes(table, term, who, picked, annual.total)
+    : undefined;
+
+  /**
+   * What the customer actually pays, plan and rider together. The instalment is settled on
+   * this rather than on the plan alone, because the company's monthly floor is a floor on
+   * the whole premium — a plan just under it becomes payable monthly once a rider is added.
+   */
+  const paid = modes ? totalModes(table, modes, riderPrice) : undefined;
+  const headline = displayPremium(paid, table.expired);
+  const paidAnnual = paid?.find((m) => m.mode === "annual");
+  // the figure in the largest type stays the plan's own price; what the rider adds and the
+  // two together are spelled out under it
+  const basePart = headline && modes ? modes.find((m) => m.mode === headline.mode) : undefined;
+  const riderPart = headline && riderPrice ? riderPrice.find((m) => m.mode === headline.mode) : undefined;
   // smallest instalment upward, so the block under the headline reads day, half-year, year
-  const others = (modes ?? [])
+  const others = (paid ?? [])
     .filter((m) => m.mode !== headline?.mode && !m.belowMinimum)
     .sort((a, b) => a.total - b.total);
   const death = who ? deathBenefitOf(table, who.age, sumAssured) : undefined;
@@ -99,7 +175,10 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
       + (annual && !table.expired ? ` · เบี้ย ${formatBaht(annual.total)} บาท/ปี` : "")
     : "";
 
-  const message = lifeProtectMessage({ sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline });
+  const message = lifeProtectMessage({
+    sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline,
+    rider: riderPart && picked ? picked.option.name : undefined,
+  });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
   const card = who && headline
     ? cardPath({ kind: "plan", planCode: table.planCode, variant, age: who.age, sex, sumAssured, mode: headline.mode })
@@ -110,7 +189,12 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
     ? valueTablePath({ kind: "plan", planCode: table.planCode, variant: variant, age: who.age, sex, sumAssured })
     : undefined;
   const quoteText = who && headline && death
-    ? lifeProtectQuoteText({ sumAssured, termLabel: term.label, age: who.age, sex, modes: [headline, ...others], death, cash })
+    ? lifeProtectQuoteText({
+      sumAssured, termLabel: term.label, age: who.age, sex, modes: [headline, ...others], death, cash,
+      rider: picked && riderPart && basePart
+        ? { name: picked.option.name, base: basePart, own: riderPart }
+        : undefined,
+    })
     : undefined;
 
   /**
@@ -120,9 +204,38 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
    */
   const buttonPrice = (v: string): string | undefined => {
     if (!who || table.expired) return undefined;
-    const yearly = lifeProtectModes(table, termAt(table, v), who)?.find((m) => m.mode === "annual");
-    return yearly ? `${formatBaht(yearly.total)}${PER.annual}` : undefined;
+    const other = termAt(table, v);
+    const yearly = lifeProtectModes(table, other, who)?.find((m) => m.mode === "annual");
+    if (!yearly) return undefined;
+    // a rider is priced off the plan's premium and off the term's own paying years, so a
+    // button that quoted the plan alone would not be the two terms' prices side by side
+    const withRider = picked ? riderModes(table, other, who, picked, yearly.total) : undefined;
+    const total = yearly.total + (withRider?.find((m) => m.mode === "annual")?.total ?? 0);
+    return `${formatBaht(total)}${PER.annual}`;
   };
+
+  /**
+   * How many years of premium a rider would take over, for the note in its popup. Both are
+   * written from 16 and 20 up, past the age at which the contract shortens the period for a
+   * juvenile, so the term's paying years are the whole of it.
+   */
+  const waiveYears = ageNum !== undefined && ageNum > CHILD_MAX_AGE ? payYears(term, ageNum) : undefined;
+
+  /** The instalments the headline did not take, under the plan's own price or under the total. */
+  const instalments = paidAnnual ? (
+    <div className="space-y-1 text-sm text-[var(--lg-mute)]">
+      <div>
+        ตกวันละ{" "}
+        <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDayText(paidAnnual.total)}</span> บาท
+      </div>
+      {others.map((m) => (
+        <div key={m.mode}>
+          {PAY_MODE_LABEL[m.mode]}{" "}
+          <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+        </div>
+      ))}
+    </div>
+  ) : null;
 
   return (
     <div className="space-y-6">
@@ -212,6 +325,95 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
             </div>
           </div>
         </div>
+
+        {table.riders.length > 0 && (
+          <div>
+            <span className="block text-sm text-[var(--lg-mute)]">สัญญาเพิ่มเติม · เลือกได้อย่างใดอย่างหนึ่ง</span>
+            <div className="mt-1.5 grid grid-cols-3 gap-2">
+              <button
+                type="button" onClick={() => setPick(null)} aria-pressed={pick === null}
+                className={`rounded-sm border px-2 py-2.5 text-center transition-colors ${
+                  pick === null ? "lg-metal-face border-[var(--lg-gold)] font-medium" : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
+                }`}
+              >
+                <span className="block text-sm">ไม่เอา</span>
+                <span className="mt-0.5 block text-xs opacity-70">เฉพาะแบบหลัก</span>
+              </button>
+              {table.riders.map((r, i) => {
+                const on = pick?.code === r.code;
+                const offered = riderOffered(r);
+                const words = riderWords(r.name);
+                return (
+                  <div key={r.code} className="group relative">
+                    <button
+                      type="button" disabled={!offered} aria-pressed={on}
+                      onClick={() => setPick({ code: r.code, option: r.options[0].code })}
+                      className={`h-full w-full rounded-sm border px-2 py-2.5 text-center transition-colors ${
+                        on ? "lg-metal-face border-[var(--lg-gold)] font-medium" : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
+                      }${offered ? "" : " opacity-40"}`}
+                    >
+                      <span className="block text-sm">{words.short}</span>
+                      {/* what the contract does, or the ages it is written over when this one is not */}
+                      <span className="mt-0.5 block text-xs opacity-70">
+                        {offered ? words.what : `${r.ageMin}-${r.ageMax} ปี`}
+                      </span>
+                    </button>
+                    <Hint align={i === 0 ? "left" : "right"}>
+                      <span className="block text-sm font-medium text-[var(--lg-white)]">{r.name}</span>
+                      {r.what && (
+                        <span className="mt-1 block text-xs leading-relaxed text-[var(--lg-mute)]">{r.what}</span>
+                      )}
+                      {r.options.map((o) => o.covers && (
+                        <span key={o.code} className="mt-1.5 block text-xs leading-relaxed text-[var(--lg-mute)]">
+                          <span className="text-[var(--lg-gold)]">{optionWord(r.name, o.name)}</span> · {o.covers}
+                        </span>
+                      ))}
+                      <span className="mt-2 block border-t border-[var(--lg-panel-line)] pt-2 text-xs text-[var(--lg-mute)]">
+                        รับอายุ {r.ageMin} - {r.ageMax} ปี
+                        {offered && waiveYears ? ` · ยกเว้นเบี้ยที่เหลืออีก ${waiveYears} ปี` : ""}
+                      </span>
+                      <span className="mt-1 block text-xs text-[var(--lg-mute)] opacity-75">
+                        ช่วยเรื่องการชำระเบี้ย ไม่ได้เพิ่มทุนที่ครอบครัวได้รับ
+                      </span>
+                    </Hint>
+                  </div>
+                );
+              })}
+            </div>
+            {chosen && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {chosen.rider.options.map((o, i) => {
+                  const on = pick?.option === o.code;
+                  return (
+                    <div key={o.code} className="group relative">
+                      <button
+                        type="button" aria-pressed={on}
+                        onClick={() => setPick({ code: chosen.rider.code, option: o.code })}
+                        className={`h-full w-full rounded-sm border px-2 py-2 text-center text-sm transition-colors ${
+                          on ? "lg-metal-face border-[var(--lg-gold)] font-medium" : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
+                        }`}
+                      >
+                        {optionWord(chosen.rider.name, o.name)}
+                      </button>
+                      {o.covers && (
+                        <Hint align={i === 0 ? "left" : "right"}>
+                          <span className="block text-sm font-medium text-[var(--lg-white)]">{o.name}</span>
+                          <span className="mt-1 block text-xs leading-relaxed text-[var(--lg-mute)]">คุ้มครอง{o.covers}</span>
+                        </Hint>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {chosen && !picked && (
+              <p className="mt-2 text-sm leading-relaxed text-[var(--lg-gold)]">
+                {riderWords(chosen.rider.name).short} รับอายุ {chosen.rider.ageMin} - {chosen.rider.ageMax} ปี
+                {" "}· อายุนี้จึงยังไม่ได้รวมอยู่ในราคา
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {!inRange || !modes ? (
@@ -220,28 +422,48 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
         </div>
       ) : (
         <div className="space-y-5 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5">
-          {headline && annual ? (
+          {headline && annual && basePart ? (
             <div>
               <div className="text-sm text-[var(--lg-mute)]">เบี้ยประกัน · {term.label}</div>
+              {/* the plan's own price keeps the largest type even when a rider is quoted with
+                  it, so what the plan costs and what the rider adds never read as one figure */}
               <div className="lg-figure mt-1 text-[2.6rem] leading-none tabular-nums">
-                <span className="lg-metal-text">{formatBaht(headline.total)}</span>
+                <span className="lg-metal-text">{formatBaht(basePart.total)}</span>
                 <span className="ml-2 text-base text-[var(--lg-mute)]">บาท {PER_LABEL[headline.mode]}</span>
               </div>
               {/* What the headline did not take, one instalment a line and smallest first.
                   Muted labels with the figures in white on the display face: an agent
-                  reading a yearly premium off the screen should not have to lean in. */}
-              <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
-                <div>
-                  ตกวันละ{" "}
-                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDayText(annual.total)}</span> บาท
-                </div>
-                {others.map((m) => (
-                  <div key={m.mode}>
-                    {PAY_MODE_LABEL[m.mode]}{" "}
-                    <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+                  reading a yearly premium off the screen should not have to lean in.
+                  With a rider they belong under the total instead, which is what is paid. */}
+              {riderPart && picked ? (
+                <div className="mt-3 border-t border-[var(--lg-panel-line)] pt-3">
+                  {/* the contract's full name is long enough to wrap on a phone; the figure
+                      beside it never should, so it keeps the width it needs and the name takes
+                      what is left */}
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 text-sm text-[var(--lg-mute)]">{picked.option.name}</span>
+                    <span className="lg-figure shrink-0 whitespace-nowrap tabular-nums text-[var(--lg-white)]">
+                      +{formatBaht(riderPart.total)}
+                      <span className="ml-1 text-sm text-[var(--lg-mute)]">บาท {PER_LABEL[headline.mode]}</span>
+                    </span>
                   </div>
-                ))}
-              </div>
+                  <div className="mt-2 flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-[var(--lg-gold)]">รวมทั้งหมด</span>
+                    <span className="lg-figure shrink-0 whitespace-nowrap text-xl tabular-nums">
+                      <span className="lg-metal-text">{formatBaht(headline.total)}</span>
+                      <span className="ml-1 text-sm text-[var(--lg-mute)]">บาท {PER_LABEL[headline.mode]}</span>
+                    </span>
+                  </div>
+                  <div className="mt-2.5">{instalments}</div>
+                  {/* neither of these contracts pays a baht to the family; they carry on
+                      paying the premium. Said here so the block below is not read as theirs */}
+                  <p className="mt-2.5 text-xs leading-relaxed text-[var(--lg-mute)] opacity-80">
+                    สัญญาเพิ่มเติมนี้ช่วยเรื่องการชำระเบี้ย ไม่ได้เพิ่มทุนที่ครอบครัวได้รับ
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-2.5">{instalments}</div>
+              )}
             </div>
           ) : (
             <div className="text-sm font-medium text-[var(--lg-gold)]">ขอราคาปัจจุบันได้ทางแชทด้านล่าง</div>
