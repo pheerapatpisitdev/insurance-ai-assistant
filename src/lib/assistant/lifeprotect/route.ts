@@ -243,7 +243,10 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
  * the age and sex. The newer turn always wins.
  */
 export function mergeSlots(previous: Routed | null, current: Routed): Routed {
-  if (!previous) return current;
+  // a first turn has nothing to carry, but it can still complete a quotation: "ทุน 1,000,000
+  // ญ อายุ 40" as the opening line names all three and was answered with a paragraph whenever
+  // the model called it anything but a quote — so it goes through the same rule below
+  if (!previous) return mergeSlots({ intent: "other" }, current);
   const merged: Routed = { ...current };
   /**
    * Someone filling in what the quote was waiting for is still asking for the quote.
