@@ -59,3 +59,35 @@ describe("a plan's name is not a person", () => {
     expect(peopleIn("iShield หญิง 30")).toEqual([{ age: 30, sex: "F" }]);
   });
 });
+
+/**
+ * A sum is not a person either.
+ *
+ * "ทุน 1,000,000 ญ อายุ 40" came back as a girl of nought: the last "00" of the sum stood
+ * beside the ญ, and the forty after it was never read. The legacy plan refused her for her
+ * age and sent no quotation at all.
+ */
+describe("a sum's digits are not an age", () => {
+  it("reads the age the customer wrote, not the tail of the sum before it", () => {
+    for (const [asked, age, sex] of [
+      ["ทุน 1,000,000 ญ อายุ 40", 40, "F"],
+      ["ทุน 1000000 ญ อายุ 40", 40, "F"],
+      ["ทุน 500,000 ช 35", 35, "M"],
+      ["ทุน1,000,000ชาย35", 35, "M"],
+      ["1,000,000 หญิง 28", 28, "F"],
+    ] as const) {
+      expect(peopleIn(asked), asked).toEqual([{ age, sex }]);
+    }
+  });
+
+  it("does not read the head of a sum after a sex word as an age", () => {
+    expect(peopleIn("ญ 1,000,000")).toEqual([]);
+    expect(peopleIn("ช 1.5 ล้าน อายุ 30")).toEqual([]);
+  });
+
+  it("still reads people separated by commas and full stops", () => {
+    expect(peopleIn("ชาย 35, หญิง 30")).toEqual([{ age: 35, sex: "M" }, { age: 30, sex: "F" }]);
+    expect(peopleIn("35 ช, 30 ญ")).toEqual([{ age: 35, sex: "M" }, { age: 30, sex: "F" }]);
+    expect(peopleIn("ญ 40.")).toEqual([{ age: 40, sex: "F" }]);
+  });
+});

@@ -3,7 +3,7 @@ import { chat, parseJsonReply } from "@/lib/ai/client";
 import { askShadow, recordShadow } from "../shadow";
 import type { ChatMessage } from "@/lib/ai/types";
 import { getPlan } from "@/calc/plans/registry";
-import { ageFromBirthdate, coverIn, peopleIn, recentTurns } from "../common";
+import { ageFromBirthdate, coverIn, peopleIn, recentTurns, sexIn } from "../common";
 
 /**
  * Re-exported where they have always been named from: these read a person out of a message,
@@ -223,7 +223,10 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
   else if (namedPeople.length) out.age = namedPeople[0].age;
   else if (typeof raw.age === "number" && raw.age >= 0 && raw.age <= 99) out.age = Math.trunc(raw.age);
 
+  // a birthdate leaves the sex standing alone, with no age beside it for `peopleIn` to pair
+  const sexBesideDate = born !== undefined ? sexIn(last) : undefined;
   if (namedPeople.length) out.sex = namedPeople[0].sex;
+  else if (sexBesideDate) out.sex = sexBesideDate;
   else if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
   if (typeof raw.coverWanted === "number" && raw.coverWanted > 0) out.coverWanted = Math.trunc(raw.coverWanted);
   // the model first, the message itself when the model read no amount at all
