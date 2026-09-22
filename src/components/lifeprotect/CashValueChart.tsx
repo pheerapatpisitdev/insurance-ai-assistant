@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { formatBaht } from "@/calc/money";
 import type { Projection, ProjectionRow } from "@/lib/cash-projection";
+import { ageTicks } from "@/lib/age-ticks";
 
 const W = 340, H = 190, LEFT = 46, RIGHT = 8, TOP = 12, BOTTOM = 24;
 
@@ -65,7 +66,8 @@ export function CashValueChart({ projection, age }: CashValueChartProps) {
    */
   const grid = coverFloor < top * 0.92 && coverFloor > top * 0.08 ? coverFloor : null;
 
-  const ticks = [...new Set([age, 60, 80, maturityAge])].filter((a) => a >= age && a <= maturityAge);
+  // every tenth birthday, as on the card; 18 units is a two-digit label at this size and a gap
+  const ticks = ageTicks(age, maturityAge, x, 18);
 
   /** which year a touch anywhere in the drawing is asking about */
   const pickFrom = (clientX: number, box: DOMRect) => {
