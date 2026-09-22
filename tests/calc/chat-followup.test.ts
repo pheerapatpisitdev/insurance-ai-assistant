@@ -23,7 +23,7 @@ const {
   SILENCE_MS,
 } = await import("@/lib/chat/followup");
 const { cronCallerIsOurs } = await import("@/lib/chat/cron-token");
-const { asksCheaper, wantsToBuy } = await import("@/lib/assistant/common");
+const { asksCheaper, stalls, wantsToBuy } = await import("@/lib/assistant/common");
 const { asksValueTable } = await import("@/lib/assistant/lifeprotect/route");
 
 beforeEach(() => {
@@ -75,13 +75,39 @@ describe("the one question sent into a silence", () => {
     expect(calls[0].fn).toBe("ins_claim_followups");
   });
 
-  it("says something both doors of which the bot can walk through itself", () => {
+  it("asks nothing the reader has to type an answer to", () => {
     expect(FOLLOWUP_TEXT).not.toContain("สนใจไหม");
+    // the open question is what the buttons were competing with, and it is gone
+    expect(FOLLOWUP_TEXT).not.toContain("เป็นยังไงบ้าง");
+    expect(FOLLOWUP_TEXT).toContain("ไม่ต้องพิมพ์");
+  });
+
+  it("offers nothing the bot cannot answer, and nothing Messenger would cut", () => {
     for (const title of FOLLOWUP_REPLIES) {
       expect(title.length, title).toBeLessThanOrEqual(20);
-      const heard = asksCheaper(title) || asksValueTable(title) || wantsToBuy(title, true);
+      const heard = asksCheaper(title) || asksValueTable(title)
+        || wantsToBuy(title, true) || stalls(title);
       expect(heard, title).toBe(true);
     }
+  });
+
+  /**
+   * The button for the reader who has not decided.
+   *
+   * Without it the only thing that reader can do with the message is ignore it, and a thread
+   * ignored is a thread the agent cannot tell apart from one that never opened it.
+   */
+  it("gives the undecided a button of their own, and it is not a refusal", () => {
+    expect(FOLLOWUP_REPLIES).toContain("ขอเวลาคิดก่อน");
+    expect(stalls("ขอเวลาคิดก่อน")).toBe(true);
+    expect(wantsToBuy("ขอเวลาคิดก่อน", true)).toBe(false);
+  });
+
+  /** Asking to look costs the reader nothing; asking for a discount costs them an admission. */
+  it("lets the reader look at a lighter premium without saying they cannot afford this one", () => {
+    expect(FOLLOWUP_REPLIES).not.toContain("ขอแบบถูกลง");
+    expect(asksCheaper("ดูแบบเบี้ยถูกลง")).toBe(true);
+    expect(stalls("ดูแบบเบี้ยถูกลง")).toBe(false);
   });
 });
 

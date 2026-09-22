@@ -16,23 +16,35 @@ import type { Channel } from "./session";
 /**
  * What it asks.
  *
- * Two doors, and the bot can walk through either on its own: a lighter arrangement, or a
- * shorter term. Neither assumes the customer cannot afford it, and neither is "สนใจไหมครับ",
- * which invites the one answer that ends the conversation.
+ * The first version of this opened with "ดูตัวเลขแล้วเป็นยังไงบ้างครับ", and of the customers
+ * it reached, none answered. An open question is an instruction to type, and someone who does
+ * not want to type has no way to obey it — so the buttons underneath read as decoration and
+ * the whole message got silence.
+ *
+ * What is here now is a closed question whose answers are the buttons themselves, and it says
+ * out loud that typing is not required, because that is the objection.
  */
-export const FOLLOWUP_TEXT = [
-  "ดูตัวเลขแล้วเป็นยังไงบ้างครับ",
-  "ถ้าอยากได้แบบที่เบี้ยเบากว่านี้ หรืออยากดูแบบจ่ายสั้นจบไว บอกได้เลยครับ เดี๋ยวคิดให้ใหม่",
-].join("\n");
+export const FOLLOWUP_TEXT = "อยากดูแบบไหนต่อครับ กดปุ่มได้เลย ไม่ต้องพิมพ์";
 
 /**
  * The buttons under it, which also puts them back on the screen: a message sent after quick
  * replies clears them, so the quotation's own buttons are gone by now.
  *
- * Every title is a phrase the bot already routes — "ถูกลง" is one of the words that mean the
- * price is too high — because a tap arrives as nothing but its own words.
+ * Every title is a phrase the bot already routes, because a tap arrives as nothing but its own
+ * words. Two things were learned about the wording:
+ *
+ * "ขอแบบถูกลง" was the first title and it asked the customer to admit, in writing and to a
+ * stranger, that the price was beyond them. "ดูแบบเบี้ยถูกลง" asks for nothing and admits
+ * nothing — it only looks — and lands on the same route.
+ *
+ * "ขอเวลาคิดก่อน" is the one that was missing. Everything on offer before assumed the reader
+ * had already decided to go on; the reader who had not was left with no button at all, and the
+ * only thing left to do with a message you cannot answer is ignore it. It is deliberately the
+ * easiest tap here, because a tap is a reply: it opens Meta's window for another day, and it
+ * tells the agent the difference between a lead who said no and a lead who has not read yet —
+ * which silence never says. `stalls()` already answers it.
  */
-export const FOLLOWUP_REPLIES = ["ขอแบบถูกลง", "ขอตารางมูลค่า", "สนใจสมัคร"];
+export const FOLLOWUP_REPLIES = ["ดูแบบเบี้ยถูกลง", "ขอตารางมูลค่า", "สนใจสมัคร", "ขอเวลาคิดก่อน"];
 
 /**
  * The second and last, sent as late in the day as the window allows.
