@@ -1,0 +1,23 @@
+/* The pension calculator was built as an agent's tool in the --op-* tokens and now sits on a
+   sales page. Rather than rewrite every class, its tokens are pointed at the sales page's own
+   — so it takes the page's ink, lines and accent in both themes and in print, and none of the
+   tool's ground (which would paint the page behind it). */
+.pension-tool {
+  --op-line: var(--lg-panel-line);
+  --op-panel: var(--lg-raise);
+  --op-ink: var(--lg-white);
+  --op-mute: var(--lg-mute);
+  --op-accent: var(--lg-gold);
+  --op-figure: var(--lg-gold);
+  --op-figure-bg: var(--lg-panel);
+  --op-error-bg: var(--bot-red-soft);
+  --op-error: var(--bot-red-ink);
+  --op-error-strong: var(--bot-red-ink);
+  color: var(--lg-white);
+}
+
+.pension-tool :is(input, select) {
+  background-color: var(--lg-raise);
+  color: var(--lg-white);
+  border-color: var(--lg-panel-line);
+}

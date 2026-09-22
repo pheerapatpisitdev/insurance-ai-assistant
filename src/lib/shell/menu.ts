@@ -78,12 +78,12 @@ export interface MenuGroup {
 }
 
 /**
- * The eight sales pages, in the four kinds of cover the agency sells.
+ * The nine sales pages, in the five kinds of cover the agency sells.
  *
- * Grouped because eight names in one column is a list to be read through, and an agent
+ * Grouped because nine names in one column is a list to be read through, and an agent
  * reaching for a page is not reading — they know whether the customer in front of them is
- * asking about dying, about being ill, about a hospital bill, or about their staff. The
- * headings answer that before the names are read at all.
+ * asking about dying, about being ill, about a hospital bill, about retiring, or about their
+ * staff. The headings answer that before the names are read at all.
  *
  * A plan sits under what it is bought for, not under what it is built from. มรดกเพื่อครอบครัว
  * is a life contract with a critical-illness rider on it and iShield is a whole life policy,
@@ -124,6 +124,13 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
     ],
   },
   {
+    // its own kind: bought for an income after work stops, which none of the three above is
+    title: "ประกันบำนาญ",
+    links: [
+      { href: "/bumnan95", label: "บำนาญ สมาร์ท 95", icon: "clock", hue: "#7e2f5d" },
+    ],
+  },
+  {
     title: "ประกันกลุ่ม",
     links: [
       { href: "/group-insurance", label: "ประกันภัยกลุ่ม", icon: "building", hue: "#8a335e" },
@@ -132,7 +139,7 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
 ];
 
 /**
- * The same eight, flat.
+ * The same nine, flat.
  *
  * `/other-plans` lists them as cards in one grid and has no use for the headings, and the
  * test that checks none of the pages on disk has been left out of the menu counts them here.
@@ -179,9 +186,6 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
       // different here — which is that the agent builds the arrangement themselves, plan by
       // rider, instead of being walked through one plan's own questions.
       { href: "/other-plans", label: "จัดแบบเอง", icon: "calc", hue: "#327d86" },
-      // a calculator rather than a sales page, so it sits with the other one; the hue is cut
-      // between its neighbours on the arc
-      { href: "/bumnan95", label: "บำนาญ 95", icon: "clock", hue: "#2e6e7c" },
       { href: "/", label: "ถาม AI", icon: "spark", hue: "#2b5f73" },
       ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า", icon: "users" as const, hue: "#33638a" }] : []),
     ],

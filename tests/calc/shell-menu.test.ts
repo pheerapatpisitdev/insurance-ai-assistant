@@ -31,7 +31,7 @@ describe("every place the menu says you can go", () => {
     // find from inside their own tool
     const onDisk = [
       "lifeprotect", "legacy", "plb", "easyprotect", "lifetreasure", "ishield", "ihealthy-ultra",
-      "group-insurance",
+      "group-insurance", "bumnan95",
     ];
     expect(SALES_PAGES.map((p) => p.href).sort()).toEqual(onDisk.map((s) => `/${s}`).sort());
   });
@@ -57,9 +57,9 @@ describe("every place the menu says you can go", () => {
    * knows whether the customer is asking about dying, about being ill, about a hospital bill
    * or about their staff, and the headings answer that before the names are read.
    */
-  it("deals the sales pages into the four kinds of cover, losing none", () => {
+  it("deals the sales pages into the five kinds of cover, losing none", () => {
     expect(SALES_SECTIONS.map((s) => s.title))
-      .toEqual(["ประกันชีวิต", "ประกันโรคร้ายแรง", "ประกันสุขภาพ", "ประกันกลุ่ม"]);
+      .toEqual(["ประกันชีวิต", "ประกันโรคร้ายแรง", "ประกันสุขภาพ", "ประกันบำนาญ", "ประกันกลุ่ม"]);
     expect(SALES_SECTIONS.flatMap((s) => s.links)).toEqual(SALES_PAGES);
     // and no page is filed under two kinds at once
     expect(new Set(SALES_PAGES.map((p) => p.href)).size).toBe(SALES_PAGES.length);
