@@ -419,13 +419,35 @@ export function asksAboutTrust(text: string): boolean {
  * Read here rather than asked of the model, because the model returns one person and a
  * message often names two. Two of six conversations from the campaign's first day were a
  * couple in one line.
+ *
+ * An age is a number on its own, never the tail of a bigger one. "ทุน 1,000,000 ญ อายุ 40"
+ * was read as a girl of nought — the last "00" of the sum sat beside the ญ — and the real
+ * forty after it was never looked at: the legacy plan refused her for her age, and the life
+ * plan would have priced a newborn. A comma or a point counts as part of a number only when
+ * a digit follows it, so "ชาย 35, หญิง 30" is still two people.
  */
 const SEX_WORD = "ผู้หญิง|ผู้ชาย|ผญ|ผช|หญิง|ชาย|ญ|ช";
+const NOT_AFTER_A_NUMBER = String.raw`(?<!\d|\d[,.])`;
+const NOT_BEFORE_A_NUMBER = String.raw`(?!\d|[,.]\d)`;
 const PERSON_RE = new RegExp(
-  `(${SEX_WORD})\\s*(?:เพศ\\s*)?(?:อายุ\\s*)?(\\d{1,2})(?!\\d)`
-  + `|(\\d{1,2})(?!\\d)\\s*(?:ปี)?\\s*(${SEX_WORD})`,
+  `(${SEX_WORD})\\s*(?:เพศ\\s*)?(?:อายุ\\s*)?(\\d{1,2})${NOT_BEFORE_A_NUMBER}`
+  + `|${NOT_AFTER_A_NUMBER}(\\d{1,2})${NOT_BEFORE_A_NUMBER}\\s*(?:ปี)?\\s*(${SEX_WORD})`,
   "g",
 );
+
+/**
+ * A sex said with no age beside it — "เกิด 14/12/2523 ผู้หญิง", where the age is a date.
+ *
+ * The whole words only: a lone ญ or ช is a letter of too many other words to be read on its
+ * own, and beside a number `peopleIn` already reads it.
+ */
+const SEX_ALONE = /(ผู้หญิง|หญิง|ผญ)|(ผู้ชาย|ชาย|ผช)/;
+
+export function sexIn(text: string): "M" | "F" | undefined {
+  const m = SEX_ALONE.exec(text);
+  if (!m) return undefined;
+  return m[1] ? "F" : "M";
+}
 
 /**
  * The cover a message names, in baht — "ทุน1ล้าน", "ขอ 2 ล้าน", "ทุน 500,000", "5 แสน".

@@ -80,6 +80,8 @@ describe("an age given as a birthdate", () => {
     const routed = await routeMessage(said("เกิด 14/12/2523 ผู้หญิง"));
     expect(routed.age).toBe(ageOn(new Date(), 14, 12, 1980));
     expect(routed.age).not.toBe(43);
+    // the sex is read from the message too: the year's last digits are not an age to pair it with
+    expect(routed.sex).toBe("F");
   });
 
   it("reads a Christian-era year too", async () => {

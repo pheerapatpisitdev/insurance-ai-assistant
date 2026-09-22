@@ -168,3 +168,16 @@ describe("what is offered after a premium", () => {
     expect(productNamedIn(cross!)).toBe("lifeprotect");
   });
 });
+
+describe("a sum and a person in one line", () => {
+  /**
+   * "ทุน 1,000,000 ญ อายุ 40" is the advert's button followed by the answer to the bot's
+   * question, and it was refused: the last "00" of the sum was read as the customer's age.
+   */
+  it("prices a woman of forty, not a girl of nought", () => {
+    const a = answer("ทุน 1,000,000 ญ อายุ 40", { product: "legacy" });
+    expect(a.slots).toMatchObject({ age: 40, sex: "F", tier: 1 });
+    expect(a.priced).toBeTruthy();
+    expect(spoken(a)).not.toContain("อายุ 0");
+  });
+});

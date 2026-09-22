@@ -2,7 +2,7 @@ import { chat, parseJsonReply } from "@/lib/ai/client";
 import { askShadow, recordShadow } from "../shadow";
 import type { ChatMessage } from "@/lib/ai/types";
 import { iHealthyFacts } from "@/lib/ihealthy-facts";
-import { ageFromBirthdate, peopleIn, recentTurns } from "../common";
+import { ageFromBirthdate, peopleIn, recentTurns, sexIn } from "../common";
 
 /**
  * What the bot knows about a customer buying health cover.
@@ -189,7 +189,10 @@ function clean(raw: Partial<HealthSlots>, history: ChatMessage[]): HealthSlots {
   else if (named.length) out.age = named[0].age;
   else if (typeof raw.age === "number" && raw.age >= 0 && raw.age <= 99) out.age = Math.trunc(raw.age);
 
+  // a birthdate leaves the sex standing alone, with no age beside it for `peopleIn` to pair
+  const sexBesideDate = born !== undefined ? sexIn(last) : undefined;
   if (named.length) out.sex = named[0].sex;
+  else if (sexBesideDate) out.sex = sexBesideDate;
   else if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
 
   // a message that names a plan is asking what it costs, whatever the model called it
