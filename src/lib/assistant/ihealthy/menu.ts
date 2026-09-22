@@ -5,6 +5,7 @@ import { cardQuery } from "@/lib/ihealthy-link";
 import { phoneColumns } from "@/lib/ihealthy-phone";
 import { iHealthyPricing, plansFor } from "@/lib/ihealthy-quote";
 import { iHealthyTable, type IHealthyTable } from "@/lib/ihealthy-table";
+import type { IHealthyInitial } from "@/lib/ihealthy-choice";
 import { one, type Reply } from "../common";
 import { HEALTH_HAND_OVER, arrangementFor } from "./quote";
 
@@ -27,9 +28,20 @@ function yearly(table: IHealthyTable, age: number, sex: Sex, plan: string): stri
   return annual ? formatBaht(annual.total) : undefined;
 }
 
-/** What the customer is told the totals are made of, once, under the list. */
-const WHAT_IS_IN_IT =
-  "(รวมสัญญาหลักทุน 150,000 กับค่าชดเชยรายวันแล้ว · ค่ารักษาที่เหลือจ่ายตามจริงทุกแผน)";
+/**
+ * What the customer is told the totals are made of, once, under the list.
+ *
+ * The sum is read off the arrangement the prices were quoted on rather than written into the
+ * sentence. It was written in, and when the page moved from the 150,000-baht base to the
+ * 50,000-baht Health Ultra Package the sentence stayed behind: the customer was told a sum
+ * that nothing on the card, and nothing in the price beside it, was quoted for.
+ */
+function whatIsInIt(table: IHealthyTable, v: IHealthyInitial): string {
+  const base = table.bases.find((b) => b.variant === v.base);
+  const name = base ? `${base.label} ` : "";
+  return `(รวมสัญญาหลัก ${name}ทุน ${v.sumAssured.toLocaleString("en-US")}`
+    + " กับค่าชดเชยรายวันแล้ว · ค่ารักษาที่เหลือจ่ายตามจริงทุกแผน)";
+}
 
 /** Priced, in the sheet's order, dropping any the engine has no figure for. */
 function pricedPlans(table: IHealthyTable, age: number, sex: Sex, codes: string[]) {
@@ -71,7 +83,7 @@ export function healthMenu(age: number, sex: Sex, today: Date = new Date()): Rep
   const v = arrangementFor({ age, sex, plan: priced[0].code });
   return {
     messages: [{
-      text: `${SEX_WORD[sex]} ${age} ปี เบี้ยรวมต่อปีครับ 🏥\n${lines(priced)}\n${WHAT_IS_IN_IT}`,
+      text: `${SEX_WORD[sex]} ${age} ปี เบี้ยรวมต่อปีครับ 🏥\n${lines(priced)}\n${whatIsInIt(table, v)}`,
       card: `/api/ihealthy-card/table?${cardQuery(table, v)}&fit=phone`,
     }],
     replies: priced.map((row) => planLabel(row.code)),

@@ -37,6 +37,22 @@ describe("the menu an age and a sex earn", () => {
     expect(healthMenu(35, "F").messages[0].text).toContain("รวมสัญญาหลัก");
   });
 
+  /**
+   * The sentence used to name the sum itself, and went on naming 150,000 for months after the
+   * opening moved to the 50,000-baht package — a customer who chose the package was told a
+   * sum no price on the screen was quoted for. It is the priced arrangement's own sum now.
+   */
+  it("names the sum it actually priced, not a sum from an older opening", () => {
+    const table = iHealthyTable();
+    const text = healthMenu(35, "F").messages[0].text;
+    const base = table.bases.find((b) => b.variant === IHEALTHY_OPENING.base)!;
+    expect(text).toContain(`ทุน ${IHEALTHY_OPENING.sumAssured.toLocaleString("en-US")}`);
+    expect(text).toContain(base.label);
+    for (const stale of table.bases.filter((b) => b.variant !== IHEALTHY_OPENING.base)) {
+      expect(text).not.toContain(`ทุน ${stale.saMin.toLocaleString("en-US")}`);
+    }
+  });
+
   it("sends the comparison table as a picture of the same three", () => {
     const card = healthMenu(35, "F").messages[0].card!;
     expect(card).toContain("/api/ihealthy-card/table?");
