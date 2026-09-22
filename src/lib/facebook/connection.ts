@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { LEGACY_KEY, PENDING_KEY, keyFor, pageIdInKey } from "./keys";
+import { LEGACY_KEY, PENDING_KEY, isAdsKey, keyFor, pageIdInKey } from "./keys";
 
 /**
  * The Page the bot answers as, and the token it answers with.
@@ -128,7 +128,7 @@ export async function pageConnections(): Promise<PageConnection[]> {
 
   const rows = (data ?? []) as Omit<Row, "token">[];
   return rows
-    .filter((r) => r.key !== PENDING_KEY && r.page_id)
+    .filter((r) => r.key !== PENDING_KEY && !isAdsKey(r.key) && r.page_id)
     .map((r) => ({
       pageId: r.page_id!,
       pageName: r.page_name ?? r.page_id!,

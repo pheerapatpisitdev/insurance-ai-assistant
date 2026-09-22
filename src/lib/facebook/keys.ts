@@ -30,5 +30,31 @@ export function keyFor(pageId: string): string {
  * page_id is in a column), and the pending row is half a login rather than a connection.
  */
 export function pageIdInKey(key: string): string | undefined {
+  if (isAdsKey(key)) return undefined;
   return key.startsWith(PREFIX) ? key.slice(PREFIX.length) || undefined : undefined;
+}
+
+/**
+ * Where an ad account's token is kept.
+ *
+ * Same table as the Pages, because it is the same kind of secret handled the same way, but
+ * under a prefix of its own: the Page listing filters on "has a page_id", and an ad account
+ * row also has one (the account id, in that column, for want of a better one). Without the
+ * prefix the Messenger screen would list the ad account as a Page and offer to subscribe it.
+ */
+const ADS_PREFIX = "facebook_ads:";
+
+/** An ads login in progress: the user token, held until an account is chosen. */
+export const ADS_PENDING_KEY = "facebook_ads_pending";
+
+export function adsKeyFor(actId: string): string {
+  return `${ADS_PREFIX}${actId}`;
+}
+
+export function isAdsKey(key: string): boolean {
+  return key === ADS_PENDING_KEY || key.startsWith(ADS_PREFIX);
+}
+
+export function adAccountIdInKey(key: string): string | undefined {
+  return key.startsWith(ADS_PREFIX) ? key.slice(ADS_PREFIX.length) || undefined : undefined;
 }
