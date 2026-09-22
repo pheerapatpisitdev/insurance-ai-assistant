@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { peopleIn } from "@/lib/assistant/common";
+import { coverIn, peopleIn, sexIn } from "@/lib/assistant/common";
 import { openingGuide } from "@/lib/copilot/guide";
 
 /**
@@ -82,12 +82,75 @@ describe("a sum's digits are not an age", () => {
 
   it("does not read the head of a sum after a sex word as an age", () => {
     expect(peopleIn("ญ 1,000,000")).toEqual([]);
-    expect(peopleIn("ช 1.5 ล้าน อายุ 30")).toEqual([]);
+    // the "1" of the sum is not an age; the age said with อายุ is
+    expect(peopleIn("ช 1.5 ล้าน อายุ 30")).toEqual([{ age: 30, sex: "M" }]);
   });
 
   it("still reads people separated by commas and full stops", () => {
     expect(peopleIn("ชาย 35, หญิง 30")).toEqual([{ age: 35, sex: "M" }, { age: 30, sex: "F" }]);
     expect(peopleIn("35 ช, 30 ญ")).toEqual([{ age: 35, sex: "M" }, { age: 30, sex: "F" }]);
     expect(peopleIn("ญ 40.")).toEqual([{ age: 40, sex: "F" }]);
+  });
+});
+
+/**
+ * The same three facts, in whatever order the customer typed them.
+ *
+ * A customer answering "เพศ อายุ ทุนเท่าไหร่" writes them as they come to mind, and the sum
+ * can land between the sex and the age, or arrive with no ทุน in front of it at all.
+ */
+describe("a sex, an age and a sum in any order", () => {
+  const ORDERS = [
+    "ทุน 1,000,000 ญ อายุ 40",
+    "ญ อายุ 40 ทุน 1,000,000",
+    "อายุ 40 ญ ทุน 1,000,000",
+    "ทุน 1,000,000 อายุ 40 ญ",
+    "อายุ 40 ทุน 1,000,000 ญ",
+    "ญ ทุน 1,000,000 อายุ 40",
+    "ผู้หญิง ทุน 1,000,000 อายุ 40",
+    "หญิง 1 ล้าน อายุ 40",
+    "อายุ 40 ปี ทุน 1 ล้าน เพศหญิง",
+    "อายุ40 เพศหญิง ทุน1000000",
+    "ทุน1ล้านญอายุ40",
+    "40ญ 1ล้าน",
+    "ญ 40 1,000,000",
+    "1,000,000 ญ 40",
+    "1000000 ญ 40",
+    "40 ปี ผู้หญิง 1000000",
+  ];
+
+  it("reads one woman of forty and a million from every one of them", () => {
+    for (const asked of ORDERS) {
+      expect(peopleIn(asked), asked).toEqual([{ age: 40, sex: "F" }]);
+      expect(coverIn(asked), asked).toBe(1_000_000);
+    }
+  });
+
+  it("does not read a bare number as a sum with nobody beside it", () => {
+    // iShield reads a message that is only a number as a monthly saving
+    expect(coverIn("100000")).toBeUndefined();
+    expect(coverIn("1,000,000")).toBeUndefined();
+    // and a budget is a budget, whoever is named
+    expect(coverIn("ชาย 35 เดือนละ 100,000")).toBeUndefined();
+    expect(coverIn("ชาย 35 จ่ายปีละ 120000")).toBeUndefined();
+    expect(coverIn("ชาย 35 120000 บาทต่อปี")).toBeUndefined();
+  });
+
+  it("reads a lone sex letter only when it stands on its own", () => {
+    // ช and ญ inside a word are that word's letters
+    expect(peopleIn("ช่วยคิดให้หน่อย อายุ 40")).toEqual([]);
+    expect(peopleIn("ซื้อให้ญาติ อายุ 40")).toEqual([]);
+    expect(sexIn("ช่วยคิดให้หน่อย")).toBeUndefined();
+    // nor is a relative's: the son is male, the sender may not be
+    expect(peopleIn("อายุ 40 ซื้อให้ลูกชาย")).toEqual([]);
+    expect(sexIn("พี่ชาย")).toBeUndefined();
+  });
+
+  it("names nobody when the sex words disagree and neither is beside an age", () => {
+    expect(peopleIn("ชาย หญิง ทุน 1 ล้าน อายุ 40")).toEqual([]);
+  });
+
+  it("still reads a couple as two people", () => {
+    expect(peopleIn("ชาย 35 หญิง 30 ทุน 1 ล้าน")).toEqual([{ age: 35, sex: "M" }, { age: 30, sex: "F" }]);
   });
 });

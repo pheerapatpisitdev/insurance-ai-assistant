@@ -180,4 +180,12 @@ describe("a sum and a person in one line", () => {
     expect(a.priced).toBeTruthy();
     expect(spoken(a)).not.toContain("อายุ 0");
   });
+
+  it("prices the same line typed in another order", () => {
+    for (const said of ["อายุ 40 ทุน 1,000,000 ญ", "ญ ทุน 1,000,000 อายุ 40", "หญิง 1 ล้าน อายุ 40", "ญ 40 1,000,000"]) {
+      const a = answer(said, { product: "legacy" });
+      expect(a.slots, said).toMatchObject({ age: 40, sex: "F", tier: 1 });
+      expect(a.priced, said).toBeTruthy();
+    }
+  });
 });
