@@ -35,9 +35,17 @@
 เป็นรายการแยก `ADS_SCOPES = ["ads_read"]` ไม่ยัดรวมกับของเพจ เพราะการเชื่อมเพจไม่ควรถูกบังคับ
 ให้ขอสิทธิ์โฆษณาไปด้วย
 
-แอปเป็น Business type ใช้ `FB_LOGIN_CONFIG_ID` ซึ่ง Meta จะไม่สนใจ `scope` ถ้ามี `config_id`
-เพราะฉะนั้น **เจ้าของต้องเพิ่ม `ads_read` ใน Login Configuration บน Meta dashboard เอง**
-(ขั้นตอนเขียนไว้ใน §7) โค้ดจะส่ง `scope=ads_read` ไปด้วยเผื่อกรณีไม่มี config
+แอปเป็น Business type ใช้ `config_id` ซึ่ง Meta จะไม่สนใจ `scope` ถ้ามี `config_id`
+
+**แก้เมื่อ 2026-09-22 ตอนลงมือจริง:** ใช้ config เดียวกับเพจไม่ได้ — Business login เขียนทับ
+สิทธิ์ทั้งชุดทุกครั้ง เพจที่ไม่ได้ติ๊กถูกถอนสิทธิ์ (เคยทำเพจจริงเงียบมาแล้ว 2 ครั้ง ดูคอมเมนต์ใน
+`admin/messenger/page.tsx`) การเอา ads_read ไปใส่ config ของเพจแปลว่าคนที่แค่อยากดูยอดใช้จ่าย
+ต้องเจอหน้าจอเลือกเพจ จึงแยกเป็น config ที่สองชื่อ "Ads read only" มี `ads_read` อย่างเดียวและ
+ไม่มีสินทรัพย์เพจ ชี้ด้วย env ใหม่ `FB_ADS_LOGIN_CONFIG_ID` **ไม่มี fallback ไป config ของเพจ**
+ไม่มีค่านี้ = หน้า ADS ไม่ขึ้นปุ่ม
+
+นอกจากนั้นแอปยังต้องมี use case "วัดผลข้อมูลประสิทธิภาพของโฆษณาด้วย API การตลาด" ก่อน
+ไม่งั้น `ads_read` ไม่โผล่ในรายการสิทธิ์ของ config เลย
 
 ไม่ต้องผ่าน App Review: Marketing API กับบัญชีโฆษณาของตัวเอง ในฐานะผู้ดูแลแอป ใช้ Standard
 Access ได้ (ตรวจแล้ว 2026-09-15 ตามสเปค CRM §8)
@@ -161,6 +169,7 @@ Server Component `page.tsx` + `actions.ts` (`loadAds(range)`, `syncNow()`,
 | ตัวแปร | ที่ไหน | หน้าที่ |
 |---|---|---|
 | `CRON_SECRET` | Vercel (ทุก environment) + `.env.example` | กันคนนอกยิง `/api/facebook/ads/sync` |
+| `FB_ADS_LOGIN_CONFIG_ID` | Vercel (ทุก environment) + `.env.example` | Login config แยกสำหรับโฆษณา ห้ามใช้ค่าเดียวกับ `FB_LOGIN_CONFIG_ID` |
 
 ไม่มี env อื่น token อยู่ในฐานข้อมูล
 
@@ -173,9 +182,11 @@ Server Component `page.tsx` + `actions.ts` (`loadAds(range)`, `syncNow()`,
 
 ## 7. สิ่งที่เจ้าของต้องทำเอง (ก่อนกดเชื่อม)
 
-1. developers.facebook.com → แอปนี้ → Facebook Login for Business → Configurations →
-   config ที่ id ตรงกับ `FB_LOGIN_CONFIG_ID` → Edit → Permissions → ติ๊ก `ads_read` → Save
-2. Vercel → Settings → Environment Variables → เพิ่ม `CRON_SECRET` (สุ่มยาว ๆ) ทุก environment
+1. developers.facebook.com → แอปนี้ → กรณีการใช้งาน → เพิ่ม "วัดผลข้อมูลประสิทธิภาพของโฆษณา
+   ด้วย API การตลาด" (ไม่มีขั้นนี้ `ads_read` จะไม่โผล่ให้เลือกเลย)
+2. Facebook Login for Business → Configurations → สร้าง config ใหม่ สิทธิ์ `ads_read` อย่างเดียว
+   → เอา ID ไปใส่ `FB_ADS_LOGIN_CONFIG_ID` **ห้ามแก้ config ของเพจ**
+3. Vercel → Settings → Environment Variables → เพิ่ม `CRON_SECRET` (สุ่มยาว ๆ) ทุก environment
 3. deploy แล้วเปิด `/admin/ads` → กด "เชื่อมบัญชีโฆษณา" ด้วยบัญชี Facebook ที่เป็นผู้ดูแล
    บัญชีโฆษณาที่ยิง Life Protect / iHealthy
 4. ถ้า Meta ขอ Business Verification ระหว่างทาง ต้องทำก่อนถึงจะเห็นบัญชี
