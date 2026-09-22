@@ -1,7 +1,7 @@
 import { peopleIn, coverIn } from "@/lib/assistant/common";
 import {
-  availablePensionAges, MODE_FACTOR, PENSION_AGES, quotePension,
-  type PensionBasis, type PensionMode, type PensionPay,
+  availablePensionAges, PENSION_AGES, quotePension, WAIVER_LABEL,
+  type PensionBasis, type PensionMode, type PensionPay, type PensionRiders, type WaiverOption,
 } from "@/calc/pension/engine";
 import type { GuideItem } from "./guide";
 import type { PriceReply } from "./price";
@@ -92,7 +92,94 @@ function payIn(text: string): PensionPay | undefined {
 }
 
 const floorBaht = (n: number) => Math.floor(n).toLocaleString("en-US");
-const rdown2 = (x: number) => Math.floor(x * 100 + 1e-9) / 100;
+
+/**
+ * The riders a message asked for, and the message without them.
+ *
+ * Read and cut out before anything else, because each one carries words the main readers
+ * would take for their own: "DCI 1 ล้าน" is a sum assured to `coverIn`, "ภรรยา หญิง 38" is a
+ * person to `peopleIn`, and "ยกเว้นเบี้ย" has เบี้ย in it.
+ *
+ * What is missing is said rather than filled in. Fit and Beyond are different contracts at
+ * different prices, and a payer's age is the whole of PB's rate.
+ */
+interface RidersAsked {
+  riders: PensionRiders;
+  /** the same riders as words this file reads back, for the buttons */
+  words: string[];
+  missing: string[];
+  guide: { label: string; add: string; drop: string }[];
+  rest: string;
+}
+
+const OPTION = /beyond|บียอนด์|บียอน/i;
+const FIT = /\bfit\b|ฟิต/i;
+const PAYER_WORD = /(ภรรยา|ภริยา|สามี|ผู้ชำระ(?:เบี้ย)?)\s*(?:เป็น)?\s*(ผู้ชาย|ผู้หญิง|ชาย|หญิง|ผช|ผญ|ช|ญ)?\s*(?:อายุ)?\s*(\d{2})(?!\d)/;
+
+function ridersIn(text: string): RidersAsked {
+  let rest = text;
+  const out: RidersAsked = { riders: {}, words: [], missing: [], guide: [], rest };
+  const cut = (m: RegExpMatchArray | null) => { if (m) rest = rest.replace(m[0], " "); return m; };
+
+  const optionIn = (phrase: string): WaiverOption | undefined =>
+    OPTION.test(phrase) ? "BEYOND" : FIT.test(phrase) ? "FIT" : undefined;
+
+  const wp = cut(rest.match(/(?:\bWP\b|ดับบลิว\s*พี|ยกเว้นเบี้ย)\s*(beyond|บียอนด์|บียอน|fit|ฟิต)?/i));
+  if (wp) {
+    const option = optionIn(wp[0]);
+    if (option) { out.riders.wp = { option }; out.words.push(`WP ${WAIVER_LABEL[option]}`); }
+    else {
+      out.missing.push("WP เอาแผน Fit (เสียชีวิต/ทุพพลภาพ) หรือ Beyond (+โรคร้ายแรง)");
+      for (const o of ["FIT", "BEYOND"] as const) out.guide.push({ label: `WP ${WAIVER_LABEL[o]}`, add: `WP ${WAIVER_LABEL[o]}`, drop: "WP" });
+    }
+  }
+
+  const pb = cut(rest.match(/(?:\bPB\b|พี\s*บี)\s*(beyond|บียอนด์|บียอน|fit|ฟิต)?/i));
+  if (pb) {
+    const option = optionIn(pb[0]);
+    const payer = cut(rest.match(PAYER_WORD));
+    const sexWord = payer?.[2] ?? "";
+    const payerSex = /ภรรยา|ภริยา/.test(payer?.[1] ?? "") ? "F" as const
+      : /สามี/.test(payer?.[1] ?? "") ? "M" as const
+        : sexWord ? (sexWord.includes("ญ") ? "F" as const : "M" as const) : undefined;
+    if (!option) {
+      out.missing.push("PB เอาแผน Fit หรือ Beyond");
+      for (const o of ["FIT", "BEYOND"] as const) {
+        out.guide.push({ label: `PB ${WAIVER_LABEL[o]}`, add: `PB ${WAIVER_LABEL[o]}`, drop: "PB" });
+      }
+    }
+    if (!payer || !payerSex) out.missing.push("อายุและเพศของผู้ชำระเบี้ย (เช่น “ภรรยา 38” หรือ “ผู้ชำระ ชาย 45”)");
+    const payerWords = payer && payerSex ? ` ผู้ชำระ ${payerSex === "F" ? "หญิง" : "ชาย"} ${Number(payer[3])}` : "";
+    if (option && payer && payerSex) {
+      out.riders.pb = { option, payerAge: Number(payer[3]), payerSex };
+    }
+    // carried as far as it was said, so a button that fills the rest keeps it
+    out.words.push(`PB${option ? ` ${WAIVER_LABEL[option]}` : ""}${payerWords}`);
+  }
+
+  // "โรคร้ายโซชิลด์" is another rider, which this chat does not price
+  const dci = cut(rest.match(new RegExp(String.raw`(?:\bDCI\b|ดีซีไอ|โรคร้าย(?:แรง)?(?!\s*โซ))\s*(?:ทุน)?\s*(?:${AMOUNT})?`, "i")));
+  if (dci) {
+    const amount = dci[1] || dci[3] ? amountOf(dci, 1) : undefined;
+    if (amount) { out.riders.dci = { sumAssured: amount }; out.words.push(`DCI ${amount.toLocaleString("en-US")}`); }
+    else {
+      out.missing.push("ทุน DCI (200,000–10,000,000 บาท)");
+      for (const n of [500_000, 1_000_000]) {
+        out.guide.push({ label: `DCI ${n.toLocaleString("en-US")}`, add: `DCI ${n.toLocaleString("en-US")}`, drop: "DCI" });
+      }
+    }
+  }
+  out.rest = rest;
+  return out;
+}
+
+/** A person's premium, split and totalled, in the instalments a customer can pick from. */
+function totalsFor(input: Parameters<typeof quotePension>[0], sumAssured: number) {
+  return (["semi", "monthly"] as const).map((mode) => {
+    const r = quotePension({ ...input, basis: "sumAssured", amount: sumAssured, mode });
+    return { mode, total: r.ok ? r.quote.totalModePremium : 0 };
+  });
+}
 
 /** A whole question for a button, with the plan named so it arrives here again. */
 function ask(parts: string[]): string {
@@ -101,14 +188,15 @@ function ask(parts: string[]): string {
 
 /** Whether the message is a pricing question at all, rather than one about the plan's rules. */
 export function asksPensionPrice(text: string): boolean {
-  const said = withoutName(text);
+  const said = ridersIn(withoutName(text)).rest;
   return /เบี้ย|ราคา|กี่บาท|คิดให้|premium|เดือนละ|ปีละ/i.test(said)
     || peopleIn(said).length > 0
     || figureIn(said) !== undefined;
 }
 
 export function pricePension(text: string): PriceReply {
-  const cleaned = withoutName(text);
+  const asked = ridersIn(withoutName(text));
+  const cleaned = asked.rest;
   const at = pensionAgeIn(cleaned);
   const said = at?.rest ?? cleaned;
   const who = peopleIn(said)[0];
@@ -123,6 +211,7 @@ export function pricePension(text: string): PriceReply {
     ...(figure ? [figure.basis === "monthlyPension" ? `เดือนละ ${figure.amount.toLocaleString("en-US")}`
       : figure.basis === "premium" ? `จ่าย${figure.mode === "monthly" ? "เดือน" : "ปี"}ละ ${figure.amount.toLocaleString("en-US")}`
         : `ทุน ${figure.amount.toLocaleString("en-US")}`] : []),
+    ...asked.words,
   ];
 
   const missing: string[] = [];
@@ -144,6 +233,13 @@ export function pricePension(text: string): PriceReply {
       guide.push({ label: "จ่ายจนรับบำนาญ", ask: ask([...given, "จ่ายจนรับบำนาญ"]) });
     }
   }
+  // the riders' own gaps come last: the contract they ride on has to exist first
+  missing.push(...asked.missing);
+  if (who && figure && at && pay) {
+    for (const g of asked.guide) {
+      guide.push({ label: g.label, ask: ask([...given.filter((w) => !w.startsWith(g.drop)), g.add]) });
+    }
+  }
   if (missing.length) {
     return {
       priced: false,
@@ -152,9 +248,11 @@ export function pricePension(text: string): PriceReply {
     };
   }
 
-  const result = quotePension({
+  const input = {
     age: who!.age, sex: who!.sex, annuityAge: at!.age, pay: pay!, mode: figure!.mode, basis: figure!.basis, amount: figure!.amount,
-  });
+    riders: asked.riders,
+  };
+  const result = quotePension(input);
   if (!result.ok) {
     return {
       priced: false,
@@ -169,16 +267,14 @@ export function pricePension(text: string): PriceReply {
     `**${PENSION_LABEL}** · รับบำนาญอายุ ${q.plan.annuityStartAge}–95 · ${payWords}`,
     `${who!.sex === "F" ? "หญิง" : "ชาย"} อายุ ${who!.age} ปี · ทุน ${q.sumAssured.toLocaleString("en-US")} บาท`,
     "",
-    `💰 เบี้ยปีละ **${floorBaht(q.annualPremium)} บาท**`,
-    `ราย 6 เดือน ${floorBaht(rdown2(q.annualPremium * MODE_FACTOR.semi))} บาท`,
-    `รายเดือน ${floorBaht(rdown2(q.annualPremium * MODE_FACTOR.monthly))} บาท`,
+    ...premiumLines(q, totalsFor(input, q.sumAssured)),
     "",
     `🎁 บำนาญช่วงแรก เดือนละ **${q.monthlyPension.toLocaleString("en-US")} บาท** (หรือปีละ ${first.annual.toLocaleString("en-US")}) อายุ ${first.fromAge}–${first.toAge}`,
     `เพิ่มเป็นปีละ ${lastBand.annual.toLocaleString("en-US")} บาท ตั้งแต่อายุ ${lastBand.fromAge} · รับประกันจ่าย 15 ปีแรก`,
-    `รวมรับบำนาญถึงอายุ 95 ประมาณ ${q.totalPension.toLocaleString("en-US")} บาท จากเบี้ยรวม ${floorBaht(q.totalPremium)} บาท`,
+    `รวมรับบำนาญถึงอายุ 95 ประมาณ ${q.totalPension.toLocaleString("en-US")} บาท จากเบี้ย${q.riders.length ? "สัญญาหลัก" : ""}รวม ${floorBaht(q.totalPremium)} บาท`,
     "",
     "เบี้ยใช้ลดหย่อนภาษีได้ตามเกณฑ์สรรพากร · ดูตารางรายปีและคำนวณภาษีได้ที่ [เครื่องคิดบำนาญ](/bumnan95)",
-    "เบี้ยมาตรฐาน ตารางเวอร์ชัน A2026-1 · อาจต่างไปตามผลพิจารณารับประกัน · ยังไม่รวมสัญญาเพิ่มเติม",
+    `เบี้ยมาตรฐาน ตารางเวอร์ชัน A2026-1 · อาจต่างไปตามผลพิจารณารับประกัน${q.riders.length ? "" : " · ยังไม่รวมสัญญาเพิ่มเติม"}`,
   ];
   const others = availablePensionAges(who!.age, pay!).filter((a) => a !== q.plan.annuityStartAge);
   const keep = given.filter((g) => !g.startsWith("รับบำนาญ"));
@@ -192,4 +288,25 @@ export function pricePension(text: string): PriceReply {
         : { label: "ถ้าจ่ายเบี้ย 6 ปี", ask: ask([...given.filter((g) => g !== "จ่ายจนรับบำนาญ"), "จ่าย 6 ปี"]) },
     ],
   };
+}
+
+/**
+ * The premium block. Without riders it is the one line every plan in this chat answers with;
+ * with them it leads with the total — what the customer actually pays — and itemises under it.
+ */
+function premiumLines(
+  q: Extract<ReturnType<typeof quotePension>, { ok: true }>["quote"],
+  instalments: { mode: "semi" | "monthly"; total: number }[],
+): string[] {
+  const per = (m: "semi" | "monthly") => floorBaht(instalments.find((i) => i.mode === m)!.total);
+  const tail = [`ราย 6 เดือน ${per("semi")} บาท`, `รายเดือน ${per("monthly")} บาท`];
+  if (!q.riders.length) return [`💰 เบี้ยปีละ **${floorBaht(q.annualPremium)} บาท**`, ...tail];
+  return [
+    `💰 เบี้ยรวมปีละ **${floorBaht(q.totalAnnualPremium)} บาท**`,
+    ...tail,
+    `- สัญญาหลัก ${floorBaht(q.annualPremium)} บาท`,
+    ...q.riders.map((r) => r.error
+      ? `- ${r.label}: ซื้อไม่ได้ — ${r.error}`
+      : `- ${r.label} ${floorBaht(r.annual)} บาท${r.code === "DCI" ? " (เบี้ยปีแรก ปรับขึ้นตามอายุ)" : ""}`),
+  ];
 }

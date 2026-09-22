@@ -88,3 +88,71 @@ describe("บำนาญ สมาร์ท 95 in the library", () => {
     expect(other).toContain("บำนาญ สมาร์ท 95");
   });
 });
+
+describe("riders in the chat", () => {
+  const main = "บำนาญ ชาย 40 เดือนละ 10,000 รับบำนาญ 60 จ่ายจนรับบำนาญ";
+  const page = (riders: Parameters<typeof quotePension>[0]["riders"]) => {
+    const r = quotePension({ age: 40, sex: "M", annuityAge: 60, pay: "untilAnnuity", mode: "annual", basis: "monthlyPension", amount: 10_000, riders });
+    if (!r.ok) throw new Error(r.error);
+    return r.quote;
+  };
+
+  it("prices WP Beyond and DCI and leads with what the customer pays", () => {
+    const reply = pricePension(`${main} WP Beyond DCI 1 ล้าน`);
+    const q = page({ wp: { option: "BEYOND" }, dci: { sumAssured: 1_000_000 } });
+    expect(reply.priced).toBe(true);
+    expect(reply.text).toContain(`💰 เบี้ยรวมปีละ **${Math.floor(q.totalAnnualPremium).toLocaleString("en-US")} บาท**`);
+    expect(reply.text).toContain(`- WP Beyond (ยกเว้นเบี้ย) ${Math.floor(q.riders[0].annual).toLocaleString("en-US")} บาท`);
+    expect(reply.text).toContain("DCI (โรคร้ายแรง) 5,520 บาท (เบี้ยปีแรก ปรับขึ้นตามอายุ)");
+    // the DCI's million is not read as the contract's sum assured
+    expect(reply.text).toContain("ทุน 787,402 บาท");
+  });
+
+  it("reads the payer of PB from ภรรยา, and does not take her for the insured", () => {
+    const reply = pricePension(`${main} PB fit ภรรยา 38`);
+    const q = page({ pb: { option: "FIT", payerAge: 38, payerSex: "F" } });
+    expect(reply.priced).toBe(true);
+    expect(reply.text).toContain("ชาย อายุ 40 ปี");
+    expect(reply.text).toContain(`- PB Fit (ผู้ชำระเบี้ย) ${Math.floor(q.riders[0].annual).toLocaleString("en-US")} บาท`);
+  });
+
+  it("asks Fit or Beyond rather than choosing, and each button prices", () => {
+    const reply = pricePension(`${main} WP`);
+    expect(reply.priced).toBe(false);
+    expect(reply.text).toContain("Fit");
+    const buttons = reply.guide!.filter((g) => g.label.startsWith("WP"));
+    expect(buttons.map((b) => b.label)).toEqual(["WP Fit", "WP Beyond"]);
+    for (const b of buttons) expect(pricePension(b.ask).priced, b.ask).toBe(true);
+  });
+
+  it("asks for the payer when PB is named without one, and keeps the plan", () => {
+    const reply = pricePension(`${main} PB Beyond`);
+    expect(reply.priced).toBe(false);
+    expect(reply.text).toContain("ผู้ชำระเบี้ย");
+    expect(pricePension(`${main} PB Beyond ผู้ชำระ หญิง 38`).priced).toBe(true);
+  });
+
+  it("asks for the DCI sum, with buttons that price", () => {
+    const reply = pricePension(`${main} DCI`);
+    expect(reply.priced).toBe(false);
+    for (const b of reply.guide!) expect(pricePension(b.ask).priced, b.ask).toBe(true);
+  });
+
+  it("says what cannot be bought instead of dropping it", () => {
+    const reply = pricePension(`${main} WP Fit PB Fit ภรรยา 38`);
+    expect(reply.priced).toBe(true);
+    expect(reply.text).toContain("ซื้อไม่ได้ — เลือก WP หรือ PB อย่างใดอย่างหนึ่ง");
+  });
+
+  it("keeps the riders on the follow-up buttons", () => {
+    const reply = pricePension(`${main} WP Beyond DCI 1 ล้าน`);
+    for (const g of reply.guide!) {
+      expect(g.ask, g.label).toContain("WP Beyond");
+      expect(g.ask, g.label).toContain("DCI 1,000,000");
+    }
+  });
+
+  it("treats a question about what WP is as a question, not a quotation", () => {
+    expect(asksPensionPrice("บำนาญ 95 ยกเว้นเบี้ยคืออะไร")).toBe(false);
+  });
+});
