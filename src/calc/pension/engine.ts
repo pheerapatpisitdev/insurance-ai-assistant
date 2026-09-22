@@ -2,6 +2,9 @@ import plansJson from "../../../data/pension/plans.json";
 import mainRatesJson from "../../../data/pension/main-rates.json";
 import cashValuesJson from "../../../data/pension/cash-values.json";
 import pvAnnualJson from "../../../data/pension/pv-annual.json";
+import ridersJson from "../../../data/pension/riders.json";
+import { premiumBasedAmounts } from "../riders/premium-based";
+import { applyModeFactorToFixed, premiumPerThousand, toHundredths } from "../money";
 
 /**
  * บำนาญ สมาร์ท 95 (A2026-1) — the main contract, premium to pension.
@@ -12,7 +15,7 @@ import pvAnnualJson from "../../../data/pension/pv-annual.json";
  *
  * It does not fit the registry the other plans share. Those take a sum and price it; this one
  * is as often asked the other way round — "I want 10,000 a month at sixty" — and what it
- * returns is a pension schedule rather than a death benefit. Riders are not here yet.
+ * returns is a pension schedule rather than a death benefit. Three riders so far: WP, PB, DCI.
  *
  * The arithmetic is the workbook's, rounding included: ROUNDDOWN and ROUNDUP are not
  * Math.round, and the satang have to agree with the sheet.
@@ -54,6 +57,14 @@ const PLANS = plansJson as PensionPlan[];
 const MAIN_RATES = mainRatesJson as Record<string, Record<string, number>>;
 const CASH_VALUES = cashValuesJson as Record<string, number[]>;
 const PV_ANNUAL = pvAnnualJson as Record<string, number>;
+const RIDER_RATES = ridersJson as {
+  /** plancode + sex + insured age → paying term → rate per 100 baht of basic premium */
+  WP: Record<string, Record<string, number>>;
+  /** plancode + sex + payer age → paying term → rate per 100 baht of basic premium */
+  PB: Record<string, Record<string, number>>;
+  /** attained age → sex → rate per 1,000 baht of cover */
+  DCI: Record<string, Record<"M" | "F", number>>;
+};
 
 const PAY_OPTION: Record<PensionPay, string> = { "6": "ชำระเบี้ย 6 ปี", untilAnnuity: "ชำระเบี้ย จนรับเงินบำนาญ" };
 
@@ -76,6 +87,35 @@ export function availablePensionAges(age: number, pay: PensionPay): PensionAge[]
     .map((p) => p.annuityStartAge as PensionAge);
 }
 
+export type WaiverOption = "FIT" | "BEYOND";
+
+export interface PensionRiders {
+  /** waives the premiums if the insured is disabled (FIT) or also critically ill (BEYOND) */
+  wp?: { option: WaiverOption };
+  /** waives the premiums if the person paying them — a spouse, the insured being 20 or more — is */
+  pb?: { option: WaiverOption; payerAge: number; payerSex: "M" | "F" };
+  dci?: { sumAssured: number };
+}
+
+export const WAIVER_LABEL: Record<WaiverOption, string> = { FIT: "Fit", BEYOND: "Beyond" };
+
+/**
+ * DCI's own limits, read off the same rider's rules in every other plan here (data/rules/*.json):
+ * ages 20–65, 200,000–10,000,000, cover to 75. The rate table is the same table to the satang.
+ */
+export const DCI_LIMITS = { ageMin: 20, ageMax: 65, saMin: 200_000, saMax: 10_000_000, coverToAge: 75 } as const;
+
+export interface RiderLine {
+  code: "WP" | "PB" | "DCI";
+  label: string;
+  rate: number;
+  /** baht; zero when refused */
+  annual: number;
+  modePremium: number;
+  /** why it cannot be bought on this arrangement */
+  error?: string;
+}
+
 export interface PensionInput {
   age: number;
   sex: "M" | "F";
@@ -85,6 +125,7 @@ export interface PensionInput {
   basis: PensionBasis;
   /** baht: a sum assured, a premium for one instalment of `mode`, or a monthly pension */
   amount: number;
+  riders?: PensionRiders;
 }
 
 export interface PensionYear {
@@ -116,6 +157,10 @@ export interface PensionQuote {
   illustration: PensionYear[];
   /** internal rate of return for someone who lives to 95, or null where it has no root */
   irr: number | null;
+  riders: RiderLine[];
+  /** main contract plus every rider that could be bought */
+  totalModePremium: number;
+  totalAnnualPremium: number;
 }
 
 export type PensionResult = { ok: true; quote: PensionQuote } | { ok: false; error: string };
@@ -187,7 +232,70 @@ function bandsOf(start: number, sumAssured: number): PensionBand[] {
     .map((b) => ({ ...b, fromAge: Math.max(b.fromAge, start), annual: Math.round(sumAssured * b.percent) }));
 }
 
-/** The main contract only; the refusals are the calculator's own sentences. */
+const refused = (code: RiderLine["code"], label: string, error: string): RiderLine =>
+  ({ code, label, rate: 0, annual: 0, modePremium: 0, error });
+
+/**
+ * WP and PB: Cal!G14/G15 — TRUNC(rate × TRUNC(basic premium / 100, 3), 2), the instalment
+ * truncated off that. The same arithmetic the other plans use, so it is their function; and
+ * the same rate tables to the satang (tests/golden/pension.test.ts compares them).
+ *
+ * The workbook's own PB and WP cells return 0, because the lookup that should give them the
+ * paying term answers #N/A. The term here is the plan's: six years, or until the pension.
+ */
+function waiver(
+  code: "WP" | "PB", table: Record<string, Record<string, number>>, key: string,
+  label: string, payYears: number, annualPremium: number, mode: PensionMode,
+): RiderLine {
+  const rate = table[key]?.[String(payYears)];
+  if (rate === undefined) return refused(code, label, "ไม่อยู่ในเกณฑ์ของตารางอัตราเบี้ย");
+  // the basic premium on at most 30 million of cover; this plan stops at 20, so it is all of it
+  const { annual, modal } = premiumBasedAmounts(rate, Math.round(annualPremium * 100), toHundredths(MODE_FACTOR[mode]));
+  return { code, label, rate, annual: annual / 100, modePremium: modal / 100 };
+}
+
+function ridersFor(
+  r: PensionRiders, age: number, sex: "M" | "F", payYears: number, annualPremium: number, mode: PensionMode,
+): RiderLine[] {
+  const lines: RiderLine[] = [];
+  const both = r.wp && r.pb ? "เลือก WP หรือ PB อย่างใดอย่างหนึ่ง" : undefined;
+
+  if (r.wp) {
+    const label = `WP ${WAIVER_LABEL[r.wp.option]} (ยกเว้นเบี้ย)`;
+    const plancode = r.wp.option === "BEYOND" ? "WPTPDCI" : "WPTPD";
+    lines.push(both ? refused("WP", label, both)
+      : age < 16 || age > 70 ? refused("WP", label, "ผู้เอาประกันอายุ 16–70 ปี")
+        : waiver("WP", RIDER_RATES.WP, plancode + sex + age, label, payYears, annualPremium, mode));
+  }
+  if (r.pb) {
+    const { option, payerAge, payerSex } = r.pb;
+    const label = `PB ${WAIVER_LABEL[option]} (ผู้ชำระเบี้ย)`;
+    const plancode = option === "BEYOND" ? "PBSDDCI" : "PBSDD";
+    lines.push(both ? refused("PB", label, both)
+      : !Number.isInteger(payerAge) || payerAge < 20 || payerAge > 70 ? refused("PB", label, "ผู้ชำระเบี้ยอายุ 20–70 ปี")
+        : waiver("PB", RIDER_RATES.PB, plancode + payerSex + payerAge, label, payYears, annualPremium, mode));
+  }
+  if (r.dci) {
+    const label = "DCI (โรคร้ายแรง)";
+    const sa = r.dci.sumAssured;
+    const rate = RIDER_RATES.DCI[String(age)]?.[sex];
+    if (age < DCI_LIMITS.ageMin || age > DCI_LIMITS.ageMax || rate === undefined) {
+      lines.push(refused("DCI", label, `ผู้เอาประกันอายุ ${DCI_LIMITS.ageMin}–${DCI_LIMITS.ageMax} ปี`));
+    } else if (!(sa >= DCI_LIMITS.saMin && sa <= DCI_LIMITS.saMax)) {
+      lines.push(refused("DCI", label, "ทุน DCI 200,000–10,000,000 บาท"));
+    } else {
+      // Cal!G20: ROUNDDOWN(rate × SA / 1000, 2); the instalment rounded down off that
+      const annual = premiumPerThousand(toHundredths(rate), sa);
+      const modal = applyModeFactorToFixed(annual, toHundredths(MODE_FACTOR[mode]));
+      lines.push({ code: "DCI", label, rate, annual: annual / 100, modePremium: modal / 100 });
+    }
+  }
+  return lines;
+}
+
+const cents = (n: number) => Math.round(n * 100) / 100;
+
+/** The main contract and its riders; the refusals are the calculator's own sentences. */
 export function quotePension(input: PensionInput): PensionResult {
   const { age, sex } = input;
   if (!Number.isInteger(age) || age < PENSION_LIMITS.ageMin || age > PENSION_LIMITS.ageMax) {
@@ -213,17 +321,22 @@ export function quotePension(input: PensionInput): PensionResult {
   const modePremium = rdown(annualPremium * MODE_FACTOR[input.mode], 2);
   const illustration = illustrate(plan, sex, age, sumAssured, annualPremium);
   const last = illustration[illustration.length - 1];
+  const payYears = payYearsOf(plan, age);
+  const riders = input.riders ? ridersFor(input.riders, age, sex, payYears, annualPremium, input.mode) : [];
   return {
     ok: true,
     quote: {
       plan, rate, sumAssured, annualPremium, modePremium, mode: input.mode,
-      payYears: payYearsOf(plan, age),
+      payYears,
       monthlyPension: Math.round(sumAssured * MONTHLY_FACTOR_FIRST),
       bands: bandsOf(plan.annuityStartAge, sumAssured),
       totalPremium: last.cumPremium,
       totalPension: last.cumPension,
       illustration,
       irr: irrOf(illustration),
+      riders,
+      totalModePremium: cents(riders.reduce((s, r) => s + r.modePremium, modePremium)),
+      totalAnnualPremium: cents(riders.reduce((s, r) => s + r.annual, annualPremium)),
     },
   };
 }

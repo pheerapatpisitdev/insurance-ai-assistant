@@ -5,6 +5,10 @@ import {
 } from "@/calc/pension/engine";
 import mainOracle from "./pension/main-premiums.json";
 import illustrationOracle from "./pension/illustration.json";
+import ridersJson from "../../data/pension/riders.json";
+import lifeprotectRates from "../../data/rates/lifeprotect.json";
+import { premiumBasedRiderPremium } from "@/calc/riders/premium-based";
+import type { PlanRates } from "@/calc/types";
 
 /**
  * บำนาญ สมาร์ท 95 against the company workbook.
@@ -121,5 +125,88 @@ describe("what it refuses", () => {
     }
     expect(priced).toBeGreaterThan(300);
     expect(PENSION_AGES.every((a) => availablePensionAges(20, "6").includes(a))).toBe(true);
+  });
+});
+
+describe("the three riders", () => {
+  const at40: PensionInput = { age: 40, sex: "M", annuityAge: 70, pay: "untilAnnuity", mode: "annual", basis: "sumAssured", amount: 100_000 };
+
+  it("DCI matches the workbook's Cal!G20 (man of 40, cover 500,000)", () => {
+    const r = quotePension({ ...at40, riders: { dci: { sumAssured: 500_000 } } });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.quote.riders[0]).toMatchObject({ code: "DCI", rate: 5.52, annual: 2_760 });
+  });
+
+  it("uses the very tables the app's other plans are verified on", () => {
+    const own = ridersJson as { WP: Record<string, Record<string, number>>; PB: Record<string, Record<string, number>>; DCI: Record<string, Record<string, number>> };
+    const lp = lifeprotectRates.riders as unknown as Record<string, { rates: Record<string, Record<string, Record<string, Record<string, number>> | Record<string, number>>> }>;
+    let compared = 0;
+    for (const code of ["WP", "PB"] as const) {
+      for (const [key, cols] of Object.entries(own[code])) {
+        const [, plancode, sex, age] = key.match(/^(.+?)([MF])(\d+)$/)!;
+        for (const [term, rate] of Object.entries(cols)) {
+          expect((lp[code].rates[plancode] as Record<string, Record<string, Record<string, number>>>)[sex][age][term], `${key} ${term}`).toBe(rate);
+          compared++;
+        }
+      }
+    }
+    for (let age = 20; age <= 65; age++) {
+      for (const sex of ["M", "F"]) {
+        expect((lp.DCI.rates.DCI as Record<string, Record<string, number>>)[sex][String(age)]).toBe(own.DCI[String(age)][sex]);
+      }
+    }
+    expect(compared).toBeGreaterThan(30_000);
+  });
+
+  it("prices WP and PB the way the other plans' own code does, for this plan's paying term", () => {
+    for (const option of ["FIT", "BEYOND"] as const) {
+      for (const mode of ["annual", "monthly"] as const) {
+        const r = quotePension({ ...at40, mode, riders: { wp: { option } } });
+        const p = quotePension({ ...at40, mode, riders: { pb: { option, payerAge: 38, payerSex: "F" } } });
+        if (!r.ok || !p.ok) throw new Error("refused");
+        const base = Math.round(r.quote.annualPremium * 100);
+        const wp = premiumBasedRiderPremium(lifeprotectRates as unknown as PlanRates, "WP", {
+          option, insuredAge: 40, insuredSex: "M", payTerm: 30, baseAnnual: base, mode,
+        })!;
+        const pb = premiumBasedRiderPremium(lifeprotectRates as unknown as PlanRates, "PB", {
+          option, insuredAge: 40, insuredSex: "M", payer: { age: 38, sex: "F" }, payTerm: 30, baseAnnual: base, mode,
+        })!;
+        expect(r.quote.riders[0]).toMatchObject({ annual: wp.annual / 100, modePremium: wp.modal / 100 });
+        expect(p.quote.riders[0]).toMatchObject({ annual: pb.annual / 100, modePremium: pb.modal / 100 });
+        expect(r.quote.riders[0].annual).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("uses six years as the waiver's term on the six-year plan", () => {
+    const six = quotePension({ ...at40, pay: "6", riders: { wp: { option: "FIT" } } });
+    const all = quotePension({ ...at40, riders: { wp: { option: "FIT" } } });
+    if (!six.ok || !all.ok) throw new Error("refused");
+    const rate = (ridersJson as { WP: Record<string, Record<string, number>> }).WP.WPTPDM40;
+    expect(six.quote.riders[0].rate).toBe(rate["6"]);
+    expect(all.quote.riders[0].rate).toBe(rate["30"]);
+  });
+
+  it("adds what can be bought to the total, and refuses the rest with a reason", () => {
+    const r = quotePension({
+      ...at40,
+      riders: { wp: { option: "FIT" }, pb: { option: "FIT", payerAge: 38, payerSex: "F" }, dci: { sumAssured: 100_000 } },
+    });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.quote.riders.map((l) => l.error)).toEqual([
+      "เลือก WP หรือ PB อย่างใดอย่างหนึ่ง", "เลือก WP หรือ PB อย่างใดอย่างหนึ่ง", "ทุน DCI 200,000–10,000,000 บาท",
+    ]);
+    expect(r.quote.totalAnnualPremium).toBe(r.quote.annualPremium);
+
+    const ok = quotePension({ ...at40, riders: { wp: { option: "BEYOND" }, dci: { sumAssured: 500_000 } } });
+    if (!ok.ok) throw new Error(ok.error);
+    const [wp, dci] = ok.quote.riders;
+    expect(ok.quote.totalAnnualPremium).toBeCloseTo(ok.quote.annualPremium + wp.annual + dci.annual, 2);
+  });
+
+  it("refuses PB for a payer outside 20–70", () => {
+    const r = quotePension({ ...at40, riders: { pb: { option: "FIT", payerAge: 72, payerSex: "F" } } });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.quote.riders[0].error).toBe("ผู้ชำระเบี้ยอายุ 20–70 ปี");
   });
 });

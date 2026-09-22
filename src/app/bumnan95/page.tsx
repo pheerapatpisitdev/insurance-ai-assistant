@@ -4,8 +4,8 @@ import { AppShell } from "@/components/shell/AppShell";
 import { MoneyInput } from "@/components/MoneyInput";
 import { InsuredFields } from "@/components/InsuredFields";
 import {
-  availablePensionAges, MODE_LABEL, PENSION_LIMITS, pensionTax, quotePension,
-  type PensionBasis, type PensionMode, type PensionPay,
+  availablePensionAges, DCI_LIMITS, MODE_LABEL, PENSION_LIMITS, pensionTax, quotePension,
+  type PensionBasis, type PensionMode, type PensionPay, type PensionRiders, type WaiverOption,
 } from "@/calc/pension/engine";
 
 /**
@@ -36,6 +36,20 @@ export default function PensionPage() {
   const [basis, setBasis] = useState<PensionBasis>("monthlyPension");
   const [amount, setAmount] = useState<number | "">(10_000);
   const [showYears, setShowYears] = useState(false);
+  // riders: WP and PB are one or the other, so they share a single choice
+  const [waiver, setWaiver] = useState<"none" | "WP" | "PB">("none");
+  const [waiverOption, setWaiverOption] = useState<WaiverOption>("FIT");
+  const [payerAge, setPayerAge] = useState<number | "">(40);
+  const [payerSex, setPayerSex] = useState<"M" | "F">("F");
+  const [dciOn, setDciOn] = useState(false);
+  const [dciSum, setDciSum] = useState<number | "">(1_000_000);
+
+  const riders: PensionRiders = {
+    ...(waiver === "WP" ? { wp: { option: waiverOption } } : {}),
+    ...(waiver === "PB" && payerAge !== "" ? { pb: { option: waiverOption, payerAge, payerSex } } : {}),
+    ...(dciOn && dciSum !== "" ? { dci: { sumAssured: dciSum } } : {}),
+  };
+  const ridersKey = JSON.stringify(riders);
 
   const ages = age === "" ? [] : availablePensionAges(age, pay);
   // a pension age this person can no longer choose falls back to the nearest one they can
@@ -43,8 +57,9 @@ export default function PensionPage() {
 
   const result = useMemo(
     () => (age === "" || amount === "" ? null
-      : quotePension({ age, sex, annuityAge: chosenAge, pay, mode, basis, amount })),
-    [age, sex, chosenAge, pay, mode, basis, amount],
+      : quotePension({ age, sex, annuityAge: chosenAge, pay, mode, basis, amount, riders })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [age, sex, chosenAge, pay, mode, basis, amount, ridersKey],
   );
   const q = result?.ok ? result.quote : null;
 
@@ -94,6 +109,57 @@ export default function PensionPage() {
                 </select>
               </div>
             </div>
+
+            <fieldset className="space-y-3 border-t border-[var(--op-line)] pt-4">
+              <legend className="text-sm font-semibold">สัญญาเพิ่มเติม</legend>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium">ยกเว้นเบี้ย</label>
+                  <select className={field} value={waiver} onChange={(e) => setWaiver(e.target.value as typeof waiver)}>
+                    <option value="none">ไม่ซื้อ</option>
+                    <option value="WP">WP — ผู้เอาประกันเป็นอะไรไป</option>
+                    <option value="PB">PB — ผู้ชำระเบี้ยเป็นอะไรไป</option>
+                  </select>
+                </div>
+                {waiver !== "none" && (
+                  <div>
+                    <label className="block text-sm font-medium">แผน</label>
+                    <select className={field} value={waiverOption} onChange={(e) => setWaiverOption(e.target.value as WaiverOption)}>
+                      <option value="FIT">Fit (เสียชีวิต/ทุพพลภาพ)</option>
+                      <option value="BEYOND">Beyond (+โรคร้ายแรง)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+              {waiver === "PB" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium">อายุผู้ชำระเบี้ย</label>
+                    <input type="number" inputMode="numeric" min={20} max={70} className={field} value={payerAge}
+                           onChange={(e) => setPayerAge(e.target.value === "" ? "" : Number(e.target.value))} />
+                    <p className="mt-1 text-xs text-[var(--op-mute)]">20–70 ปี</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">เพศผู้ชำระเบี้ย</label>
+                    <select className={field} value={payerSex} onChange={(e) => setPayerSex(e.target.value as "M" | "F")}>
+                      <option value="M">ชาย</option>
+                      <option value="F">หญิง</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={dciOn} onChange={(e) => setDciOn(e.target.checked)} />
+                DCI — โรคร้ายแรง
+              </label>
+              {dciOn && (
+                <div>
+                  <label className="block text-sm font-medium">ทุน DCI (บาท)</label>
+                  <MoneyInput value={dciSum} onChange={setDciSum} className={field}
+                              hint={`${DCI_LIMITS.saMin.toLocaleString("en-US")}–${DCI_LIMITS.saMax.toLocaleString("en-US")} บาท · อายุ ${DCI_LIMITS.ageMin}–${DCI_LIMITS.ageMax} ปี · คุ้มครองถึงอายุ ${DCI_LIMITS.coverToAge}`} />
+                </div>
+              )}
+            </fieldset>
           </div>
 
           <div className="space-y-4 rounded-lg border border-[var(--op-line)] bg-[var(--op-panel)] p-4">
@@ -107,11 +173,33 @@ export default function PensionPage() {
             {q && (
               <>
                 <div className="rounded-lg bg-[var(--op-figure-bg)] p-4">
-                  <div className="text-sm text-[var(--op-accent)]">เบี้ยประกัน ({MODE_LABEL[q.mode]})</div>
-                  <div className="text-2xl font-semibold tabular-nums text-[var(--op-figure)]">{baht2(q.modePremium)} บาท</div>
-                  <div className="mt-1 text-xs text-[var(--op-accent)]">
-                    ปีละ {baht2(q.annualPremium)} บาท · ชำระ {q.payYears} ปี · รวม {baht(q.totalPremium)} บาท
+                  <div className="text-sm text-[var(--op-accent)]">
+                    เบี้ยประกัน{q.riders.length ? "รวม" : ""} ({MODE_LABEL[q.mode]})
                   </div>
+                  <div className="text-2xl font-semibold tabular-nums text-[var(--op-figure)]">{baht2(q.totalModePremium)} บาท</div>
+                  <div className="mt-1 text-xs text-[var(--op-accent)]">
+                    ปีละ {baht2(q.totalAnnualPremium)} บาท · ชำระ {q.payYears} ปี
+                  </div>
+                  {q.riders.length > 0 && (
+                    <table className="mt-3 w-full text-sm">
+                      <tbody>
+                        <tr className="border-t border-[var(--op-line)]">
+                          <td className="py-1.5">สัญญาหลัก</td>
+                          <td className="py-1.5 text-right tabular-nums">{baht2(q.modePremium)}</td>
+                        </tr>
+                        {q.riders.map((r) => (
+                          <tr key={r.code} className="border-t border-[var(--op-line)]">
+                            <td className="py-1.5">
+                              {r.label}
+                              {r.error && <div className="text-xs text-[var(--op-error)]">{r.error}</div>}
+                              {!r.error && r.code === "DCI" && <div className="text-xs text-[var(--op-mute)]">เบี้ยปีแรก ปรับขึ้นตามอายุทุกปี</div>}
+                            </td>
+                            <td className="py-1.5 text-right tabular-nums">{r.error ? "–" : baht2(r.modePremium)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
                 <dl className="grid grid-cols-2 gap-3 text-sm">
                   <div>
@@ -143,10 +231,11 @@ export default function PensionPage() {
                 </table>
                 <p className="text-sm">
                   รับบำนาญรวมถึงอายุ 95 <span className="font-semibold tabular-nums">{baht(q.totalPension)} บาท</span>
+                  {" "}จากเบี้ยสัญญาหลักรวม {baht(q.totalPremium)} บาท
                   {q.irr !== null && <> · IRR ≈ {(q.irr * 100).toFixed(2)}%</>}
                 </p>
                 <p className="text-xs text-[var(--op-mute)]">
-                  รับประกันจ่ายบำนาญ 15 ปีแรก · เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน · ยังไม่รวมสัญญาเพิ่มเติม
+                  รับประกันจ่ายบำนาญ 15 ปีแรก · เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน · ตารางรายปีและเบี้ยรวมตลอดสัญญาคิดเฉพาะสัญญาหลัก
                 </p>
               </>
             )}
