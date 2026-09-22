@@ -101,7 +101,7 @@ export interface MenuGroup {
  * on are plainly the same thing.
  */
 /**
- * The eight names are English; the four headings above them are not.
+ * The nine names are English; the five headings above them are not.
  *
  * Four of these read as Thai transliterations of English names the company already owns —
  * อีซี่ โพรเทค 6 is Easy Protect 6 — and set beside Life Protect x 2, iShield and iHealthy
@@ -141,7 +141,8 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
     // its own kind: bought for an income after work stops, which none of the three above is
     title: "ประกันบำนาญ",
     links: [
-      { href: "/bumnan95", label: "บำนาญ สมาร์ท 95", icon: "clock", hue: "#7e2f5d" },
+      // the owner's choice: the page's own address, which is also what an agent says out loud
+      { href: "/bumnan95", label: "bumnan95", icon: "clock", hue: "#7e2f5d" },
     ],
   },
   {
