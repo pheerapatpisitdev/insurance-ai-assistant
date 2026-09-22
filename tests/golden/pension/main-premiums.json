@@ -1,0 +1,275 @@
+{
+ "0": {
+  "case": {
+   "age": 40,
+   "gender": "ชาย",
+   "annuityAge": 55,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/55 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 272,
+  "SA": 100000,
+  "mainAnnual": 27200,
+  "mainMode": 27200,
+  "taxMaxAnnuity": 53889
+ },
+ "1": {
+  "case": {
+   "age": 40,
+   "gender": "ชาย",
+   "annuityAge": 60,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/60 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 173,
+  "SA": 100000,
+  "mainAnnual": 17300,
+  "mainMode": 17300,
+  "taxMaxAnnuity": 53889
+ },
+ "2": {
+  "case": {
+   "age": 40,
+   "gender": "ชาย",
+   "annuityAge": 65,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/65 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 118,
+  "SA": 100000,
+  "mainAnnual": 11800,
+  "mainMode": 11800,
+  "taxMaxAnnuity": 53889
+ },
+ "3": {
+  "case": {
+   "age": 40,
+   "gender": "ชาย",
+   "annuityAge": 70,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/70 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 85,
+  "SA": 100000,
+  "mainAnnual": 8500,
+  "mainMode": 8500,
+  "taxMaxAnnuity": 53889
+ },
+ "4": {
+  "case": {
+   "age": 40,
+   "gender": "ชาย",
+   "annuityAge": 55,
+   "payOption": "ชำระเบี้ย 6 ปี",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/6 A55 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 650,
+  "SA": 100000,
+  "mainAnnual": 65000,
+  "mainMode": 65000,
+  "taxMaxAnnuity": 53889
+ },
+ "5": {
+  "case": {
+   "age": 40,
+   "gender": "ชาย",
+   "annuityAge": 70,
+   "payOption": "ชำระเบี้ย 6 ปี",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/6 A70 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 372,
+  "SA": 100000,
+  "mainAnnual": 37200,
+  "mainMode": 37200,
+  "taxMaxAnnuity": 53889
+ },
+ "6": {
+  "case": {
+   "age": 40,
+   "gender": "หญิง",
+   "annuityAge": 55,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/55 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 282,
+  "SA": 100000,
+  "mainAnnual": 28200,
+  "mainMode": 28200,
+  "taxMaxAnnuity": 53889
+ },
+ "7": {
+  "case": {
+   "age": 40,
+   "gender": "หญิง",
+   "annuityAge": 60,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/60 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 178.7,
+  "SA": 100000,
+  "mainAnnual": 17870,
+  "mainMode": 17870,
+  "taxMaxAnnuity": 53889
+ },
+ "8": {
+  "case": {
+   "age": 40,
+   "gender": "หญิง",
+   "annuityAge": 65,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/65 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 124,
+  "SA": 100000,
+  "mainAnnual": 12400,
+  "mainMode": 12400,
+  "taxMaxAnnuity": 53889
+ },
+ "9": {
+  "case": {
+   "age": 40,
+   "gender": "หญิง",
+   "annuityAge": 70,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/70 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 89,
+  "SA": 100000,
+  "mainAnnual": 8900,
+  "mainMode": 8900,
+  "taxMaxAnnuity": 53889
+ },
+ "10": {
+  "case": {
+   "age": 40,
+   "gender": "หญิง",
+   "annuityAge": 55,
+   "payOption": "ชำระเบี้ย 6 ปี",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/6 A55 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 678,
+  "SA": 100000,
+  "mainAnnual": 67800,
+  "mainMode": 67800,
+  "taxMaxAnnuity": 53889
+ },
+ "11": {
+  "case": {
+   "age": 40,
+   "gender": "หญิง",
+   "annuityAge": 70,
+   "payOption": "ชำระเบี้ย 6 ปี",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/6 A70 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 388,
+  "SA": 100000,
+  "mainAnnual": 38800,
+  "mainMode": 38800,
+  "taxMaxAnnuity": 53889
+ },
+ "12": {
+  "case": {
+   "age": 25,
+   "gender": "หญิง",
+   "annuityAge": 55,
+   "payOption": "ชำระเบี้ย 6 ปี",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 500000
+  },
+  "plan": "บำนาญ สมาร์ท 95/6 A55 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 438,
+  "SA": 500000,
+  "mainAnnual": 219000,
+  "mainMode": 219000,
+  "taxMaxAnnuity": 53889
+ },
+ "13": {
+  "case": {
+   "age": 35,
+   "gender": "ชาย",
+   "annuityAge": 70,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "เบี้ยประกันภัย",
+   "amount": 100000
+  },
+  "plan": "บำนาญ สมาร์ท 95/70 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 66.9,
+  "SA": 1494769,
+  "mainAnnual": 100000.04,
+  "mainMode": 100000.04,
+  "taxMaxAnnuity": 53889
+ },
+ "14": {
+  "case": {
+   "age": 40,
+   "gender": "ชาย",
+   "annuityAge": 70,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "เงินบำนาญรายเดือน",
+   "amount": 10000
+  },
+  "plan": "บำนาญ สมาร์ท 95/70 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 85,
+  "SA": 787402,
+  "mainAnnual": 66929.17,
+  "mainMode": 66929.17,
+  "taxMaxAnnuity": 53889
+ },
+ "15": {
+  "case": {
+   "age": 40,
+   "gender": "ชาย",
+   "annuityAge": 70,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 100000,
+   "mode": "รายเดือน"
+  },
+  "plan": "บำนาญ สมาร์ท 95/70 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 85,
+  "SA": 100000,
+  "mainAnnual": 765,
+  "mainMode": 765,
+  "taxMaxAnnuity": 53889
+ },
+ "16": {
+  "case": {
+   "age": 50,
+   "gender": "หญิง",
+   "annuityAge": 65,
+   "payOption": "ชำระเบี้ย จนรับเงินบำนาญ",
+   "inputType": "จำนวนเงินเอาประกันภัย",
+   "amount": 300000
+  },
+  "plan": "บำนาญ สมาร์ท 95/65 (บำนาญแบบลดหย่อนภาษีได้)",
+  "rate": 250,
+  "SA": 300000,
+  "mainAnnual": 75000,
+  "mainMode": 75000,
+  "taxMaxAnnuity": 53889
+ }
+}

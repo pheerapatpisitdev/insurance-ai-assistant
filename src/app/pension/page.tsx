@@ -1,0 +1,235 @@
+"use client";
+import { useMemo, useState } from "react";
+import { AppShell } from "@/components/shell/AppShell";
+import { MoneyInput } from "@/components/MoneyInput";
+import { InsuredFields } from "@/components/InsuredFields";
+import {
+  availablePensionAges, MODE_LABEL, PENSION_LIMITS, pensionTax, quotePension,
+  type PensionBasis, type PensionMode, type PensionPay,
+} from "@/calc/pension/engine";
+
+/**
+ * บำนาญ สมาร์ท 95 — the main contract, worked from whichever figure the customer has in mind.
+ *
+ * Three ways in because customers arrive with three different numbers: a sum they were told
+ * about, a premium they can afford, or the monthly income they want at sixty. The last is the
+ * one this plan is sold on, so it is where the page starts.
+ */
+
+const BASIS_LABEL: Record<PensionBasis, string> = {
+  monthlyPension: "บำนาญที่อยากได้ต่อเดือน",
+  premium: "เบี้ยที่จ่ายได้ต่องวด",
+  sumAssured: "ทุนประกัน",
+};
+
+const baht = (n: number) => Math.round(n).toLocaleString("en-US");
+const baht2 = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const field = "mt-1 w-full rounded border px-3 py-2";
+
+export default function PensionPage() {
+  const [age, setAge] = useState<number | "">(40);
+  const [sex, setSex] = useState<"M" | "F">("M");
+  const [pay, setPay] = useState<PensionPay>("untilAnnuity");
+  const [annuityAge, setAnnuityAge] = useState<number>(60);
+  const [mode, setMode] = useState<PensionMode>("annual");
+  const [basis, setBasis] = useState<PensionBasis>("monthlyPension");
+  const [amount, setAmount] = useState<number | "">(10_000);
+  const [showYears, setShowYears] = useState(false);
+
+  const ages = age === "" ? [] : availablePensionAges(age, pay);
+  // a pension age this person can no longer choose falls back to the nearest one they can
+  const chosenAge = ages.includes(annuityAge as never) ? annuityAge : ages[ages.length - 1] ?? annuityAge;
+
+  const result = useMemo(
+    () => (age === "" || amount === "" ? null
+      : quotePension({ age, sex, annuityAge: chosenAge, pay, mode, basis, amount })),
+    [age, sex, chosenAge, pay, mode, basis, amount],
+  );
+  const q = result?.ok ? result.quote : null;
+
+  return (
+    <AppShell>
+      <main className="mx-auto max-w-5xl p-4 pt-16 sm:p-6 sm:pt-16 lg:pt-6">
+        <h1 className="text-2xl font-semibold">บำนาญ สมาร์ท 95</h1>
+        <p className="mb-4 text-sm text-[var(--op-mute)]">
+          ประกันบำนาญแบบลดหย่อนภาษีได้ · รับบำนาญถึงอายุ 95 · ตารางเบี้ย A2026-1
+        </p>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-4 rounded-lg border border-[var(--op-line)] bg-[var(--op-panel)] p-4">
+            <InsuredFields age={age} sex={sex} ageRange={{ min: PENSION_LIMITS.ageMin, max: PENSION_LIMITS.ageMax }}
+                           onChange={(p) => { if (p.age !== undefined) setAge(p.age); if (p.sex) setSex(p.sex); }} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium">ชำระเบี้ย</label>
+                <select className={field} value={pay} onChange={(e) => setPay(e.target.value as PensionPay)}>
+                  <option value="untilAnnuity">จนถึงอายุรับบำนาญ</option>
+                  <option value="6">6 ปี</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium">เริ่มรับบำนาญอายุ</label>
+                <select className={field} value={chosenAge} disabled={!ages.length}
+                        onChange={(e) => setAnnuityAge(Number(e.target.value))}>
+                  {ages.map((a) => <option key={a} value={a}>{a} ปี</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium">คิดจาก</label>
+              <select className={field} value={basis} onChange={(e) => setBasis(e.target.value as PensionBasis)}>
+                {(Object.keys(BASIS_LABEL) as PensionBasis[]).map((b) => <option key={b} value={b}>{BASIS_LABEL[b]}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium">{BASIS_LABEL[basis]} (บาท)</label>
+                <MoneyInput value={amount} onChange={setAmount} className={field} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">งวดชำระ</label>
+                <select className={field} value={mode} onChange={(e) => setMode(e.target.value as PensionMode)}>
+                  {(Object.keys(MODE_LABEL) as PensionMode[]).map((m) => <option key={m} value={m}>{MODE_LABEL[m]}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-lg border border-[var(--op-line)] bg-[var(--op-panel)] p-4">
+            {result && !result.ok && (
+              <div className="rounded-lg bg-[var(--op-error-bg)] p-4">
+                <div className="text-lg font-semibold text-[var(--op-error-strong)]">คิดแบบนี้ไม่ได้</div>
+                <div className="mt-1 text-sm text-[var(--op-error)]">{result.error}</div>
+              </div>
+            )}
+            {!result && <p className="text-sm text-[var(--op-mute)]">กรอกอายุและจำนวนเงินเพื่อคำนวณ</p>}
+            {q && (
+              <>
+                <div className="rounded-lg bg-[var(--op-figure-bg)] p-4">
+                  <div className="text-sm text-[var(--op-accent)]">เบี้ยประกัน ({MODE_LABEL[q.mode]})</div>
+                  <div className="text-2xl font-semibold tabular-nums text-[var(--op-figure)]">{baht2(q.modePremium)} บาท</div>
+                  <div className="mt-1 text-xs text-[var(--op-accent)]">
+                    ปีละ {baht2(q.annualPremium)} บาท · ชำระ {q.payYears} ปี · รวม {baht(q.totalPremium)} บาท
+                  </div>
+                </div>
+                <dl className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <dt className="text-[var(--op-mute)]">ทุนประกัน</dt>
+                    <dd className="text-lg font-semibold tabular-nums">{baht(q.sumAssured)} บาท</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--op-mute)]">บำนาญช่วงแรก (รับรายเดือน)</dt>
+                    <dd className="text-lg font-semibold tabular-nums">{baht(q.monthlyPension)} บาท/เดือน</dd>
+                  </div>
+                </dl>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--op-line)] text-left text-[var(--op-mute)]">
+                      <th className="py-2">อายุ</th>
+                      <th className="py-2 text-right">% ของทุน</th>
+                      <th className="py-2 text-right">บำนาญต่อปี</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {q.bands.map((b) => (
+                      <tr key={b.fromAge} className="border-b border-[var(--op-line)]">
+                        <td className="py-2">{b.fromAge}–{b.toAge}</td>
+                        <td className="py-2 text-right tabular-nums">{Math.round(b.percent * 100)}%</td>
+                        <td className="py-2 text-right tabular-nums">{baht(b.annual)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-sm">
+                  รับบำนาญรวมถึงอายุ 95 <span className="font-semibold tabular-nums">{baht(q.totalPension)} บาท</span>
+                  {q.irr !== null && <> · IRR ≈ {(q.irr * 100).toFixed(2)}%</>}
+                </p>
+                <p className="text-xs text-[var(--op-mute)]">
+                  รับประกันจ่ายบำนาญ 15 ปีแรก · เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน · ยังไม่รวมสัญญาเพิ่มเติม
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+
+        {q && (
+          <section className="mt-6 rounded-lg border border-[var(--op-line)] bg-[var(--op-panel)] p-4">
+            <button className="text-sm font-medium underline" onClick={() => setShowYears(!showYears)}>
+              {showYears ? "ซ่อน" : "ดู"}ตารางผลประโยชน์รายปี
+            </button>
+            {showYears && (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-sm tabular-nums">
+                  <thead>
+                    <tr className="border-b border-[var(--op-line)] text-right text-[var(--op-mute)]">
+                      <th className="py-2 text-left">อายุ</th>
+                      <th className="py-2">ปีที่</th>
+                      <th className="py-2">เบี้ย</th>
+                      <th className="py-2">เบี้ยสะสม</th>
+                      <th className="py-2">มูลค่าเวนคืน</th>
+                      <th className="py-2">คุ้มครองชีวิต</th>
+                      <th className="py-2">บำนาญ</th>
+                      <th className="py-2">บำนาญสะสม</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {q.illustration.map((y) => (
+                      <tr key={y.age} className={`border-b border-[var(--op-line)] text-right ${y.pension ? "bg-[var(--op-figure-bg)]" : ""}`}>
+                        <td className="py-1.5 text-left">{y.age}</td>
+                        <td className="py-1.5">{y.policyYear}</td>
+                        <td className="py-1.5">{y.premium ? baht(y.premium) : "–"}</td>
+                        <td className="py-1.5">{baht(y.cumPremium)}</td>
+                        <td className="py-1.5">{y.cashValue ? baht(y.cashValue) : "–"}</td>
+                        <td className="py-1.5">{baht(y.deathBenefit)}</td>
+                        <td className="py-1.5">{y.pension ? baht(y.pension) : "–"}</td>
+                        <td className="py-1.5">{y.cumPension ? baht(y.cumPension) : "–"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        <TaxBox />
+      </main>
+    </AppShell>
+  );
+}
+
+const RATES = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35];
+
+/** คำนวณภาษี: how much more annuity premium still comes off this year's tax. */
+function TaxBox() {
+  const [income, setIncome] = useState<number | "">(1_200_000);
+  const [funds, setFunds] = useState<number | "">(0);
+  const [life, setLife] = useState<number | "">(0);
+  const [annuity, setAnnuity] = useState<number | "">(0);
+  const [rate, setRate] = useState(0.2);
+  const n = (v: number | "") => (v === "" ? 0 : v);
+  const t = pensionTax({ income: n(income), retirementFunds: n(funds), lifePremiums: n(life), annuityPremiums: n(annuity), marginalRate: rate });
+
+  return (
+    <section className="mt-6 rounded-lg border border-[var(--op-line)] bg-[var(--op-panel)] p-4">
+      <h2 className="font-semibold">สิทธิลดหย่อนภาษี</h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div><label className="block text-sm">เงินได้ทั้งปี</label><MoneyInput value={income} onChange={setIncome} className={field} /></div>
+        <div><label className="block text-sm">กองทุนเกษียณที่ใช้แล้ว (PVD, กบข., RMF ฯลฯ)</label><MoneyInput value={funds} onChange={setFunds} className={field} /></div>
+        <div><label className="block text-sm">เบี้ยประกันชีวิตที่ใช้ลดหย่อนแล้ว</label><MoneyInput value={life} onChange={setLife} className={field} /></div>
+        <div><label className="block text-sm">เบี้ยบำนาญที่มีอยู่แล้ว</label><MoneyInput value={annuity} onChange={setAnnuity} className={field} /></div>
+        <div>
+          <label className="block text-sm">อัตราภาษีขั้นสูงสุด</label>
+          <select className={field} value={rate} onChange={(e) => setRate(Number(e.target.value))}>
+            {RATES.map((r) => <option key={r} value={r}>{Math.round(r * 100)}%</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="mt-4 rounded-lg bg-[var(--op-figure-bg)] p-4 text-sm">
+        ซื้อเบี้ยบำนาญเพิ่มเพื่อลดหย่อนได้อีกสูงสุด <span className="text-lg font-semibold tabular-nums">{baht(t.maxPremium)} บาท</span>
+        {" "}· ประหยัดภาษีได้ประมาณ <span className="font-semibold tabular-nums">{baht(t.taxSaved)} บาท</span>
+      </div>
+    </section>
+  );
+}

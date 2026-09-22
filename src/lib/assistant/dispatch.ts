@@ -12,6 +12,7 @@ import { answerQuestion } from "./lifeprotect/answer";
 import type { Routed } from "./lifeprotect/route";
 import type { AnySlots, Undecided } from "./slots";
 import { planNamedIn, priceNamedPlan } from "@/lib/copilot/price";
+import { asksPensionPrice, pensionNamedIn, pricePension } from "@/lib/copilot/pension-price";
 import type { GuideItem } from "@/lib/copilot/guide";
 import { writtenFor, type Channel } from "./channel";
 import { answerFromLibrary } from "@/lib/copilot/library";
@@ -130,6 +131,24 @@ export async function answerAny(
    */
   if (aboutAGroup(asked)) {
     return { ...handOverGroup(), slots: stored ?? { product: "undecided", ...personIn(stored) } };
+  }
+
+  /**
+   * The pension plan, priced whatever conversation it interrupts.
+   *
+   * Ahead of a settled conversation, unlike the plans below, because most of the inbox is
+   * settled on Life Protect by the advertisement that brought it — and "บำนาญ ชาย 40 เดือนละ
+   * 10,000" read by the life brain is a life quote for a sum nobody asked about. The name is
+   * distinctive enough to act on, and the conversation's slots ride through untouched.
+   */
+  if (pensionNamedIn(asked) && asksPensionPrice(asked)) {
+    const priced = pricePension(asked);
+    return {
+      messages: [{ text: writtenFor(channel, priced.text) }],
+      priced: priced.priced,
+      ...(priced.guide?.length ? { guide: priced.guide } : {}),
+      slots: stored ?? { product: "undecided", ...personIn(stored) },
+    };
   }
 
   if (now === "lifeprotect" || now === "ihealthy" || now === "legacy" || now === "ishield") {

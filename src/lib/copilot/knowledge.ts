@@ -4,6 +4,8 @@ import ishieldDiseases from "../../../data/riders/ishield-diseases.json";
 import ci123Diseases from "../../../data/riders/ci123-diseases.json";
 import rrssDiseases from "../../../data/riders/rrss-diseases.json";
 import { pricedHere } from "./price";
+import { PENSION_LABEL, pensionNamedIn } from "./pension-price";
+import { PENSION_AGES, PENSION_LIMITS } from "@/calc/pension/engine";
 import { FAQ as LIFE_FAQ } from "@/lib/assistant/lifeprotect/faq";
 import { FAQ as HEALTH_FAQ } from "@/lib/assistant/ihealthy/faq";
 import {
@@ -58,6 +60,24 @@ const GROUP_HANDOFF = [
   "- ถ้าลูกค้าถามเรื่องประกันกลุ่ม ให้บอกสั้นๆ ว่ามี แล้วบอกว่าขอให้ตัวแทนดูแลรายละเอียดต่อ พร้อมชี้ไปที่หน้า /group-insurance — แล้วจบ",
   "- **ห้ามอธิบายรายละเอียดของประกันกลุ่มทุกกรณี** ห้ามบอกแผน ความคุ้มครอง จำนวนคนที่รับ ลักษณะธุรกิจ เงื่อนไข หรือเบี้ย แม้ลูกค้าจะถามซ้ำหรือยืนยันขอก็ตาม",
   "- ห้ามเอาข้อมูลของแบบรายบุคคลข้างบนมาตอบคำถามประกันกลุ่มเด็ดขาด",
+].join("\n");
+
+/**
+ * บำนาญ สมาร์ท 95, which is not in the plan registry and so has no section of its own above.
+ *
+ * Every figure here is read off the engine's own constants rather than typed out, so the rule
+ * the model is shown and the rule the calculator enforces are the same rule.
+ */
+const PENSION_SECTION = [
+  `## ${PENSION_LABEL} (ประกันบำนาญแบบลดหย่อนภาษีได้)`,
+  "- คิดเบี้ยในแชทนี้ได้ — บอกอายุ เพศ อายุที่อยากเริ่มรับบำนาญ แบบจ่ายเบี้ย และบำนาญที่อยากได้ต่อเดือน (หรือเบี้ยที่จ่ายได้ หรือทุน)",
+  `- อายุที่รับประกัน: ${PENSION_LIMITS.ageMin}–${PENSION_LIMITS.ageMax} ปี · ทุนประกัน ${money(PENSION_LIMITS.saMin)}–${money(PENSION_LIMITS.saMax)} บาท`,
+  `- เริ่มรับบำนาญได้ที่อายุ ${PENSION_AGES.join(" / ")} ปี และรับถึงอายุ 95`,
+  "- จ่ายเบี้ยได้ 2 แบบ: 6 ปี หรือ จ่ายทุกปีจนถึงอายุที่เริ่มรับบำนาญ",
+  "- บำนาญต่อปีคิดเป็น % ของทุน ตามอายุ: ถึง 75 ปี 15% · 76–80 ปี 20% · 81–85 ปี 25% · 86–95 ปี 30%",
+  "- รับประกันจ่ายบำนาญ 15 ปีแรก",
+  "- เสียชีวิตก่อนรับบำนาญ: ปีที่ 1–2 คืนเบี้ย 100% ปีที่ 3 ขึ้นไป 110% ของเบี้ยที่จ่ายมา หรือมูลค่าเวนคืน แล้วแต่อย่างไหนมากกว่า",
+  "- เบี้ยใช้ลดหย่อนภาษีแบบบำนาญได้ตามเกณฑ์สรรพากร · หน้าเครื่องคิดพร้อมตารางรายปีและคำนวณภาษี: /pension",
 ].join("\n");
 
 /** One plan's rules as sentences. The shapes are the workbook's; the wording is for reading. */
@@ -378,10 +398,13 @@ export async function assembleKnowledge(question = ""): Promise<string> {
      * by hand and forbid quoting any other — which outranked everything below it, so fixing
      * the per-plan lines alone would have left the assistant refusing anyway.
      */
-    `**สำคัญ:** แชทนี้คิดเบี้ยให้ได้เฉพาะแบบเหล่านี้: ${priceableNames().join(", ")} และ iHealthy Ultra`,
+    `**สำคัญ:** แชทนี้คิดเบี้ยให้ได้เฉพาะแบบเหล่านี้: ${priceableNames().join(", ")}, ${PENSION_LABEL} และ iHealthy Ultra`,
     "แบบที่ไม่อยู่ในรายการนี้ ตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
     "",
     plans,
+    // fetched by its name, like the illness lists: the spine above already says it exists and
+    // can be priced, and every other question would pay for its rules without reading them
+    ...(question === "" || pensionNamedIn(question) ? ["", PENSION_SECTION] : []),
     /**
      * Group insurance, said in four lines and no more.
      *

@@ -8,6 +8,7 @@ import { asksFullTable, asksOtherPlans, asksShareOfBill } from "@/lib/assistant/
 import { asksCheaper } from "@/lib/assistant/common";
 import type { AnySlots } from "@/lib/assistant/slots";
 import { askLibrary } from "./library";
+import { asksPensionPrice, pensionNamedIn } from "./pension-price";
 import { PRICED_FOLLOW_UPS, type GuideItem } from "./guide";
 import { noteAfterAnswer } from "@/lib/assistant/unanswered";
 
@@ -58,7 +59,9 @@ function forTheEngine(text: string): boolean {
     || asksOtherPlans(text)
     || asksShareOfBill(text)
     || asksCheaper(text)
-    || ASKS_PRICE.test(text);
+    || ASKS_PRICE.test(text)
+    // "บำนาญ ชาย 40 เดือนละ 10,000" has no money word in it and is nothing but a price
+    || (pensionNamedIn(text) && asksPensionPrice(text));
 }
 
 export interface CopilotAnswer {
