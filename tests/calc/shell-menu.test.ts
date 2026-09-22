@@ -121,7 +121,7 @@ describe("what the menu shows to somebody who has not signed in", () => {
 
   it("keeps every back-office page out of it", () => {
     const out = hrefs(false);
-    for (const secret of ["/admin", "/admin/crm", "/admin/ai", "/admin/knowledge", "/admin/messenger", "/admin/api"]) {
+    for (const secret of ["/admin", "/admin/crm", "/admin/ai", "/admin/knowledge", "/admin/messenger", "/admin/ads", "/admin/api"]) {
       expect(out, secret).not.toContain(secret);
     }
   });

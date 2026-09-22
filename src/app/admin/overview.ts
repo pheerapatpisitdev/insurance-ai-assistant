@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { monthSpend, monthStart } from "@/lib/ai/ledger";
 import { pageConnection } from "@/lib/facebook/connection";
+import { adAccounts } from "@/lib/facebook/ads-connection";
 import { SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
 import { tablesMeta } from "@/lib/api/service";
 import { daysUntil } from "@/calc/calendar";
@@ -48,17 +49,21 @@ export interface Overview {
 const DAYS = 7;
 /** far enough ahead that new rates can be asked for without anybody hurrying */
 const EXPIRY_WARNING_DAYS = 60;
+/** one missed daily pull plus a day of grace */
+const ADS_STALE_MS = 2 * 86_400_000;
 
 export async function loadOverview(): Promise<Overview> {
   const supabase = supabaseAdmin();
   const since = new Date(Date.now() - DAYS * 86_400_000).toISOString();
 
-  const [connection, unanswered, conversations, spend, settings] = await Promise.all([
+  const [connection, unanswered, conversations, spend, settings, ads, newestAd] = await Promise.all([
     pageConnection().catch(() => null),
     supabase.from("ins_unanswered").select("id", { count: "exact", head: true }).gte("at", since),
     supabase.from("ins_conversations").select("priced_at, form_sent_at").gte("started_at", since),
     monthSpend(monthStart()),
     supabase.from("ins_ai_settings").select("monthly_budget_thb").maybeSingle(),
+    adAccounts().catch(() => []),
+    supabase.from("ins_ad_daily").select("fetched_at").order("fetched_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
   const rows = (conversations.data ?? []) as { priced_at: string | null; form_sent_at: string | null }[];
@@ -116,6 +121,28 @@ export async function loadOverview(): Promise<Overview> {
       title: aiCost >= budget ? "ค่า AI เดือนนี้เต็มงบแล้ว" : "ค่า AI เดือนนี้ใกล้เต็มงบ",
       detail: `ใช้ไป ${aiCost.toFixed(2)} จาก ${budget} บาท — เต็มงบแล้วผู้ช่วยจะหยุดตอบทั้งเว็บและเพจ`,
       href: "/admin/ai", action: "ดูการใช้งาน",
+    });
+  }
+
+  /**
+   * The advertising figures, last and gently: nothing here stops the bot answering. The two
+   * states worth a line are "never connected" and "connected but the daily pull has stopped",
+   * because the second looks exactly like the first from the ADS page's table.
+   */
+  const fetchedAt = (newestAd.data as { fetched_at: string } | null)?.fetched_at;
+  if (ads.length === 0) {
+    attention.push({
+      id: "ads", urgency: "wait",
+      title: "ยังไม่ได้เชื่อมบัญชีโฆษณา",
+      detail: "หน้า ADS จะบอกได้ว่าโฆษณาแต่ละชิ้นได้ลูกค้ากี่คน ตกคนละกี่บาท",
+      href: "/admin/ads", action: "ไปเชื่อม",
+    });
+  } else if (!fetchedAt || Date.now() - new Date(fetchedAt).getTime() > ADS_STALE_MS) {
+    attention.push({
+      id: "ads-stale", urgency: "wait",
+      title: fetchedAt ? "ตัวเลขโฆษณาค้างเกิน 2 วัน" : "ยังไม่เคยดึงตัวเลขโฆษณา",
+      detail: "ตัวดึงรายวันอาจติดขัด หรือ token หมดอายุ — กดดึงเองได้ที่หน้า ADS",
+      href: "/admin/ads", action: "ไปดึง",
     });
   }
 
