@@ -234,7 +234,7 @@ describe("the chart on a card", () => {
     const c = lifeProtect.chart!;
     expect(c.topLabel).toBe("2 ล้าน");
     expect(c.grid?.label).toBe("1 ล้าน");
-    expect(c.ticks.map((t) => t.label)).toEqual(["35", "60", "80", "99"]);
+    expect(c.ticks.map((t) => t.label)).toEqual(["35", "40", "50", "60", "70", "80", "90", "99"]);
     // one point per policy year on the two sloping lines, two per year on the cover's steps
     expect(c.cash.split(" ")).toHaveLength(64);
     expect(c.premium!.split(" ")).toHaveLength(64);

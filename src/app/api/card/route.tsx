@@ -164,8 +164,13 @@ function Chart({ chart, p }: { chart: CardChart; p: CardPalette }) {
           </div>
         )}
         <div style={label({ right: w - 78, top: h - 58, justifyContent: "flex-end" })}>0</div>
+        {/* set smaller than the axis figures: there is one of these every ten years, and at
+            the chart's own size they would otherwise crowd the line they belong to */}
         {chart.ticks.map((t) => (
-          <div key={t.label} style={label({ left: t.x - 30, top: h - 30, width: 60, justifyContent: "center" })}>
+          <div
+            key={t.label}
+            style={label({ left: t.x - 26, top: h - 28, width: 52, fontSize: 19, justifyContent: "center" })}
+          >
             {t.label}
           </div>
         ))}

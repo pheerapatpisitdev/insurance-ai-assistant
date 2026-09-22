@@ -255,6 +255,28 @@ const CHART_W = 888, CHART_H = 300, CHART_LEFT = 86, CHART_RIGHT = 14, CHART_TOP
  * Only for a plan whose cover rule has been read off its own benefit sheet — without that
  * rule the cover line would be a guess, and a guess drawn in gold is still a guess.
  */
+/**
+ * The ages written under the drawing.
+ *
+ * Every tenth birthday, plus the two ages the reader is actually looking for: the age quoted
+ * and the age the contract ends. A decade that lands too near either of those is dropped
+ * rather than printed on top of it — the test is the distance on the drawing, not the years
+ * between them, because how many pixels a year is worth depends on how long the contract runs.
+ */
+const TICK_GAP = 46;
+function ageTicks(from: number, to: number, x: (at: number) => number): CardChart["ticks"] {
+  const decades: number[] = [];
+  for (let a = Math.ceil(from / 10) * 10; a < to; a += 10) decades.push(a);
+  const kept = [from];
+  for (const a of decades) {
+    if (x(a) - x(kept[kept.length - 1]) < TICK_GAP) continue;
+    if (x(to) - x(a) < TICK_GAP) continue;
+    kept.push(a);
+  }
+  if (to > from) kept.push(to);
+  return kept.map((a) => ({ x: Number(x(a).toFixed(1)), label: String(a) }));
+}
+
 function chartFor(
   plan: PlanBundle, input: PlanCardInput, death: DeathBenefit, annualSatang: number | null,
 ): CardChart | undefined {
@@ -290,9 +312,7 @@ function chartFor(
     premium: p.rows[0].premiumPaid === null ? null : line((r) => r.premiumPaid!),
     cash: line((r) => r.cashValue),
     grid,
-    ticks: [...new Set([input.age, 60, 80, p.maturityAge])]
-      .filter((a) => a >= input.age && a <= p.maturityAge)
-      .map((a) => ({ x: Number(x(a).toFixed(1)), label: String(a) })),
+    ticks: ageTicks(input.age, p.maturityAge, x),
     topLabel: shortBaht(Math.round(top / 100)),
     breakEven: p.breakEven
       ? {
