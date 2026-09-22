@@ -268,7 +268,8 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
                         <td className="py-1.5 text-left">{y.age}</td>
                         <td className="py-1.5">{y.policyYear}</td>
                         <td className="py-1.5">{y.premium ? baht(y.premium) : "–"}</td>
-                        <td className="py-1.5">{baht(y.cumPremium)}</td>
+                        {/* only while premiums are still being paid; after that it is one number repeated */}
+                        <td className="py-1.5">{y.premium ? baht(y.cumPremium) : "–"}</td>
                         <td className="py-1.5">{y.cashValue ? baht(y.cashValue) : "–"}</td>
                         <td className="py-1.5">{baht(y.deathBenefit)}</td>
                         <td className="py-1.5">{y.pension ? baht(y.pension) : "–"}</td>
