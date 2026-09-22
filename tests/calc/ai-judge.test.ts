@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 let keyRows: { provider: string; api_key: string }[] = [{ provider: "typesafe", api_key: "ts-secret-key-1234" }];
+let switches: { provider: string; enabled: boolean }[] = [];
 const inserted: Record<string, unknown>[] = [];
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -17,6 +18,7 @@ vi.mock("@/lib/supabase/admin", () => ({
       select: () => {
         if (table === "model_configs") return Promise.resolve({ data: [] });
         if (table === "ins_model_prefs") return Promise.resolve({ data: [] });
+        if (table === "ins_api_keys") return Promise.resolve({ data: switches });
         if (table === "ins_ai_settings") return { maybeSingle: async () => ({ data: { small_model: null, large_model: null, monthly_budget_thb: null } }) };
         return { gte: async () => ({ data: [] }) };
       },
@@ -40,6 +42,7 @@ const fetchMock = vi.fn();
 beforeEach(() => {
   process.env.ADMIN_SESSION_SECRET = "secret";
   keyRows = [{ provider: "typesafe", api_key: "ts-secret-key-1234" }];
+  switches = [];
   inserted.length = 0;
   clearAiConfigCache();
   fetchMock.mockReset();
@@ -79,6 +82,18 @@ describe("asking the judge", () => {
     expect(inserted).toHaveLength(1);
     expect(inserted[0]).toMatchObject({ model: "jev-1.13.0", task: "route-trial", input_tokens: 1_000_000, output_tokens: 20 });
     expect(Number(inserted[0].cost_thb)).toBeCloseTo(0.042 * 36, 6);
+  });
+
+  it("refuses when the owner has switched the provider off, without spending a call", async () => {
+    switches = [{ provider: "typesafe", enabled: false }];
+    await expect(ask()).rejects.toThrow(/ปิดอยู่/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("passes the caller's own timeout through to the request", async () => {
+    const signal = AbortSignal.timeout(60_000);
+    await judge({ task: "t", state: "x", questions: { q: { type: "noul", instructions: "?" } }, signal });
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBe(signal);
   });
 
   it("refuses in words when there is no key rather than calling with none", async () => {

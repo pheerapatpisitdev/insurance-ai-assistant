@@ -7,6 +7,7 @@ const MODEL = {
 };
 
 let keyRows: { provider: string; api_key: string }[] | null = [{ provider: "google", api_key: "k" }];
+let switches: { provider: string; enabled: boolean }[] = [];
 const inserted: Record<string, unknown>[] = [];
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -16,6 +17,7 @@ vi.mock("@/lib/supabase/admin", () => ({
       select: () => {
         if (table === "model_configs") return Promise.resolve({ data: [MODEL] });
         if (table === "ins_model_prefs") return Promise.resolve({ data: [] });
+        if (table === "ins_api_keys") return Promise.resolve({ data: switches });
         if (table === "ins_ai_settings") return { maybeSingle: async () => ({ data: { small_model: null, large_model: null, monthly_budget_thb: null } }) };
         return { gte: async () => ({ data: [] }) };
       },
@@ -34,9 +36,23 @@ const ask = () => chat({ tier: "small", task: "t", messages: [{ role: "user", co
 beforeEach(() => {
   process.env.ADMIN_SESSION_SECRET = "secret";
   keyRows = [{ provider: "google", api_key: "k" }];
+  switches = [];
   inserted.length = 0;
   call.mockClear();
   clearAiConfigCache();
+});
+
+describe("the switch beside a key", () => {
+  it("takes a switched-off provider out of the chain as if its key were gone", async () => {
+    switches = [{ provider: "google", enabled: false }];
+    await expect(ask()).rejects.toThrow(/ไม่มีคีย์/);
+    expect(call).not.toHaveBeenCalled();
+  });
+
+  it("changes nothing while the switch is on", async () => {
+    switches = [{ provider: "google", enabled: true }];
+    expect((await ask()).model).toBe("gemini-3.1-flash-lite");
+  });
 });
 
 describe("reaching a model", () => {

@@ -1,4 +1,5 @@
 import { chat, parseJsonReply } from "@/lib/ai/client";
+import { askShadow, recordShadow } from "../shadow";
 import type { ChatMessage } from "@/lib/ai/types";
 import { iHealthyFacts } from "@/lib/ihealthy-facts";
 import { ageFromBirthdate, peopleIn, recentTurns } from "../common";
@@ -148,9 +149,13 @@ export async function routeHealth(
   history: ChatMessage[], previous: HealthSlots | null,
 ): Promise<HealthSlots> {
   const messages: ChatMessage[] = [{ role: "system", content: SYSTEM }, ...recentTurns(history, 6)];
+  // the judge runs beside the model for now and decides nothing; see ../shadow
+  const shadow = askShadow("ihealthy", history);
   const r = await chat({ tier: "small", task: "route_health", messages, maxTokens: 250, json: true });
   const parsed = parseJsonReply<Partial<HealthSlots>>(r.text) ?? {};
-  return merge(previous, clean(parsed, history));
+  const cleaned = clean(parsed, history);
+  await recordShadow("ihealthy", shadow, cleaned.intent === parsed.intent ? cleaned.intent : (parsed.intent ?? "other"), cleaned.intent);
+  return merge(previous, cleaned);
 }
 
 /** Anything the model returns is checked here, so an invented plan never reaches the engine. */

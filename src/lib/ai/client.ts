@@ -22,6 +22,8 @@ export class BudgetExceeded extends Error {
 
 interface Config {
   keys: Record<string, string>;
+  /** providers switched off on the admin page: their keys stay, their calls stop */
+  off: Set<string>;
   models: ModelRow[];
   budgetThb: number | null;
   smallModel: string | null;
@@ -42,16 +44,20 @@ async function loadConfig(): Promise<Config> {
   const supabase = supabaseAdmin();
   // Model names and prices come from the shared reference table (read only); which of them
   // this app may use, and the keys themselves, live in this app's own tables.
-  const [keys, models, prefs, settings] = await Promise.all([
+  const [keys, models, prefs, settings, switches] = await Promise.all([
     supabase.rpc("ins_get_api_keys", { p_passphrase: passphrase() }),
     supabase.from("model_configs").select("id, provider, kind, model_name, enabled, price"),
     supabase.from("ins_model_prefs").select("model_id, enabled"),
     supabase.from("ins_ai_settings").select("small_model, large_model, monthly_budget_thb").maybeSingle(),
+    supabase.from("ins_api_keys").select("provider, enabled"),
   ]);
   const disabled = new Set((prefs.data ?? []).filter((p) => !p.enabled).map((p) => p.model_id));
+  const off = new Set(((switches?.data ?? []) as { provider: string; enabled: boolean | null }[])
+    .filter((k) => k.enabled === false).map((k) => k.provider));
   const config: Config = {
     keys: Object.fromEntries(((keys.data ?? []) as { provider: string; api_key: string }[])
       .filter((k) => k.api_key).map((k) => [k.provider, k.api_key])),
+    off,
     models: ((models.data ?? []) as ModelRow[]).map((m) => ({ ...m, enabled: m.enabled && !disabled.has(m.id) })),
     budgetThb: settings.data?.monthly_budget_thb ?? null,
     smallModel: settings.data?.small_model ?? null,
@@ -163,8 +169,13 @@ export function fallbackOrder(models: ModelRow[], tier: Tier, chosen: string | n
   return out;
 }
 
+/** The keys the chain may use: every key the owner has not switched off. */
+function liveKeys(config: Config): Record<string, string> {
+  return Object.fromEntries(Object.entries(config.keys).filter(([provider]) => !config.off.has(provider)));
+}
+
 function candidates(config: Config, tier: Tier): ModelRow[] {
-  return fallbackOrder(config.models, tier, tier === "small" ? config.smallModel : config.largeModel, config.keys);
+  return fallbackOrder(config.models, tier, tier === "small" ? config.smallModel : config.largeModel, liveKeys(config));
 }
 
 export interface ChatOptions {
@@ -203,7 +214,7 @@ export async function embedTexts(texts: string[], task = "embed"): Promise<numbe
   await assertWithinBudget(config);
   const tried: string[] = [];
   for (const e of EMBEDDERS) {
-    const key = config.keys[e.provider];
+    const key = liveKeys(config)[e.provider];
     if (!key) continue;
     try {
       const out: number[][] = [];
@@ -225,6 +236,8 @@ export interface JudgeOptions {
   /** what is being judged: a message, a record, a short transcript */
   state: unknown;
   questions: Record<string, JudgeQuestion>;
+  /** a shorter leash than the provider default, for callers that would rather go without */
+  signal?: AbortSignal;
 }
 
 export interface Judged {
@@ -242,12 +255,13 @@ export interface Judged {
  * by deciding without. It still sits behind the month's budget, because a judge that keeps
  * running after the assistant has switched itself off is spending on nobody.
  */
-export async function judge({ task, state, questions }: JudgeOptions): Promise<Judged> {
+export async function judge({ task, state, questions, signal }: JudgeOptions): Promise<Judged> {
   const config = await loadConfig();
   await assertWithinBudget(config);
+  if (config.off.has(JUDGE.provider)) throw new Error("TypeSafe ปิดอยู่");
   const apiKey = config.keys[JUDGE.provider];
   if (!apiKey) throw new Error("ยังไม่ได้ตั้งกุญแจ TypeSafe");
-  const r = await JUDGE.ask(apiKey, state, questions);
+  const r = await JUDGE.ask(apiKey, state, questions, signal);
   const costThb = r.inputTokens / 1e6 * JUDGE.usdPerMTokIn * USD_TO_THB;
   await record(r.model, task, r.inputTokens, r.outputTokens, costThb);
   return { answers: r.answers, model: r.model, inputTokens: r.inputTokens, costThb };

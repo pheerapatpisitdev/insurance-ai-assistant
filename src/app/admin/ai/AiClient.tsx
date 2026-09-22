@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { Card, Empty } from "../ui";
 import {
-  checkKeys, saveApiKey, setModelEnabled, saveSettings,
+  checkKeys, saveApiKey, setModelEnabled, setProviderEnabled, saveSettings,
   type KeyRow, type ModelRow, type ProviderCheck, type ProviderSpend, type Settings,
 } from "./actions";
 
@@ -78,7 +78,8 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string>();
-  const tailOf = (p: string) => keys.find((k) => k.provider === p)?.tail;
+  const keyOf = (p: string) => keys.find((k) => k.provider === p);
+  const tailOf = (p: string) => keyOf(p)?.tail;
   /**
    * What the last test said, until the page is reloaded. Nothing is shown before one is run:
    * a key's health is not knowable without asking, and a guess dressed as a status is worse
@@ -139,26 +140,43 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
           </span>
         </div>
         <div className="space-y-2">
-          {providers.map((p) => (
-            <div key={p} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
-              <span className="w-44 text-sm">{PROVIDER_LABEL[p] ?? p}</span>
-              <span className="w-24 text-xs text-[var(--bot-ink-mute)]">{tailOf(p) ? `••••${tailOf(p)}` : "ยังไม่ได้ตั้ง"}</span>
-              <Status check={checkOf(p)} />
-              <Spend spend={spendOf(p)} top={topSpend} />
-              <input
-                type="password" placeholder="วางกุญแจใหม่" autoComplete="off"
-                className="min-w-48 flex-1 rounded border px-2 py-1 text-sm"
-                value={draft[p] ?? ""} onChange={(e) => setDraft({ ...draft, [p]: e.target.value })}
-              />
-              <button
-                type="button" disabled={pending || !(draft[p] ?? "").trim()}
-                className="rounded bg-[var(--bot-navy)] px-3 py-1 text-xs text-white disabled:opacity-40"
-                onClick={() => run(async () => { await saveApiKey(p, draft[p]); setDraft({ ...draft, [p]: "" }); }, `บันทึกกุญแจ ${PROVIDER_LABEL[p] ?? p} แล้ว`)}
-              >
-                บันทึก
-              </button>
-            </div>
-          ))}
+          {providers.map((p) => {
+            const key = keyOf(p);
+            const on = key?.enabled ?? true;
+            return (
+              <div key={p} className={`flex flex-wrap items-center gap-2 rounded-md border p-2 ${on ? "" : "opacity-60"}`}>
+                <span className="w-44 text-sm">{PROVIDER_LABEL[p] ?? p}</span>
+                <span className="w-24 text-xs text-[var(--bot-ink-mute)]">{key ? `••••${key.tail}` : "ยังไม่ได้ตั้ง"}</span>
+                {/* the switch: off keeps the key and stops every call to this company */}
+                <label className={`flex w-20 items-center gap-1.5 text-xs ${key ? "cursor-pointer" : "invisible"}`} title={on ? "ปิดเพื่อหยุดเรียกค่ายนี้ โดยไม่ต้องลบกุญแจ" : "เปิดเพื่อให้ระบบเรียกค่ายนี้ได้อีก"}>
+                  <input
+                    type="checkbox" role="switch" className="sr-only" checked={on} disabled={pending || !key}
+                    onChange={(e) => run(() => setProviderEnabled(p, e.target.checked), `${e.target.checked ? "เปิด" : "ปิด"} ${PROVIDER_LABEL[p] ?? p} แล้ว`)}
+                  />
+                  <span aria-hidden className={`relative inline-block h-4 w-7 rounded-full transition-colors ${on ? "bg-[var(--bot-ok)]" : "bg-[var(--bot-line-strong)]"}`}>
+                    <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${on ? "left-3.5" : "left-0.5"}`} />
+                  </span>
+                  <span className={on ? "text-[var(--bot-ok)]" : "text-[var(--bot-ink-mute)]"}>{on ? "เปิด" : "ปิด"}</span>
+                </label>
+                <Status check={checkOf(p)} />
+                <Spend spend={spendOf(p)} top={topSpend} />
+                <span className="flex min-w-64 flex-1 items-center gap-2">
+                  <input
+                    type="password" placeholder="วางกุญแจใหม่" autoComplete="off"
+                    className="min-w-0 flex-1 rounded border px-2 py-1 text-sm"
+                    value={draft[p] ?? ""} onChange={(e) => setDraft({ ...draft, [p]: e.target.value })}
+                  />
+                  <button
+                    type="button" disabled={pending || !(draft[p] ?? "").trim()}
+                    className="shrink-0 rounded bg-[var(--bot-navy)] px-3 py-1 text-xs text-white disabled:opacity-40"
+                    onClick={() => run(async () => { await saveApiKey(p, draft[p]); setDraft({ ...draft, [p]: "" }); }, `บันทึกกุญแจ ${PROVIDER_LABEL[p] ?? p} แล้ว`)}
+                  >
+                    บันทึก
+                  </button>
+                </span>
+              </div>
+            );
+          })}
         </div>
       </Card>
 

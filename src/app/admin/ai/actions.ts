@@ -14,7 +14,7 @@ export type { ProviderCheck } from "@/lib/ai/client";
 const PROVIDERS = ["anthropic", "openai", "google", "zai", "typesafe"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
-export interface KeyRow { provider: string; tail: string }
+export interface KeyRow { provider: string; tail: string; enabled: boolean }
 export interface ModelRow { id: string; provider: string; kind: string; model_name: string; enabled: boolean }
 
 /**
@@ -49,7 +49,7 @@ export async function loadAiPage(): Promise<{
   const supabase = supabaseAdmin();
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const [keys, models, prefs, settings, spend] = await Promise.all([
-    supabase.from("ins_api_keys").select("provider, tail"),
+    supabase.from("ins_api_keys").select("provider, tail, enabled"),
     supabase.from("model_configs").select("id, provider, kind, model_name, enabled").order("provider").order("model_name"),
     supabase.from("ins_model_prefs").select("model_id, enabled"),
     supabase.from("ins_ai_settings").select("small_model, large_model, monthly_budget_thb").maybeSingle(),
@@ -60,7 +60,8 @@ export async function loadAiPage(): Promise<{
   const disabled = new Set((prefs.data ?? []).filter((p) => !p.enabled).map((p) => p.model_id));
   const rows = (spend.data ?? []) as { model: string | null; task: string | null; cost_thb: number | null }[];
   return {
-    keys: keys.data ?? [],
+    keys: ((keys.data ?? []) as { provider: string; tail: string; enabled: boolean | null }[])
+      .map((k) => ({ provider: k.provider, tail: k.tail, enabled: k.enabled !== false })),
     /**
      * Only the companies above. `model_configs` is shared with another product, so it lists
      * models this system has no key for and no code to call — Grok is in it still, and would
@@ -132,6 +133,19 @@ export async function saveApiKey(provider: string, key: string) {
   const { error } = await supabaseAdmin().rpc("ins_set_api_key", {
     p_provider: provider, p_key: value, p_passphrase: passphrase(),
   });
+  if (error) throw new Error(error.message);
+  clearAiConfigCache();
+  revalidatePath("/admin/ai");
+}
+
+/**
+ * The switch beside a key. Off means the provider is not called at all — its models leave
+ * the fallback chain, the judge refuses — and the key stays where it is for when it is
+ * wanted again. For TypeSafe it is also the shadow's off switch.
+ */
+export async function setProviderEnabled(provider: string, enabled: boolean) {
+  if (!PROVIDERS.includes(provider as Provider)) throw new Error("ค่ายไม่ถูกต้อง");
+  const { error } = await supabaseAdmin().from("ins_api_keys").update({ enabled }).eq("provider", provider);
   if (error) throw new Error(error.message);
   clearAiConfigCache();
   revalidatePath("/admin/ai");

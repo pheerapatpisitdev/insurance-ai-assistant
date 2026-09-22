@@ -1,5 +1,6 @@
 import type { Budget } from "../common";
 import { chat, parseJsonReply } from "@/lib/ai/client";
+import { askShadow, recordShadow } from "../shadow";
 import type { ChatMessage } from "@/lib/ai/types";
 import { getPlan } from "@/calc/plans/registry";
 import { ageFromBirthdate, coverIn, peopleIn, recentTurns } from "../common";
@@ -89,6 +90,8 @@ intent มี 3 แบบ
 /** Reads the conversation and returns what the customer is asking for. Cheap model, strict JSON. */
 export async function routeMessage(history: ChatMessage[]): Promise<Routed> {
   const messages: ChatMessage[] = [{ role: "system", content: SYSTEM }, ...recentTurns(history, 6)];
+  // the judge runs beside the model for now and decides nothing; see ../shadow
+  const shadow = askShadow("lifeprotect", history);
   const r = await chat({ tier: "small", task: "route", messages, maxTokens: 300, json: true });
   /**
    * A reply that will not parse costs the model's reading of the turn, not the code's.
@@ -99,7 +102,9 @@ export async function routeMessage(history: ChatMessage[]): Promise<Routed> {
    * two premiums were told to wait for something nobody was going to send.
    */
   const parsed = parseJsonReply<Routed>(r.text);
-  return clean(parsed ?? { intent: "other" }, history);
+  const out = clean(parsed ?? { intent: "other" }, history);
+  await recordShadow("lifeprotect", shadow, parsed?.intent ?? "other", out.intent);
+  return out;
 }
 
 /**
