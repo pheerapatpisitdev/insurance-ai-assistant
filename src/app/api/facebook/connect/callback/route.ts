@@ -1,31 +1,53 @@
 import { NextResponse } from "next/server";
-import { grantedScopes, listPages, stateIsValid, subscribePage, tokenFromCode } from "@/lib/facebook/oauth";
+import {
+  grantedScopes, listAdAccounts, listPages, statePurpose, subscribePage, tokenFromCode,
+} from "@/lib/facebook/oauth";
 import { clearPending, savePending, saveConnection } from "@/lib/facebook/connection";
+import { clearPendingAds, saveAdAccount, savePendingAds } from "@/lib/facebook/ads-connection";
 import { requestOrigin } from "@/lib/facebook/origin";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Where Facebook sends the admin back. One Page is connected outright; several means asking
- * which, so the user token waits in the database until they say.
+ * which, so the user token waits in the database until they say. The ads login is the same
+ * shape with an ad account in place of a Page — and it keeps the user token itself, because
+ * an ad account has no token of its own to hand over.
  */
 export async function GET(req: Request) {
   const origin = requestOrigin(req);
+  const params = new URL(req.url).searchParams;
+  const purpose = statePurpose(params.get("state"));
+  const home = purpose === "ads" ? "/admin/ads" : "/admin/messenger";
+
   const back = (outcome: string, detail?: string) => {
-    const params = new URLSearchParams({ fb: outcome });
-    if (detail) params.set("detail", detail.slice(0, 200));
-    return NextResponse.redirect(`${origin}/admin/messenger?${params}`);
+    const q = new URLSearchParams({ fb: outcome });
+    if (detail) q.set("detail", detail.slice(0, 200));
+    return NextResponse.redirect(`${origin}${home}?${q}`);
   };
 
-
-  const params = new URL(req.url).searchParams;
   if (params.get("error")) return back("cancelled");
-  if (!stateIsValid(params.get("state"))) return back("state");
+  if (!purpose) return back("state");
   const code = params.get("code");
   if (!code) return back("state");
 
   try {
     const userToken = await tokenFromCode(code, origin);
+
+    if (purpose === "ads") {
+      const [scopes, accounts] = await Promise.all([grantedScopes(userToken), listAdAccounts(userToken)]);
+      if (!scopes.includes("ads_read")) return back("noscope");
+      if (accounts.length === 0) return back("noaccounts");
+      if (accounts.length > 1) {
+        await savePendingAds(userToken, scopes);
+        return back("choose");
+      }
+      const a = accounts[0];
+      await saveAdAccount({ id: a.id, name: a.name, currency: a.currency, token: userToken, scopes });
+      await clearPendingAds();
+      return back("connected");
+    }
+
     const [scopes, pages] = await Promise.all([grantedScopes(userToken), listPages(userToken)]);
 
     if (pages.length === 0) return back("nopages");

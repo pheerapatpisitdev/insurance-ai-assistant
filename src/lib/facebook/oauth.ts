@@ -18,6 +18,17 @@ const DIALOG = "https://www.facebook.com/v23.0/dialog/oauth";
 export const SCOPES = ["pages_show_list", "pages_messaging", "pages_manage_metadata"];
 
 /**
+ * What the ADS page reads with. Kept apart from the Page scopes so that connecting a Page
+ * never asks for the advertising account too — the two are done by different people on
+ * different days, and a consent screen that asks for more than the task needs is the one
+ * people decline.
+ */
+export const ADS_SCOPES = ["ads_read"];
+
+/** Why somebody is going through the login: for the bot's Pages, or for the ad figures. */
+export type LoginPurpose = "pages" | "ads";
+
+/**
  * The events the webhook actually handles: typed messages, taps on ice breakers or buttons,
  * and the page's own outgoing messages.
  *
@@ -70,31 +81,48 @@ function stateSecret(): string {
   return s;
 }
 
-/** Signed and short-lived, so a link someone else crafts cannot start a connection for us. */
-export function makeState(): string {
+/**
+ * Signed and short-lived, so a link someone else crafts cannot start a connection for us.
+ * The purpose is inside the signature: a state that said "pages" on the way out cannot come
+ * back saying "ads".
+ */
+export function makeState(purpose: LoginPurpose = "pages"): string {
   const expires = String(Date.now() + STATE_TTL_MS);
   const nonce = randomBytes(12).toString("hex");
-  const mac = createHmac("sha256", stateSecret()).update(`${expires}.${nonce}`).digest("hex");
-  return `${expires}.${nonce}.${mac}`;
+  const mac = createHmac("sha256", stateSecret()).update(`${expires}.${nonce}.${purpose}`).digest("hex");
+  return `${expires}.${nonce}.${purpose}.${mac}`;
+}
+
+function parseState(state: string | null): { purpose: LoginPurpose } | null {
+  if (!state) return null;
+  const [expires, nonce, purpose, mac] = state.split(".");
+  if (!expires || !nonce || !mac || (purpose !== "pages" && purpose !== "ads")) return null;
+  const expected = createHmac("sha256", stateSecret()).update(`${expires}.${nonce}.${purpose}`).digest("hex");
+  const a = Buffer.from(mac);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  if (Number(expires) <= Date.now()) return null;
+  return { purpose };
 }
 
 export function stateIsValid(state: string | null): boolean {
-  if (!state) return false;
-  const [expires, nonce, mac] = state.split(".");
-  if (!expires || !nonce || !mac) return false;
-  const expected = createHmac("sha256", stateSecret()).update(`${expires}.${nonce}`).digest("hex");
-  const a = Buffer.from(mac);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return false;
-  return Number(expires) > Date.now();
+  return parseState(state) !== null;
+}
+
+/** The purpose a valid state was made for; nothing for a state that cannot be trusted. */
+export function statePurpose(state: string | null): LoginPurpose | undefined {
+  return parseState(state)?.purpose;
 }
 
 /**
  * A Business-type app ignores `scope` and asks only for a name and photo; what it wants is a
  * login configuration made in the dashboard, which bundles the same permissions. With one
  * configured the dialog uses it; without, the plain scope list still serves a Consumer app.
+ *
+ * With a login configuration the ads purpose still depends on the owner having added
+ * `ads_read` to that configuration in the dashboard — the URL cannot ask for it.
  */
-export function authorizeUrl(origin: string, state: string): string {
+export function authorizeUrl(origin: string, state: string, purpose: LoginPurpose = "pages"): string {
   const params = new URLSearchParams({
     client_id: appId(),
     redirect_uri: redirectUri(origin),
@@ -106,7 +134,7 @@ export function authorizeUrl(origin: string, state: string): string {
     params.set("config_id", config);
     params.set("override_default_response_type", "true");
   } else {
-    params.set("scope", SCOPES.join(","));
+    params.set("scope", (purpose === "ads" ? ADS_SCOPES : SCOPES).join(","));
   }
   return `${DIALOG}?${params}`;
 }
@@ -155,6 +183,21 @@ export async function listPages(userToken: string): Promise<FacebookPage[]> {
     "/me/accounts", { fields: "id,name,access_token", limit: "100" }, userToken,
   );
   return (res.data ?? []).map((p) => ({ id: p.id, name: p.name, accessToken: p.access_token }));
+}
+
+export interface FacebookAdAccount {
+  /** `act_` and the number, as every insights path wants it */
+  id: string;
+  name: string;
+  currency: string | null;
+}
+
+/** The ad accounts this person may read. Needs `ads_read`. */
+export async function listAdAccounts(userToken: string): Promise<FacebookAdAccount[]> {
+  const res = await graph<{ data: { id: string; name?: string; currency?: string }[] }>(
+    "/me/adaccounts", { fields: "id,name,currency", limit: "100" }, userToken,
+  );
+  return (res.data ?? []).map((a) => ({ id: a.id, name: a.name ?? a.id, currency: a.currency ?? null }));
 }
 
 /** Without this the Page never sends its messages to the webhook, whatever the token says. */
