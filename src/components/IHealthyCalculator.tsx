@@ -550,10 +550,12 @@ export function IHealthyCalculator(
       )}
 
       {/* On a wide screen the table steps out of the page's reading measure and takes the
-          whole window: all six plans fit there, and scrolling sideways would be a cost with
-          nothing to buy. The prose around it keeps the narrow measure, which is what makes
-          prose readable. On a phone the table stays in the column and scrolls. */}
-      <div className="sm:mx-[calc(50%-50vw)] sm:w-screen sm:px-6">
+          window that the menu has left: all six plans fit there, and scrolling sideways
+          would be a cost with nothing to buy. The prose around it keeps the narrow measure,
+          which is what makes prose readable. On a phone the table stays in the column and
+          scrolls. The arithmetic is `.ihu-bleed`, which has the menu's width to subtract and
+          so cannot be written as a utility here. */}
+      <div className="ihu-bleed">
         <BenefitTable
           data={data} selected={plan?.code ?? ""} age={age} sharedLimit={sharedLimit}
           participationNote={participationNote}

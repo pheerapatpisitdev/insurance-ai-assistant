@@ -99,6 +99,42 @@ export function benefitCell(
   return { text: grouped(v), unavailable: false };
 }
 
+/** One cell standing for the run of adjacent columns that all say the same thing. */
+export interface CellRun {
+  /** the plans this cell covers, in column order; one of them where nothing merged */
+  plans: string[];
+  cell: BenefitCell;
+}
+
+/**
+ * Neighbouring columns that say the same thing, gathered into one cell.
+ *
+ * Twenty of the company's thirty-seven benefit rows read "ตามที่จ่ายจริง" in all six plans,
+ * and another handful read it in the last four. Printed a column at a time that is the same
+ * two words up to six times across, which costs the row its height — the words wrap inside
+ * a narrow column — and costs the reader a comparison they have to make to discover there
+ * was none to make. The company's own sheet writes those as a single cell across the plans,
+ * and so does this.
+ *
+ * Only adjacent columns merge, so a row where the outer plans agree and the middle ones do
+ * not stays three cells rather than becoming a claim the plans are ordered differently than
+ * they are. "Unavailable" is part of what a cell says — a dash the company printed and a
+ * dash standing in for a plan this age cannot buy look alike and are not the same — so the
+ * two do not merge into one.
+ */
+export function cellRuns(cells: BenefitCell[], plans: string[]): CellRun[] {
+  const runs: CellRun[] = [];
+  cells.forEach((cell, i) => {
+    const last = runs[runs.length - 1];
+    if (last && last.cell.text === cell.text && last.cell.unavailable === cell.unavailable) {
+      last.plans.push(plans[i]);
+    } else {
+      runs.push({ cell, plans: [plans[i]] });
+    }
+  });
+  return runs;
+}
+
 /**
  * A cell the workbook stored as a number rather than as text arrives as bare digits — "6000"
  * beside "1,500 ต่อวัน" in the next column reads as a typo on a page a customer is shown. The
@@ -123,7 +159,8 @@ function grouped(value: string): string {
  * arithmetic, and the whole table 4,832.
  */
 const TITLE_W =
-  "w-28 min-w-28 max-w-28 sm:w-56 sm:min-w-56 sm:max-w-56 lg:w-72 lg:min-w-72 lg:max-w-72 xl:w-[25rem] xl:min-w-[25rem] xl:max-w-[25rem]";
+  "w-28 min-w-28 max-w-28 sm:w-56 sm:min-w-56 sm:max-w-56 lg:w-72 lg:min-w-72 lg:max-w-72"
+  + " xl:w-auto xl:min-w-[25rem] xl:max-w-none";
 /** The pinned row-title column. Opaque, or the rows scroll visibly through their own titles. */
 const PIN = `sticky left-0 print:static ${TITLE_W} border-r border-[var(--lg-panel-line)] bg-[var(--lg-ground-deep)] px-3 text-left`;
 /**
@@ -146,12 +183,39 @@ const HEAD =
  */
 const COLUMN_RULE = "border-r border-[var(--lg-panel-line)] last:border-r-0";
 
+/**
+ * What a run's cell is, beyond its text.
+ *
+ * A cell one plan wide belongs to that plan and wears its colour; a merged cell belongs to
+ * no one of them and stays plain, which is the company's own sheet's rule and is what keeps
+ * the colour meaning something. The colours themselves are the stylesheet's — see
+ * `[data-plan]` in the page's theme.
+ */
+function runAttrs(run: CellRun, selected: string): { "data-plan"?: string; "data-picked"?: string; className: string } {
+  const only = run.plans.length === 1 ? run.plans[0] : undefined;
+  return {
+    "data-plan": only,
+    "data-picked": only === selected ? "" : undefined,
+    className: "px-1.5 py-2 text-center leading-relaxed sm:px-3 text-[var(--lg-mute)]"
+      + (run.cell.unavailable ? " opacity-75" : ""),
+  };
+}
+
 export function BenefitTable(
   { data, selected, age, sellable, sharedLimit, participationNote, premiums, dailyCash }: BenefitTableProps,
 ) {
   const plans = data.plans;
   /** A column a phone keeps: one of the three, or the one the card is pricing. */
   const onPhone = (code: string) => PHONE_PLANS.includes(code) || code === selected;
+  /**
+   * The plans a phone lays out, which is what its own merged cells have to be measured
+   * against. A cell merged across the six and handed to a phone covers three columns the
+   * phone is not drawing, and a spanning cell that asks for width gives some of it back to
+   * them: the hidden columns reappear at a third of the row each and every figure after
+   * them slides one plan to the right. So the two widths merge over their own columns, and
+   * each set of cells is drawn only at the width it was worked out for.
+   */
+  const phonePlans = plans.filter((p) => onPhone(p.code));
   /** The company's categories a phone does not show, counted from the sheet. */
   const hidden = categoryNumbers(data.rows).filter((no) => !(no in PHONE_ROW_LABEL)).length;
   return (
@@ -178,7 +242,7 @@ export function BenefitTable(
               table has anything to say. Past that the columns are padded out with nothing and
               the reader's eye has further to travel between a benefit and its figure, so from
               the extra-wide breakpoint the table stops growing and centres instead. */}
-          <table className="ihu-benefit-table w-full border-collapse text-xs sm:w-max sm:min-w-full xl:mx-auto xl:min-w-0 xl:max-w-[66rem]">
+          <table className="ihu-benefit-table w-full border-collapse text-xs sm:w-max sm:min-w-full xl:w-full xl:min-w-0">
           <caption className="sr-only">
             ตารางผลประโยชน์ iHealthy Ultra ทั้ง {plans.length} แผน
           </caption>
@@ -193,14 +257,11 @@ export function BenefitTable(
                 return (
                   <th
                     key={p.code} scope="col"
-                    /* The tint is laid over the ground rather than instead of it: a sticky
-                       cell carrying only the translucent wash would let the rows it is
-                       covering read through it. */
-                    className={`${HEAD} ${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} z-20 min-w-0 px-1.5 text-center align-top font-medium sm:min-w-28 sm:px-3 ${
-                      p.code === selected
-                        ? "bg-[linear-gradient(var(--lg-gold-glow),var(--lg-gold-glow))] text-[var(--lg-gold-lit)]"
-                        : "text-[var(--lg-mute)]"
-                    }`}
+                    /* The plan is named, and the colour it is known by is decided in the
+                       page's stylesheet from that name alone — see `[data-plan]` there. */
+                    data-plan={p.code}
+                    data-picked={p.code === selected ? "" : undefined}
+                    className={`${HEAD} ${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} z-20 min-w-0 px-1.5 text-center align-top font-medium sm:min-w-28 sm:px-3`}
                   >
                     {planLabel(p.code)}
                     {/* The ceiling stays even where the plan is not for sale — it is what the
@@ -243,9 +304,9 @@ export function BenefitTable(
               {plans.map((p) => (
                 <td
                   key={p.code}
-                  className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2.5 text-center tabular-nums sm:px-3 ${
-                    p.code === selected ? "bg-[var(--lg-gold-glow)] text-[var(--lg-white)]" : "text-[var(--lg-mute)]"
-                  }`}
+                  data-plan={p.code}
+                  data-picked={p.code === selected ? "" : undefined}
+                  className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2.5 text-center tabular-nums sm:px-3`}
                 >
                   {(p.annualMax / 1_000_000).toLocaleString("en-US")} ล้าน
                 </td>
@@ -297,21 +358,33 @@ export function BenefitTable(
                       </span>
                     )}
                   </th>
-                  {plans.map((p) => {
-                    const cell = benefitCell(entry, p.code, age, sellable);
-                    return (
+                  {/* the phone's own columns, merged over themselves, and only where the
+                      phone is showing this row at all */}
+                  {entry.no !== null && entry.no in PHONE_ROW_LABEL
+                    && cellRuns(
+                      phonePlans.map((p) => benefitCell(entry, p.code, age, sellable)),
+                      phonePlans.map((p) => p.code),
+                    ).map((run) => (
                       <td
-                        key={p.code}
-                        className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2 text-center leading-relaxed sm:px-3 ${
-                          p.code === selected
-                            ? "bg-[var(--lg-gold-glow)] text-[var(--lg-white)]"
-                            : "text-[var(--lg-mute)]"
-                        } ${cell.unavailable ? "opacity-75" : ""}`}
+                        key={`phone-${run.plans[0]}`} colSpan={run.plans.length}
+                        {...runAttrs(run, selected)}
+                        className={`${COLUMN_RULE} sm:hidden ${runAttrs(run, selected).className}`}
                       >
-                        {cell.text}
+                        {run.cell.text}
                       </td>
-                    );
-                  })}
+                    ))}
+                  {cellRuns(
+                    plans.map((p) => benefitCell(entry, p.code, age, sellable)),
+                    plans.map((p) => p.code),
+                  ).map((run) => (
+                    <td
+                      key={run.plans[0]} colSpan={run.plans.length}
+                      {...runAttrs(run, selected)}
+                      className={`${COLUMN_RULE} ${WIDE_ONLY_CELL} ${runAttrs(run, selected).className}`}
+                    >
+                      {run.cell.text}
+                    </td>
+                  ))}
                 </tr>
               ),
             )}
@@ -373,11 +446,9 @@ export function BenefitTable(
                   return (
                     <td
                       key={p.code}
-                      className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2.5 text-center font-medium tabular-nums sm:px-3 ${
-                        p.code === selected
-                          ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold)]"
-                          : "text-[var(--lg-white)]"
-                      }`}
+                      data-plan={p.code}
+                      data-picked={p.code === selected ? "" : undefined}
+                      className={`${COLUMN_RULE} ${onPhone(p.code) ? "" : WIDE_ONLY_CELL} px-1.5 py-2.5 text-center font-medium tabular-nums sm:px-3`}
                     >
                       {premium === null || premium === undefined ? DASH : formatBaht(premium)}
                     </td>

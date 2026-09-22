@@ -101,6 +101,53 @@ function palette(): Record<string, string> {
 }
 
 /**
+ * The one ramp that is allowed a palette of its own, and the price of the permission.
+ *
+ * iHealthy Ultra's six plans wear the company's own six colours, so that the printed benefit
+ * sheet and this page are the same scale in the same order. What the printed sheet does not
+ * have to answer for is contrast: white type on its own bands reads between 2.15 and 2.93,
+ * which is under half of what a screen owes a reader. So the hues are the company's and the
+ * lightness is ours, and this is what keeps it that way — a well-meant nudge back toward the
+ * sheet's own swatches would undo it silently, which is exactly how the rest of the palette
+ * came to need a test.
+ */
+function planRamp(): { name: string; band: string; wash: string }[] {
+  const css = readFileSync(path.join(SRC, "app/ihealthy-ultra/theme.css"), "utf8");
+  const found = new Map<string, string>();
+  for (const m of css.matchAll(/(--ihu-[\w-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;/g)) found.set(m[1], m[2]);
+  return [...found]
+    .filter(([token]) => !token.endsWith("-wash"))
+    .map(([token, band]) => ({
+      name: token.replace("--ihu-", ""),
+      band,
+      wash: found.get(`${token}-wash`)!,
+    }));
+}
+
+describe("the six plans' colours are the company's hues at our contrast", () => {
+  it("names a band and a wash for each of the six", () => {
+    expect(planRamp().map((p) => p.name)).toEqual([
+      "smart", "bronze", "silver", "gold", "diamond", "platinum",
+    ]);
+    expect(planRamp().every((p) => p.wash !== undefined)).toBe(true);
+  });
+
+  it("carries white type on every band, and the page's ink on every wash", () => {
+    const tokens = palette();
+    const failures: string[] = [];
+    for (const { name, band, wash } of planRamp()) {
+      const onBand = ratio(tokens["--bot-surface"], band);
+      if (onBand < 4.5) failures.push(`${name}: ขาวบนแถบ ${onBand.toFixed(2)}`);
+      for (const ink of ["--bot-ink", "--bot-ink-mute"] as const) {
+        const onWash = ratio(tokens[ink], wash);
+        if (onWash < 4.5) failures.push(`${name}: ${ink} บนพื้น ${onWash.toFixed(2)}`);
+      }
+    }
+    expect(failures, "แถบสีแผนต้องอ่านออกที่ 4.5:1").toEqual([]);
+  });
+});
+
+/**
  * The pairs the palette promises.
  *
  * Text is held to 4.5:1 and the edge of a control to 3:1. The three surfaces are all listed

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { benefitCell } from "@/components/ihealthy/BenefitTable";
+import { benefitCell, cellRuns } from "@/components/ihealthy/BenefitTable";
 import { iHealthyFacts, isHeading, type BenefitRow } from "@/lib/ihealthy-facts";
 
 const facts = iHealthyFacts();
@@ -79,4 +79,54 @@ describe("benefitCell", () => {
     expect(benefitCell(room, "SMART", 35, ALL).text).toBe("1,500 ต่อวัน");
   });
 
+});
+
+describe("cellRuns", () => {
+  const runsFor = (no: number, plans: string[] = ALL) =>
+    cellRuns(plans.map((p) => benefitCell(row(no), p, 35, plans)), plans);
+  /** each run as "what it says ×how many columns", which is what the table draws */
+  const shape = (no: number, plans: string[] = ALL) =>
+    runsFor(no, plans).map((r) => `${r.cell.text} ×${r.plans.length}`);
+
+  it("gathers a row the six plans agree on into one cell", () => {
+    // หมวดที่ 3 is ตามที่จ่ายจริง in every plan, which is half the sheet's rows
+    expect(shape(3)).toEqual(["ตามที่จ่ายจริง ×6"]);
+  });
+
+  it("leaves a row where every plan differs as six cells", () => {
+    // หมวดที่ 1 is the room rate, which is the whole reason the plans are priced apart
+    expect(runsFor(1)).toHaveLength(6);
+    expect(runsFor(1).every((r) => r.plans.length === 1)).toBe(true);
+  });
+
+  it("gathers only the neighbours that agree, and keeps the rest apart", () => {
+    // หมวดที่ 18: the two cheapest plans do not cover it, then three figures, then in full
+    expect(shape(18)).toEqual([
+      "- ×2", "6,000 ×1", "12,000 ×1", "60,000 ×1", "ตามที่จ่ายจริง ×1",
+    ]);
+  });
+
+  it("merges over whichever columns it is given, which is how a phone gets its own cells", () => {
+    // a phone lays out three of the six; a cell merged across all six would cover columns
+    // it is not drawing and take their width back, sliding every figure a plan to the right
+    const phone = ["BRONZE", "SILVER", "GOLD"];
+    expect(shape(18, phone)).toEqual(["- ×1", "6,000 ×1", "12,000 ×1"]);
+    expect(shape(3, phone)).toEqual(["ตามที่จ่ายจริง ×3"]);
+  });
+
+  it("does not merge a dash the company printed with a dash standing in for a plan not on offer", () => {
+    // at eight only ซิลเวอร์ upward is withheld, and หมวดที่ 21 is a dash of the sheet's own
+    // in the plans below it — alike on screen, and not the same statement
+    const runs = cellRuns(ALL.map((p) => benefitCell(row(21), p, 8, CHILD_PLANS)), ALL);
+    expect(runs.map((r) => [r.cell.text, r.cell.unavailable, r.plans.length])).toEqual([
+      ["-", false, 2],
+      ["-", true, 4],
+    ]);
+  });
+
+  it("stands a lone column up on its own", () => {
+    expect(cellRuns([{ text: "x", unavailable: false }], ["SMART"]))
+      .toEqual([{ cell: { text: "x", unavailable: false }, plans: ["SMART"] }]);
+    expect(cellRuns([], [])).toEqual([]);
+  });
 });

@@ -19,6 +19,61 @@
      column names, and the sand above it is what says these columns are one group. */
   --ihu-head: var(--bot-band);
   --ihu-group: var(--bot-sand-soft);
+
+  /* ── the six plans, a colour each ──────────────────────────────────────────────────────
+   *
+   * The application otherwise decides every colour once, in globals.css. This is the same
+   * kind of exception the group page's risk ramp is, and for the same reason: these are not
+   * decoration but a scale, and the scale is the company's own. An agent holding the printed
+   * benefit sheet and a customer reading this page are looking at six colours in one order,
+   * and a table that renamed them would be a third thing to learn.
+   *
+   * The hues are the sheet's. The lightness is not. White type on the sheet's own bands
+   * reads at 2.2 to 2.9 against them — under half of what it needs — so each band is taken
+   * down until white clears 4.5 on it, and each wash is light enough that the page's own ink
+   * and its muted ink clear 4.5 on that. palette.test.ts holds all twelve to it.
+   */
+  --ihu-smart: #3D6B5B;
+  --ihu-smart-wash: #E4EEE9;
+  --ihu-bronze: #7B3C46;
+  --ihu-bronze-wash: #F2E3E5;
+  --ihu-silver: #5B5F63;
+  --ihu-silver-wash: #EBECED;
+  --ihu-gold: #7E6520;
+  --ihu-gold-wash: #F4EDDB;
+  --ihu-diamond: #4C5C6E;
+  --ihu-diamond-wash: #E7EBF0;
+  --ihu-platinum: #2F6688;
+  --ihu-platinum-wash: #DFECF5;
+}
+
+/* Nothing on this page is read sideways, so nothing on it scrolls sideways. The clip is a
+   floor rather than a layout: the rule below is what makes the table fit, and this is what
+   keeps a stray rounding — a classic scrollbar's width, which `100vw` counts and the page
+   does not get — from becoming a bar the reader can drag. `clip` rather than `hidden`
+   because `hidden` would make this a scroll container and take the sticky table header with
+   it. */
+.ihealthy-scope { overflow-x: clip; }
+
+/* ── the benefit table steps out of the reading measure ─────────────────────────────────
+ *
+ * Six columns do not fit the measure prose is set in, so on a wide screen the table alone
+ * takes the window while the paragraphs around it keep their column.
+ *
+ * The window here is the window minus the menu. A plain full-bleed — `50% - 50vw` against
+ * `100vw` — assumes the column it breaks out of is centred in the window, and this one is
+ * not: from 1024px up the shell holds a 15rem menu open beside it, which puts the column's
+ * centre half a menu to the right of the window's. Measured against the whole window the
+ * table hung half a menu past the right edge, and that was the entire sideways scroll this
+ * page had. `--shell-gutter` is the menu's own width and is zero where it is not open, so
+ * the one formula is right at every width.
+ */
+@media (min-width: 40rem) {
+  .ihu-bleed {
+    margin-inline: calc(50% - 50vw + var(--shell-gutter) / 2);
+    width: calc(100vw - var(--shell-gutter));
+    padding-inline: 1.5rem;
+  }
 }
 
 .ihu-hero { padding: 36px 0 20px; }
@@ -89,6 +144,32 @@
   padding-top: 12px;
   padding-bottom: 12px;
 }
+/* Which of the six a cell belongs to. The component names the plan and nothing else; the
+   two colours it stands for are decided here, so the components hold no colour at all. */
+.ihealthy-scope [data-plan="SMART"] { --ihu-band: var(--ihu-smart); --ihu-wash: var(--ihu-smart-wash); }
+.ihealthy-scope [data-plan="BRONZE"] { --ihu-band: var(--ihu-bronze); --ihu-wash: var(--ihu-bronze-wash); }
+.ihealthy-scope [data-plan="SILVER"] { --ihu-band: var(--ihu-silver); --ihu-wash: var(--ihu-silver-wash); }
+.ihealthy-scope [data-plan="GOLD"] { --ihu-band: var(--ihu-gold); --ihu-wash: var(--ihu-gold-wash); }
+.ihealthy-scope [data-plan="DIAMOND"] { --ihu-band: var(--ihu-diamond); --ihu-wash: var(--ihu-diamond-wash); }
+.ihealthy-scope [data-plan="PLATINUM"] { --ihu-band: var(--ihu-platinum); --ihu-wash: var(--ihu-platinum-wash); }
+
+/* A column's own colour: solid in the header where the plan is named, a wash in the cells
+   that belong to that plan alone. A merged cell belongs to no one plan and stays plain —
+   which is the sheet's own rule, and is what makes the colour mean something. */
+.ihealthy-scope .ihu-benefit-table thead th[data-plan] {
+  background: var(--ihu-band);
+  border-bottom-color: var(--ihu-band);
+  color: var(--bot-surface);
+}
+.ihealthy-scope .ihu-benefit-table thead th[data-plan] * { color: inherit; }
+.ihealthy-scope .ihu-benefit-table td[data-plan] { background: var(--ihu-wash); }
+/* The plan the card above is pricing, marked where a tint no longer can: every column has
+   one now. A bar under its name, in the page's own accent rather than in the plan's. */
+.ihealthy-scope .ihu-benefit-table thead th[data-plan][data-picked] {
+  box-shadow: inset 0 -5px 0 var(--lg-gold);
+}
+.ihealthy-scope .ihu-benefit-table [data-picked] { font-weight: 600; }
+
 .ihealthy-scope .ihu-benefit-table tbody tr:last-child > * { border-bottom: 0; }
 .ihealthy-scope .ihu-benefit-table th[scope="row"] > span:last-child:not(:first-child) { line-height: 1.9; }
 @media (min-width: 640px) {

@@ -598,9 +598,15 @@ body:has(.theme-legacy) {
    to it */
 .shell-scrim { background: rgba(2, 33, 98, 0.42); }
 
+/* How much of the window the menu is holding, so that a page breaking out of its reading
+   measure can break out to the window that is actually left rather than to the whole of it.
+   Zero until the menu is laid out beside the page. */
+:root { --shell-gutter: 0rem; }
+.shell-inset { padding-left: var(--shell-gutter); }
+
 @media (min-width: 1024px) {
   /* the menu is laid out beside the page rather than over it, so nothing is covered */
-  .shell-inset { padding-left: 15rem; }
+  :root { --shell-gutter: 15rem; }
 }
 
 
