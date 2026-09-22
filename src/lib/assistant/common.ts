@@ -428,25 +428,27 @@ export function asksAboutTrust(text: string): boolean {
  */
 const SEX_WORD = "ผู้หญิง|ผู้ชาย|ผญ|ผช|หญิง|ชาย|ญ|ช";
 const NOT_AFTER_A_NUMBER = String.raw`(?<!\d|\d[,.])`;
-const NOT_BEFORE_A_NUMBER = String.raw`(?!\d|[,.]\d)`;
+// nor the count of a sum said in words: "หญิง 1 ล้าน อายุ 40" is not a one-year-old
+const NOT_BEFORE_A_NUMBER = String.raw`(?!\d|[,.]\d|\s*(?:ล้าน|แสน|หมื่น|พัน|บาท))`;
 const PERSON_RE = new RegExp(
   `(${SEX_WORD})\\s*(?:เพศ\\s*)?(?:อายุ\\s*)?(\\d{1,2})${NOT_BEFORE_A_NUMBER}`
-  + `|${NOT_AFTER_A_NUMBER}(\\d{1,2})${NOT_BEFORE_A_NUMBER}\\s*(?:ปี)?\\s*(${SEX_WORD})`,
+  + `|${NOT_AFTER_A_NUMBER}(\\d{1,2})${NOT_BEFORE_A_NUMBER}\\s*(?:ปี)?\\s*(?:เพศ\\s*)?(${SEX_WORD})`,
   "g",
 );
 
 /**
- * A sex said with no age beside it — "เกิด 14/12/2523 ผู้หญิง", where the age is a date.
+ * A sex said with no age beside it — "เกิด 14/12/2523 ผู้หญิง", where the age is a date, or
+ * "ญ ทุน 1,000,000 อายุ 40", where the sum stands between them.
  *
- * The whole words only: a lone ญ or ช is a letter of too many other words to be read on its
- * own, and beside a number `peopleIn` already reads it.
+ * A lone ญ or ช counts only standing on its own: inside a word it is a letter of that word.
+ * A message that says both is about two people, and names neither sex for certain — and
+ * "ลูกชาย" is somebody else's sex, not the sender's.
  */
-const SEX_ALONE = /(ผู้หญิง|หญิง|ผญ)|(ผู้ชาย|ชาย|ผช)/;
+const SEX_ALONE = /(?<!ลูก|น้อง|พี่|หลาน|เพื่อน)(?:(ผู้หญิง|หญิง|ผญ|(?<![\u0E01-\u0E5B])ญ(?![\u0E01-\u0E5B]))|(ผู้ชาย|ชาย|ผช|(?<![\u0E01-\u0E5B])ช(?![\u0E01-\u0E5B])))/g;
 
 export function sexIn(text: string): "M" | "F" | undefined {
-  const m = SEX_ALONE.exec(text);
-  if (!m) return undefined;
-  return m[1] ? "F" : "M";
+  const said = new Set([...text.matchAll(SEX_ALONE)].map((m) => (m[1] ? "F" : "M")));
+  return said.size === 1 ? [...said][0] as "M" | "F" : undefined;
 }
 
 /**
@@ -463,14 +465,33 @@ const COVER_WORDS = /(\d+(?:\.\d+)?)\s*(ล้าน|แสน)|ทุน(?:ป�
 const SMALLEST_COVER = 10_000;
 const LARGEST_COVER = 100_000_000;
 
+/**
+ * A sum with no word in front of it — "ญ 40 1,000,000" — read only beside a person.
+ *
+ * On its own a bare number is too many things: iShield reads "100000" as a monthly saving,
+ * and a budget or a pension is written the same way. Next to a sex and an age in one line it
+ * is the third thing a quotation asks for, typed in whatever order the customer thought of it.
+ * Round thousands of at least a hundred thousand only, and never with a period after it.
+ */
+const BARE_SUM = /(?<![\d,.])([1-9]\d{0,2}(?:,\d{3}){2,}|[1-9]\d{2,5}000)(?![\d,.])(?!\s*(?:บาท|฿)?\s*(?:ต่อ|\/|ละ|ราย))/;
+const SMALLEST_BARE_SUM = 100_000;
+
 export function coverIn(text: string): number | undefined {
   const m = text.match(COVER_WORDS);
-  if (!m) return undefined;
+  if (!m) return bareSumBeside(text);
   const baht = m[1]
     ? Number(m[1]) * (m[2] === "ล้าน" ? 1_000_000 : 100_000)
     : Number(m[3].replace(/,/g, ""));
   if (!Number.isFinite(baht) || baht < SMALLEST_COVER || baht > LARGEST_COVER) return undefined;
   return Math.round(baht);
+}
+
+function bareSumBeside(text: string): number | undefined {
+  if (budgetIn(text) || peopleIn(text).length === 0) return undefined;
+  const m = BARE_SUM.exec(text);
+  if (!m) return undefined;
+  const baht = Number(m[1].replace(/,/g, ""));
+  return baht >= SMALLEST_BARE_SUM && baht <= LARGEST_COVER ? baht : undefined;
 }
 
 /**
@@ -554,7 +575,13 @@ export function peopleIn(text: string): { age: number; sex: "M" | "F" }[] {
     // the same person written twice is still one person
     if (!out.some((p) => p.age === age && p.sex === sex)) out.push({ age, sex });
   }
-  return out;
+  if (out.length) return out;
+
+  // nobody paired, but one sex and one age in the same line are one person, whatever stands
+  // between them: "ญ ทุน 1,000,000 อายุ 40", "อายุ 40 ทุน 1 ล้าน ผู้หญิง"
+  const sex = sexIn(said);
+  const age = ageIn(said);
+  return sex && age !== undefined ? [{ age, sex }] : [];
 }
 
 /**
