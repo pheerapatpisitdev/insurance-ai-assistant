@@ -1,6 +1,5 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/admin/guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { clearAiConfigCache, testProviders, type ProviderCheck } from "@/lib/ai/client";
 import { EMBEDDERS, JUDGE } from "@/lib/ai/providers";
@@ -42,18 +41,11 @@ function passphrase(): string {
   return s;
 }
 
-/**
- * Never returns a whole key: the page only ever sees the last four characters.
- *
- * Guarded here and not only by the layout. A server action is a network entry point of its
- * own — the layout protects the page's HTML, not the function — and this one reads key tails,
- * model settings and the month's spend. It was the P1 filed against this file.
- */
+/** Never returns a whole key: the page only ever sees the last four characters. */
 export async function loadAiPage(): Promise<{
   keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[];
   spentThisMonth: number; spend: ProviderSpend[];
 }> {
-  await requireAdmin();
   const supabase = supabaseAdmin();
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const [keys, models, prefs, settings, spend] = await Promise.all([
@@ -124,7 +116,6 @@ function byProvider(
 }
 
 export async function saveApiKey(provider: string, key: string) {
-  await requireAdmin();
   if (!PROVIDERS.includes(provider as Provider)) throw new Error("ค่ายไม่ถูกต้อง");
   /**
    * Everything a key is not.
@@ -147,7 +138,6 @@ export async function saveApiKey(provider: string, key: string) {
 }
 
 export async function setModelEnabled(id: string, enabled: boolean) {
-  await requireAdmin();
   const { error } = await supabaseAdmin().from("ins_model_prefs")
     .upsert({ model_id: id, enabled, updated_at: new Date().toISOString() }, { onConflict: "model_id" });
   if (error) throw new Error(error.message);
@@ -156,7 +146,6 @@ export async function setModelEnabled(id: string, enabled: boolean) {
 }
 
 export async function saveSettings(smallModel: string, largeModel: string, monthlyBudget: number | null) {
-  await requireAdmin();
   const { error } = await supabaseAdmin().from("ins_ai_settings").upsert({
     id: true, small_model: smallModel || null, large_model: largeModel || null,
     monthly_budget_thb: monthlyBudget, updated_at: new Date().toISOString(),
@@ -173,6 +162,5 @@ export async function saveSettings(smallModel: string, largeModel: string, month
  * page that spends money every time it is opened is a page nobody should have written.
  */
 export async function checkKeys(): Promise<ProviderCheck[]> {
-  await requireAdmin();
   return testProviders([...PROVIDERS]);
 }

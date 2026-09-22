@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isSignedIn } from "@/lib/admin/session";
 import { grantedScopes, listPages, stateIsValid, subscribePage, tokenFromCode } from "@/lib/facebook/oauth";
 import { clearPending, savePending, saveConnection } from "@/lib/facebook/connection";
 import { requestOrigin } from "@/lib/facebook/origin";
@@ -18,7 +17,6 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${origin}/admin/messenger?${params}`);
   };
 
-  if (!(await isSignedIn())) return NextResponse.redirect(`${origin}/admin`);
 
   const params = new URL(req.url).searchParams;
   if (params.get("error")) return back("cancelled");

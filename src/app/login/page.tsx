@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 /**
  * Reserved, and redirecting until there is something to reserve it for.
  *
- * The owner's own way in is /admin, which asks for the PIN at the address they type. This
+ * The owner's own way in is /admin, open at the address they type since the PIN went. This
  * address is kept for the agents: when they get accounts of their own, /login is where they
  * will sign in, and it is the word a person who is not the owner would guess.
  *

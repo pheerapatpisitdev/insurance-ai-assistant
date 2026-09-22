@@ -1,28 +1,19 @@
-import { isSignedIn, pinIsConfigured } from "@/lib/admin/session";
-import { LoginForm } from "@/app/login/LoginForm";
 import { AppShell } from "@/components/shell/AppShell";
 
 /**
- * Every page under /admin requires a valid PIN session, and asks for it here.
+ * The back office, open at its address.
  *
- * It used to redirect to /login, which meant the one address the owner has to remember —
- * /admin, now that the link to it has gone off the calculator — was never the address in
- * front of them: they typed it and landed somewhere else, on a page they then had to know
- * the name of. The door asks for the key at the door.
+ * There was a PIN here until 2026-09-22. The owner asked for it to go: /admin is the one
+ * address they type, and a code to type after it was the thing standing between them and
+ * the page most mornings. Removing it was their decision, made knowing what it opens —
+ * anyone with the address can read the customer list, change the keys and disconnect the
+ * Page — and it is recorded here so that nobody later mistakes the open door for an
+ * oversight. If a door is wanted again, `git log -S ADMIN_PIN` finds the one that was here.
  *
- * The shell is only put on once there is a session behind it. Rendering the signed-in menu
- * around a login form would list the back office to somebody who has not got in yet.
- *
- * The row of links that used to be here has gone into the menu, which is the same menu on
- * every page in the site — the answer to the owner's "I don't know what there is to use".
- * Six links in a row was already at the width a phone will show, and the seventh would have
- * had nowhere to go.
+ * `signedIn` on the shell now means only "this is the back office": the menu lists its
+ * pages here and nowhere else, which is a sign rather than a gate.
  */
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  if (!pinIsConfigured() || !(await isSignedIn())) {
-    return <LoginForm configured={pinIsConfigured()} />;
-  }
-
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppShell signedIn>
       <div className="mx-auto max-w-5xl p-4 pt-16 sm:p-6 sm:pt-16 lg:pt-6">{children}</div>

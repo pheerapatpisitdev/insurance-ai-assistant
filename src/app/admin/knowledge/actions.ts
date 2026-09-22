@@ -1,6 +1,5 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/admin/guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -26,7 +25,6 @@ export interface Note {
 }
 
 export async function listNotes(): Promise<Note[]> {
-  await requireAdmin();
   try {
     const { data, error } = await supabaseAdmin()
       .from("ins_faq").select("id, question, answer, enabled, updated_at")
@@ -43,7 +41,6 @@ export async function listNotes(): Promise<Note[]> {
 }
 
 export async function addNote(question: string, answer: string): Promise<{ ok: boolean; error?: string }> {
-  await requireAdmin();
   const q = question.trim().slice(0, MAX_Q);
   const a = answer.trim().slice(0, MAX_A);
   if (q.length < 4 || a.length < 4) return { ok: false, error: "พิมพ์คำถามและคำตอบให้ยาวกว่านี้หน่อยครับ" };
@@ -59,7 +56,6 @@ export async function addNote(question: string, answer: string): Promise<{ ok: b
 }
 
 export async function setNoteEnabled(id: string, enabled: boolean): Promise<void> {
-  await requireAdmin();
   try {
     const { error } = await supabaseAdmin().from("ins_faq").update({ enabled }).eq("id", id);
     if (error) throw new Error(error.message);
@@ -70,7 +66,6 @@ export async function setNoteEnabled(id: string, enabled: boolean): Promise<void
 }
 
 export async function deleteNote(id: string): Promise<void> {
-  await requireAdmin();
   try {
     const { error } = await supabaseAdmin().from("ins_faq").delete().eq("id", id);
     if (error) throw new Error(error.message);

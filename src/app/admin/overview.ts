@@ -1,5 +1,4 @@
 "use server";
-import { requireAdmin } from "@/lib/admin/guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { pageConnection } from "@/lib/facebook/connection";
 import { SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
@@ -50,7 +49,6 @@ const DAYS = 7;
 const EXPIRY_WARNING_DAYS = 60;
 
 export async function loadOverview(): Promise<Overview> {
-  await requireAdmin();
   const supabase = supabaseAdmin();
   const since = new Date(Date.now() - DAYS * 86_400_000).toISOString();
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();

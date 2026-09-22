@@ -10,9 +10,7 @@ import { GroupInsurance } from "@/components/group-insurance/GroupInsurance";
  * front of an HR manager, sometimes on a phone in a lobby, and the first paint should not
  * wait on a session lookup. Everything that moves is in `GroupInsurance`.
  *
- * `signedIn` is not passed, for the reason `AppShell` gives at length — asking the session a
- * question here would make the page dynamic and cost every visitor a server round trip
- * forever, to show a sign-out button to somebody who never signed in.
+ * `signedIn` is not passed: this is not the back office, so its pages stay out of the menu.
  */
 export const metadata: Metadata = {
   title: "ประกันภัยกลุ่ม — Group Insurance",

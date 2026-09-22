@@ -1,18 +1,10 @@
 "use server";
-import { requireAdmin } from "@/lib/admin/guard";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { rangeStart, summarise } from "@/lib/crm/summary";
 import { profileOf } from "@/lib/facebook/profile";
 import type { ConversationRow, LeadRow, Range, Summary, UnansweredRow } from "@/lib/crm/types";
 
-/**
- * Everything `/admin/crm` shows, read once.
- *
- * `requireAdmin()` is called here and not only in the layout. A server action is a network
- * entry point of its own, and the guard on a layout protects the page's HTML rather than the
- * function anyone can invoke — which is exactly the shape of the finding filed against
- * `loadAiPage()`, and not one to copy twice.
- */
+/** Everything `/admin/crm` shows, read once. */
 
 /** How many leads a page shows at once; enough to work through, few enough to fetch names for. */
 const LEAD_LIMIT = 50;
@@ -43,7 +35,6 @@ export interface CrmPage {
 }
 
 export async function loadCrm(range: Range = "7d"): Promise<CrmPage> {
-  await requireAdmin();
 
   const supabase = supabaseAdmin();
   const since = rangeStart(range).toISOString();
@@ -176,7 +167,6 @@ async function stoppedThreads(
  * being pointed at is one the screen was already showing.
  */
 export async function letBotResume(leadId: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  await requireAdmin();
   const supabase = supabaseAdmin();
 
   const { data, error } = await supabase

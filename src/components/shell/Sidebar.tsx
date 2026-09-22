@@ -1,8 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { signOut } from "@/app/login/actions";
+import { useEffect, useState } from "react";
 import { isCurrent, menuGroups, type MenuIcon } from "@/lib/shell/menu";
 
 /**
@@ -89,29 +88,15 @@ function Icon({ name }: { name: MenuIcon }) {
   }
 }
 
-export function Sidebar({ signedIn: known }: { signedIn: boolean }) {
+/**
+ * `signedIn` is "this page is the back office", and nothing more since the PIN went. The
+ * back office's pages are listed from inside it and from nowhere else: a gate and a sign are
+ * different things, and naming the pages on the calculator tells a stranger the shape of
+ * the tool.
+ */
+export function Sidebar({ signedIn }: { signedIn: boolean }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
-  const [leaving, startLeaving] = useTransition();
-
-  /**
-   * Whether this browser holds a session, asked after the page is up.
-   *
-   * The back office is left out of the menu entirely without one — a gate and a sign are
-   * different things, and naming the pages tells a stranger the shape of the tool. The back
-   * office itself passes `true` and never asks, so there is no moment there where the menu
-   * is missing its own pages.
-   */
-  const [signedIn, setSignedIn] = useState(known);
-  useEffect(() => {
-    if (known) return;
-    let alive = true;
-    fetch("/api/session", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d: { signedIn?: boolean }) => { if (alive) setSignedIn(Boolean(d.signedIn)); })
-      .catch(() => { /* no session is the safe answer, and it is the one already held */ });
-    return () => { alive = false; };
-  }, [known]);
 
   const groups = menuGroups(signedIn);
 
@@ -178,21 +163,6 @@ export function Sidebar({ signedIn: known }: { signedIn: boolean }) {
           )}
         </div>
       ))}
-
-      {/* only with a session behind it: a way out shown to somebody who never came in is a
-          button that does nothing, which is a fault rather than a preference */}
-      {signedIn && (
-        <div className="mt-auto px-2 pt-3">
-          <button
-            type="button" disabled={leaving}
-            onClick={() => startLeaving(() => signOut())}
-            className="text-sm underline disabled:opacity-50"
-            style={{ color: "var(--shell-mute)" }}
-          >
-            {leaving ? "กำลังออก…" : "ออกจากระบบ"}
-          </button>
-        </div>
-      )}
     </nav>
   );
 
