@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/facebook/ads/sync", "schedule": "0 3 * * *" }
+  ]
+}
