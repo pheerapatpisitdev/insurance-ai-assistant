@@ -58,7 +58,7 @@ export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums
   return (
     <section className="space-y-4">
       {derivedSumAssured && (
-        <div className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900">
+        <div className="rounded-md bg-[var(--bot-navy-soft)] px-3 py-2 text-sm text-[var(--bot-navy)]">
           ทุนประกันที่ได้: <span className="font-semibold tabular-nums">{result.sumAssured.toLocaleString("en-US")}</span> บาท
         </div>
       )}

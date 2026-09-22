@@ -13,7 +13,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
   return (
     <section id={id} className="mt-8">
       <h2 className="mb-2 text-lg font-semibold">{title}</h2>
-      <div className="space-y-2 text-slate-700">{children}</div>
+      <div className="space-y-2 text-[var(--bot-ink-foot)]">{children}</div>
     </section>
   );
 }
@@ -22,9 +22,9 @@ export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <h1 className="text-2xl font-semibold">นโยบายความเป็นส่วนตัว</h1>
-      <p className="mt-1 text-sm text-slate-500">ปรับปรุงล่าสุด {UPDATED}</p>
+      <p className="mt-1 text-sm text-[var(--bot-ink-mute)]">ปรับปรุงล่าสุด {UPDATED}</p>
 
-      <p className="mt-6 text-slate-700">
+      <p className="mt-6 text-[var(--bot-ink-foot)]">
         advisortool เป็นเว็บไซต์คำนวณเบี้ยประกันชีวิตของตัวแทน ประกอบด้วยหน้าคำนวณเบี้ยและหน้าแนะนำแบบประกัน
         และเป็นระบบที่ตอบข้อความในเพจเฟซบุ๊กของตัวแทนให้โดยอัตโนมัติ
         เอกสารนี้อธิบายว่าเราเก็บอะไร ไม่เก็บอะไร และส่งต่อให้ใครบ้าง
@@ -160,11 +160,11 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
-      <hr className="mt-10 border-slate-200" />
+      <hr className="mt-10 border-[var(--bot-line)]" />
 
       <section id="english" className="mt-8">
         <h2 className="mb-2 text-lg font-semibold">Privacy policy (English summary)</h2>
-        <div className="space-y-2 text-slate-700">
+        <div className="space-y-2 text-[var(--bot-ink-foot)]">
           <p>
             advisortool is a life insurance premium calculator run by an agency in Thailand.
           </p>
@@ -208,7 +208,7 @@ export default function PrivacyPage() {
       </section>
 
       <p className="mt-10 text-sm">
-        <Link href="/other-plans" className="text-slate-500 underline">ไปหน้าคำนวณเบี้ย</Link>
+        <Link href="/other-plans" className="text-[var(--bot-ink-mute)] underline">ไปหน้าคำนวณเบี้ย</Link>
       </p>
     </main>
   );

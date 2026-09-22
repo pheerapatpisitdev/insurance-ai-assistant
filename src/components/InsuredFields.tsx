@@ -25,7 +25,7 @@ export function InsuredFields({ age, sex, ageRange, onChange }: InsuredFieldsPro
           {age === "" && <option value="">เลือกอายุ</option>}
           {ages.map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
-        <p className="mt-1 text-xs text-slate-500">รับประกัน {ageRange.min} - {ageRange.max} ปี</p>
+        <p className="mt-1 text-xs text-[var(--bot-ink-mute)]">รับประกัน {ageRange.min} - {ageRange.max} ปี</p>
       </div>
       <div>
         <label className="block text-sm font-medium">เพศ</label>

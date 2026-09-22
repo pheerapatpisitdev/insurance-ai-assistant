@@ -10,11 +10,12 @@ import path from "node:path";
  * no mark, no address, no way for the person holding one to find their way back.
  *
  * The mark sits on whatever is behind it. It was drawn on a dark tile at first, because the
- * artwork then supplied had no alpha at all and its ground was the same #26272A as the dark
- * blocks on the letter itself — a colour key put holes through the N, a border flood ate the
- * two diagonal bands, and a close brought them back with debris stuck to the sides. The owner
- * supplied a version with real transparency, so the tile is gone and nothing is interposed
- * between the mark and the card it is printed on.
+ * artwork then supplied had no alpha at all and its ground was the charcoal the cards used to
+ * be — a colour key put holes through the N, a border flood ate the two diagonal bands, and a
+ * close brought them back with debris stuck to the sides. The owner supplied a version with
+ * real transparency, so the tile is gone and nothing is interposed between the mark and the
+ * card it is printed on. The cards are white now, and the mark is drawn in a dark grey, so it
+ * reads on them without anything being done to it.
  *
  * Its height is what is fixed, not a square box: the mark is half again as tall as it is
  * wide, and a square sets it in a column of air.

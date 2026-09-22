@@ -27,5 +27,5 @@ export function useAction() {
 
 export function ActionError({ error }: { error: string | null }) {
   if (!error) return null;
-  return <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>;
+  return <p className="mt-2 rounded-md bg-[var(--bot-red-soft)] px-3 py-2 text-sm text-[var(--bot-red-ink)]">{error}</p>;
 }

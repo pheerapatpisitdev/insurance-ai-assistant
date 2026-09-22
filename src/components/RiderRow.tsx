@@ -74,7 +74,7 @@ export function RiderRow({
     <div className={`rounded-md border p-3 ${disabled ? "border-[var(--op-line)] bg-[var(--op-disabled)] text-[var(--op-mute)]" : "border-[var(--op-line)] bg-[var(--op-panel)]"}`}>
       <label className="flex items-center gap-3">
         <input type="checkbox" className="h-4 w-4" checked={(enabled || required) && !disabled} disabled={disabled || required} onChange={(e) => onToggle(e.target.checked)} />
-        <span className="flex-1 text-sm font-medium">{a.name}{required && <span className="ml-2 text-xs text-sky-700">(บังคับตามแพ็กเกจ)</span>}</span>
+        <span className="flex-1 text-sm font-medium">{a.name}{required && <span className="ml-2 text-xs text-[var(--bot-navy)]">(บังคับตามแพ็กเกจ)</span>}</span>
         <span className="text-xs">{a.ageRange}</span>
       </label>
       {disabled && <p className="mt-1 text-xs">{a.reason}</p>}

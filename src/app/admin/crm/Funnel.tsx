@@ -7,12 +7,24 @@ const PLAN_NAMES: Record<string, string> = {
   undecided: "ยังไม่เลือกแผน",
 };
 
-const STEPS: { key: keyof Counts; label: string; colour: string }[] = [
-  { key: "arrived", label: "ทักเข้ามา", colour: "#3b82f6" },
-  { key: "told", label: "คุยต่อ", colour: "#6366f1" },
-  { key: "priced", label: "ได้เบี้ยไป", colour: "#8b5cf6" },
-  { key: "interested", label: "สนใจสมัคร", colour: "#d946ef" },
-  { key: "formDone", label: "กรอกฟอร์ม", colour: "#ec4899" },
+/**
+ * The five steps, deepening toward the end of the funnel.
+ *
+ * These were five hues off a colour wheel, which said nothing: a funnel is one quantity
+ * narrowing, not five unrelated categories. Now the bar darkens as the customer gets closer
+ * to signing, so the drop-off is legible in the colour as well as in the widths.
+ *
+ * The count is printed inside the bar, so each step carries the ink it can hold rather than
+ * white throughout — the first two steps are pale enough that white on them is unreadable.
+ * The alternative was to darken the whole ramp until white worked everywhere, which made all
+ * five steps the same navy and threw away the thing the ramp is for.
+ */
+const STEPS: { key: keyof Counts; label: string; colour: string; ink: string }[] = [
+  { key: "arrived", label: "ทักเข้ามา", colour: "var(--bot-blue)", ink: "var(--bot-ink)" },
+  { key: "told", label: "คุยต่อ", colour: "#6e8fc4", ink: "var(--bot-ink)" },
+  { key: "priced", label: "ได้เบี้ยไป", colour: "#4d6ba5", ink: "var(--bot-surface)" },
+  { key: "interested", label: "สนใจสมัคร", colour: "#2a4784", ink: "var(--bot-surface)" },
+  { key: "formDone", label: "กรอกฟอร์ม", colour: "var(--bot-navy)", ink: "var(--bot-surface)" },
 ];
 
 /**
@@ -25,27 +37,27 @@ const STEPS: { key: keyof Counts; label: string; colour: string }[] = [
 export function Funnel({ counts, byProduct }: { counts: Counts; byProduct: Summary["byProduct"] }) {
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="rounded-xl border border-[var(--bot-line)] bg-white p-4">
         <h2 className="mb-3.5 text-sm font-semibold">ลูกค้าหล่นหายตรงไหน</h2>
         <div className="grid gap-2">
           {STEPS.map((s) => {
             const n = counts[s.key];
             return (
               <div key={s.key} className="grid grid-cols-[6rem_1fr_3rem] items-center gap-2.5 sm:grid-cols-[7rem_1fr_3.5rem]">
-                <span className="text-xs text-slate-700 sm:text-sm">{s.label}</span>
-                <div className="h-6 overflow-hidden rounded-md bg-slate-100">
+                <span className="text-xs text-[var(--bot-ink-foot)] sm:text-sm">{s.label}</span>
+                <div className="h-6 overflow-hidden rounded-md bg-[var(--bot-panel)]">
                   {/* nothing at all rather than an empty bar: the padding on a zero-width div
                       still draws, and a row of those reads as a little data rather than none */}
                   {n > 0 && (
                     <div
-                      className="flex h-full items-center rounded-md pl-2 text-xs font-semibold text-white"
-                      style={{ width: `${Math.max(share(n, counts.arrived), 4)}%`, background: s.colour }}
+                      className="flex h-full items-center rounded-md pl-2 text-xs font-semibold"
+                      style={{ width: `${Math.max(share(n, counts.arrived), 4)}%`, background: s.colour, color: s.ink }}
                     >
                       {n}
                     </div>
                   )}
                 </div>
-                <span className="text-right text-xs tabular-nums text-slate-500">
+                <span className="text-right text-xs tabular-nums text-[var(--bot-ink-mute)]">
                   {share(n, counts.arrived)}%
                 </span>
               </div>
@@ -54,15 +66,15 @@ export function Funnel({ counts, byProduct }: { counts: Counts; byProduct: Summa
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <section className="rounded-xl border border-[var(--bot-line)] bg-white p-4">
         <h2 className="mb-3.5 text-sm font-semibold">เทียบตามแผน</h2>
         {byProduct.length === 0 ? (
-          <p className="text-xs text-slate-400">ยังไม่มีข้อมูล</p>
+          <p className="text-xs text-[var(--bot-ink-faint)]">ยังไม่มีข้อมูล</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs font-normal text-slate-500">
+                <tr className="text-xs font-normal text-[var(--bot-ink-mute)]">
                   <th className="pb-2 text-left">แผน</th>
                   <th className="pb-2 text-right">ทัก</th>
                   <th className="pb-2 text-right">ได้เบี้ย</th>
@@ -72,7 +84,7 @@ export function Funnel({ counts, byProduct }: { counts: Counts; byProduct: Summa
               </thead>
               <tbody>
                 {byProduct.map(({ product, counts: c }) => (
-                  <tr key={product} className="border-t border-slate-100">
+                  <tr key={product} className="border-t border-[var(--bot-line)]">
                     <td className="py-2">{PLAN_NAMES[product] ?? product}</td>
                     <td className="py-2 text-right tabular-nums">{c.arrived}</td>
                     <td className="py-2 text-right tabular-nums">{c.priced}</td>

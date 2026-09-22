@@ -47,7 +47,7 @@
      not an error, it is a group the underwriter will want to talk about. */
   --gi-warn-bg: var(--bot-sand-soft);
   --gi-warn-line: var(--bot-sand-line);
-  --gi-warn-ink: #5f5436;
+  --gi-warn-ink: var(--bot-sand-ink);
 
   /* The four risk classes of the registrar's table, as a ramp from the navy end of the
      palette to the sand end: the further down the table, the warmer the chip.
@@ -61,7 +61,7 @@
      Each pair clears 4.5:1, the sand end included, which the amber it replaces did not. */
   --gi-lv1-bg: #e8ecf5; --gi-lv1-ink: var(--bot-navy);
   --gi-lv2-bg: #cfdcef; --gi-lv2-ink: var(--bot-navy);
-  --gi-lv3-bg: #eae5d3; --gi-lv3-ink: #5f5436;
+  --gi-lv3-bg: #eae5d3; --gi-lv3-ink: var(--bot-sand-ink);
   --gi-lv4-bg: #d4c8a3; --gi-lv4-ink: #4a411f;
 
   background: var(--gi-ground);

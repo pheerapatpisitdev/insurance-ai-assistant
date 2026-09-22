@@ -14,19 +14,19 @@ import {
  */
 function Spend({ spend, top }: { spend?: ProviderSpend; top: number }) {
   if (!spend || spend.calls === 0) {
-    return <span className="w-36 text-xs text-slate-300">ยังไม่มีค่าใช้จ่าย</span>;
+    return <span className="w-36 text-xs text-[var(--bot-ink-faint)]">ยังไม่มีค่าใช้จ่าย</span>;
   }
   const per = spend.baht / spend.calls;
   return (
     <span className="w-36 shrink-0" title={`${spend.calls} ครั้ง · ${spend.tasks.join(", ")}`}>
       <span className="flex items-baseline gap-1.5">
         <span className="text-sm font-semibold tabular-nums">฿{spend.baht.toFixed(2)}</span>
-        <span className="text-[0.65rem] text-slate-400">{spend.calls} ครั้ง</span>
+        <span className="text-[0.65rem] text-[var(--bot-ink-faint)]">{spend.calls} ครั้ง</span>
       </span>
-      <span className="mt-0.5 block h-1 w-full overflow-hidden rounded-full bg-slate-100">
-        <span className="block h-full rounded-full bg-slate-400" style={{ width: `${(spend.baht / top) * 100}%` }} />
+      <span className="mt-0.5 block h-1 w-full overflow-hidden rounded-full bg-[var(--bot-panel)]">
+        <span className="block h-full rounded-full bg-[var(--bot-navy)]" style={{ width: `${(spend.baht / top) * 100}%` }} />
       </span>
-      <span className="mt-0.5 block text-[0.65rem] text-slate-400">
+      <span className="mt-0.5 block text-[0.65rem] text-[var(--bot-ink-faint)]">
         ครั้งละ ฿{per < 0.01 ? "<0.01" : per.toFixed(2)}
       </span>
     </span>
@@ -41,24 +41,24 @@ function Spend({ spend, top }: { spend?: ProviderSpend; top: number }) {
  * things done about them, and only the provider's own words tell them apart.
  */
 function Status({ check }: { check?: ProviderCheck }) {
-  if (!check) return <span className="w-28 text-xs text-slate-300">ยังไม่ได้ทดสอบ</span>;
+  if (!check) return <span className="w-28 text-xs text-[var(--bot-ink-faint)]">ยังไม่ได้ทดสอบ</span>;
   const chip = "inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap";
   if (check.state === "ok") {
     return (
       <span className="flex w-28 items-baseline gap-1.5">
-        <span className={`${chip} bg-emerald-100 text-emerald-800`}>ใช้ได้</span>
-        <span className="text-[0.65rem] tabular-nums text-slate-400">{(check.ms / 1000).toFixed(1)}s</span>
+        <span className={`${chip} bg-[var(--bot-ok-soft)] text-[var(--bot-ok)]`}>ใช้ได้</span>
+        <span className="text-[0.65rem] tabular-nums text-[var(--bot-ink-faint)]">{(check.ms / 1000).toFixed(1)}s</span>
       </span>
     );
   }
-  if (check.state === "no-key") return <span className="w-28 text-xs text-slate-400">ยังไม่ได้ตั้งกุญแจ</span>;
+  if (check.state === "no-key") return <span className="w-28 text-xs text-[var(--bot-ink-faint)]">ยังไม่ได้ตั้งกุญแจ</span>;
   if (check.state === "no-model") {
-    return <span className={`${chip} w-28 bg-amber-100 text-amber-800`}>ไม่มีโมเดล</span>;
+    return <span className={`${chip} w-28 bg-[var(--bot-sand-soft)] text-[var(--bot-sand-ink)]`}>ไม่มีโมเดล</span>;
   }
   return (
     <span className="flex w-28 flex-col gap-0.5">
-      <span className={`${chip} self-start bg-red-100 text-red-700`}>หยุดทำงาน</span>
-      {check.error && <span className="break-words text-[0.65rem] leading-tight text-red-600">{check.error}</span>}
+      <span className={`${chip} self-start bg-[var(--bot-red-soft)] text-[var(--bot-red-ink)]`}>หยุดทำงาน</span>
+      {check.error && <span className="break-words text-[0.65rem] leading-tight text-[var(--bot-red-ink)]">{check.error}</span>}
     </span>
   );
 }
@@ -101,13 +101,13 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
 
   return (
     <>
-      {message && <p className="mb-4 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-900">{message}</p>}
+      {message && <p className="mb-4 rounded-md border border-[var(--bot-line-strong)] bg-[var(--bot-navy-soft)] px-3 py-2 text-sm text-[var(--bot-navy)]">{message}</p>}
 
       <Card title="กุญแจ API" hint="เก็บแยกจากระบบอื่น เข้ารหัสไว้ในฐานข้อมูล แสดงเฉพาะ 4 ตัวท้าย">
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <button
             type="button" disabled={testing}
-            className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            className="rounded border border-[var(--bot-line-strong)] px-3 py-1.5 text-xs font-medium text-[var(--bot-ink-foot)] hover:bg-[var(--bot-band)] disabled:opacity-40"
             onClick={async () => {
               setTesting(true);
               setMessage(undefined);
@@ -122,13 +122,13 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
           >
             {testing ? "กำลังทดสอบ…" : "ทดสอบกุญแจทั้งหมด"}
           </button>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-[var(--bot-ink-mute)]">
             {checks
               ? `ตอบได้ ${checks.filter((c) => c.state === "ok").length} จาก ${checks.length} ค่าย`
               : "ส่งคำถามสั้นๆ ไปทุกค่ายเพื่อดูว่ากุญแจไหนยังใช้ได้ — ราคาไม่ถึงหนึ่งสตางค์"}
           </span>
-          <span className="ml-auto text-xs text-slate-500">
-            เดือนนี้ใช้ไป <b className="text-sm tabular-nums text-slate-900">฿{baht(spentThisMonth)}</b>
+          <span className="ml-auto text-xs text-[var(--bot-ink-mute)]">
+            เดือนนี้ใช้ไป <b className="text-sm tabular-nums text-[var(--bot-ink)]">฿{baht(spentThisMonth)}</b>
             {settings?.monthly_budget_thb
               ? <> จากงบ ฿{baht(Number(settings.monthly_budget_thb))} ({Math.round((spentThisMonth / Number(settings.monthly_budget_thb)) * 100)}%)</>
               : " (ยังไม่ได้ตั้งงบ)"}
@@ -138,7 +138,7 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
           {providers.map((p) => (
             <div key={p} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
               <span className="w-44 text-sm">{PROVIDER_LABEL[p] ?? p}</span>
-              <span className="w-24 text-xs text-slate-500">{tailOf(p) ? `••••${tailOf(p)}` : "ยังไม่ได้ตั้ง"}</span>
+              <span className="w-24 text-xs text-[var(--bot-ink-mute)]">{tailOf(p) ? `••••${tailOf(p)}` : "ยังไม่ได้ตั้ง"}</span>
               <Status check={checkOf(p)} />
               <Spend spend={spendOf(p)} top={topSpend} />
               <input
@@ -148,7 +148,7 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
               />
               <button
                 type="button" disabled={pending || !(draft[p] ?? "").trim()}
-                className="rounded bg-slate-900 px-3 py-1 text-xs text-white disabled:opacity-40"
+                className="rounded bg-[var(--bot-navy)] px-3 py-1 text-xs text-white disabled:opacity-40"
                 onClick={() => run(async () => { await saveApiKey(p, draft[p]); setDraft({ ...draft, [p]: "" }); }, `บันทึกกุญแจ ${PROVIDER_LABEL[p] ?? p} แล้ว`)}
               >
                 บันทึก
@@ -162,7 +162,7 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
         {models.length === 0 ? <Empty>ยังไม่มีโมเดลในระบบ</Empty> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b text-left text-slate-500"><th className="py-2">ค่าย</th><th className="py-2 pl-3">ประเภท</th><th className="py-2 pl-3">โมเดล</th><th className="py-2 pl-3">ใช้งาน</th></tr></thead>
+              <thead><tr className="border-b text-left text-[var(--bot-ink-mute)]"><th className="py-2">ค่าย</th><th className="py-2 pl-3">ประเภท</th><th className="py-2 pl-3">โมเดล</th><th className="py-2 pl-3">ใช้งาน</th></tr></thead>
               <tbody>
                 {models.map((m) => (
                   <tr key={m.id} className="border-b">
@@ -193,26 +193,26 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
           }}
         >
           <label className="text-sm">
-            <span className="block text-xs text-slate-500">โมเดลเล็ก</span>
+            <span className="block text-xs text-[var(--bot-ink-mute)]">โมเดลเล็ก</span>
             <select name="small" defaultValue={settings?.small_model ?? ""} className="mt-1 rounded border px-2 py-1">
               <option value="">เลือกอัตโนมัติ</option>
               {textModels.map((m) => <option key={m.id} value={m.model_name}>{m.model_name}</option>)}
             </select>
           </label>
           <label className="text-sm">
-            <span className="block text-xs text-slate-500">โมเดลใหญ่</span>
+            <span className="block text-xs text-[var(--bot-ink-mute)]">โมเดลใหญ่</span>
             <select name="large" defaultValue={settings?.large_model ?? ""} className="mt-1 rounded border px-2 py-1">
               <option value="">เลือกอัตโนมัติ</option>
               {textModels.map((m) => <option key={m.id} value={m.model_name}>{m.model_name}</option>)}
             </select>
           </label>
           <label className="text-sm">
-            <span className="block text-xs text-slate-500">งบต่อเดือน (บาท)</span>
+            <span className="block text-xs text-[var(--bot-ink-mute)]">งบต่อเดือน (บาท)</span>
             <input name="budget" type="number" min={0} step={50} defaultValue={settings?.monthly_budget_thb ?? ""}
                    className="mt-1 w-32 rounded border px-2 py-1" placeholder="ไม่จำกัด" />
           </label>
-          <button disabled={pending} className="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-40">บันทึก</button>
-          <span className="text-xs text-slate-500">
+          <button disabled={pending} className="rounded bg-[var(--bot-navy)] px-3 py-1.5 text-sm text-white disabled:opacity-40">บันทึก</button>
+          <span className="text-xs text-[var(--bot-ink-mute)]">
             ใช้ไปเดือนนี้ {spentThisMonth.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท
           </span>
         </form>

@@ -19,16 +19,16 @@ export const dynamic = "force-dynamic";
  */
 
 const TONE = {
-  soon: { ring: "border-amber-300 bg-amber-50", ink: "text-amber-900", sub: "text-amber-800" },
-  wait: { ring: "border-slate-200 bg-white", ink: "text-slate-800", sub: "text-slate-500" },
+  soon: { ring: "border-[var(--bot-sand-line)] bg-[var(--bot-sand-soft)]", ink: "text-[var(--bot-sand-ink)]", sub: "text-[var(--bot-sand-ink)]" },
+  wait: { ring: "border-[var(--bot-line)] bg-white", ink: "text-[var(--bot-ink)]", sub: "text-[var(--bot-ink-mute)]" },
 } as const;
 
 function Figure({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900">{value}</p>
-      {note && <p className="text-xs text-slate-400">{note}</p>}
+    <div className="rounded-lg border border-[var(--bot-line)] bg-white px-3 py-2.5">
+      <p className="text-xs text-[var(--bot-ink-mute)]">{label}</p>
+      <p className="mt-0.5 text-xl font-semibold tabular-nums text-[var(--bot-ink)]">{value}</p>
+      {note && <p className="text-xs text-[var(--bot-ink-faint)]">{note}</p>}
     </div>
   );
 }
@@ -63,7 +63,7 @@ export default async function OverviewPage() {
                     <p className={`text-sm font-medium ${tone.ink}`}>{a.title}</p>
                     <p className={`mt-0.5 text-xs ${tone.sub}`}>{a.detail}</p>
                   </div>
-                  <Link href={a.href} className="shrink-0 rounded border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 no-underline hover:bg-slate-50">
+                  <Link href={a.href} className="shrink-0 rounded border border-[var(--bot-line-strong)] bg-white px-2.5 py-1 text-xs text-[var(--bot-ink-foot)] no-underline hover:bg-[var(--bot-band)]">
                     {a.action}
                   </Link>
                 </li>

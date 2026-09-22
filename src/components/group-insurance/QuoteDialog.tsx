@@ -125,7 +125,7 @@ export function QuoteDialog({
         type="button"
         aria-label={t("close")}
         onClick={onClose}
-        className="absolute inset-0 h-full w-full cursor-default bg-slate-900/60 backdrop-blur-sm"
+        className="absolute inset-0 h-full w-full cursor-default bg-[rgba(2,33,98,0.42)] backdrop-blur-sm"
       />
       <div className="gi-dialog relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-[var(--gi-panel)] shadow-2xl">
         <div className="flex items-center justify-between px-5 py-3.5" style={{ background: "var(--gi-navy)" }}>
@@ -158,7 +158,7 @@ export function QuoteDialog({
           />
         </div>
 
-        <div ref={frame} className="gi-sheet-frame flex-1 overflow-auto bg-slate-200 p-4">
+        <div ref={frame} className="gi-sheet-frame flex-1 overflow-auto bg-[var(--bot-panel)] p-4">
           <div
             className="gi-sheet-box shadow-md"
             style={{ width: SHEET_WIDTH * scale, height: sheetHeight * scale, margin: "0 auto" }}

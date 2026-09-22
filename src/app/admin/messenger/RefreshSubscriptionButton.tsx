@@ -10,7 +10,7 @@ export function RefreshSubscriptionButton({ pageId }: { pageId: string }) {
         type="button"
         disabled={pending}
         onClick={() => run(() => refreshSubscription(pageId))}
-        className="rounded-md border px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        className="rounded-md border px-3 py-1.5 text-sm text-[var(--bot-ink-foot)] hover:bg-[var(--bot-band)] disabled:opacity-50"
       >
         {pending ? "กำลังสมัคร…" : "สมัครรับเหตุการณ์ใหม่"}
       </button>

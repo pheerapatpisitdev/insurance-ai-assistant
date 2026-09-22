@@ -18,7 +18,7 @@ export function BotResume({ leadId }: { leadId: string }) {
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
 
-  if (state === "done") return <span className="whitespace-nowrap text-xs text-slate-400">บอทดูแลต่อแล้ว</span>;
+  if (state === "done") return <span className="whitespace-nowrap text-xs text-[var(--bot-ink-faint)]">บอทดูแลต่อแล้ว</span>;
 
   if (state === "asking") {
     return (
@@ -34,14 +34,14 @@ export function BotResume({ leadId }: { leadId: string }) {
               else { setError(res.error); setState("idle"); }
             });
           }}
-          className="whitespace-nowrap rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs text-white hover:bg-slate-700 disabled:opacity-50"
+          className="whitespace-nowrap rounded-lg bg-[var(--bot-navy)] px-2.5 py-1.5 text-xs text-white hover:bg-[var(--bot-navy-lift)] disabled:opacity-50"
         >
           {pending ? "กำลังเปิด…" : "ยืนยัน"}
         </button>
         <button
           type="button"
           onClick={() => setState("idle")}
-          className="whitespace-nowrap px-1.5 py-1.5 text-xs text-slate-500 hover:text-slate-700"
+          className="whitespace-nowrap px-1.5 py-1.5 text-xs text-[var(--bot-ink-mute)] hover:text-[var(--bot-ink-foot)]"
         >
           ยกเลิก
         </button>
@@ -55,11 +55,11 @@ export function BotResume({ leadId }: { leadId: string }) {
         type="button"
         onClick={() => setState("asking")}
         title="ตอนนี้บอทหยุดตอบในแชทนี้เพราะส่งฟอร์มไปแล้ว"
-        className="whitespace-nowrap rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+        className="whitespace-nowrap rounded-lg border border-[var(--bot-line)] px-2.5 py-1.5 text-xs text-[var(--bot-ink-foot)] hover:bg-[var(--bot-band)]"
       >
         ให้บอทดูแลต่อ
       </button>
-      {error && <span className="text-xs text-rose-600">{error}</span>}
+      {error && <span className="text-xs text-[var(--bot-red-ink)]">{error}</span>}
     </span>
   );
 }

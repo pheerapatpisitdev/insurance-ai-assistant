@@ -3,15 +3,22 @@ import type { LeadView } from "./actions";
 import type { UnansweredRow } from "@/lib/crm/types";
 
 const PLAN_TAG: Record<string, { label: string; className: string }> = {
-  lifeprotect: { label: "Life Protect", className: "bg-blue-50 text-blue-700" },
-  ihealthy: { label: "iHealthy", className: "bg-emerald-50 text-emerald-700" },
-  undecided: { label: "ยังไม่เลือก", className: "bg-slate-100 text-slate-600" },
+  lifeprotect: { label: "Life Protect", className: "bg-[var(--bot-navy-soft)] text-[var(--bot-navy)]" },
+  ihealthy: { label: "iHealthy", className: "bg-[var(--bot-ok-soft)] text-[var(--bot-ok)]" },
+  undecided: { label: "ยังไม่เลือก", className: "bg-[var(--bot-panel)] text-[var(--bot-ink-foot)]" },
 };
 
+/**
+ * The three stages, as one ramp rather than three unrelated colours.
+ *
+ * These are a sequence — somebody is interested, then they are sent a form, then they return
+ * it — so the chips deepen along it, ending on the accent itself for the one stage that is an
+ * outcome. Read down a column of leads and the dark chips are the ones to act on.
+ */
 const STAGE_TAG: Record<string, { label: string; className: string }> = {
-  interested: { label: "สนใจสมัคร", className: "bg-green-100 text-green-700" },
-  form_sent: { label: "ส่งฟอร์มแล้ว", className: "bg-fuchsia-100 text-fuchsia-700" },
-  form_done: { label: "กรอกฟอร์มแล้ว", className: "bg-purple-100 text-purple-700" },
+  interested: { label: "สนใจสมัคร", className: "bg-[var(--bot-sand-soft)] text-[var(--bot-sand-ink)]" },
+  form_sent: { label: "ส่งฟอร์มแล้ว", className: "bg-[var(--bot-navy-soft)] text-[var(--bot-navy)]" },
+  form_done: { label: "กรอกฟอร์มแล้ว", className: "bg-[var(--bot-navy)] text-[var(--bot-surface)]" },
 };
 
 /** "3 ชม.ที่แล้ว" — near enough, and never a timestamp nobody reads. */
@@ -60,13 +67,13 @@ function quoteOf(q: Record<string, unknown> | null): { who: string; money: strin
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="px-4 py-10 text-center text-sm text-slate-400">{children}</p>;
+  return <p className="px-4 py-10 text-center text-sm text-[var(--bot-ink-faint)]">{children}</p>;
 }
 
 export function Leads(
   { tab, leads, unanswered }: { tab: string; leads: LeadView[]; unanswered: UnansweredRow[] },
 ) {
-  const box = "rounded-b-xl border border-t-0 border-slate-200 bg-white overflow-x-auto";
+  const box = "rounded-b-xl border border-t-0 border-[var(--bot-line)] bg-white overflow-x-auto";
 
   if (tab === "unanswered") {
     return (
@@ -74,11 +81,11 @@ export function Leads(
         {unanswered.length === 0 ? (
           <Empty>ยังไม่มีคำถามที่บอทตอบไม่ได้ — หรือยังไม่มีใครถาม</Empty>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-[var(--bot-line)]">
             {unanswered.map((u) => (
               <li key={u.id} className="px-4 py-3">
-                <p className="text-sm text-slate-800">{u.question}</p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="text-sm text-[var(--bot-ink)]">{u.question}</p>
+                <p className="mt-1 text-xs text-[var(--bot-ink-faint)]">
                   {PLAN_TAG[u.product ?? "undecided"]?.label ?? u.product} · {u.intent ?? "ไม่ระบุ"} · {ago(u.at)}
                 </p>
               </li>
@@ -103,9 +110,9 @@ export function Leads(
     <div className={box}>
       <table className="w-full min-w-[46rem] border-collapse text-sm">
         <thead>
-          <tr className="text-xs font-normal text-slate-500">
+          <tr className="text-xs font-normal text-[var(--bot-ink-mute)]">
             {["ลูกค้า", "แผน", "ข้อมูล", "เบี้ยที่เสนอ", "มาจาก", "สถานะ", "ล่าสุด", ""].map((h) => (
-              <th key={h} className="whitespace-nowrap border-b border-slate-200 px-3.5 py-2.5 text-left font-normal">
+              <th key={h} className="whitespace-nowrap border-b border-[var(--bot-line)] px-3.5 py-2.5 text-left font-normal">
                 {h}
               </th>
             ))}
@@ -114,17 +121,17 @@ export function Leads(
         <tbody>
           {leads.map((lead) => {
             const plan = PLAN_TAG[lead.product ?? "undecided"] ?? PLAN_TAG.undecided;
-            const stage = STAGE_TAG[lead.stage] ?? { label: lead.stage, className: "bg-slate-100 text-slate-600" };
+            const stage = STAGE_TAG[lead.stage] ?? { label: lead.stage, className: "bg-[var(--bot-panel)] text-[var(--bot-ink-foot)]" };
             const { who, money } = quoteOf(lead.last_quote);
             return (
-              <tr key={lead.id} className="border-b border-slate-50 last:border-b-0">
+              <tr key={lead.id} className="border-b border-[var(--bot-line)] last:border-b-0">
                 <td className="whitespace-nowrap px-3.5 py-3">
                   <div className="flex items-center gap-2.5">
                     {lead.picture ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={lead.picture} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
                     ) : (
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-200 text-xs text-slate-500">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--bot-panel)] text-xs text-[var(--bot-ink-mute)]">
                         {lead.name?.[0] ?? "?"}
                       </span>
                     )}
@@ -138,9 +145,9 @@ export function Leads(
                     {plan.label}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-3.5 py-3 text-xs text-slate-500">{who}</td>
+                <td className="whitespace-nowrap px-3.5 py-3 text-xs text-[var(--bot-ink-mute)]">{who}</td>
                 <td className="whitespace-nowrap px-3.5 py-3 tabular-nums">{money}</td>
-                <td className="max-w-[9rem] truncate px-3.5 py-3 font-mono text-xs text-slate-400">
+                <td className="max-w-[9rem] truncate px-3.5 py-3 font-mono text-xs text-[var(--bot-ink-faint)]">
                   {lead.ad_id ?? "ทักตรง"}
                 </td>
                 <td className="px-3.5 py-3">
@@ -149,10 +156,10 @@ export function Leads(
                   </span>
                   {/* the state the button acts on, said in the row rather than left to a tooltip */}
                   {lead.botStopped && (
-                    <span className="mt-1 block whitespace-nowrap text-xs text-slate-400">บอทหยุดตอบแล้ว</span>
+                    <span className="mt-1 block whitespace-nowrap text-xs text-[var(--bot-ink-faint)]">บอทหยุดตอบแล้ว</span>
                   )}
                 </td>
-                <td className="whitespace-nowrap px-3.5 py-3 text-xs text-slate-500">{ago(lead.updated_at)}</td>
+                <td className="whitespace-nowrap px-3.5 py-3 text-xs text-[var(--bot-ink-mute)]">{ago(lead.updated_at)}</td>
                 <td className="px-3.5 py-3">
                   <div className="flex items-center gap-1.5">
                     {lead.reachable ? (
@@ -160,12 +167,12 @@ export function Leads(
                         href="https://business.facebook.com/latest/inbox/all"
                         target="_blank"
                         rel="noreferrer"
-                        className="whitespace-nowrap rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+                        className="whitespace-nowrap rounded-lg border border-[var(--bot-line)] px-2.5 py-1.5 text-xs text-[var(--bot-ink-foot)] hover:bg-[var(--bot-band)]"
                       >
                         เปิดแชท ↗
                       </a>
                     ) : (
-                      <span className="text-xs text-slate-300">ติดต่อไม่ได้</span>
+                      <span className="text-xs text-[var(--bot-ink-faint)]">ติดต่อไม่ได้</span>
                     )}
                     {/* only where there is a silence to end: the bot is answering everyone else */}
                     {lead.botStopped && <BotResume leadId={lead.id} />}

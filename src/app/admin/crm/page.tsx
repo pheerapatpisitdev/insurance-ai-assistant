@@ -64,15 +64,15 @@ export default async function CrmPage(
             href={`/admin/crm?range=${r.key}&tab=${tab}`}
             className={`rounded-lg border px-3.5 py-1.5 text-sm ${
               r.key === range
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                ? "border-[var(--bot-navy)] bg-[var(--bot-navy)] text-white"
+                : "border-[var(--bot-line)] bg-white text-[var(--bot-ink-foot)] hover:bg-[var(--bot-band)]"
             }`}
           >
             {r.label}
           </Link>
         ))}
         {counts.arrived === 0 && (
-          <p className="ml-auto text-xs text-slate-500">
+          <p className="ml-auto text-xs text-[var(--bot-ink-mute)]">
             ยังไม่มีข้อมูลในช่วงนี้ — ระบบเริ่มบันทึกตั้งแต่วันที่อัปเดตบอท
           </p>
         )}
@@ -83,7 +83,7 @@ export default async function CrmPage(
       <Charts byDay={summary.byDay} byHour={summary.byHour} byAd={summary.byAd} />
 
       <div>
-        <nav className="flex gap-0.5 border-b border-slate-200">
+        <nav className="flex gap-0.5 border-b border-[var(--bot-line)]">
           {TABS.map((t) => {
             const n = t.key === "unanswered" ? unanswered.length : t.key === "follow" ? following.length : leads.length;
             return (
@@ -92,8 +92,8 @@ export default async function CrmPage(
                 href={`/admin/crm?range=${range}&tab=${t.key}`}
                 className={`-mb-px border-b-2 px-4 py-2.5 text-sm ${
                   t.key === tab
-                    ? "border-blue-600 font-semibold text-slate-900"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
+                    ? "border-[var(--bot-navy)] font-semibold text-[var(--bot-ink)]"
+                    : "border-transparent text-[var(--bot-ink-mute)] hover:text-[var(--bot-ink-foot)]"
                 }`}
               >
                 {t.label} · {n}
@@ -108,7 +108,7 @@ export default async function CrmPage(
         />
       </div>
 
-      <p className="rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-3 text-xs leading-relaxed text-sky-900">
+      <p className="rounded-lg border border-[var(--bot-line-strong)] bg-[var(--bot-navy-soft)] px-3.5 py-3 text-xs leading-relaxed text-[var(--bot-navy)]">
         ชื่อกับรูปดึงสดจาก Facebook ตอนเปิดหน้านี้ ไม่ได้เก็บลงฐานข้อมูล ·
         ตัวเลขสถิติเก็บตลอด แต่รายละเอียดเหตุการณ์ถูกลบเมื่อเก่ากว่า 13 เดือน ·
         อัตราที่คิดได้ {share(counts.priced, counts.arrived)}% ของคนที่ทักเข้ามา

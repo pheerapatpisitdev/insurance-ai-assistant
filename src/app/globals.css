@@ -63,6 +63,21 @@ body {
   --bot-red-ink: #b44340;
   --bot-red-soft: #f7ecea;
 
+  /* A green, and the only colour in the application that is not in the deck.
+     "This is connected", "this went through", "the microphone is open" — the states an
+     operator checks at a glance and must not have to read. Navy cannot say it, because navy
+     is already what every button and heading is, and sand cannot because sand means "look at
+     this one". It is set at the palette's own weight so it sits beside the navy rather than
+     against it: 7.2:1 under white. */
+  --bot-ok: #356048;
+  --bot-ok-soft: #e4ece7;
+  --bot-ok-line: #9dbfae;
+
+  /* Ink for a warning, which is text on one of the sand surfaces. The deck has no amber and
+     does not need one: sand already means "this is the thing to look at", and a warning is
+     exactly that. Red is not borrowed for it — red is errors, and a warning is not an error. */
+  --bot-sand-ink: #5f5436;
+
   /* Ground, band, panel — the deck's three surfaces and nothing else. The band is what a
      caption sits on, the panel is what content sits in. */
   --bot-surface: #ffffff;
@@ -82,6 +97,12 @@ body {
   --bot-ink: #15181d;
   --bot-ink-mute: #5b6472;
   --bot-ink-foot: #3f3f3f;
+  /* A fourth step down, for text that is genuinely decoration — an axis tick, a hint under a
+     field, a timestamp beside something that already says when. It holds 3:1 and no more, so
+     nothing a reader needs is allowed to be set in it. Same value as --bot-line-strong: a
+     mark this faint is at the boundary between "text" and "a line", and giving it a second
+     hex would only invite the two to drift. */
+  --bot-ink-faint: #7d8490;
 }
 
 /* ── the sales pages, in the palette above ────────────────────────────────────

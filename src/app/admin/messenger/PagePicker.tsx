@@ -28,7 +28,7 @@ export function PagePicker({ pages }: { pages: Choice[] }) {
 
   return (
     <div>
-      <p className="mb-3 text-sm text-slate-700">
+      <p className="mb-3 text-sm text-[var(--bot-ink-foot)]">
         เข้าสู่ระบบแล้ว เลือกเพจที่จะให้บอทตอบ ติ๊กได้หลายเพจและเชื่อมพร้อมกันในครั้งเดียว
       </p>
       <ul className="mb-3 divide-y rounded-md border">
@@ -44,7 +44,7 @@ export function PagePicker({ pages }: { pages: Choice[] }) {
               />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium">{p.name}</span>
-                <span className="block text-xs text-slate-500">{p.id}</span>
+                <span className="block text-xs text-[var(--bot-ink-mute)]">{p.id}</span>
               </span>
             </label>
           </li>
@@ -55,7 +55,7 @@ export function PagePicker({ pages }: { pages: Choice[] }) {
           type="button"
           disabled={pending || chosen.length === 0}
           onClick={connect}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-700 disabled:opacity-50"
+          className="rounded-md bg-[var(--bot-navy)] px-4 py-2 text-sm text-white hover:bg-[var(--bot-navy-lift)] disabled:opacity-50"
         >
           {pending ? "กำลังเชื่อมต่อ…" : `เชื่อมต่อ ${chosen.length} เพจที่เลือก`}
         </button>
@@ -63,7 +63,7 @@ export function PagePicker({ pages }: { pages: Choice[] }) {
           type="button"
           disabled={pending}
           onClick={() => run(() => cancelPending())}
-          className="text-sm text-slate-500 underline disabled:opacity-50"
+          className="text-sm text-[var(--bot-ink-mute)] underline disabled:opacity-50"
         >
           ยกเลิก
         </button>

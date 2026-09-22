@@ -23,8 +23,12 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     lang: "th",
-    background_color: "#26272A",
-    theme_color: "#26272A",
+    /* The splash is the application's own ground, and the chrome around it is the accent —
+       both from the palette in globals.css. The icon artwork beside this file is still drawn
+       on the charcoal these two used to be, so it reads as a dark tile on a light splash
+       until that artwork is redrawn. */
+    background_color: "#FFFFFF",
+    theme_color: "#022162",
     icons: [
       { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/apple-icon.png", sizes: "180x180", type: "image/png", purpose: "any" },

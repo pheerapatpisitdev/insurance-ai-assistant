@@ -11,7 +11,7 @@ export function LoginForm({ configured }: { configured: boolean }) {
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-6">
       <div className="rounded-lg border bg-white p-6">
         <h1 className="text-center text-xl font-semibold">หลังบ้าน</h1>
-        <p className="mt-1 text-center text-sm text-slate-500">กรอกรหัส 6 หลัก</p>
+        <p className="mt-1 text-center text-sm text-[var(--bot-ink-mute)]">กรอกรหัส 6 หลัก</p>
 
         {configured ? (
           <form
@@ -28,18 +28,18 @@ export function LoginForm({ configured }: { configured: boolean }) {
               onChange={() => setError(undefined)}
             />
             <button disabled={pending}
-                    className="mt-4 w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
+                    className="mt-4 w-full rounded-md bg-[var(--bot-navy)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
               {pending ? "กำลังตรวจสอบ…" : "เข้าสู่ระบบ"}
             </button>
           </form>
         ) : (
-          <p className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <p className="mt-4 rounded-md border border-[var(--bot-sand-line)] bg-[var(--bot-sand-soft)] px-3 py-2 text-sm text-[var(--bot-sand-ink)]">
             ยังไม่ได้ตั้งรหัส กรุณาใส่ ADMIN_PIN และ ADMIN_SESSION_SECRET ในไฟล์ .env.local
           </p>
         )}
 
-        {error && <p className="mt-3 text-center text-sm text-red-600">{error}</p>}
-        <Link href="/" className="mt-6 block text-center text-sm text-slate-500 underline">กลับไปหน้าแรก</Link>
+        {error && <p className="mt-3 text-center text-sm text-[var(--bot-red-ink)]">{error}</p>}
+        <Link href="/" className="mt-6 block text-center text-sm text-[var(--bot-ink-mute)] underline">กลับไปหน้าแรก</Link>
       </div>
     </main>
   );

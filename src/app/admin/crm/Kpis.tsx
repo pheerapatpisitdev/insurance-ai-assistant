@@ -21,10 +21,10 @@ export function Kpis({ counts, aiCostThisMonth }: { counts: Counts; aiCostThisMo
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
       {cards.map((c) => (
-        <div key={c.label} className="rounded-xl border border-slate-200 bg-white p-3.5">
-          <div className="text-xs text-slate-500">{c.label}</div>
+        <div key={c.label} className="rounded-xl border border-[var(--bot-line)] bg-white p-3.5">
+          <div className="text-xs text-[var(--bot-ink-mute)]">{c.label}</div>
           <div className="mt-1 text-2xl font-bold tracking-tight tabular-nums">{c.value}</div>
-          <div className="mt-0.5 text-xs text-slate-500">{c.sub}</div>
+          <div className="mt-0.5 text-xs text-[var(--bot-ink-mute)]">{c.sub}</div>
         </div>
       ))}
     </div>

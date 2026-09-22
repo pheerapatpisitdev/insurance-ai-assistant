@@ -39,7 +39,7 @@ export function MoneyInput({ value, onChange, placeholder, className, hint, max 
         value={shown}
         onChange={(e) => handle(e.target.value)}
       />
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-[var(--bot-ink-mute)]">{hint}</p>}
     </>
   );
 }
