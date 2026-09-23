@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { atFold, FOLD, fullText } from "@/lib/content/output";
 import { defaultPoster, type PosterSpec } from "@/lib/content/poster";
 import type { Fix } from "@/lib/content/proofread";
+import { FORMAT_LABEL } from "@/lib/content/prompt";
+import { AD_LIMITS } from "@/lib/content/ads";
 import type { ContentItem } from "@/lib/content/store";
 import { drawBackground, proofreadContent, saveContentEdits } from "./actions";
 import { PosterPanel } from "./PosterPanel";
@@ -83,8 +85,10 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
     hashtags: draft.tags.split(/\s+/).filter(Boolean),
     poster: draft.poster,
   };
-  const text = fullText(output, hook);
-  const fold = atFold(text);
+  const isAd = item.format === "ad";
+  // an ad is pasted into Ads Manager field by field; its primary text carries the regulator's line
+  const text = isAd ? `${draft.body}\n\n${item.output.disclaimer}` : fullText(output, hook);
+  const fold = atFold(isAd ? draft.body : text);
 
   async function save(): Promise<boolean> {
     if (!dirty) return true;
@@ -98,11 +102,11 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
     return true;
   }
 
-  async function copy() {
+  async function copy(what = text, label = "คัดลอกแล้ว ✓ วางในเฟซบุ๊กได้เลย") {
     await save();
     try {
-      await navigator.clipboard.writeText(text);
-      setNote("คัดลอกแล้ว ✓ วางในเฟซบุ๊กได้เลย");
+      await navigator.clipboard.writeText(what);
+      setNote(label);
     } catch {
       setNote("คัดลอกไม่ได้ ลองเลือกข้อความแล้วคัดลอกเองนะครับ");
     }
@@ -118,7 +122,7 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
     <section className="rounded-xl border-2 border-[var(--ct-accent)] bg-[var(--ct-panel)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-base font-semibold">{productName} · {item.format === "post" ? "โพสต์เฟซบุ๊ก" : "สคริปต์วิดีโอ"}</h2>
+          <h2 className="text-base font-semibold">{productName} · {FORMAT_LABEL[item.format]}</h2>
           {item.output.angle && <p className="mt-0.5 text-xs text-[var(--ct-mute)]">มุม: {item.output.angle}</p>}
         </div>
         <button type="button" onClick={onClose} className="rounded-lg border border-[var(--ct-line)] px-3 py-1 text-sm">ปิด</button>
@@ -142,37 +146,66 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
         />
       </div>
 
-      <fieldset className="mt-4">
-        <legend className="mb-1.5 text-sm font-medium">ประโยคเปิด{draft.hooks.length > 1 ? " — เลือก 1 แบบ" : ""}</legend>
-        <div className="space-y-2">
-          {draft.hooks.map((h, i) => (
-            <label key={i} className={`flex gap-2 rounded-lg border p-2 ${hook === i ? "border-[var(--ct-accent)] bg-[var(--ct-soft)]" : "border-[var(--ct-hair)]"}`}>
-              {draft.hooks.length > 1 && <input type="radio" name={`hook-${item.id}`} checked={hook === i} onChange={() => setHook(i)} className="mt-2.5" />}
-              <textarea
-                value={h} rows={2} aria-label={`ประโยคเปิดแบบที่ ${i + 1}`}
-                onChange={(e) => edit({ ...draft, hooks: draft.hooks.map((x, j) => (j === i ? e.target.value : x)) })}
-                className="w-full resize-y bg-transparent text-sm font-medium leading-relaxed outline-none"
-              />
-            </label>
-          ))}
+      {isAd ? (
+        <div className="mt-4 space-y-3">
+          <p className="text-xs text-[var(--ct-mute)]">3 ช่องนี้ตรงกับช่องใน Facebook Ads Manager — กดคัดลอกทีละช่องไปวางได้เลย</p>
+          {([
+            ["ข้อความหลัก (Primary text)", draft.body, (v: string) => edit({ ...draft, body: v }), null, 8],
+            ["พาดหัว (Headline) — ใต้ภาพ ข้างปุ่ม", draft.hooks[0] ?? "", (v: string) => edit({ ...draft, hooks: [v] }), AD_LIMITS.headline, 1],
+            ["คำอธิบาย (Description)", draft.closing, (v: string) => edit({ ...draft, closing: v }), AD_LIMITS.description, 1],
+          ] as const).map(([label, value, set, limit, rows]) => {
+            const n = [...value].length;
+            return (
+              <label key={label} className="block">
+                <span className="mb-1 flex items-center justify-between gap-2 text-sm font-medium">
+                  <span>{label}</span>
+                  <span className="flex items-center gap-2">
+                    {limit && <span className={`text-xs font-normal ${n > limit ? "text-[var(--ct-alert)]" : "text-[var(--ct-mute)]"}`}>{n}/{limit}</span>}
+                    <button type="button" onClick={() => copy(label.startsWith("ข้อความหลัก") ? text : value, "คัดลอกแล้ว ✓ วางใน Ads Manager ได้เลย")} className="rounded border border-[var(--ct-line)] px-2 py-0.5 text-xs font-normal">คัดลอก</button>
+                  </span>
+                </span>
+                {rows > 1
+                  ? <textarea value={value} rows={rows} onChange={(e) => set(e.target.value)} className={field} />
+                  : <input value={value} onChange={(e) => set(e.target.value)} className={field} />}
+              </label>
+            );
+          })}
         </div>
-      </fieldset>
+      ) : (
+        <>
+        <fieldset className="mt-4">
+          <legend className="mb-1.5 text-sm font-medium">ประโยคเปิด{draft.hooks.length > 1 ? " — เลือก 1 แบบ" : ""}</legend>
+          <div className="space-y-2">
+            {draft.hooks.map((h, i) => (
+              <label key={i} className={`flex gap-2 rounded-lg border p-2 ${hook === i ? "border-[var(--ct-accent)] bg-[var(--ct-soft)]" : "border-[var(--ct-hair)]"}`}>
+                {draft.hooks.length > 1 && <input type="radio" name={`hook-${item.id}`} checked={hook === i} onChange={() => setHook(i)} className="mt-2.5" />}
+                <textarea
+                  value={h} rows={2} aria-label={`ประโยคเปิดแบบที่ ${i + 1}`}
+                  onChange={(e) => edit({ ...draft, hooks: draft.hooks.map((x, j) => (j === i ? e.target.value : x)) })}
+                  className="w-full resize-y bg-transparent text-sm font-medium leading-relaxed outline-none"
+                />
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
-      <label className="mt-4 block">
-        <span className="mb-1 block text-sm font-medium">เนื้อหา</span>
-        <textarea value={draft.body} rows={item.format === "script" ? 14 : 10} onChange={(e) => edit({ ...draft, body: e.target.value })} className={field} />
-      </label>
-      <label className="mt-3 block">
-        <span className="mb-1 block text-sm font-medium">ประโยคปิด</span>
-        <textarea value={draft.closing} rows={2} onChange={(e) => edit({ ...draft, closing: e.target.value })} className={field} />
-      </label>
-      <label className="mt-3 block">
-        <span className="mb-1 block text-sm font-medium">แฮชแท็ก</span>
-        <input value={draft.tags} onChange={(e) => edit({ ...draft, tags: e.target.value })} className={field} />
-      </label>
+        <label className="mt-4 block">
+          <span className="mb-1 block text-sm font-medium">เนื้อหา</span>
+          <textarea value={draft.body} rows={item.format === "script" ? 14 : 10} onChange={(e) => edit({ ...draft, body: e.target.value })} className={field} />
+        </label>
+        <label className="mt-3 block">
+          <span className="mb-1 block text-sm font-medium">ประโยคปิด</span>
+          <textarea value={draft.closing} rows={2} onChange={(e) => edit({ ...draft, closing: e.target.value })} className={field} />
+        </label>
+        <label className="mt-3 block">
+          <span className="mb-1 block text-sm font-medium">แฮชแท็ก</span>
+          <input value={draft.tags} onChange={(e) => edit({ ...draft, tags: e.target.value })} className={field} />
+        </label>
+        </>
+      )}
       <p className="mt-3 whitespace-pre-line text-xs text-[var(--ct-mute)]">ต่อท้ายให้อัตโนมัติ: {item.output.disclaimer}</p>
 
-      {item.format === "post" && (
+      {item.format !== "script" && (
         <div className="mt-4 rounded-lg bg-[var(--ct-ground)] p-3 text-sm">
           <p className="mb-1 text-xs font-medium text-[var(--ct-mute)]">
             คนเห็นก่อนกด “ดูเพิ่มเติม” ({Math.min(fold.length, FOLD)}/{FOLD} ตัวอักษรแรก)
@@ -241,8 +274,8 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button type="button" onClick={copy} className="rounded-lg bg-[var(--ct-solid)] px-4 py-2 text-sm font-medium text-[var(--ct-solid-ink)]">
-          คัดลอกทั้งชิ้น
+        <button type="button" onClick={() => copy()} className="rounded-lg bg-[var(--ct-solid)] px-4 py-2 text-sm font-medium text-[var(--ct-solid-ink)]">
+          {isAd ? "คัดลอกข้อความหลัก" : "คัดลอกทั้งชิ้น"}
         </button>
         <button type="button" onClick={save} disabled={!dirty || saving} className="rounded-lg border border-[var(--ct-line)] px-4 py-2 text-sm disabled:opacity-50">
           {saving ? "กำลังบันทึก…" : dirty ? "บันทึกการแก้ไข" : "บันทึกแล้ว"}

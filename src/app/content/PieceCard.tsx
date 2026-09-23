@@ -1,5 +1,6 @@
 "use client";
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
+import { FORMAT_SHORT } from "@/lib/content/prompt";
 import type { ContentItem } from "@/lib/content/store";
 
 /**
@@ -37,7 +38,7 @@ export function PieceCard({ item, index, productName, busy, onEdit, onStatus, on
           className="aspect-square w-full bg-[var(--ct-ground)] object-cover"
         />
         <span className="absolute left-3 top-3 rounded-full bg-[var(--ct-panel)] px-2.5 py-0.5 text-xs text-[var(--ct-mute)]">
-          {item.format === "post" ? "โพสต์" : "สคริปต์"} {index + 1}
+          {FORMAT_SHORT[item.format]} {index + 1}
         </span>
         {toCheck > 0 && (
           <span className={`absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-xs ${blocking ? "bg-[var(--ct-alert-bg)] text-[var(--ct-alert)]" : "bg-[var(--ct-warn-bg)] text-[var(--ct-warn-ink)]"}`}>

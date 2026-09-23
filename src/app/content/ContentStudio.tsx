@@ -4,7 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { fullText } from "@/lib/content/output";
 import { MAX_PIECES } from "@/lib/content/plan";
-import type { AngleId, Format, Length } from "@/lib/content/prompt";
+import { FORMAT_LABEL, FORMAT_SHORT, type AngleId, type Format, type Length } from "@/lib/content/prompt";
+import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, generateContent, removeContent, setContentStatus } from "./actions";
 import { PieceCard } from "./PieceCard";
@@ -34,10 +35,7 @@ interface Props {
   spend: { spent: number; cap: number };
 }
 
-const FORMATS: { id: Format; label: string }[] = [
-  { id: "post", label: "โพสต์เฟซบุ๊ก" },
-  { id: "script", label: "สคริปต์วิดีโอ" },
-];
+const FORMATS: Format[] = ["post", "script", "ad"];
 
 const TABS: { id: ContentStatus; label: string }[] = [
   { id: "draft", label: "รอตรวจ" },
@@ -61,6 +59,8 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   const [custom, setCustom] = useState("");
   const [length, setLength] = useState<Length>("60");
   const [count, setCount] = useState(3);
+  const [adAngles, setAdAngles] = useState(2);
+  const [adTones, setAdTones] = useState(2);
   const [hookId, setHookId] = useState(initialHook ?? "");
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
@@ -91,7 +91,8 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
       let res: Awaited<ReturnType<typeof generateContent>>;
       try {
         res = await generateContent({
-          href, format, angle, custom, length: format === "script" ? length : null, count, hookTemplateId: hookId || null,
+          href, format, angle, custom, length: format === "script" ? length : null, count,
+          hookTemplateId: format === "ad" ? null : hookId || null, adAngles, adTones,
         });
       } catch {
         /**
@@ -105,7 +106,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
         return;
       }
       if (!res.ok) { setError(res.error); return; }
-      if (res.missing > 0) setError(`ได้ ${res.items.length} จาก ${count} ชิ้น — อีก ${res.missing} ชิ้นเขียนไม่สำเร็จ กดสร้างเพิ่มได้`);
+      if (res.missing > 0) setError(`ได้ ${res.items.length} จาก ${pieceCount} ชิ้น — อีก ${res.missing} ชิ้นเขียนไม่สำเร็จ กดสร้างเพิ่มได้`);
       setTab("draft");
       setPlan("");
       setEditing(null);
@@ -146,7 +147,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
 
   async function copy(item: ContentItem) {
     try {
-      await navigator.clipboard.writeText(fullText(item.output));
+      await navigator.clipboard.writeText(item.format === "ad" ? `${item.output.body}\n\n${item.output.disclaimer}` : fullText(item.output));
       setCopied(item.id);
       setTimeout(() => setCopied(null), 2000);
     } catch {
@@ -164,7 +165,8 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  const estimate = (count * PER_PIECE_THB).toFixed(1);
+  const pieceCount = format === "ad" ? adAngles * adTones : count;
+  const estimate = (pieceCount * PER_PIECE_THB).toFixed(1);
   const left = Math.max(0, spend.cap - spend.spent);
 
   return (
@@ -198,7 +200,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             <span className="mb-1.5 block text-sm font-medium">ทำอะไร</span>
             <div className="flex flex-wrap gap-2">
               {FORMATS.map((f) => (
-                <button key={f.id} type="button" aria-pressed={format === f.id} onClick={() => setFormat(f.id)} className={chip(format === f.id)}>{f.label}</button>
+                <button key={f} type="button" aria-pressed={format === f} onClick={() => setFormat(f)} className={chip(format === f)}>{FORMAT_LABEL[f]}</button>
               ))}
             </div>
           </div>
@@ -228,25 +230,51 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             )}
           </div>
 
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium">สูตรประโยคเปิด <span className="font-normal text-[var(--ct-mute)]">(ไม่ใช้ก็ได้)</span></span>
-            <select value={hookId} onChange={(e) => setHookId(e.target.value)} className={field}>
-              <option value="">ไม่ใช้สูตร — ให้ AI คิดเอง</option>
-              {hooks.map((h) => <option key={h.id} value={h.id}>{h.template}</option>)}
-            </select>
-            {chosenHook && (
-              <span className="mt-1 block text-xs text-[var(--ct-mute)]">หมวด {HOOK_CATEGORY_LABEL[chosenHook.category]} · ใช้ไปแล้ว {chosenHook.useCount} ครั้ง</span>
-            )}
-          </label>
-
-          <div>
-            <span className="mb-1.5 block text-sm font-medium">จำนวนชิ้น <span className="font-normal text-[var(--ct-mute)]">(แต่ละชิ้นคนละมุม)</span></span>
-            <div className="flex flex-wrap gap-2">
-              {Array.from({ length: MAX_PIECES }, (_, i) => i + 1).map((n) => (
-                <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={`${chip(count === n)} min-w-10`}>{n}</button>
-              ))}
+          {format === "ad" ? (
+            <div className="space-y-3 rounded-lg bg-[var(--ct-ground)] p-3">
+              <p className="text-xs leading-relaxed text-[var(--ct-mute)]">
+                ได้โฆษณาหลายแบบในรอบเดียว: แต่ละ “มุมขาย” เขียนด้วยหลาย “น้ำเสียง” เอาไปยิงเทียบกันใน Ads Manager ว่าแบบไหนได้ผล
+              </p>
+              <div>
+                <span className="mb-1.5 block text-sm font-medium">มุมขาย</span>
+                <div className="flex gap-2">
+                  {Array.from({ length: MAX_ANGLES }, (_, i) => i + 1).map((n) => (
+                    <button key={n} type="button" aria-pressed={adAngles === n} onClick={() => setAdAngles(n)} className={`${chip(adAngles === n)} min-w-10`}>{n}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <span className="mb-1.5 block text-sm font-medium">น้ำเสียงต่อมุม</span>
+                <div className="flex gap-2">
+                  {Array.from({ length: MAX_TONES }, (_, i) => i + 1).map((n) => (
+                    <button key={n} type="button" aria-pressed={adTones === n} onClick={() => setAdTones(n)} className={`${chip(adTones === n)} min-w-10`}>{n}</button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">สูตรประโยคเปิด <span className="font-normal text-[var(--ct-mute)]">(ไม่ใช้ก็ได้)</span></span>
+              <select value={hookId} onChange={(e) => setHookId(e.target.value)} className={field}>
+                <option value="">ไม่ใช้สูตร — ให้ AI คิดเอง</option>
+                {hooks.map((h) => <option key={h.id} value={h.id}>{h.template}</option>)}
+              </select>
+              {chosenHook && (
+                <span className="mt-1 block text-xs text-[var(--ct-mute)]">หมวด {HOOK_CATEGORY_LABEL[chosenHook.category]} · ใช้ไปแล้ว {chosenHook.useCount} ครั้ง</span>
+              )}
+            </label>
+
+            <div>
+              <span className="mb-1.5 block text-sm font-medium">จำนวนชิ้น <span className="font-normal text-[var(--ct-mute)]">(แต่ละชิ้นคนละมุม)</span></span>
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: MAX_PIECES }, (_, i) => i + 1).map((n) => (
+                  <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={`${chip(count === n)} min-w-10`}>{n}</button>
+                ))}
+              </div>
+            </div>
+            </>
+          )}
 
           {error && (
             <p role="alert" className="rounded-lg border border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] px-3 py-2 text-sm text-[var(--ct-alert)]">{error}</p>
@@ -254,7 +282,9 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
 
           <div>
             <button type="button" onClick={generate} disabled={pending || !href} className="w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
-              {pending ? `กำลังเขียน ${count} ชิ้น… (ราว 20–40 วินาที)` : `สร้าง ${count} ชิ้น`}
+              {pending
+                ? `กำลังเขียน ${pieceCount} ${format === "ad" ? "แบบ" : "ชิ้น"}… (ราว 20–40 วินาที)`
+                : format === "ad" ? `สร้างโฆษณา ${pieceCount} แบบ` : `สร้าง ${count} ชิ้น`}
             </button>
             <p className="mt-2 text-xs text-[var(--ct-mute)]">
               ราว ฿{estimate} · งบคอนเทนต์เดือนนี้เหลือ ฿{left.toFixed(2)} จาก ฿{spend.cap}
@@ -288,7 +318,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
 
           {pending && (
             <div className="rounded-xl border border-dashed border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-6 text-center text-sm text-[var(--ct-mute)]">
-              AI กำลังวางแผนมุม แล้วเขียน {count} ชิ้น… ไปทำอย่างอื่นก่อนได้ ชิ้นงานจะถูกเก็บไว้ที่ “รอตรวจ”
+              AI กำลังวางแผนมุม แล้วเขียน {pieceCount} {format === "ad" ? "แบบ" : "ชิ้น"}… ไปทำอย่างอื่นก่อนได้ ชิ้นงานจะถูกเก็บไว้ที่ “รอตรวจ”
             </div>
           )}
 
@@ -347,7 +377,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
               {used.slice(0, 20).map((u) => (
                 <li key={u.id}>
                   <button type="button" onClick={() => openUsed(u)} className="block w-full px-4 py-2.5 text-left hover:bg-[var(--ct-ground)]">
-                    <span className="block text-xs text-[var(--ct-mute)]">{nameOf(u.planHref)} · {u.format === "post" ? "โพสต์" : "สคริปต์"}</span>
+                    <span className="block text-xs text-[var(--ct-mute)]">{nameOf(u.planHref)} · {FORMAT_SHORT[u.format]}</span>
                     <span className="line-clamp-2 text-sm">{u.output.hooks[0]}</span>
                   </button>
                 </li>

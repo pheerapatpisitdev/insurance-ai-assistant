@@ -18,7 +18,8 @@ import {
   getHookTemplate, isContentStatus, listContent, listWords, saveBackground, saveContent, saveOutput, setFixes, setStatus,
   usedHooks, type ContentItem, type ContentStatus, type Flags,
 } from "@/lib/content/store";
-import { UnreadableReply, plan, write } from "@/lib/content/write";
+import { UnreadableReply, plan, write, writeAds } from "@/lib/content/write";
+import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 
 /**
  * The content workbench's doors, open to anyone who finds the page — the owner put it in the
@@ -61,6 +62,9 @@ export interface GenerateInput {
   length: Length | null;
   count: number;
   hookTemplateId: string | null;
+  /** for ads: how many selling angles, and how many tones each is written in */
+  adAngles?: number;
+  adTones?: number;
 }
 
 export type GenerateResult =
@@ -70,7 +74,7 @@ export type GenerateResult =
 export async function generateContent(input: GenerateInput): Promise<GenerateResult> {
   const brief = briefFor(input.href);
   if (!brief) return { ok: false, error: "ไม่พบผลิตภัณฑ์นี้" };
-  if (input.format !== "post" && input.format !== "script") return { ok: false, error: "เลือกประเภทงานก่อนนะครับ" };
+  if (!["post", "script", "ad"].includes(input.format)) return { ok: false, error: "เลือกประเภทงานก่อนนะครับ" };
   const angle: AngleId = input.angle === "custom" || ANGLES.some((a) => a.id === input.angle) ? input.angle : "";
   const length = input.format === "script" && LENGTHS.some((l) => l.id === input.length) ? input.length : null;
   const custom = (input.custom ?? "").trim().slice(0, MAX_CUSTOM);
@@ -90,6 +94,23 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
       listWords(),
     ]);
     const angleText = angle === "custom" ? custom : (ANGLES.find((a) => a.id === angle)?.label ?? "");
+
+    if (input.format === "ad") {
+      const angles = Math.min(MAX_ANGLES, Math.max(1, Math.round(Number(input.adAngles) || 2)));
+      const tones = Math.min(MAX_TONES, Math.max(1, Math.round(Number(input.adTones) || 2)));
+      const round = await writeAds({ brief: brief.text, angles, tones, hint: angleText });
+      const planShare = round.planThb / round.pieces.length;
+      const items: ContentItem[] = [];
+      for (const w of round.pieces) {
+        items.push(await saveContent({
+          planHref: brief.product.href, format: "ad", angle, length: null, output: w.output,
+          flags: flagsFor(w.output, brief.text, words, null),
+          rateVersion: brief.rateVersion, model: w.model, costThb: w.costThb + planShare, hookTemplateId: null,
+        }));
+      }
+      const costThb = items.reduce((s, i) => s + i.costThb, 0);
+      return { ok: true, items, costThb, missing: round.planned - items.length };
+    }
 
     const planned = await plan({ brief: brief.text, count, angle: angleText, avoid, template });
     const written = await write({ brief: brief.text, format: input.format, angle, custom, length, plans: planned.plans });

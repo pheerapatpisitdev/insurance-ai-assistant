@@ -325,11 +325,44 @@ export function parseJsonReply<T>(text: string): T | null {
   const start = body.indexOf("{");
   const end = body.lastIndexOf("}");
   if (start < 0 || end <= start) return null;
+  const json = body.slice(start, end + 1);
   try {
-    return JSON.parse(body.slice(start, end + 1)) as T;
+    return JSON.parse(json) as T;
   } catch {
-    return null;
+    try {
+      return JSON.parse(escapeBareControls(json)) as T;
+    } catch {
+      return null;
+    }
   }
+}
+
+/**
+ * Real line breaks and tabs inside JSON strings, escaped.
+ *
+ * Asked for a multi-paragraph Facebook ad as a JSON field, Sonnet 5 sometimes writes the
+ * paragraph breaks as actual newlines inside the string, which JSON forbids — the whole reply
+ * was thrown away and the owner got three ads of four. Only characters inside a string are
+ * touched; the structure between strings is left exactly as it came.
+ */
+export function escapeBareControls(json: string): string {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (const ch of json) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      else if (ch === "\n") { out += "\\n"; continue; }
+      else if (ch === "\r") { out += "\\r"; continue; }
+      else if (ch === "\t") { out += "\\t"; continue; }
+    } else if (ch === '"') {
+      inString = true;
+    }
+    out += ch;
+  }
+  return out;
 }
 
 /** Why a provider is or is not answering right now. */

@@ -23,6 +23,11 @@ export interface ContentOutput {
   disclaimer: string;
   /** the poster the writer designed; absent on pieces written before posters */
   poster?: PosterSpec;
+  /**
+   * For an ad, the cell it fills. An ad's Ads Manager fields live in the piece's own:
+   * headline in hooks[0], primary text in body, description in closing.
+   */
+  ad?: { angle: string; tone: string };
 }
 
 /** The piece as it will be pasted: one hook, the body, the closing, the tags, the disclaimer. */

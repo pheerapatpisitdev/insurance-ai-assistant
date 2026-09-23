@@ -1,5 +1,6 @@
 import { chat, parseJsonReply } from "@/lib/ai/client";
 import { DISCLAIMER, TAX_LINE, type ContentOutput } from "./output";
+import { adCopyMessages, matrixCells, matrixMessages, parseAdCopy, parseMatrix } from "./ads";
 import { parsePoster } from "./poster";
 import { parsePlans, planMessages, type PiecePlan } from "./plan";
 import { buildMessages, type AngleId, type Ask } from "./prompt";
@@ -126,4 +127,45 @@ export async function write(ask: Ask): Promise<WrittenPiece[]> {
     throw first?.reason ?? new UnreadableReply();
   }
   return written;
+}
+
+/**
+ * A round of ads: the cheap model designs the angles and tones, then every cell is written in
+ * parallel by the large one, as posts are. A cell that fails costs only itself.
+ */
+export async function writeAds(opts: { brief: string; angles: number; tones: number; hint: string }): Promise<{ pieces: WrittenPiece[]; planThb: number; planned: number }> {
+  const m = await chat({ tier: "small", task: "content-plan", messages: matrixMessages(opts.brief, opts.angles, opts.tones, opts.hint), maxTokens: 900, json: true })
+    .catch(() => null);
+  const matrix = parseMatrix(m?.text ?? "", opts.angles, opts.tones);
+  const cells = matrixCells(matrix);
+  const settled = await Promise.allSettled(cells.map(async (cell) => {
+    const r = await chat({
+      tier: "large", task: "content", messages: adCopyMessages(opts.brief, cell),
+      maxTokens: 3000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low",
+    });
+    const copy = parseAdCopy(r.text);
+    if (!copy) {
+      console.error(`content ad unreadable (${r.model}, ${r.outputTokens} tokens):`, r.text.slice(0, 600));
+      throw new UnreadableReply();
+    }
+    const poster = parsePoster(copy.poster);
+    const output: ContentOutput = {
+      hooks: [copy.headline],
+      angle: `${cell.angle.label} · ${cell.tone.label}`,
+      body: copy.primaryText,
+      closing: copy.description,
+      hashtags: [],
+      imagePrompt: copy.imagePrompt,
+      disclaimer: DISCLAIMER,
+      ...(poster ? { poster } : {}),
+      ad: { angle: cell.angle.label, tone: cell.tone.label },
+    };
+    return { output, model: r.model, costThb: r.costThb };
+  }));
+  const pieces = settled.flatMap((x) => (x.status === "fulfilled" ? [x.value] : []));
+  if (pieces.length === 0) {
+    const first = settled.find((x): x is PromiseRejectedResult => x.status === "rejected");
+    throw first?.reason ?? new UnreadableReply();
+  }
+  return { pieces, planThb: m?.costThb ?? 0, planned: cells.length };
 }
