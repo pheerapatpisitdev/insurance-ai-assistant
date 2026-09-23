@@ -9,8 +9,8 @@ import { FORMAT_LABEL, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type A
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
-import { contentSpend, contentWorkbench, generateContent, removeContent, setContentStatus } from "./actions";
-import { drawPicture } from "./draw";
+import { contentSpend, contentWorkbench, removeContent, setContentStatus, type DrawBackgroundResult, type GenerateResult } from "./actions";
+import { drawPicture, generateRound } from "./draw";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
 import { ScriptCard } from "./ScriptCard";
@@ -101,7 +101,13 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   const [counts, setCounts] = useState(initial.counts);
   const [used, setUsed] = useState(initialUsed);
   const [editing, setEditing] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  /** pieces with a status change or a delete under way — one each, several at once */
+  const [busy, setBusy] = useState<Set<string>>(() => new Set());
+  const mark = (id: string, on: boolean) => setBusy((b) => { const n = new Set(b); if (on) n.add(id); else n.delete(id); return n; });
+  /** a word for the owner that is not an error: a round that landed while an editor was open */
+  const [notice, setNotice] = useState<string>();
+  /** the ใช้จริง rail is every plan's, so its number is too — counts.used follows the filter */
+  const [usedTotal, setUsedTotal] = useState(initial.counts.used);
   const [copied, setCopied] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<Set<string>>(() => new Set());
   /**
@@ -111,7 +117,14 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
    * beside the finished card and read as a second piece being made.
    */
   const [making, setMaking] = useState(0);
+  const [makingFormat, setMakingFormat] = useState<Format>("post");
   const pending = making > 0;
+  /**
+   * What is on screen now, for code that finishes long after it started: a round lands
+   * twenty seconds after the press, and the closure it began in still sees that moment.
+   */
+  const view = useRef({ tab, plan, editing, items, used });
+  useEffect(() => { view.current = { tab, plan, editing, items, used }; });
   const pieces = useRef<HTMLElement>(null);
 
   const nameOf = (h: string) => products.find((p) => p.href === h)?.name ?? h;
@@ -130,10 +143,12 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     // อัตโนมัติ is settled at the press, on the money left then
     const paintWith = painterOf(painter, Math.max(0, spend.cap - spend.spent)).id;
     setMaking(asked);
+    setMakingFormat(format);
+    setNotice(undefined);
     try {
-      let res: Awaited<ReturnType<typeof generateContent>>;
+      let res: GenerateResult;
       try {
-        res = await generateContent({
+        res = await generateRound({
           href, format, angle, custom, length: format === "script" ? length : null, count,
           hookTemplateId: format === "ad" ? null : hookId || null, adAngles, adTones, writer,
           reader, goal: format === "ad" ? "" : goal, fact: format === "ad" ? "" : fact,
@@ -145,18 +160,36 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
          * regardless, so they are very likely already under รอตรวจ rather than lost.
          */
         setError("การเชื่อมต่อหลุดระหว่างรอ ชิ้นงานอาจสร้างเสร็จแล้ว ดูในแท็บ “รอตรวจ” ก่อนกดสร้างใหม่นะครับ");
-        setTab("draft");
-        await reload("draft", "").catch(() => {});
+        if (!view.current.editing) {
+          setTab("draft");
+          setPlan("");
+          await reload("draft", "").catch(() => {});
+        }
         return;
       }
       if (!res.ok) { setError(res.error); return; }
       if (res.missing > 0) setError(`ได้ ${res.items.length} จาก ${asked} ชิ้น — อีก ${res.missing} ชิ้นเขียนไม่สำเร็จ กดสร้างเพิ่มได้`);
-      setTab("draft");
-      setPlan("");
-      setEditing(null);
-      await reload("draft", "");
-      setMaking(0);
-      pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const now = view.current;
+      if (now.editing) {
+        /**
+         * An editor is open — the owner used the wait. Closing it threw their unsaved
+         * words away; the new pieces join the list instead, or wait under รอตรวจ.
+         */
+        if (now.tab === "draft" && !now.plan) {
+          const fresh = new Set(res.items.map((i) => i.id));
+          setItems((list) => [...res.items, ...list.filter((x) => !fresh.has(x.id))]);
+        } else {
+          setNotice(`สร้างเสร็จ ${res.items.length} ชิ้น อยู่ในแท็บ “รอตรวจ”`);
+        }
+        setCounts((c) => ({ ...c, draft: c.draft + res.items.length }));
+        setMaking(0);
+      } else {
+        setTab("draft");
+        setPlan("");
+        await reload("draft", "").catch(() => {});
+        setMaking(0);
+        pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
       // the painter as it was at the press, even if the owner changes it while waiting
       if (paintWith !== "none") void drawPictures(res.items.filter((i) => i.format !== "script"), paintWith);
       setSpend(await contentSpend().catch(() => spend));
@@ -172,17 +205,24 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
    */
   async function drawPictures(list: ContentItem[], paintWith: string) {
     if (list.length === 0) return;
-    const ids = list.map((i) => i.id);
-    setDrawing((d) => new Set([...d, ...ids]));
-    const results = await Promise.all(list.map(async (item) => {
-      const res = await drawPicture(item.id, "", paintWith);
-      setDrawing((d) => { const n = new Set(d); n.delete(item.id); return n; });
-      if (res?.ok) saved(res.item);
-      return res?.ok ? null : (res?.error ?? "วาดรูปไม่สำเร็จ");
-    }));
-    const failed = results.filter((e): e is string => e !== null);
+    const results = await Promise.all(list.map((item) => drawOne(item.id, "", paintWith, false)));
+    const failed = results.flatMap((r) => (r.ok ? [] : [r.error]));
     if (failed.length > 0) setError(`วาดภาพไม่สำเร็จ ${failed.length} ชิ้น (${failed[0]}) — กด “แก้ไข” แล้ววาดใหม่ได้`);
     setSpend(await contentSpend().catch(() => spend));
+  }
+
+  /**
+   * One picture, from the auto-draw or the editor alike: the card shows it drawing, the
+   * editor's button waits even after the editor is closed and opened again — it was live
+   * again then, and a second paid picture could be ordered — and the budget line follows.
+   */
+  async function drawOne(id: string, request: string, paintWith: string, refresh = true): Promise<DrawBackgroundResult> {
+    setDrawing((d) => new Set(d).add(id));
+    const res = await drawPicture(id, request, paintWith);
+    setDrawing((d) => { const n = new Set(d); n.delete(id); return n; });
+    if (res.ok) saved(res.item);
+    if (refresh) setSpend(await contentSpend().catch(() => spend));
+    return res;
   }
 
   /**
@@ -197,30 +237,37 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     if (item.status === status) { if (editing === item.id) setEditing(null); return; }
     if (moving.current.has(item.id)) return;
     moving.current.add(item.id);
-    setBusy(item.id);
-    const res = await setContentStatus(item.id, status).finally(() => moving.current.delete(item.id));
-    setBusy(null);
+    mark(item.id, true);
+    const res = await setContentStatus(item.id, status).catch(() => ({ ok: false })).finally(() => moving.current.delete(item.id));
+    mark(item.id, false);
     if (!res.ok) { setError("เปลี่ยนสถานะไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
-    if (editing === item.id) setEditing(null);
+    setError(undefined);
+    if (view.current.editing === item.id) setEditing(null);
+    // the copy on screen now, not the one the button was drawn with: an edit saved or a
+    // picture landed since, and the rail showed the old words and the plain poster
+    const newest = [...view.current.items, ...view.current.used].find((x) => x.id === item.id) ?? item;
     setItems((list) => list.filter((x) => x.id !== item.id));
     setCounts((c) => ({ ...c, [item.status]: Math.max(0, c[item.status] - 1), [status]: c[status] + 1 }));
+    setUsedTotal((n) => Math.max(0, n + (status === "used" ? 1 : -1)));
     // one row per piece in the rail, whatever order the updates arrive in
     setUsed((list) => {
       const others = list.filter((x) => x.id !== item.id);
-      return status === "used" ? [{ ...item, status }, ...others] : others;
+      return status === "used" ? [{ ...newest, status }, ...others] : others;
     });
   }
 
   async function remove(item: ContentItem) {
     if (!window.confirm("ลบชิ้นนี้ถาวร? ลบแล้วกู้คืนไม่ได้")) return;
-    setBusy(item.id);
-    const res = await removeContent(item.id);
-    setBusy(null);
+    mark(item.id, true);
+    const res = await removeContent(item.id).catch(() => ({ ok: false }));
+    mark(item.id, false);
     if (!res.ok) { setError("ลบไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
-    if (editing === item.id) setEditing(null);
+    setError(undefined);
+    if (view.current.editing === item.id) setEditing(null);
     setItems((list) => list.filter((x) => x.id !== item.id));
     setUsed((list) => list.filter((x) => x.id !== item.id));
     setCounts((c) => ({ ...c, [item.status]: Math.max(0, c[item.status] - 1) }));
+    if (item.status === "used") setUsedTotal((n) => Math.max(0, n - 1));
   }
 
   function saved(next: ContentItem) {
@@ -242,7 +289,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     if (tab !== "used" || plan) {
       setTab("used");
       setPlan("");
-      await reload("used", "");
+      await reload("used", "").catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"));
     }
     setEditing(item.id);
     pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -433,14 +480,10 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             </div>
           )}
 
-          {error && (
-            <p role="alert" className="rounded-lg border border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] px-3 py-2 text-sm text-[var(--ct-alert)]">{error}</p>
-          )}
-
           <div>
             <button type="button" onClick={generate} disabled={pending || !href} className="w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
               {pending
-                ? `กำลังเขียน ${pieceCount} ${format === "ad" ? "แบบ" : "ชิ้น"}… (ราว 20–40 วินาที)`
+                ? `กำลังเขียน ${making} ${makingFormat === "ad" ? "แบบ" : "ชิ้น"}… (ราว 20–40 วินาที)`
                 : format === "ad" ? `สร้างโฆษณา ${pieceCount} แบบ` : `สร้าง ${count} ชิ้น`}
             </button>
             <p className="mt-2 text-xs text-[var(--ct-mute)]">
@@ -456,7 +499,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
               {TABS.map((t) => (
                 <button
                   key={t.id} type="button" role="tab" aria-selected={tab === t.id}
-                  onClick={() => { setTab(t.id); setEditing(null); void reload(t.id, plan); }}
+                  onClick={() => { setTab(t.id); setEditing(null); reload(t.id, plan).catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ")); }}
                   className={`rounded-full px-3 py-1.5 text-sm ${tab === t.id ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]"}`}
                 >
                   {t.label} <span className="tabular-nums">{counts[t.id]}</span>
@@ -465,7 +508,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             </div>
             <select
               value={plan} aria-label="กรองตามแบบประกัน"
-              onChange={(e) => { setPlan(e.target.value); setEditing(null); void reload(tab, e.target.value); }}
+              onChange={(e) => { setPlan(e.target.value); setEditing(null); reload(tab, e.target.value).catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ")); }}
               className="rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-2 py-1.5 text-sm"
             >
               <option value="">ทุกแบบ</option>
@@ -477,7 +520,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             <div role="status" className="space-y-3">
               <p className="flex items-center gap-2 text-sm font-medium text-[var(--ct-accent)]">
                 <span className="size-2.5 rounded-full bg-[var(--ct-accent)] motion-safe:animate-pulse" />
-                กำลังสร้าง {making} {format === "ad" ? "แบบ" : "ชิ้น"}…
+                กำลังสร้าง {making} {makingFormat === "ad" ? "แบบ" : "ชิ้น"}…
               </p>
               <div className="grid gap-4 @xl:grid-cols-2">
                 {Array.from({ length: making }, (_, i) => <PieceSkeleton key={i} />)}
@@ -503,6 +546,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                       drawing={drawing.has(item.id)}
                       productName={nameOf(item.planHref)}
                       onSaved={saved}
+                      onDraw={(request, paintWith) => drawOne(item.id, request, paintWith)}
                       onStatus={(s) => changeStatus(item, s)}
                       onClose={() => setEditing(null)}
                     />
@@ -512,7 +556,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                     key={item.id}
                     item={item}
                     index={i}
-                    busy={busy === item.id}
+                    busy={busy.has(item.id)}
                     onEdit={() => setEditing(item.id)}
                     onStatus={(s) => changeStatus(item, s)}
                     onDelete={() => remove(item)}
@@ -524,7 +568,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                     item={item}
                     index={i}
                     productName={nameOf(item.planHref)}
-                    busy={busy === item.id}
+                    busy={busy.has(item.id)}
                     drawing={drawing.has(item.id)}
                     onEdit={() => setEditing(item.id)}
                     onStatus={(s) => changeStatus(item, s)}
@@ -545,7 +589,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
               <h2 className="font-semibold">ใช้จริง</h2>
               <p className="mt-0.5 text-xs text-[var(--ct-mute)]">ชิ้นที่เลือกไปโพสต์แล้ว</p>
             </div>
-            <span className="text-2xl tabular-nums text-[var(--ct-accent)]">{counts.used}</span>
+            <span className="text-2xl tabular-nums text-[var(--ct-accent)]">{usedTotal}</span>
           </div>
           {used.length === 0 ? (
             <p className="m-4 rounded-lg border border-dashed border-[var(--ct-line)] px-3 py-6 text-center text-xs text-[var(--ct-mute)]">
@@ -574,6 +618,18 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
           )}
         </aside>
       </div>
+
+      {(error || notice) && (
+        <div
+          role={error ? "alert" : "status"}
+          className={`fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-start gap-3 rounded-lg border px-3 py-2 text-sm shadow-lg ${error
+            ? "border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] text-[var(--ct-alert)]"
+            : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-ink)]"}`}
+        >
+          <p className="flex-1">{error ?? notice}</p>
+          <button type="button" onClick={() => { setError(undefined); setNotice(undefined); }} aria-label="ปิดข้อความ" className="-mr-1 px-1 text-base leading-none">✕</button>
+        </div>
+      )}
     </div>
   );
 }

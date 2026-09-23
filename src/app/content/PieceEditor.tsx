@@ -6,8 +6,7 @@ import type { Fix } from "@/lib/content/proofread";
 import { FORMAT_LABEL } from "@/lib/content/prompt";
 import { AD_LIMITS } from "@/lib/content/ads";
 import type { ContentItem } from "@/lib/content/store";
-import { proofreadContent, saveContentEdits } from "./actions";
-import { drawPicture } from "./draw";
+import { proofreadContent, saveContentEdits, type DrawBackgroundResult } from "./actions";
 import { PosterPanel } from "./PosterPanel";
 
 /**
@@ -53,11 +52,13 @@ interface Props {
   /** the page is drawing this piece's photograph already */
   drawing?: boolean;
   onSaved: (item: ContentItem) => void;
+  /** orders a picture through the page, which shows it drawing on the card and in here */
+  onDraw: (request: string, painter: string) => Promise<DrawBackgroundResult>;
   onStatus: (status: ContentItem["status"]) => void;
   onClose: () => void;
 }
 
-export function PieceEditor({ item, productName, drawing, onSaved, onStatus, onClose }: Props) {
+export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onStatus, onClose }: Props) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(item, productName));
   const [hook, setHook] = useState(0);
   const [fixes, setFixes] = useState<Fix[] | null>(item.flags.fixes);
@@ -84,7 +85,7 @@ export function PieceEditor({ item, productName, drawing, onSaved, onStatus, onC
     if (item.flags.fixes) return;
     let live = true;
     setProofing(true);
-    proofreadContent(item.id).then((f) => { if (live) setFixes(f); }).finally(() => { if (live) setProofing(false); });
+    proofreadContent(item.id).then((f) => { if (live) setFixes(f); }).catch(() => {}).finally(() => { if (live) setProofing(false); });
     return () => { live = false; };
   }, [item.id, item.flags.fixes]);
 
@@ -117,14 +118,16 @@ export function PieceEditor({ item, productName, drawing, onSaved, onStatus, onC
     return true;
   }
 
+  /**
+   * The clipboard first, straight from the tap — iPhone Safari refuses a write that waits on
+   * the network — then the save; a save that fails says so instead of "คัดลอกแล้ว".
+   */
   async function copy(what = text, label = "คัดลอกแล้ว ✓ วางในเฟซบุ๊กได้เลย") {
-    await save();
-    try {
-      await navigator.clipboard.writeText(what);
-      setNote(label);
-    } catch {
-      setNote("คัดลอกไม่ได้ ลองเลือกข้อความแล้วคัดลอกเองนะครับ");
-    }
+    let copied = true;
+    await navigator.clipboard.writeText(what).catch(() => { copied = false; });
+    const kept = await save();
+    if (!kept) return; // save() has put its error in the note
+    setNote(copied ? label : "คัดลอกไม่ได้ ลองเลือกข้อความแล้วคัดลอกเองนะครับ");
   }
 
   const flags = item.flags;
@@ -154,14 +157,13 @@ export function PieceEditor({ item, productName, drawing, onSaved, onStatus, onC
           }}
           busy={drawing}
           onDraw={async (request, painter) => {
-            const res = await drawPicture(item.id, request, painter);
+            const res = await onDraw(request, painter);
             if (!res.ok) return res.error;
             // the picture is saved already; only the background joins the draft, so poster
             // words the owner has typed but not yet saved are kept
             const background = res.item.output.poster?.background;
             setPlain(false);
             setDraft((d) => ({ ...d, poster: { ...d.poster, background } }));
-            onSaved(res.item);
             return null;
           }}
         />

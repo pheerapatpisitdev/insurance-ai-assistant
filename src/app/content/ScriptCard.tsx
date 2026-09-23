@@ -43,7 +43,8 @@ export function ScriptCard({ item, index, busy, onEdit, onStatus, onDelete, onCo
         )}
       </div>
 
-      <button type="button" onClick={onEdit} className="block flex-1 text-left hover:bg-[var(--ct-ground)]" aria-label="เปิดแก้ไขสคริปต์นี้">
+      {/* a list may not sit inside a button; แก้ไข below opens the script */}
+      <div className="flex-1">
         <ol className="divide-y divide-[var(--ct-hair)]">
           {list.map((s, i) => (
             <li key={i} className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-3 px-3 py-2.5">
@@ -60,7 +61,7 @@ export function ScriptCard({ item, index, busy, onEdit, onStatus, onDelete, onCo
             </li>
           ))}
         </ol>
-      </button>
+      </div>
 
       <div className="grid grid-cols-3 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
         {item.status === "used" ? (

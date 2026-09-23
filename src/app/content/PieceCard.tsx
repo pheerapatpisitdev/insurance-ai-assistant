@@ -35,7 +35,7 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
 
   return (
     <article className="overflow-hidden rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)]">
-      <button type="button" onClick={onEdit} className="relative block w-full text-left" aria-label="เปิดแก้ไขชิ้นนี้">
+      <button type="button" onClick={onEdit} className="relative block w-full text-left">
         {/* eslint-disable-next-line @next/next/no-img-element -- a drawn PNG from our own route, not an asset to optimise */}
         <img
           src={picture}
