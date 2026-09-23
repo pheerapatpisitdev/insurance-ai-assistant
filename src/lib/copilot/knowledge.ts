@@ -90,14 +90,14 @@ const PENSION_SECTION = [
 ].join("\n");
 
 /**
- * CI 123 as the agency sells it on its own page: the rider on the smallest Life Protect+ 100.
+ * CI 123 as the agency sells it on its own page: the rider on the smallest Life Protect x 2.
  * The rider's own rules are in the plan sections above; this says only that it is priced here
  * and on what, so the model neither refuses a price the chat can give nor invents a base.
  */
 const CI123_SECTION = [
   `## ${CI123_LABEL} แบบชุด (หน้า /ci123)`,
   "- คิดเบี้ยในแชทนี้ได้ — บอกอายุ เพศ และทุน CI 123 (เช่น “CI 123 ชาย 35 ทุน 1 ล้าน”)",
-  "- CI 123 เป็นสัญญาเพิ่มเติม ซื้อเดี่ยวไม่ได้ ชุดนี้คู่กับประกันชีวิต Life Protect+ 100 (ไลฟ์ โพรเทค+ 100) ชำระเบี้ยถึงอายุ 99 ทุน 150,000 บาท เบี้ยที่คิดให้รวมทั้งสองสัญญา",
+  "- CI 123 เป็นสัญญาเพิ่มเติม ซื้อเดี่ยวไม่ได้ ชุดนี้คู่กับประกันชีวิต Life Protect x 2 (ไลฟ์ โพรเทค x 2) ชำระเบี้ยถึงอายุ 99 ทุน 150,000 บาท เบี้ยที่คิดให้รวมทั้งสองสัญญา",
   "- รับอายุแรกเกิดถึง 75 ปี · หน้า /ci123 มีทุน 5 แสน 1 2 3 4 5 และ 10 ล้าน",
   "- จ่ายตามระยะ (% ของทุน CI 123): ระยะก่อนเริ่มต้น 20% สูงสุด 100,000 · ระยะเริ่มต้นถึงปานกลาง 25% · โรคเด็ก 25% · เงื่อนไขพิเศษ 10% · ภาวะวิกฤต 25% (นับรวมวงเงินเดียวกับระยะรุนแรง) · ระยะรุนแรง 100% แล้วสัญญาสิ้นสุด",
   "- ระยะเวลารอคอย 90 วัน · เบี้ยส่วน CI 123 คิดตามอายุจริง ปรับขึ้นทุกปี",
@@ -120,7 +120,7 @@ function cancerSection(): string {
     `## ${CANCER_LABEL} / แพ็กเกจมะเร็ง (หน้า /cancer)`,
     "- เมื่อลูกค้าพูดว่า “ประกันมะเร็ง” หรือ “แพ็กเกจมะเร็ง” หมายถึงชุดนี้เสมอ ไม่ใช่แบบอื่นที่คุ้มครองมะเร็งด้วย",
     "- คิดเบี้ยในแชทนี้ได้ — บอกอายุ เพศ และทุนมะเร็ง (เช่น “ประกันมะเร็ง ชาย 35 ทุน 1 ล้าน”) คิดได้เฉพาะ 8 แพ็กเกจข้างล่าง",
-    "- ชุดนี้คือสัญญาเพิ่มเติม CPR (คุ้มครองโรคมะเร็ง จ่ายเงินก้อน) คู่กับ HIC (ค่าชดเชยรายวันเมื่อนอนโรงพยาบาลเพราะมะเร็ง) แนบกับประกันชีวิต Life Protect+ 100 ชำระเบี้ยถึงอายุ 99 เบี้ยที่คิดให้รวมทั้งสามสัญญา",
+    "- ชุดนี้คือสัญญาเพิ่มเติม CPR (คุ้มครองโรคมะเร็ง จ่ายเงินก้อน) คู่กับ HIC (ค่าชดเชยรายวันเมื่อนอนโรงพยาบาลเพราะมะเร็ง) แนบกับประกันชีวิต Life Protect x 2 ชำระเบี้ยถึงอายุ 99 เบี้ยที่คิดให้รวมทั้งสามสัญญา",
     `- รับอายุ ${range.min}–${range.max} ปี · แพ็กเกจ: ${packages.join(" · ")}`,
     `- CPR จ่ายตามระยะ (% ของทุนมะเร็ง): ${CPR_STAGES.map((s) => `${s.label} ${pct(s.share)}${s.cap ? ` สูงสุด ${s.cap.toLocaleString("en-US")}` : ""}${s.major ? " หักส่วนที่จ่ายไปแล้ว" : ""}`).join(" · ")}`,
     `- ${CPR_STAGES.filter((s) => s.note).map((s) => `${s.label}: ${s.note}`).join(" · ")}`,
@@ -449,7 +449,7 @@ export async function assembleKnowledge(question = ""): Promise<string> {
      * by hand and forbid quoting any other — which outranked everything below it, so fixing
      * the per-plan lines alone would have left the assistant refusing anyway.
      */
-    `**สำคัญ:** แชทนี้คิดเบี้ยให้ได้เฉพาะแบบเหล่านี้: ${priceableNames().join(", ")}, ${PENSION_LABEL}, ${CI123_LABEL} (แบบชุดคู่ Life Protect+ 100), ${CANCER_LABEL} (แพ็กเกจมะเร็ง หน้า /cancer) และ iHealthy Ultra`,
+    `**สำคัญ:** แชทนี้คิดเบี้ยให้ได้เฉพาะแบบเหล่านี้: ${priceableNames().join(", ")}, ${PENSION_LABEL}, ${CI123_LABEL} (แบบชุดคู่ Life Protect x 2), ${CANCER_LABEL} (แพ็กเกจมะเร็ง หน้า /cancer) และ iHealthy Ultra`,
     "แบบที่ไม่อยู่ในรายการนี้ ตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
     "",
     plans,

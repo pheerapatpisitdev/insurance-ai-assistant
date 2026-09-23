@@ -68,7 +68,7 @@ export function cancerQuoteText(f: CancerQuoteFacts): string {
     `- วันละ ${baht(f.hic)} บาท สูงสุด ${HIC_MAX_DAYS} วัน (ระยะลุกลามขยายอีก ${HIC_INVASIVE_EXTRA_DAYS} วัน)`,
     "",
     "📄 ชุดนี้ประกอบด้วย",
-    `- Life Protect+ 100 ชำระเบี้ยถึงอายุ 99 ทุน ${baht(f.baseSum)} บาท`,
+    `- Life Protect x 2 ชำระเบี้ยถึงอายุ 99 ทุน ${baht(f.baseSum)} บาท`,
     `- สัญญาเพิ่มเติมคุ้มครองโรคมะเร็ง (CPR) ทุน ${baht(f.cpr)} บาท`,
     `- สัญญาเพิ่มเติมค่าชดเชยรายวันเนื่องจากโรคมะเร็ง (HIC) วันละ ${baht(f.hic)} บาท`,
     "",

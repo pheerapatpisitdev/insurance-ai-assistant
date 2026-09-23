@@ -35,7 +35,7 @@ export function ageWord(age: number): string {
  * on screen.
  */
 export function lifeProtectMessage(f: LifeProtectCtaFacts): string {
-  const head = `สนใจ Life Protect+ 100 ทุน ${f.sumAssured.toLocaleString("en-US")}`;
+  const head = `สนใจ Life Protect x 2 ทุน ${f.sumAssured.toLocaleString("en-US")}`;
   if (f.age === "over") return `${head} อายุเกิน ${f.ageMax} ปี ขอแบบที่เหมาะกับอายุนี้`;
   const who = `${head} ${f.termLabel} อายุ${f.age === 0 ? "" : " "}${ageWord(f.age)} ${SEX_WORD[f.sex]}`
     + (f.rider ? ` + ${f.rider}` : "");
@@ -76,7 +76,7 @@ export function lifeProtectQuoteText(f: LifeProtectQuoteFacts): string {
   const lines = [
     // an emoji a heading, no more: the text is pasted into a customer's chat, where a wall
     // of them reads as a broadcast rather than as an agent answering
-    "🛡️ Life Protect+ 100",
+    "🛡️ Life Protect x 2",
     sum,
     "",
     `${SEX_WORD[f.sex]} อายุ ${ageWord(f.age)} · ${f.termLabel}`,

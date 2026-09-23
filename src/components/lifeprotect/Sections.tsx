@@ -146,7 +146,7 @@ export function FaqSection({ facts }: { facts: LifeProtectCopyFacts }) {
   const faqs: { q: string; a: React.ReactNode }[] = [
     {
       q: "ทำไมครอบครัวถึงได้ 2 เท่า",
-      a: `Life Protect+ 100 จ่ายทุนประกันบวกเพิ่มอีก 1 เท่า เมื่อเสียชีวิตก่อนครบรอบปีกรมธรรม์ที่อายุ ${facts.boosterBeforeAge} ตั้งแต่อายุ ${facts.boosterBeforeAge} เป็นต้นไปจ่ายเท่าทุนจนถึงอายุ ${facts.coverToAge} เป็นเงื่อนไขของแบบประกันเอง ไม่ต้องซื้อสัญญาเพิ่มเติม`,
+      a: `Life Protect x 2 จ่ายทุนประกันบวกเพิ่มอีก 1 เท่า เมื่อเสียชีวิตก่อนครบรอบปีกรมธรรม์ที่อายุ ${facts.boosterBeforeAge} ตั้งแต่อายุ ${facts.boosterBeforeAge} เป็นต้นไปจ่ายเท่าทุนจนถึงอายุ ${facts.coverToAge} เป็นเงื่อนไขของแบบประกันเอง ไม่ต้องซื้อสัญญาเพิ่มเติม`,
     },
     {
       q: `ถ้าเริ่มทำตอนอายุ ${facts.boosterBeforeAge} ขึ้นไป ยังได้ 2 เท่าไหม`,

@@ -753,7 +753,7 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
   // The Legacy sales card is about the immediate family and critical-illness protection.
   // Its surrender figures are not part of the shared quote, while other bundle cards may
   // still use the common cash-value block.
-  // The CI 123 set is the same: its base is the smallest Life Protect+ 100, there to carry the rider.
+  // The CI 123 set is the same: its base is the smallest Life Protect x 2, there to carry the rider.
   if (!NO_CASH_BUNDLES.has(input.bundleCode) && cashRows.length) {
     sections.push({ title: CASH_TITLE, rows: cashRows });
   }

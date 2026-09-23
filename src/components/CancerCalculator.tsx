@@ -174,7 +174,7 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
                     <dd className="tabular-nums">{formatBaht(parts[2])} บาท/ปี</dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt>Life Protect+ 100 ทุน {t.baseSum.toLocaleString("en-US")}</dt>
+                    <dt>Life Protect x 2 ทุน {t.baseSum.toLocaleString("en-US")}</dt>
                     <dd className="tabular-nums">{formatBaht(parts[0])} บาท/ปี</dd>
                   </div>
                 </dl>
@@ -212,7 +212,7 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
 
           <div className="pt-1">
             <hr className="lg-rule" />
-            <div className="pt-4 text-sm text-[var(--lg-mute)]">เสียชีวิต ครอบครัวได้รับจาก Life Protect+ 100</div>
+            <div className="pt-4 text-sm text-[var(--lg-mute)]">เสียชีวิต ครอบครัวได้รับจาก Life Protect x 2</div>
             <dl className="mt-2 space-y-2">
               {(age as number) < t.death.beforeAge && (
                 <div className="flex items-baseline justify-between gap-3">
@@ -321,7 +321,7 @@ function AllTiers(
         </tbody>
       </table>
       <p className="mt-3 text-xs text-[var(--lg-mute)] opacity-80">
-        รวมเบี้ย Life Protect+ 100 ของแต่ละแพ็กแล้ว · รายเดือนต้องไม่ต่ำกว่า{" "}
+        รวมเบี้ย Life Protect x 2 ของแต่ละแพ็กแล้ว · รายเดือนต้องไม่ต่ำกว่า{" "}
         {table.minMonthlyTotal.toLocaleString("en-US")} บาท (—)
       </p>
     </div>

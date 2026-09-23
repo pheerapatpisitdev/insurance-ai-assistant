@@ -166,7 +166,7 @@ export function Ci123Calculator({ table, sticky = false }: { table: Ci123Table; 
                     <dd className="tabular-nums">{formatBaht(annual.total - base)} บาท/ปี</dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt>Life Protect+ 100 ทุน {table.baseSum.toLocaleString("en-US")}</dt>
+                    <dt>Life Protect x 2 ทุน {table.baseSum.toLocaleString("en-US")}</dt>
                     <dd className="tabular-nums">{formatBaht(base)} บาท/ปี</dd>
                   </div>
                 </dl>
@@ -198,7 +198,7 @@ export function Ci123Calculator({ table, sticky = false }: { table: Ci123Table; 
 
           <div className="pt-1">
             <hr className="lg-rule" />
-            <div className="pt-4 text-sm text-[var(--lg-mute)]">เสียชีวิต ครอบครัวได้รับจาก Life Protect+ 100</div>
+            <div className="pt-4 text-sm text-[var(--lg-mute)]">เสียชีวิต ครอบครัวได้รับจาก Life Protect x 2</div>
             <dl className="mt-2 space-y-2">
               {(age as number) < table.death.beforeAge && (
                 <div className="flex items-baseline justify-between gap-3">
@@ -276,7 +276,7 @@ function AllSums(
         </tbody>
       </table>
       <p className="mt-3 text-xs text-[var(--lg-mute)] opacity-80">
-        รวมเบี้ย Life Protect+ 100 ทุน {table.baseSum.toLocaleString("en-US")} แล้ว · รายเดือนต้องไม่ต่ำกว่า{" "}
+        รวมเบี้ย Life Protect x 2 ทุน {table.baseSum.toLocaleString("en-US")} แล้ว · รายเดือนต้องไม่ต่ำกว่า{" "}
         {table.minMonthlyTotal.toLocaleString("en-US")} บาท (—)
       </p>
     </div>

@@ -14,7 +14,7 @@ import type { PriceReply } from "./price";
  * CI 123 in the chat, from one message.
  *
  * It is a rider, so it cannot be priced on its own: the agency sells it as a set on the
- * smallest Life Protect+ 100 the company issues, and that set is what /ci123 prices. This
+ * smallest Life Protect x 2 the company issues, and that set is what /ci123 prices. This
  * prices the same set through the same engine, so the chat and the page cannot disagree —
  * at any sum the rider takes, not only the seven the page offers, because a customer who
  * asks for a million and a half should be answered rather than steered.
@@ -112,7 +112,7 @@ export function priceCi123(text: string, today: Date = new Date()): PriceReply {
   if (half && !half.belowMinimum) lines.push(`ราย 6 เดือน ${formatBaht(half.total)} บาท`);
   if (monthly && !monthly.belowMinimum) lines.push(`รายเดือน ${formatBaht(monthly.total)} บาท`);
   lines.push(
-    `(CI 123 ${formatBaht(rider)} + Life Protect+ 100 ทุน ${bundle.tiers[0].sumAssured.toLocaleString("en-US")} ${formatBaht(base.annual)})`,
+    `(CI 123 ${formatBaht(rider)} + Life Protect x 2 ทุน ${bundle.tiers[0].sumAssured.toLocaleString("en-US")} ${formatBaht(base.annual)})`,
     "",
     "🏥 ตรวจพบโรคร้ายแรง รับเงินก้อนตามระยะ",
     ...ci123Stages().map((s) => `- ${s.label} ${stagePays(s, sum).toLocaleString("en-US")} บาท`),

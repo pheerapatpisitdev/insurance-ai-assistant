@@ -132,9 +132,9 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
     links: [
       { href: "/legacy", label: "Family Legacy", icon: "home", hue: "#722b73" },
       { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#8a337c" },
-      // a rider sold on the smallest Life Protect+ 100, which is why it is here and not a plan
+      // a rider sold on the smallest Life Protect x 2, which is why it is here and not a plan
       { href: "/ci123", label: "CI 123", icon: "pulse", hue: "#7c2d6e" },
-      // the agency's own cancer set, CPR and HIC on a Life Protect+ 100 that rises with CPR
+      // the agency's own cancer set, CPR and HIC on a Life Protect x 2 that rises with CPR
       { href: "/cancer", label: "Cancer", icon: "ribbon", hue: "#862f6a" },
     ],
   },

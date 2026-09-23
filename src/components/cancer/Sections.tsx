@@ -227,7 +227,7 @@ export function StructureSection({ table }: { table: CancerTable }) {
           แพ็กทุนสูงจึงมาพร้อมทุนชีวิตที่สูงขึ้นด้วย
         </p>
         <ul className="mt-6 space-y-3 text-sm leading-relaxed">
-          <li className="text-[var(--lg-white)]">ประกันชีวิตตลอดชีพ Life Protect+ 100 (ชำระเบี้ยถึงอายุ 99)</li>
+          <li className="text-[var(--lg-white)]">ประกันชีวิตตลอดชีพ Life Protect x 2 (ชำระเบี้ยถึงอายุ 99)</li>
           <li className="text-[var(--lg-white)]">สัญญาเพิ่มเติมคุ้มครองโรคมะเร็ง (CPR) — เงินก้อนตามระยะ</li>
           <li className="text-[var(--lg-white)]">สัญญาเพิ่มเติมค่าชดเชยรายวันเนื่องจากโรคมะเร็ง (HIC) — เงินรายวันตอนนอนโรงพยาบาล</li>
         </ul>
@@ -303,7 +303,7 @@ export function FaqSection({ table }: { table: CancerTable }) {
     },
     {
       q: "เบี้ยคงที่ตลอดไหม",
-      a: "ส่วน Life Protect+ 100 คงที่ ส่วน CPR และ HIC เป็นสัญญาปีต่อปี เบี้ยปรับตามอายุ ยิ่งเริ่มตอนอายุน้อยและยังสุขภาพดี ยิ่งได้เปรียบ",
+      a: "ส่วน Life Protect x 2 คงที่ ส่วน CPR และ HIC เป็นสัญญาปีต่อปี เบี้ยปรับตามอายุ ยิ่งเริ่มตอนอายุน้อยและยังสุขภาพดี ยิ่งได้เปรียบ",
     },
     {
       q: "ต่างจาก CI 123 ยังไง",

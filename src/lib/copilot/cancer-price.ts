@@ -15,7 +15,7 @@ import type { PriceReply } from "./price";
  * The cancer set in the chat, from one message.
  *
  * The owner's rule: "ประกันมะเร็ง" and "แพ็กเกจมะเร็ง" mean the set on /cancer — CPR and HIC on
- * Life Protect+ 100 — and nothing else, whichever other plan happens to cover a cancer too.
+ * Life Protect x 2 — and nothing else, whichever other plan happens to cover a cancer too.
  *
  * Unlike CI 123 it is priced at the eight packages only. The three parts move together — the
  * base is a fifth of CPR, HIC steps with it — so a sum between two packages is not a smaller
@@ -141,7 +141,7 @@ export function priceCancer(text: string, today: Date = new Date()): PriceReply 
   if (monthly && !monthly.belowMinimum) lines.push(`รายเดือน ${formatBaht(monthly.total)} บาท`);
   lines.push(
     `(มะเร็ง CPR ${formatBaht(part(CANCER_RIDER))} + ชดเชยรายวัน HIC ${formatBaht(part(CANCER_DAILY_RIDER))}`
-      + ` + Life Protect+ 100 ทุน ${pkg.base.toLocaleString("en-US")} ${formatBaht(part(bundle.variant))})`,
+      + ` + Life Protect x 2 ทุน ${pkg.base.toLocaleString("en-US")} ${formatBaht(part(bundle.variant))})`,
     "",
     "🎗 ตรวจพบมะเร็ง รับเงินก้อนตามระยะ",
     ...CPR_STAGES.map((s) => `- ${s.label} ${cprStagePays(s, pkg.cpr).toLocaleString("en-US")} บาท${s.major ? " (หักส่วนที่จ่ายไปแล้ว)" : ""}`),

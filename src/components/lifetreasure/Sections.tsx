@@ -214,7 +214,7 @@ export function FaqSection({ facts }: { facts: LifeTreasureCopyFacts }) {
             แบบนี้ออกแบบมาสำหรับการส่งต่อทรัพย์สิน ไม่ใช่ประกันคุ้มครองรายได้ทั่วไป
             บริษัทจึงกำหนดทุนขั้นต่ำไว้ที่ {facts.saMin} บาท ถ้าต้องการทุนต่ำกว่านี้{" "}
             <Link href="/lifeprotect" className="text-[var(--lg-gold)] underline underline-offset-4">
-              Life Protect+ 100
+              Life Protect x 2
             </Link>{" "}
             หรือ{" "}
             <Link href="/plb" className="text-[var(--lg-gold)] underline underline-offset-4">

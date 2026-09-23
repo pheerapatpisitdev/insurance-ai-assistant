@@ -8,7 +8,7 @@ import ci123Diseases from "../../data/riders/ci123-diseases.json";
 /**
  * Every price the CI 123 page can show, worked out on the server.
  *
- * The page sells one arrangement — CI 123 on the smallest Life Protect+ 100 the company
+ * The page sells one arrangement — CI 123 on the smallest Life Protect x 2 the company
  * issues — over a closed domain of 76 ages, two sexes and seven sums, so the whole answer is
  * about a thousand rows and the engine never has to reach the browser. The same reasoning as
  * `legacy-table.ts`, which this follows line for line.

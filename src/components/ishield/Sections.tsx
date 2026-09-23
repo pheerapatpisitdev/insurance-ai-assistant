@@ -215,7 +215,7 @@ export function FaqSection({ facts }: { facts: IShieldCopyFacts }) {
             แบบนี้เป็นเงินก้อน ไม่ใช่ค่ารักษา ถ้าต้องการค่ารักษาพยาบาลหรือค่าชดเชยรายวันด้วย
             พ่วงสัญญาเพิ่มเติมได้ ทักมาคุยกันได้เลย หรือ{" "}
             <Link href="/lifeprotect" className="text-[var(--lg-gold)] underline underline-offset-4">
-              ดู Life Protect+ 100
+              ดู Life Protect x 2
             </Link>{" "}
             ถ้าสิ่งที่ต้องการคือคุ้มครองชีวิตเป็นหลัก
           </Fold>

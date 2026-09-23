@@ -19,7 +19,7 @@ export interface CancerTier {
   cpr: number;
   /** HIC's daily amount while in hospital */
   hic: number;
-  /** the Life Protect+ 100 sum assured this tier is built on */
+  /** the Life Protect x 2 sum assured this tier is built on */
   baseSum: number;
   /** the base contract's death benefit: before the booster age, and from it */
   death: { beforeAge: number; sumBefore: number; sumFrom: number };

@@ -7,7 +7,7 @@ import {
 } from "@/components/lifeprotect/Sections";
 
 export const metadata = {
-  title: "Life Protect+ 100 — ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้าน",
+  title: "Life Protect x 2 — ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้าน",
   description:
     "ประกันชีวิตตลอดชีพ เสียชีวิตก่อนอายุ 60 ครอบครัวได้ 2 เท่าของทุน เบี้ยเท่าเดิมทุกปี เลือกจ่าย 9 ปี 19 ปี หรือถึงอายุ 99 คำนวณเบี้ยของคุณเองได้ทันที",
 };

@@ -8,7 +8,7 @@ import { cashValueSchedule, maturityValue } from "@/calc/cash-value";
 import type { CoverTopUp, PayMode, Sex } from "@/calc/types";
 
 /**
- * Everything the Life Protect+ 100 page needs to price itself in the browser.
+ * Everything the Life Protect x 2 page needs to price itself in the browser.
  *
  * /legacy sells one arrangement over a closed domain, so the server prices all of it. This
  * page lets the customer pick any of twenty sums in three terms, and a table of every answer

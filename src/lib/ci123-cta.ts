@@ -86,7 +86,7 @@ export function ci123QuoteText(f: Ci123QuoteFacts): string {
     ...f.stages.map((s) => `- ${s.label} ${baht(stagePays(s, f.sum))} บาท`),
     "",
     "📄 ชุดนี้ประกอบด้วย",
-    `- Life Protect+ 100 ชำระเบี้ยถึงอายุ 99 ทุน ${baht(f.baseSum)} บาท`,
+    `- Life Protect x 2 ชำระเบี้ยถึงอายุ 99 ทุน ${baht(f.baseSum)} บาท`,
     `- สัญญาเพิ่มเติม CI 123 ทุน ${baht(f.sum)} บาท`,
     "",
     "📌 เบี้ยปีแรก ส่วน CI 123 คิดตามอายุ จึงปรับขึ้นในปีถัดไป",

@@ -627,7 +627,7 @@ function planInfoText(): string {
   const table = lifeProtectTable();
   const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, DEFAULT_TERM).min;
   return [
-    "ชื่อแบบ: Life Protect+ 100 (Life Protect x 2)",
+    "ชื่อแบบ: Life Protect x 2",
     `รับประกันอายุ ${f.ageMin}-${f.ageMax} ปี คุ้มครองถึงอายุ ${f.coverToAge} ปี`,
     `ทุนประกันขั้นต่ำ ${floor.toLocaleString("en-US")} บาท`,
     `เสียชีวิตก่อนอายุ ${f.boosterBeforeAge} ปี ครอบครัวได้รับ 2 เท่าของทุน ตั้งแต่อายุ ${f.boosterBeforeAge} ปีขึ้นไปได้รับ 1 เท่าของทุน`,

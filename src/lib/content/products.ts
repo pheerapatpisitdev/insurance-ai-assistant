@@ -54,7 +54,7 @@ const annualBaht = (satang: number) => baht(Math.round(satang / 100));
 export const CONTENT_PRODUCTS: ContentProduct[] = [
   {
     href: "/lifeprotect",
-    name: "Life Protect+ 100 (Life Protect x 2)",
+    name: "Life Protect x 2",
     kind: "ประกันชีวิตตลอดชีพ",
     audience: "คนที่ยังมีภาระ ลูกยังเรียน บ้านยังผ่อน — ช่วงที่ครอบครัวขาดเขาไม่ได้ และพ่อแม่ที่อยากซื้อให้ลูก",
     points: [
@@ -236,7 +236,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
   {
     href: "/ci123",
     name: "CI 123",
-    kind: "ประกันโรคร้ายแรงจ่ายตามระยะ (สัญญาเพิ่มเติม คู่กับ Life Protect+ 100)",
+    kind: "ประกันโรคร้ายแรงจ่ายตามระยะ (สัญญาเพิ่มเติม คู่กับ Life Protect x 2)",
     audience: "คนที่อยากได้เงินก้อนตั้งแต่เจอโรคร้ายระยะแรก รวมถึงพ่อแม่ที่ซื้อให้ลูก",
     points: [
       "เจอเร็ว ก็ได้เงินเร็ว ไม่ต้องรอให้ถึงระยะรุนแรง",
@@ -252,7 +252,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
       const prices: string[] = [];
       const facts = [
         `- รับอายุ ${t.ageMin}–${t.ageMax} ปี · คุ้มครอง ${t.diseaseCount} โรค · ทุน CI 123 เลือกได้ ${t.sums.map(sumWords).join(" / ")}`,
-        `- คู่กับประกันชีวิต Life Protect+ 100 ทุน ${baht(t.baseSum)} บาท`,
+        `- คู่กับประกันชีวิต Life Protect x 2 ทุน ${baht(t.baseSum)} บาท`,
       ];
       const at30 = t.premiums.F[0]?.[30 - t.ageMin];
       if (at30) prices.push(`- เริ่มต้น: ผู้หญิงอายุ 30 ทุน CI 123 ${sumWords(t.sums[0])} เบี้ยปีแรกรวม ${annualBaht(at30[0])} บาท เฉลี่ยวันละ ${perDay(at30[0])} บาท`);
@@ -262,7 +262,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
   {
     href: "/cancer",
     name: "ชุดประกันมะเร็ง (Cancer)",
-    kind: "ชุดประกันมะเร็ง: Life Protect+ 100 คู่กับสัญญาเพิ่มเติม CPR และ HIC",
+    kind: "ชุดประกันมะเร็ง: Life Protect x 2 คู่กับสัญญาเพิ่มเติม CPR และ HIC",
     audience: "คนที่มีประกันสุขภาพแล้วแต่อยากได้เงินก้อนตอนเจอมะเร็ง และพ่อแม่ที่ซื้อให้ลูก",
     points: [
       "เจอมะเร็งระยะแรก ก็ได้เงินก้อน ไม่ต้องรอให้ลุกลาม",

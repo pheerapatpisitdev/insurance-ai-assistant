@@ -61,6 +61,6 @@ describe("the cancer page's messages", () => {
     expect(text).toContain("ขั้น 1 มะเร็งระยะไม่ลุกลามขั้นต้น 50,000 บาท");
     expect(text).toContain("ขั้น 4 มะเร็งระยะลุกลาม 5,000,000 บาท");
     expect(text).toContain("วันละ 10,000 บาท สูงสุด 365 วัน");
-    expect(text).toContain("Life Protect+ 100 ชำระเบี้ยถึงอายุ 99 ทุน 1,000,000 บาท");
+    expect(text).toContain("Life Protect x 2 ชำระเบี้ยถึงอายุ 99 ทุน 1,000,000 บาท");
   });
 });

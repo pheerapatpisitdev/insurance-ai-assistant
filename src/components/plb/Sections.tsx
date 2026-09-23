@@ -158,7 +158,7 @@ export function NotForYouSection() {
             <p className="mt-1.5 text-sm leading-[1.85] text-[var(--lg-mute)]">
               แบบนี้ตอบไม่ได้เลย ถ้าต้องการทั้งคุ้มครองและมีมูลค่าสะสม{" "}
               <Link href="/lifeprotect" className="text-[var(--lg-gold)] underline underline-offset-4">
-                ดู Life Protect+ 100
+                ดู Life Protect x 2
               </Link>{" "}
               ซึ่งคุ้มครองถึงอายุ 99 และมีมูลค่าเวนคืนทุกปี
             </p>

@@ -369,7 +369,7 @@ describe("what the model is told about the plan", () => {
     routed = { intent: "plan_info" };
     await answerQuestion(said("คุ้มครองยังไง"), null);
     const system = chat.mock.calls.at(-1)![0].messages[0].content as string;
-    expect(system).toContain("Life Protect+ 100");
+    expect(system).toContain("Life Protect x 2");
     expect(system).not.toContain("ตัวอย่าง");
     expect(system).not.toMatch(/\d,\d{3} ?บาท\/เดือน|เดือนละ \d/);
   });
@@ -751,7 +751,7 @@ describe("everything else", () => {
     routed = { intent: "plan_info" };
     await answerQuestion(said("คุ้มครองถึงกี่ขวบ"), null);
     const system = chat.mock.calls[1][0].messages[0].content as string;
-    expect(system).toContain("Life Protect+ 100");
+    expect(system).toContain("Life Protect x 2");
     expect(system).toContain("ห้ามคิดตัวเลขเอง");
   });
 

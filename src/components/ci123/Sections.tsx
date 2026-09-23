@@ -155,7 +155,7 @@ export function StructureSection({ table }: { table: Ci123Table }) {
       <div className="mt-7 space-y-5">
         <div>
           <div className="text-sm leading-relaxed text-[var(--lg-mute)]">
-            ประกันชีวิตตลอดชีพ Life Protect+ 100 (ชำระเบี้ยถึงอายุ 99)
+            ประกันชีวิตตลอดชีพ Life Protect x 2 (ชำระเบี้ยถึงอายุ 99)
           </div>
           <div className="lg-figure mt-1 text-base tabular-nums text-[var(--lg-white)]">
             ทุน {table.baseSum.toLocaleString("en-US")} บาท
@@ -282,7 +282,7 @@ export function FaqSection({ table }: { table: Ci123Table }) {
       q: "เบี้ยคงที่ตลอดไหม",
       a: (
         <>
-          ส่วน Life Protect+ 100 คงที่ ส่วน CI 123 คิดตามอายุจริง จึงปรับขึ้นเมื่ออายุมากขึ้น ยิ่งเริ่มเร็วยิ่งได้เปรียบ
+          ส่วน Life Protect x 2 คงที่ ส่วน CI 123 คิดตามอายุจริง จึงปรับขึ้นเมื่ออายุมากขึ้น ยิ่งเริ่มเร็วยิ่งได้เปรียบ
           ถ้าอยากได้ความคุ้มครองโรคร้ายแรงที่เบี้ยไม่ขยับ{" "}
           <Link href="/ishield" className="text-[var(--lg-gold)] underline underline-offset-4">ดู iShield</Link>
         </>

@@ -10,7 +10,7 @@ export function Hero({ facts }: { facts: LifeProtectCopyFacts }) {
   return (
     <header className="pt-14 pb-12">
       <p className="lg-rise text-xs font-medium uppercase tracking-[0.22em] text-[var(--lg-gold)]" style={{ animationDelay: "0ms" }}>
-        ประกันชีวิตตลอดชีพ Life Protect+ 100
+        ประกันชีวิตตลอดชีพ Life Protect x 2
       </p>
 
       {/* No figure in the headline. A sum in millions is arithmetic, and a thumb moving past

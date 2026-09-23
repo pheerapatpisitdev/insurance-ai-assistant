@@ -13,7 +13,7 @@ describe("the cancer set", () => {
    * CPR may be at most 5× the base, so the base rises with it: a fifth of CPR, never under
    * the plan's 150,000 minimum. HIC climbs alongside, to the workbook's 10,000-a-day top.
    */
-  it("sells eight tiers of CPR and HIC on Life Protect+ 100, up to CPR 5 million", () => {
+  it("sells eight tiers of CPR and HIC on Life Protect x 2, up to CPR 5 million", () => {
     expect(bundle.planCode).toBe("LIFEPROTECT");
     expect(bundle.variant).toBe("WLF99H");
     const cprs = [300_000, 500_000, 750_000, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000];

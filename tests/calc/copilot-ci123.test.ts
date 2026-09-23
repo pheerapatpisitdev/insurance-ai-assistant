@@ -24,7 +24,7 @@ describe("CI 123 in the chat", () => {
     expect(reply.text).toContain(`**${onThePage(2, 30, "F")} บาท/ปี**`);
     expect(reply.text).toContain("หญิง อายุ 30 ปี");
     expect(reply.text).toContain("โรคร้ายแรงระยะก่อนเริ่มต้น 100,000 บาท");
-    expect(reply.text).toContain("Life Protect+ 100");
+    expect(reply.text).toContain("Life Protect x 2");
     expect(reply.cards?.[0]).toContain("bundle=CI123_SET");
     expect(reply.cards?.[0]).toContain("tier=2");
   });

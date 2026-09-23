@@ -12,7 +12,7 @@ describe("bundle registry", () => {
     ]);
   });
 
-  it("sells CI 123 as seven sums on Life Protect+ 100 paid to age 99 at its 150,000 minimum", () => {
+  it("sells CI 123 as seven sums on Life Protect x 2 paid to age 99 at its 150,000 minimum", () => {
     const bundle = getBundle("CI123_SET")!;
     expect(bundle.planCode).toBe("LIFEPROTECT");
     expect(bundle.variant).toBe("WLF99H");
