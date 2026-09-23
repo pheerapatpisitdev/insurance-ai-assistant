@@ -36,6 +36,8 @@ export interface CardPalette {
   tint: string;
   /** the three series of the cash-value drawing */
   line: { cash: string; premium: string; cover: string };
+  /** the yellow of the highlighter stroke behind the one figure a card wants read first */
+  highlighter: string;
 }
 
 /**
@@ -77,6 +79,8 @@ export const CARD_PALETTE: CardPalette = {
   /* The deck ranks its series navy, grey, sand, every time: the answer leads and the two
      supporting quantities follow it in that order. */
   line: { cash: "#022162", premium: "#7f7f7f", cover: "#c6bc99" },
+  /* the one colour on the card that is not the deck's: it has to look like a pen */
+  highlighter: "#ffe14d",
 };
 
 /**

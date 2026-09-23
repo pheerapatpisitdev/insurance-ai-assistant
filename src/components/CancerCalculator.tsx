@@ -10,6 +10,7 @@ import { cancerMessage, cancerQuoteText, type CancerAge } from "@/lib/cancer-cta
 import {
   CPR_STAGES, HIC_INVASIVE_EXTRA_DAYS, HIC_MAX_DAYS, cancerDeathTotals, cprStagePays, deathTotalsTitle,
 } from "@/lib/cancer-benefits";
+import { Highlighted } from "@/components/Highlighted";
 import { cardPath } from "@/lib/card-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import type { CancerTable } from "@/lib/cancer-table";
@@ -235,7 +236,11 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
                   {totals.rows.map((r) => (
                     <div key={r.label} className="flex items-baseline justify-between gap-3">
                       <dt className="text-sm text-[var(--lg-mute)]">{r.label}</dt>
-                      <dd className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">{r.amount.toLocaleString("en-US")} บาท</dd>
+                      <dd className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">
+                        {r.mark
+                          ? <Highlighted>{r.amount.toLocaleString("en-US")} บาท</Highlighted>
+                          : <>{r.amount.toLocaleString("en-US")} บาท</>}
+                      </dd>
                     </div>
                   ))}
                 </dl>

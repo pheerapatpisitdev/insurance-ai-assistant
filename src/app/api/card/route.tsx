@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
+import { highlighterUri } from "@/lib/highlighter";
 import type { NextRequest } from "next/server";
 import { cardInputFrom, quoteCard, type CardChart, type CardRow, type QuoteCard } from "@/lib/quote-card";
 import { cardPaletteFor, type CardPalette } from "@/lib/card-theme";
@@ -94,7 +95,18 @@ function Rows({ title, rows, p }: { title: string; rows: CardRow[]; p: CardPalet
           style={{ ...band(H.row), width: "100%", justifyContent: "space-between", alignItems: "center" }}
         >
           <div style={{ display: "flex", fontSize: 27, color: p.mute }}>{r.label}</div>
-          <div style={{ display: "flex", fontFamily: "Trirong", fontSize: 34, color: p.ink }}>{r.amount} บาท</div>
+          <div
+            style={{
+              display: "flex", fontFamily: "Trirong", fontSize: 34, color: p.ink,
+              // the pen stroke is stretched to the figure, with room for the nib either side
+              ...(r.mark ? {
+                padding: "4px 18px", marginRight: -18,
+                backgroundImage: highlighterUri(p.highlighter), backgroundSize: "100% 100%", backgroundRepeat: "no-repeat",
+              } : {}),
+            }}
+          >
+            {r.amount} บาท
+          </div>
         </div>
       ))}
     </div>

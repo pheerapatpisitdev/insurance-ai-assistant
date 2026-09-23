@@ -103,6 +103,10 @@ body {
      mark this faint is at the boundary between "text" and "a line", and giving it a second
      hex would only invite the two to drift. */
   --bot-ink-faint: #7d8490;
+  /* The highlighter pen behind the one figure a quote most wants read. Not the deck's: it has
+     to look like somebody's marker, and a marker is yellow. Navy ink on it holds 13:1. The
+     card draws the same value from card-theme.ts, which cannot read this. */
+  --bot-highlighter: #ffe14d;
 }
 
 /* ── the sales pages, in the palette above ────────────────────────────────────
