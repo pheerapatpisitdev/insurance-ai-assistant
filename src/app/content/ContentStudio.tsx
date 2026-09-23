@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { footer, fullText } from "@/lib/content/output";
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
@@ -65,7 +65,6 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   const [adTones, setAdTones] = useState(2);
   const [hookId, setHookId] = useState(initialHook ?? "");
   const [error, setError] = useState<string>();
-  const [pending, start] = useTransition();
   const [spend, setSpend] = useState(initialSpend);
 
   const [tab, setTab] = useState<ContentStatus>("draft");
@@ -77,8 +76,14 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<Set<string>>(() => new Set());
-  /** how many pieces the round in progress asked for — fixed at the press, not the live picker */
+  /**
+   * How many pieces the round in progress asked for — fixed at the press, not the live
+   * picker — and nought when no round is running. Its own state rather than a transition's
+   * pending flag: that one stayed on while the pictures were drawing, so a skeleton sat
+   * beside the finished card and read as a second piece being made.
+   */
   const [making, setMaking] = useState(0);
+  const pending = making > 0;
   const pieces = useRef<HTMLElement>(null);
 
   const nameOf = (h: string) => products.find((p) => p.href === h)?.name ?? h;
@@ -90,10 +95,12 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     setCounts(wb.counts);
   }
 
-  function generate() {
+  async function generate() {
+    if (pending) return;
     setError(undefined);
-    setMaking(pieceCount);
-    start(async () => {
+    const asked = pieceCount;
+    setMaking(asked);
+    try {
       let res: Awaited<ReturnType<typeof generateContent>>;
       try {
         res = await generateContent({
@@ -112,15 +119,18 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
         return;
       }
       if (!res.ok) { setError(res.error); return; }
-      if (res.missing > 0) setError(`ได้ ${res.items.length} จาก ${pieceCount} ชิ้น — อีก ${res.missing} ชิ้นเขียนไม่สำเร็จ กดสร้างเพิ่มได้`);
+      if (res.missing > 0) setError(`ได้ ${res.items.length} จาก ${asked} ชิ้น — อีก ${res.missing} ชิ้นเขียนไม่สำเร็จ กดสร้างเพิ่มได้`);
       setTab("draft");
       setPlan("");
       setEditing(null);
       await reload("draft", "");
-      setSpend(await contentSpend());
+      setMaking(0);
       pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       void drawPictures(res.items.filter((i) => i.format !== "script"));
-    });
+      setSpend(await contentSpend().catch(() => spend));
+    } finally {
+      setMaking(0);
+    }
   }
 
   /**
