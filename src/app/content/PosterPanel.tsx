@@ -34,9 +34,11 @@ interface Props {
   onChange: (p: PosterSpec) => void;
   /** orders a photograph behind the words; resolves to an error to show, or null when done */
   onDraw: (request: string) => Promise<string | null>;
+  /** a photograph is already being drawn for this piece, ordered by the page */
+  busy?: boolean;
 }
 
-export function PosterPanel({ value, onChange, onDraw }: Props) {
+export function PosterPanel({ value, onChange, onDraw, busy }: Props) {
   const [request, setRequest] = useState("");
   const [drawing, setDrawing] = useState(false);
   const [drawError, setDrawError] = useState<string | null>(null);
@@ -136,10 +138,10 @@ export function PosterPanel({ value, onChange, onDraw }: Props) {
             className="w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-1.5 text-xs outline-none focus:border-[var(--ct-accent)]"
           />
           <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={draw} disabled={drawing} className="rounded-lg bg-[var(--ct-solid)] px-3 py-1.5 text-xs font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
-              {drawing ? "กำลังวาด… ราว 20–40 วินาที" : value.background ? "วาดภาพใหม่ (~฿0.4)" : "วาดภาพพื้นหลังด้วย AI (~฿0.4)"}
+            <button type="button" onClick={draw} disabled={drawing || busy} className="rounded-lg bg-[var(--ct-solid)] px-3 py-1.5 text-xs font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
+              {drawing || busy ? "กำลังวาด… ราว 20–40 วินาที" : value.background ? "วาดภาพใหม่ (~฿0.4)" : "วาดภาพพื้นหลังด้วย AI (~฿0.4)"}
             </button>
-            {value.background && !drawing && (
+            {value.background && !drawing && !busy && (
               <button type="button" onClick={() => onChange({ layout: value.layout, theme: value.theme, blocks: value.blocks })} className="rounded-lg border border-[var(--ct-line)] px-3 py-1.5 text-xs">
                 ใช้สีพื้นแทน
               </button>

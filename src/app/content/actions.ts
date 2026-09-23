@@ -199,7 +199,11 @@ export async function removeContent(id: string): Promise<{ ok: boolean }> {
 export type EditResult = { ok: true; item: ContentItem } | { ok: false; error: string };
 
 /** The owner's edits, kept — and checked again, because an edit can add a number too. */
-export async function saveContentEdits(id: string, edits: Pick<ContentOutput, "hooks" | "body" | "closing" | "hashtags" | "poster">): Promise<EditResult> {
+export async function saveContentEdits(
+  id: string,
+  edits: Pick<ContentOutput, "hooks" | "body" | "closing" | "hashtags" | "poster">,
+  opts: { plain?: boolean } = {},
+): Promise<EditResult> {
   try {
     const item = await getContent(id);
     if (!item) return { ok: false, error: "ไม่พบชิ้นงานนี้" };
@@ -214,6 +218,10 @@ export async function saveContentEdits(id: string, edits: Pick<ContentOutput, "h
       // table that the drawing route could not draw
       ...(edits.poster && parsePoster(edits.poster) ? { poster: parsePoster(edits.poster)! } : {}),
     };
+    // a poster sent without its photograph keeps the one on file, unless the owner chose the
+    // plain colour: an editor opened before the photograph landed does not know it exists
+    const kept = item.output.poster?.background;
+    if (output.poster && !output.poster.background && kept && !opts.plain) output.poster = { ...output.poster, background: kept };
     const flags = flagsFor(output, brief?.text ?? "", await listWords(), item.flags.fixes);
     return { ok: true, item: await saveOutput(id, output, flags) };
   } catch (e) {

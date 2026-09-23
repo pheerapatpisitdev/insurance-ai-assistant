@@ -6,7 +6,8 @@ import type { Fix } from "@/lib/content/proofread";
 import { FORMAT_LABEL } from "@/lib/content/prompt";
 import { AD_LIMITS } from "@/lib/content/ads";
 import type { ContentItem } from "@/lib/content/store";
-import { drawBackground, proofreadContent, saveContentEdits } from "./actions";
+import { proofreadContent, saveContentEdits } from "./actions";
+import { drawPicture } from "./draw";
 import { PosterPanel } from "./PosterPanel";
 
 /**
@@ -49,12 +50,14 @@ const smallBtn = "rounded border border-[var(--ct-warn-line)] bg-[var(--ct-panel
 interface Props {
   item: ContentItem;
   productName: string;
+  /** the page is drawing this piece's photograph already */
+  drawing?: boolean;
   onSaved: (item: ContentItem) => void;
   onStatus: (status: ContentItem["status"]) => void;
   onClose: () => void;
 }
 
-export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: Props) {
+export function PieceEditor({ item, productName, drawing, onSaved, onStatus, onClose }: Props) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(item, productName));
   const [hook, setHook] = useState(0);
   const [fixes, setFixes] = useState<Fix[] | null>(item.flags.fixes);
@@ -63,6 +66,18 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string>();
+  // the owner chose the plain colour over a photograph; until then a save keeps the photograph
+  const [plain, setPlain] = useState(false);
+
+  /**
+   * A photograph that lands while the editor is open joins the draft. Without this the draft
+   * still held the poster from before it, and the next save wrote that back — a paid picture
+   * dropped by pressing บันทึก.
+   */
+  const landed = item.output.poster?.background;
+  useEffect(() => {
+    if (landed && !plain) setDraft((d) => (d.poster.background === landed ? d : { ...d, poster: { ...d.poster, background: landed } }));
+  }, [landed, plain]);
 
   // the proofreader runs on first opening and is kept: one small call per piece, ever
   useEffect(() => {
@@ -93,7 +108,7 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
   async function save(): Promise<boolean> {
     if (!dirty) return true;
     setSaving(true);
-    const res = await saveContentEdits(item.id, output).catch(() => null);
+    const res = await saveContentEdits(item.id, output, { plain }).catch(() => null);
     setSaving(false);
     if (!res || !res.ok) { setNote(res?.error ?? "บันทึกไม่สำเร็จ"); return false; }
     setDirty(false);
@@ -132,13 +147,19 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
         <p className="mb-1.5 text-sm font-medium">รูปโพสต์</p>
         <PosterPanel
           value={draft.poster}
-          onChange={(poster) => edit({ ...draft, poster })}
+          onChange={(poster) => {
+            if (draft.poster.background && !poster.background) setPlain(true);
+            if (poster.background) setPlain(false);
+            edit({ ...draft, poster });
+          }}
+          busy={drawing}
           onDraw={async (request) => {
-            const res = await drawBackground(item.id, request);
+            const res = await drawPicture(item.id, request);
             if (!res.ok) return res.error;
             // the picture is saved already; only the background joins the draft, so poster
             // words the owner has typed but not yet saved are kept
             const background = res.item.output.poster?.background;
+            setPlain(false);
             setDraft((d) => ({ ...d, poster: { ...d.poster, background } }));
             onSaved(res.item);
             return null;

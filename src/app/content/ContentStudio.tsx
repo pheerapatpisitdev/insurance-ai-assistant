@@ -8,7 +8,8 @@ import { MAX_PIECES } from "@/lib/content/plan";
 import { FORMAT_LABEL, FORMAT_SHORT, type AngleId, type Format, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
-import { contentSpend, contentWorkbench, drawBackground, generateContent, removeContent, setContentStatus } from "./actions";
+import { contentSpend, contentWorkbench, generateContent, removeContent, setContentStatus } from "./actions";
+import { drawPicture } from "./draw";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
 
@@ -132,7 +133,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     const ids = list.map((i) => i.id);
     setDrawing((d) => new Set([...d, ...ids]));
     const results = await Promise.all(list.map(async (item) => {
-      const res = await drawBackground(item.id).catch(() => null);
+      const res = await drawPicture(item.id);
       setDrawing((d) => { const n = new Set(d); n.delete(item.id); return n; });
       if (res?.ok) saved(res.item);
       return res?.ok ? null : (res?.error ?? "วาดรูปไม่สำเร็จ");
@@ -369,6 +370,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                     <PieceEditor
                       key={item.id}
                       item={item}
+                      drawing={drawing.has(item.id)}
                       productName={nameOf(item.planHref)}
                       onSaved={saved}
                       onStatus={(s) => changeStatus(item, s)}
