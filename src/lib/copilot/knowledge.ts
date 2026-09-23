@@ -6,6 +6,13 @@ import rrssDiseases from "../../../data/riders/rrss-diseases.json";
 import { pricedHere } from "./price";
 import { PENSION_LABEL, pensionNamedIn } from "./pension-price";
 import { CI123_LABEL, ci123NamedIn } from "./ci123-price";
+import { CANCER_LABEL, cancerNamedIn } from "./cancer-price";
+import { getBundle } from "@/calc/bundles/registry";
+import { bundleAgeRange } from "@/calc/bundles/quote";
+import {
+  CANCER_DAILY_RIDER, CANCER_RIDER, CPR_STAGES, HIC_INVASIVE_EXTRA_DAYS, HIC_MAX_DAYS,
+} from "@/lib/cancer-benefits";
+import { CANCER_BUNDLE } from "@/lib/cancer-table";
 import { PENSION_AGES, PENSION_LIMITS } from "@/calc/pension/engine";
 import { FAQ as LIFE_FAQ } from "@/lib/assistant/lifeprotect/faq";
 import { FAQ as HEALTH_FAQ } from "@/lib/assistant/ihealthy/faq";
@@ -95,6 +102,34 @@ const CI123_SECTION = [
   "- จ่ายตามระยะ (% ของทุน CI 123): ระยะก่อนเริ่มต้น 20% สูงสุด 100,000 · ระยะเริ่มต้นถึงปานกลาง 25% · โรคเด็ก 25% · เงื่อนไขพิเศษ 10% · ภาวะวิกฤต 25% (นับรวมวงเงินเดียวกับระยะรุนแรง) · ระยะรุนแรง 100% แล้วสัญญาสิ้นสุด",
   "- ระยะเวลารอคอย 90 วัน · เบี้ยส่วน CI 123 คิดตามอายุจริง ปรับขึ้นทุกปี",
 ].join("\n");
+
+/**
+ * The cancer set on /cancer, which the owner has said is what "ประกันมะเร็ง" and "แพ็กเกจมะเร็ง"
+ * mean. The packages and stages are read off the bundle and `cancer-benefits`, the same
+ * sources the page draws, so the model and the page cannot describe two different products.
+ */
+function cancerSection(): string {
+  const bundle = getBundle(CANCER_BUNDLE)!;
+  const range = bundleAgeRange(bundle);
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  const packages = bundle.tiers.map((t) => {
+    const sum = (code: string) => t.riders.find((r) => r.code === code)!.sumAssured!.toLocaleString("en-US");
+    return `ทุน ${sum(CANCER_RIDER)} ชดเชยวันละ ${sum(CANCER_DAILY_RIDER)} (ทุนชีวิต ${t.sumAssured.toLocaleString("en-US")})`;
+  });
+  return [
+    `## ${CANCER_LABEL} / แพ็กเกจมะเร็ง (หน้า /cancer)`,
+    "- เมื่อลูกค้าพูดว่า “ประกันมะเร็ง” หรือ “แพ็กเกจมะเร็ง” หมายถึงชุดนี้เสมอ ไม่ใช่แบบอื่นที่คุ้มครองมะเร็งด้วย",
+    "- คิดเบี้ยในแชทนี้ได้ — บอกอายุ เพศ และทุนมะเร็ง (เช่น “ประกันมะเร็ง ชาย 35 ทุน 1 ล้าน”) คิดได้เฉพาะ 8 แพ็กเกจข้างล่าง",
+    "- ชุดนี้คือสัญญาเพิ่มเติม CPR (คุ้มครองโรคมะเร็ง จ่ายเงินก้อน) คู่กับ HIC (ค่าชดเชยรายวันเมื่อนอนโรงพยาบาลเพราะมะเร็ง) แนบกับประกันชีวิต Life Protect+ 100 ชำระเบี้ยถึงอายุ 99 เบี้ยที่คิดให้รวมทั้งสามสัญญา",
+    `- รับอายุ ${range.min}–${range.max} ปี · แพ็กเกจ: ${packages.join(" · ")}`,
+    `- CPR จ่ายตามระยะ (% ของทุนมะเร็ง): ${CPR_STAGES.map((s) => `${s.label} ${pct(s.share)}${s.cap ? ` สูงสุด ${s.cap.toLocaleString("en-US")}` : ""}${s.major ? " หักส่วนที่จ่ายไปแล้ว" : ""}`).join(" · ")}`,
+    `- ${CPR_STAGES.filter((s) => s.note).map((s) => `${s.label}: ${s.note}`).join(" · ")}`,
+    `- ระยะเวลารอคอย (นับถึงวันเก็บชิ้นเนื้อตรวจ): ${CPR_STAGES.map((s) => `${s.label} ${s.waitingDays} วัน`).join(" · ")}`,
+    `- HIC จ่ายรายวันเมื่อนอนโรงพยาบาลเพราะมะเร็ง สูงสุด ${HIC_MAX_DAYS} วัน ระยะลุกลามขยายอีก ${HIC_INVASIVE_EXTRA_DAYS} วัน`,
+    "- CPR และ HIC เป็นสัญญาปีต่อปี ต่ออายุได้ถึงอายุ 84 ปี เบี้ยปีต่ออายุปรับตามอายุ · ข้อยกเว้น CPR 10 ข้อ HIC 16 ข้อ ตามกรมธรรม์",
+    "- ต่างจากประกันสุขภาพ: ประกันสุขภาพจ่ายค่ารักษาให้โรงพยาบาล ประกันมะเร็งจ่ายเงินก้อนและเงินรายวันให้ลูกค้าเอง",
+  ].join("\n");
+}
 
 /** One plan's rules as sentences. The shapes are the workbook's; the wording is for reading. */
 function planSection(code: string, name: string, rules: PlanRules): string {
@@ -414,7 +449,7 @@ export async function assembleKnowledge(question = ""): Promise<string> {
      * by hand and forbid quoting any other — which outranked everything below it, so fixing
      * the per-plan lines alone would have left the assistant refusing anyway.
      */
-    `**สำคัญ:** แชทนี้คิดเบี้ยให้ได้เฉพาะแบบเหล่านี้: ${priceableNames().join(", ")}, ${PENSION_LABEL}, ${CI123_LABEL} (แบบชุดคู่ Life Protect+ 100) และ iHealthy Ultra`,
+    `**สำคัญ:** แชทนี้คิดเบี้ยให้ได้เฉพาะแบบเหล่านี้: ${priceableNames().join(", ")}, ${PENSION_LABEL}, ${CI123_LABEL} (แบบชุดคู่ Life Protect+ 100), ${CANCER_LABEL} (แพ็กเกจมะเร็ง หน้า /cancer) และ iHealthy Ultra`,
     "แบบที่ไม่อยู่ในรายการนี้ ตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
     "",
     plans,
@@ -422,6 +457,7 @@ export async function assembleKnowledge(question = ""): Promise<string> {
     // can be priced, and every other question would pay for its rules without reading them
     ...(question === "" || pensionNamedIn(question) ? ["", PENSION_SECTION] : []),
     ...(question === "" || ci123NamedIn(question) ? ["", CI123_SECTION] : []),
+    ...(question === "" || cancerNamedIn(question) ? ["", cancerSection()] : []),
     /**
      * Group insurance, said in four lines and no more.
      *

@@ -83,6 +83,8 @@ const NEEDS: GuideItem[] = [
   // a ceiling the plan list really has, which is what makes the health brain quote rather than chat
   { label: "ผู้หญิง 30 ประกันสุขภาพ วงเงิน 3 ล้าน เบี้ยเท่าไหร่", ask: "ผู้หญิง 30 ประกันสุขภาพ วงเงิน 3 ล้าน เบี้ยเท่าไหร่" },
   { label: "ผู้ชาย 35 ประกันโรคร้าย ทุน 1 ล้าน เบี้ยเท่าไหร่", ask: "ผู้ชาย 35 ประกันโรคร้าย CI 123 ทุน 1 ล้าน เบี้ยเท่าไหร่" },
+  // "ประกันมะเร็ง" is the /cancer set by the owner's rule, priced at one of its eight packages
+  { label: "ผู้หญิง 35 ประกันมะเร็ง ทุน 1 ล้าน เบี้ยเท่าไหร่", ask: "ผู้หญิง 35 ประกันมะเร็ง ทุน 1 ล้าน เบี้ยเท่าไหร่" },
   // the pension age and paying term said outright, or the answer is a question back instead
   // of a figure; the label leaves them off to fit a phone on one line, and the answer states both
   { label: "ผู้ชาย 40 อยากมีบำนาญเดือนละ 10,000", ask: "ผู้ชาย 40 อยากได้บำนาญเดือนละ 10,000 ตอนอายุ 60 จ่ายเบี้ยจนเกษียณ" },
@@ -100,7 +102,6 @@ const CLAIMS: GuideItem[] = [
   { label: "เคลมยังไง ต้องสำรองจ่ายก่อนไหม", ask: "เคลมยังไง ต้องสำรองจ่ายก่อนไหม" },
   { label: "นอนโรงพยาบาลแบบไหนถึงเคลมได้", ask: "นอนโรงพยาบาลแบบไหนถึงเคลมได้" },
   { label: "กรณีไหนบ้างที่เคลมไม่ได้", ask: "กรณีไหนบ้างที่เคลมไม่ได้" },
-  { label: "ซื้อประกันสุขภาพแล้วเคลมได้เลยไหม", ask: "ซื้อประกันสุขภาพแล้วเคลมได้เลยไหม" },
 ];
 
 /**
@@ -152,6 +153,9 @@ export function openingGuide(): GuideGroup[] {
         { label: "Life Protect รับประกันถึงอายุเท่าไหร่", ask: "Life Protect รับประกันถึงอายุเท่าไหร่" },
         { label: "iHealthy Ultra คุ้มครองอะไรบ้าง", ask: "iHealthy Ultra คุ้มครองอะไรบ้าง" },
         { label: "ยื่นเคลมแล้วได้เงินภายในกี่วัน", ask: "ยื่นเคลมแล้วได้เงินภายในกี่วัน" },
+        { label: "ซื้อประกันสุขภาพแล้วเคลมได้เลยไหม", ask: "ซื้อประกันสุขภาพแล้วเคลมได้เลยไหม" },
+        // no "ประกันสุขภาพ" in it, or the health brain takes a question the cancer section answers
+        { label: "ประกันมะเร็งจ่ายเงินตอนไหนบ้าง", ask: "ประกันมะเร็งจ่ายเงินตอนไหนบ้าง" },
         { label: "DCI ซื้อได้ถึงอายุเท่าไหร่", ask: "DCI ซื้อได้ถึงอายุเท่าไหร่" },
         { label: "HIC ซื้อคู่กับ MEB ได้ไหม", ask: "HIC ซื้อคู่กับ MEB ได้ไหม" },
       ],

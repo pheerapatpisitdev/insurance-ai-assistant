@@ -14,6 +14,7 @@ import type { AnySlots, Undecided } from "./slots";
 import { planNamedIn, priceNamedPlan } from "@/lib/copilot/price";
 import { asksPensionPrice, pensionNamedIn, pricePension } from "@/lib/copilot/pension-price";
 import { asksCi123Price, ci123NamedIn, priceCi123 } from "@/lib/copilot/ci123-price";
+import { asksCancerPrice, cancerNamedIn, priceCancer } from "@/lib/copilot/cancer-price";
 import type { GuideItem } from "@/lib/copilot/guide";
 import { writtenFor, type Channel } from "./channel";
 import { answerFromLibrary } from "@/lib/copilot/library";
@@ -160,6 +161,25 @@ export async function answerAny(
   if (ci123NamedIn(asked) && asksCi123Price(asked)) {
     const priced = priceCi123(asked);
     // "CI123 ชาย 35 ทุน 1 ล้าน บริษัทอะไร" is two questions, and the second is not left unanswered
+    const company = asksAboutCompany(asked) ? [{ text: writtenFor(channel, aboutCompany(asked)) }] : [];
+    return {
+      messages: [
+        { text: writtenFor(channel, priced.text), ...(priced.cards?.[0] ? { card: priced.cards[0] } : {}) },
+        ...company,
+      ],
+      priced: priced.priced,
+      ...(priced.guide?.length ? { guide: priced.guide } : {}),
+      slots: stored ?? { product: "undecided", ...personIn(stored) },
+    };
+  }
+
+  /**
+   * The cancer set, by the owner's rule: "ประกันมะเร็ง" or "แพ็กเกจมะเร็ง" is the set on /cancer,
+   * priced here for the same reason CI 123 is — a settled Life Protect conversation would read
+   * "ประกันมะเร็ง ทุน 1 ล้าน" as its own sum. The /cancer page's own chat message lands here.
+   */
+  if (cancerNamedIn(asked) && asksCancerPrice(asked)) {
+    const priced = priceCancer(asked);
     const company = asksAboutCompany(asked) ? [{ text: writtenFor(channel, aboutCompany(asked)) }] : [];
     return {
       messages: [

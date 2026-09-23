@@ -10,6 +10,7 @@ import type { AnySlots } from "@/lib/assistant/slots";
 import { askLibrary } from "./library";
 import { asksPensionPrice, pensionNamedIn } from "./pension-price";
 import { asksCi123Price, ci123NamedIn } from "./ci123-price";
+import { asksCancerPrice, cancerNamedIn } from "./cancer-price";
 import { PRICED_FOLLOW_UPS, type GuideItem } from "./guide";
 import { noteAfterAnswer } from "@/lib/assistant/unanswered";
 
@@ -64,7 +65,9 @@ function forTheEngine(text: string): boolean {
     // "บำนาญ ชาย 40 เดือนละ 10,000" has no money word in it and is nothing but a price
     || (pensionNamedIn(text) && asksPensionPrice(text))
     // "CI123 ชาย 35 ทุน 1 ล้าน" likewise
-    || (ci123NamedIn(text) && asksCi123Price(text));
+    || (ci123NamedIn(text) && asksCi123Price(text))
+    // "ประกันมะเร็ง ชาย 35 ทุน 1 ล้าน" likewise
+    || (cancerNamedIn(text) && asksCancerPrice(text));
 }
 
 export interface CopilotAnswer {
