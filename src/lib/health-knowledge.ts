@@ -63,6 +63,8 @@ export interface ClaimRules {
   simpleDisease: {
     title: string;
     rule: string;
+    /** the everyday illnesses the table is for, as the source names them */
+    examples: string;
     threshold: string;
     criteria: string[];
     ageNote: string;
@@ -149,6 +151,7 @@ function admissionDetail(): string {
   return [
     `### ${s.title}`,
     s.rule,
+    `ใช้กับโรคทั่วไป เช่น ${s.examples}`,
     `**${s.threshold}**`,
     ...s.criteria.map((c, i) => `${i + 1}. ${c}`),
     `- ${s.ageNote}`,
@@ -198,9 +201,9 @@ function topics(): HealthTopic[] {
     },
     {
       code: "ADMISSION",
-      summary: `- เกณฑ์เข้าแอดมิดของการเจ็บป่วยทั่วไป (Simple Disease ตามที่ คปภ. บังคับใช้กับทุกบริษัท) มีอยู่ในระบบ ${CLAIMS.simpleDisease.criteria.length} ข้อ พร้อมเกณฑ์เฉพาะโรคอีก ${CLAIMS.byCondition.length} กลุ่ม ถ้าลูกค้าถามว่าทำไมนอนโรงพยาบาลแล้วเคลมไม่ได้ ให้เสนอว่าอธิบายเกณฑ์ให้ได้`,
+      summary: `- เกณฑ์เข้าแอดมิดของการเจ็บป่วยทั่วไป (Simple Disease ตามที่ คปภ. บังคับใช้กับทุกบริษัท) มีอยู่ในระบบ ${CLAIMS.simpleDisease.criteria.length} ข้อ พร้อมเกณฑ์เฉพาะโรคอีก ${CLAIMS.byCondition.length} กลุ่ม ใช้กับโรคทั่วไป เช่น ${CLAIMS.simpleDisease.examples} ถ้าลูกค้าถามว่าทำไมนอนโรงพยาบาลแล้วเคลมไม่ได้ ให้เสนอว่าอธิบายเกณฑ์ให้ได้`,
       detail: admissionDetail,
-      re: /แอดมิ|admit|นอนโรงพยาบาล|นอนรพ|ผู้ป่วยใน|\bipd\b|simple\s*disease|เกณฑ์.{0,12}นอน|ทำไม.{0,20}เคลมไม่|ไข้หวัด|ท้องเสีย|อุจจาระร่วง|ลำไส้อักเสบ|เวียนศีรษะ|เวียนหัว/i,
+      re: /แอดมิ|admit|นอนโรงพยาบาล|นอนรพ|ผู้ป่วยใน|\bipd\b|simple\s*disease|เกณฑ์.{0,12}นอน|ทำไม.{0,20}เคลมไม่|ไข้หวัด|ท้องเสีย|อุจจาระร่วง|ลำไส้อักเสบ|เวียนศีรษะ|เวียนหัว|เป็นไข้|มีไข้|ไข้ขึ้น|ผิวหนังอักเสบ|ปวดกล้ามเนื้อ|ปวดศีรษะ|ปวดหัว|ปวดท้อง|อาหารไม่ย่อย|กรดไหลย้อน|กระเพาะ(?:อาหาร)?อักเสบ/i,
     },
     {
       code: "CLAIMING",

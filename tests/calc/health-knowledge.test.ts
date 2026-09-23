@@ -58,6 +58,9 @@ describe("the admission rules, which belong to no product", () => {
     const { simpleDisease, byCondition } = claimRules();
     expect(simpleDisease.criteria).toHaveLength(8);
     expect(simpleDisease.threshold).toContain("2 ข้อ");
+    // the everyday illnesses the table is for, from the owner's 2026-09-23 image
+    expect(simpleDisease.examples).toContain("กรดไหลย้อน");
+    expect(simpleDisease.criteria.at(-1)).toContain("มากกว่าหรือเท่ากับ 1.025");
     expect(byCondition.map((c) => c.code)).toEqual(["RESPIRATORY", "GASTRO", "VERTIGO"]);
   });
 
@@ -88,6 +91,8 @@ describe("which question opens which block", () => {
       ["บริษัทไม่ต่อสัญญาได้ไหม", "CONDITIONS"],
       ["ทำไมนอนโรงพยาบาลแล้วเคลมไม่ได้", "ADMISSION"],
       ["ท้องเสียแอดมิดได้ไหม", "ADMISSION"],
+      ["กรดไหลย้อนนอนโรงพยาบาลเคลมได้ไหม", "ADMISSION"],
+      ["ปวดหัวมีไข้ แอดมิดได้ไหม", "ADMISSION"],
       ["ต้องสำรองจ่ายก่อนไหม", "CLAIMING"],
       ["ใช้บัตรประกันยังไง", "CLAIMING"],
     ] as const) {
