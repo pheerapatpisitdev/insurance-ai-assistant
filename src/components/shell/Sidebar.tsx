@@ -61,8 +61,6 @@ function Icon({ name }: { name: MenuIcon }) {
     // the page holds the AI providers' keys
     case "key":
       return <svg {...common}><path d="M14.5 13.5a5 5 0 1 0-4-4L4 16v4h4v-2h2v-2h2zM16.5 7.5h.01" /></svg>;
-    case "book":
-      return <svg {...common}><path d="M4.5 5.5A2 2 0 0 1 6.5 3.5H19v14H6.5a2 2 0 0 0-2 2zM19 17.5v3H6.5M8 7.5h7M8 11h5" /></svg>;
     case "chat":
       return <svg {...common}><path d="M20 11.6c0 3.9-3.6 7-8 7a9 9 0 0 1-2.4-.3L5 20l1.2-3.3A6.6 6.6 0 0 1 4 11.6c0-3.9 3.6-7 8-7s8 3.1 8 7z" /></svg>;
     case "megaphone":
