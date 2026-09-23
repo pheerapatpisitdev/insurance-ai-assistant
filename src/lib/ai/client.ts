@@ -208,6 +208,13 @@ export async function chat({ tier, task, messages, maxTokens = 700, json, timeou
       const costThb = (r.inputTokens / 1e6 * model.price.inputPerMTokUsd
         + r.outputTokens / 1e6 * model.price.outputPerMTokUsd) * USD_TO_THB;
       await record(model.model_name, task, r.inputTokens, r.outputTokens, costThb);
+      /**
+       * An empty reply is a failure, not an answer. It was returned as one: a model that spent
+       * its whole allowance thinking came back with "" and a 200, and the callers fell back to
+       * canned text for the customer instead of trying the next provider. It was paid for, so
+       * it is recorded above; then the next model is asked.
+       */
+      if (!r.text.trim()) throw new Error(`empty reply after ${r.outputTokens} tokens`);
       return { text: r.text, model: model.model_name, provider: model.provider, inputTokens: r.inputTokens, outputTokens: r.outputTokens, costThb };
     } catch (e) {
       tried.push(`${model.model_name}: ${e instanceof Error ? e.message : e}`);

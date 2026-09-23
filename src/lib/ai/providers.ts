@@ -61,11 +61,12 @@ export const CALLERS: Record<string, (a: CallArgs) => Promise<CallResult>> = {
     return { text, inputTokens: data.usage?.input_tokens ?? 0, outputTokens: data.usage?.output_tokens ?? 0 };
   },
 
-  async openai({ apiKey, model, messages, maxTokens, json, signal }) {
+  async openai({ apiKey, model, messages, maxTokens, json, signal, effort }) {
     const data = await postJson("https://api.openai.com/v1/chat/completions", {
       Authorization: `Bearer ${apiKey}`,
     }, {
       model, messages, max_completion_tokens: maxTokens,
+      ...(openAiReasoning(model, effort)),
       ...(json ? { response_format: { type: "json_object" } } : {}),
     }, signal);
     return {
@@ -101,6 +102,24 @@ export const CALLERS: Record<string, (a: CallArgs) => Promise<CallResult>> = {
     return openAiCompatible("https://api.z.ai/api/paas/v4/chat/completions", args);
   },
 };
+
+/**
+ * How much a GPT-5 model may reason before it answers.
+ *
+ * GPT-5 models reason by default, and the reasoning is counted against max_completion_tokens.
+ * At the chat's caps — 200 to 400 tokens — gpt-5-mini spent every one of them reasoning and
+ * answered with nothing: on 2026-09-22, when Gemini was down, 29 of its 31 calls came back at
+ * exactly their cap, and customers from the Life Protect advertisement who asked a question
+ * were sent the canned request for their age and sex instead of an answer. Probed the next day:
+ * default effort, finish "length", empty text, 200 of 200 tokens reasoning; "minimal", a full
+ * Thai sentence in 79 tokens, none of them reasoning.
+ *
+ * So "minimal" unless a caller asks for more; a caller's effort passes through as given.
+ */
+export function openAiReasoning(model: string, effort?: CallArgs["effort"]): { reasoning_effort?: string } {
+  if (!/^gpt-5/.test(model)) return {};
+  return { reasoning_effort: effort ?? "minimal" };
+}
 
 async function openAiCompatible(url: string, { apiKey, model, messages, maxTokens, json, signal }: CallArgs): Promise<CallResult> {
   const data = await postJson(url, { Authorization: `Bearer ${apiKey}` }, {
