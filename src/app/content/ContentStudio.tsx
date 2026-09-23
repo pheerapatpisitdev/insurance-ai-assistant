@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
-import { fullText } from "@/lib/content/output";
+import { footer, fullText } from "@/lib/content/output";
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { FORMAT_LABEL, FORMAT_SHORT, type AngleId, type Format, type Length } from "@/lib/content/prompt";
@@ -173,7 +173,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
 
   async function copy(item: ContentItem) {
     try {
-      await navigator.clipboard.writeText(item.format === "ad" ? `${item.output.body}\n\n${item.output.disclaimer}` : fullText(item.output));
+      await navigator.clipboard.writeText(item.format === "ad" ? `${item.output.body}\n\n${footer(item.output)}` : fullText(item.output));
       setCopied(item.id);
       setTimeout(() => setCopied(null), 2000);
     } catch {

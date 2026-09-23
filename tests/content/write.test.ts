@@ -61,7 +61,8 @@ describe("fullText", () => {
     const text = fullText(out);
     expect(text.startsWith(`${plans[0].hook}\n\nบรรทัดหนึ่ง`)).toBe(true);
     expect(text.indexOf("ทักแชท")).toBeLessThan(text.indexOf("#ประกันชีวิต"));
-    expect(text.endsWith(DISCLAIMER)).toBe(true);
+    // the regulator's line, then who insures it
+    expect(text.endsWith(`${DISCLAIMER}\nรับประกันภัยโดย บมจ. กรุงไทย-แอกซ่า ประกันชีวิต`)).toBe(true);
   });
 });
 

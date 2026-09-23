@@ -5,11 +5,27 @@
  * importing the AI client, which holds the keys and must never reach a browser bundle.
  */
 
+import { INSURER } from "@/lib/insurer";
 import type { PosterSpec } from "./poster";
 
 /** The regulator's line, the same words the sales pages end on. Added here, never by the model. */
 export const DISCLAIMER = "ผู้ซื้อควรทำความเข้าใจรายละเอียดความคุ้มครองและเงื่อนไขก่อนตัดสินใจทำประกันภัยทุกครั้ง";
 export const TAX_LINE = "สิทธิประโยชน์ทางภาษีเป็นไปตามเงื่อนไขที่กรมสรรพากรกำหนด";
+/** Who insures it. No piece named the insurer; this goes under every one, old ones included. */
+export const INSURER_LINE = `รับประกันภัยโดย ${INSURER}`;
+
+/**
+ * The lines the system puts under a piece: the regulator's, the tax line whenever the words
+ * talk about tax (not only when the tax angle was picked), and the insurer. Worked out when
+ * the piece is copied, so pieces written before a line existed get it too.
+ */
+export function footer(out: Pick<ContentOutput, "hooks" | "body" | "closing" | "disclaimer">): string {
+  const lines = out.disclaimer.split("\n").filter(Boolean);
+  const said = [...out.hooks, out.body, out.closing].join(" ");
+  if (!lines.includes(TAX_LINE) && /ภาษี|ลดหย่อน/.test(said)) lines.push(TAX_LINE);
+  lines.push(INSURER_LINE);
+  return lines.join("\n");
+}
 
 export interface ContentOutput {
   /** one hook per piece since pieces are planned; older pieces carry three to choose from */
@@ -30,14 +46,14 @@ export interface ContentOutput {
   ad?: { angle: string; tone: string };
 }
 
-/** The piece as it will be pasted: one hook, the body, the closing, the tags, the disclaimer. */
+/** The piece as it will be pasted: one hook, the body, the closing, the tags, the footer. */
 export function fullText(out: ContentOutput, hook = 0): string {
   return [
     out.hooks[hook] ?? out.hooks[0],
     out.body,
     out.closing,
     out.hashtags.join(" "),
-    out.disclaimer,
+    footer(out),
   ].filter(Boolean).join("\n\n");
 }
 

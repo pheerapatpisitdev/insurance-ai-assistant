@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { atFold, FOLD, fullText } from "@/lib/content/output";
+import { atFold, FOLD, footer, fullText } from "@/lib/content/output";
 import { defaultPoster, type PosterSpec } from "@/lib/content/poster";
 import type { Fix } from "@/lib/content/proofread";
 import { FORMAT_LABEL } from "@/lib/content/prompt";
@@ -87,7 +87,7 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
   };
   const isAd = item.format === "ad";
   // an ad is pasted into Ads Manager field by field; its primary text carries the regulator's line
-  const text = isAd ? `${draft.body}\n\n${item.output.disclaimer}` : fullText(output, hook);
+  const text = isAd ? `${draft.body}\n\n${footer(output)}` : fullText(output, hook);
   const fold = atFold(isAd ? draft.body : text);
 
   async function save(): Promise<boolean> {
@@ -203,7 +203,7 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
         </label>
         </>
       )}
-      <p className="mt-3 whitespace-pre-line text-xs text-[var(--ct-mute)]">ต่อท้ายให้อัตโนมัติ: {item.output.disclaimer}</p>
+      <p className="mt-3 whitespace-pre-line text-xs text-[var(--ct-mute)]">ต่อท้ายให้อัตโนมัติ:{"\n"}{footer(output)}</p>
 
       {item.format !== "script" && (
         <div className="mt-4 rounded-lg bg-[var(--ct-ground)] p-3 text-sm">

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { limiter } from "@/lib/assistant/rate-limit";
 import { POSTER_THEMES, posterScrim } from "@/lib/card-theme";
+import { INSURER_LINE } from "@/lib/content/output";
 import { backgroundDataUri } from "@/lib/content/store";
 import { decodePoster, isSizeId, SIZES, type Layout, type PosterSpec } from "@/lib/content/poster";
 import { fitScale, fontSize, LINE_HEIGHT, metrics, withBreaks, type Canvas } from "@/lib/content/poster-layout";
@@ -85,6 +86,21 @@ function Poster({ spec, canvas, photo }: { spec: PosterSpec; canvas: Canvas; pho
           </div>
         );
       })}
+      {/* who insures it, small in the bottom margin, so a reshared picture still says */}
+      <div
+        style={{
+          position: "absolute",
+          left: m.padX,
+          // a story's bottom is under the reply bar, so the line sits higher there
+          bottom: canvas.height / canvas.width > 1.5 ? Math.round(m.padBottom * 0.55) : Math.round(m.padX * 0.33),
+          fontSize: Math.round(19 * m.k),
+          lineHeight: 1.3,
+          color: c.footer,
+          opacity: 0.85,
+        }}
+      >
+        {INSURER_LINE}
+      </div>
     </div>
   );
 }
