@@ -5,6 +5,8 @@
  * importing the AI client, which holds the keys and must never reach a browser bundle.
  */
 
+import type { PosterSpec } from "./poster";
+
 /** The regulator's line, the same words the sales pages end on. Added here, never by the model. */
 export const DISCLAIMER = "ผู้ซื้อควรทำความเข้าใจรายละเอียดความคุ้มครองและเงื่อนไขก่อนตัดสินใจทำประกันภัยทุกครั้ง";
 export const TAX_LINE = "สิทธิประโยชน์ทางภาษีเป็นไปตามเงื่อนไขที่กรมสรรพากรกำหนด";
@@ -19,6 +21,8 @@ export interface ContentOutput {
   hashtags: string[];
   imagePrompt: string;
   disclaimer: string;
+  /** the poster the writer designed; absent on pieces written before posters */
+  poster?: PosterSpec;
 }
 
 /** The piece as it will be pasted: one hook, the body, the closing, the tags, the disclaimer. */

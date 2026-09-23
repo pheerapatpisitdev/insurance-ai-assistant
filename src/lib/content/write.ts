@@ -1,5 +1,6 @@
 import { chat, parseJsonReply } from "@/lib/ai/client";
 import { DISCLAIMER, TAX_LINE, type ContentOutput } from "./output";
+import { parsePoster } from "./poster";
 import { parsePlans, planMessages, type PiecePlan } from "./plan";
 import { buildMessages, type AngleId, type Ask } from "./prompt";
 
@@ -15,6 +16,7 @@ export { DISCLAIMER, TAX_LINE, fullText, type ContentOutput } from "./output";
  */
 
 interface RawPiece {
+  poster?: unknown;
   body?: unknown;
   closing?: unknown;
   hashtags?: unknown;
@@ -37,9 +39,12 @@ const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
  * line the formula, the used-hooks list and the policy were all checked against.
  */
 export function parsePieces(reply: string, plans: PiecePlan[], angle: AngleId): ContentOutput[] | null {
-  const raw = parseJsonReply<{ pieces?: unknown }>(reply);
-  if (!raw || !Array.isArray(raw.pieces)) return null;
-  const pieces = (raw.pieces as RawPiece[]).slice(0, plans.length);
+  const raw = parseJsonReply<{ pieces?: unknown; body?: unknown }>(reply);
+  if (!raw) return null;
+  // asked for one piece, a model sometimes answers with the piece itself rather than a list of one
+  const list = Array.isArray(raw.pieces) ? raw.pieces : plans.length === 1 && typeof raw.body === "string" ? [raw] : null;
+  if (!list) return null;
+  const pieces = (list as RawPiece[]).slice(0, plans.length);
   if (pieces.length !== plans.length) return null;
   const out: ContentOutput[] = [];
   for (const [i, p] of pieces.entries()) {
@@ -53,6 +58,8 @@ export function parsePieces(reply: string, plans: PiecePlan[], angle: AngleId): 
       hashtags: [...new Set(strings(p.hashtags).map((h) => (h.startsWith("#") ? h : `#${h}`)))].slice(0, 8),
       imagePrompt: text(p.imagePrompt),
       disclaimer: angle === "tax" ? `${DISCLAIMER}\n${TAX_LINE}` : DISCLAIMER,
+      // a poster that cannot be read is left out, and the page draws one from the hook
+      ...(parsePoster(p.poster) ? { poster: parsePoster(p.poster)! } : {}),
     });
   }
   return out;
@@ -106,7 +113,11 @@ export async function write(ask: Ask): Promise<WrittenPiece[]> {
       maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low",
     });
     const [output] = parsePieces(r.text, [p], ask.angle) ?? [];
-    if (!output) throw new UnreadableReply();
+    if (!output) {
+      // the reply is the only evidence of why; its opening is enough to tell the shapes apart
+      console.error(`content piece unreadable (${r.model}, ${r.outputTokens} tokens):`, r.text.slice(0, 600));
+      throw new UnreadableReply();
+    }
     return { output, model: r.model, costThb: r.costThb };
   }));
   const written = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));

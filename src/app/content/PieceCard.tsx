@@ -1,13 +1,13 @@
 "use client";
+import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import type { ContentItem } from "@/lib/content/store";
 
 /**
  * One piece on the workbench, in the shape of Maryjane's piece-card: the picture on top, the
  * words under it, and a bar of three buttons — the decision, the tools, the bin.
  *
- * There is no picture yet, so the top is the hook set large on navy — the poster the next
- * round will render for real. It already does the job the picture does on a feed: it is what a
- * scrolling eye reads first, and on the workbench it is how one piece is told from another.
+ * The picture is the piece's poster, drawn by /api/content-poster from the words the writer
+ * chose; a piece from before posters gets one drawn from its hook.
  */
 
 interface Props {
@@ -27,24 +27,26 @@ export function PieceCard({ item, index, productName, busy, onEdit, onStatus, on
 
   return (
     <article className={`overflow-hidden rounded-xl border bg-[var(--ct-panel)] ${item.status === "trashed" ? "border-[var(--ct-hair)] opacity-70" : "border-[var(--ct-hair)]"}`}>
-      {/* the navy is a div inside the button: the site's own button rule outranks a background
-          utility on the button itself, and the header rendered transparent */}
-      <button type="button" onClick={onEdit} className="block w-full text-left">
-        <div className="relative flex aspect-[4/3] w-full flex-col justify-end bg-[var(--ct-solid)] p-4 text-[var(--ct-solid-ink)]">
-          <span className="absolute left-3 top-3 rounded-full bg-[var(--ct-panel)] px-2.5 py-0.5 text-xs text-[var(--ct-mute)]">
-            {item.format === "post" ? "โพสต์" : "สคริปต์"} {index + 1}
+      <button type="button" onClick={onEdit} className="relative block w-full text-left" aria-label="เปิดแก้ไขชิ้นนี้">
+        {/* eslint-disable-next-line @next/next/no-img-element -- a drawn PNG from our own route, not an asset to optimise */}
+        <img
+          src={posterUrl(item.output.poster ?? defaultPoster(item.output.hooks[0], productName))}
+          alt={item.output.hooks[0]}
+          loading="lazy"
+          className="aspect-square w-full bg-[var(--ct-ground)] object-cover"
+        />
+        <span className="absolute left-3 top-3 rounded-full bg-[var(--ct-panel)] px-2.5 py-0.5 text-xs text-[var(--ct-mute)]">
+          {item.format === "post" ? "โพสต์" : "สคริปต์"} {index + 1}
+        </span>
+        {toCheck > 0 && (
+          <span className={`absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-xs ${blocking ? "bg-[var(--ct-alert-bg)] text-[var(--ct-alert)]" : "bg-[var(--ct-warn-bg)] text-[var(--ct-warn-ink)]"}`}>
+            {blocking ? "ผิดกฎ Facebook" : `ต้องตรวจ ${toCheck}`}
           </span>
-          {toCheck > 0 && (
-            <span className={`absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-xs ${blocking ? "bg-[var(--ct-alert-bg)] text-[var(--ct-alert)]" : "bg-[var(--ct-warn-bg)] text-[var(--ct-warn-ink)]"}`}>
-              {blocking ? "ผิดกฎ Facebook" : `ต้องตรวจ ${toCheck}`}
-            </span>
-          )}
-          <span className="text-xs opacity-80">{productName}</span>
-          <span className="mt-1 line-clamp-4 text-lg font-semibold leading-snug">{item.output.hooks[0]}</span>
-        </div>
+        )}
       </button>
 
       <div className="space-y-1.5 p-3">
+        <p className="line-clamp-2 text-sm font-semibold leading-snug">{item.output.hooks[0]}</p>
         {item.output.angle && <p className="text-xs text-[var(--ct-mute)]">มุม: {item.output.angle}</p>}
         <p className="line-clamp-4 whitespace-pre-line text-sm leading-relaxed">{item.output.body}</p>
         {item.output.hashtags.length > 0 && (

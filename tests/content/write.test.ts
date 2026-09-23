@@ -38,6 +38,12 @@ describe("parsePieces", () => {
     expect(parsePieces("ขอโทษครับ", plans, "")).toBeNull();
   });
 
+  it("takes a single piece given bare, when one was asked for", () => {
+    const bare = JSON.stringify({ body: "เนื้อหา", closing: "ทักแชทครับ", hashtags: [] });
+    expect(parsePieces(bare, [plans[0]], "")![0].body).toBe("เนื้อหา");
+    expect(parsePieces(bare, plans, "")).toBeNull();
+  });
+
   it("drops extra pieces instead of billing the owner for angles nobody planned", () => {
     const extra = JSON.stringify({ pieces: [{ body: "a" }, { body: "b" }, { body: "c" }] });
     expect(parsePieces(extra, plans, "")).toHaveLength(2);
@@ -99,5 +105,23 @@ describe("atFold", () => {
 
   it("hides nothing in a short post", () => {
     expect(atFold("สั้นๆ").hidden).toBe("");
+  });
+});
+
+describe("posters from the writer", () => {
+  it("keeps a poster the writer designed, and leaves out one without a headline", () => {
+    const withPoster = JSON.stringify({ pieces: [
+      { body: "a", poster: { layout: "top", blocks: [{ kind: "headline", text: "วันละ 20 บาท" }], theme: "sand" } },
+      { body: "b", poster: { blocks: [{ kind: "sub", text: "ไม่มีพาดหัว" }] } },
+    ] });
+    const [one, two] = parsePieces(withPoster, plans, "")!;
+    expect(one.poster).toEqual({ layout: "top", theme: "sand", blocks: [{ kind: "headline", text: "วันละ 20 บาท" }] });
+    expect(two.poster).toBeUndefined();
+  });
+
+  it("asks for a poster without letting the model pick colours", () => {
+    const [system] = buildMessages({ brief: "b", format: "post", angle: "", custom: "", length: null, plans });
+    expect(system.content).toContain('"poster"');
+    expect(system.content).toContain("ห้ามกำหนดสี");
   });
 });

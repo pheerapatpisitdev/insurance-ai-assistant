@@ -133,3 +133,26 @@ const DRAWING_REVISION = "6";
 export function cardVersionFor(): string {
   return `${cardPaletteVersion(cardPaletteFor())}-${DRAWING_REVISION}`;
 }
+
+/**
+ * The content posters' three themes (src/lib/content/poster.ts), drawn by the same library as
+ * the quote card and so held here for the same reason: a drawing cannot read a CSS variable.
+ * Each value is the hex of a --bot-* token in globals.css; the comment above each says which.
+ */
+export interface PosterColors {
+  from: string;
+  to: string;
+  headline: string;
+  sub: string;
+  footer: string;
+  badgeBg: string;
+  badgeInk: string;
+}
+export const POSTER_THEMES: Record<"navy" | "sand" | "white", PosterColors> = {
+  // --bot-navy → --bot-navy-deep, white words, sand accents
+  navy: { from: "#022162", to: "#01143d", headline: "#ffffff", sub: "#dde3f0", footer: "#c6bc99", badgeBg: "#c6bc99", badgeInk: "#01143d" },
+  // --bot-sand-soft → --bot-sand, navy words
+  sand: { from: "#e7e3d4", to: "#c6bc99", headline: "#022162", sub: "#15181d", footer: "#5f5436", badgeBg: "#022162", badgeInk: "#ffffff" },
+  // --bot-surface → --bot-band, navy words
+  white: { from: "#ffffff", to: "#f2f2f2", headline: "#022162", sub: "#5b6472", footer: "#5f5436", badgeBg: "#022162", badgeInk: "#ffffff" },
+};

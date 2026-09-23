@@ -6,6 +6,7 @@ import { briefFor } from "@/lib/content/brief";
 import { findWords, strayNumbers, type ContentWord } from "@/lib/content/check";
 import { parseTemplatize, templatizeMessages } from "@/lib/content/hooks";
 import type { ContentOutput } from "@/lib/content/output";
+import { parsePoster, posterText } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { checkPolicy } from "@/lib/content/policy";
 import { proofread, type Fix } from "@/lib/content/proofread";
@@ -32,9 +33,9 @@ async function caller(): Promise<string> {
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
 }
 
-/** every line the checks read — all the hooks, since any of them may be the one posted */
-function checkedText(o: Pick<ContentOutput, "hooks" | "body" | "closing">): string {
-  return [...o.hooks, o.body, o.closing].join("\n");
+/** every line the checks read — all the hooks, since any may be posted, and the poster's words */
+function checkedText(o: Pick<ContentOutput, "hooks" | "body" | "closing" | "poster">): string {
+  return [...o.hooks, o.body, o.closing, posterText(o.poster)].join("\n");
 }
 
 function flagsFor(o: ContentOutput, brief: string, words: ContentWord[], fixes: Fix[] | null): Flags {
@@ -162,7 +163,7 @@ export async function setContentStatus(id: string, status: ContentStatus): Promi
 export type EditResult = { ok: true; item: ContentItem } | { ok: false; error: string };
 
 /** The owner's edits, kept — and checked again, because an edit can add a number too. */
-export async function saveContentEdits(id: string, edits: Pick<ContentOutput, "hooks" | "body" | "closing" | "hashtags">): Promise<EditResult> {
+export async function saveContentEdits(id: string, edits: Pick<ContentOutput, "hooks" | "body" | "closing" | "hashtags" | "poster">): Promise<EditResult> {
   try {
     const item = await getContent(id);
     if (!item) return { ok: false, error: "ไม่พบชิ้นงานนี้" };
@@ -173,6 +174,9 @@ export async function saveContentEdits(id: string, edits: Pick<ContentOutput, "h
       body: edits.body.slice(0, 6000),
       closing: edits.closing.slice(0, 600),
       hashtags: edits.hashtags.slice(0, 12).map((h) => h.slice(0, 60)),
+      // the poster the browser sent is parsed like one from the model: nothing reaches the
+      // table that the drawing route could not draw
+      ...(edits.poster && parsePoster(edits.poster) ? { poster: parsePoster(edits.poster)! } : {}),
     };
     const flags = flagsFor(output, brief?.text ?? "", await listWords(), item.flags.fixes);
     return { ok: true, item: await saveOutput(id, output, flags) };

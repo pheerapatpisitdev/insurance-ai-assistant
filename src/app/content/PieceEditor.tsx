@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { atFold, FOLD, fullText } from "@/lib/content/output";
+import { defaultPoster, type PosterSpec } from "@/lib/content/poster";
 import type { Fix } from "@/lib/content/proofread";
 import type { ContentItem } from "@/lib/content/store";
 import { proofreadContent, saveContentEdits } from "./actions";
+import { PosterPanel } from "./PosterPanel";
 
 /**
  * One piece opened across the workbench: every part editable, the checks beside it.
@@ -19,13 +21,15 @@ interface Draft {
   body: string;
   closing: string;
   tags: string;
+  poster: PosterSpec;
 }
 
-const draftOf = (item: ContentItem): Draft => ({
+const draftOf = (item: ContentItem, productName: string): Draft => ({
   hooks: [...item.output.hooks],
   body: item.output.body,
   closing: item.output.closing,
   tags: item.output.hashtags.join(" "),
+  poster: item.output.poster ?? defaultPoster(item.output.hooks[0], productName),
 });
 
 /** the first place `find` occurs, replaced; a fix that no longer matches changes nothing */
@@ -49,7 +53,7 @@ interface Props {
 }
 
 export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: Props) {
-  const [draft, setDraft] = useState<Draft>(() => draftOf(item));
+  const [draft, setDraft] = useState<Draft>(() => draftOf(item, productName));
   const [hook, setHook] = useState(0);
   const [fixes, setFixes] = useState<Fix[] | null>(item.flags.fixes);
   const [proofing, setProofing] = useState(false);
@@ -77,6 +81,7 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
     ...item.output,
     hooks: draft.hooks, body: draft.body, closing: draft.closing,
     hashtags: draft.tags.split(/\s+/).filter(Boolean),
+    poster: draft.poster,
   };
   const text = fullText(output, hook);
   const fold = atFold(text);
@@ -117,6 +122,11 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
           {item.output.angle && <p className="mt-0.5 text-xs text-[var(--ct-mute)]">มุม: {item.output.angle}</p>}
         </div>
         <button type="button" onClick={onClose} className="rounded-lg border border-[var(--ct-line)] px-3 py-1 text-sm">ปิด</button>
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-1.5 text-sm font-medium">รูปโพสต์</p>
+        <PosterPanel value={draft.poster} onChange={(poster) => edit({ ...draft, poster })} />
       </div>
 
       <fieldset className="mt-4">
