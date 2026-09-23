@@ -2,6 +2,7 @@ import { chat, parseJsonReply } from "@/lib/ai/client";
 import { DISCLAIMER, TAX_LINE, type ContentOutput } from "./output";
 import { adCopyMessages, matrixCells, matrixMessages, parseAdCopy, parseMatrix } from "./ads";
 import { parsePoster } from "./poster";
+import { WRITERS } from "./models";
 import { parsePlans, planMessages, type PiecePlan } from "./plan";
 import { buildMessages, type AngleId, type Ask } from "./prompt";
 
@@ -106,12 +107,13 @@ const WRITE_TIMEOUT_MS = 60_000;
  * the angles distinct, so no writer needs to see the others' plans.
  */
 export async function write(ask: Ask, opts: { only?: string; prefer?: string } = {}): Promise<WrittenPiece[]> {
+  const within = opts.prefer ? WRITERS.map((w) => w.model) : undefined;
   const settled = await Promise.allSettled(ask.plans.map(async (p) => {
     const r = await chat({
       tier: "large", task: "content", messages: buildMessages({ ...ask, plans: [p] }),
       // low effort: ad copy from a fixed brief needs little reasoning, and the room left over
       // is for the post; 4,000 covers what thinking remains plus a long script
-      maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low", only: opts.only, prefer: opts.prefer,
+      maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low", only: opts.only, prefer: opts.prefer, within,
     });
     const [output] = parsePieces(r.text, [p], ask.angle) ?? [];
     if (!output) {
@@ -142,6 +144,7 @@ export async function writeAds(opts: { brief: string; angles: number; tones: num
     const r = await chat({
       tier: "large", task: "content", messages: adCopyMessages(opts.brief, cell),
       maxTokens: 3000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low", prefer: opts.prefer,
+      within: opts.prefer ? WRITERS.map((w) => w.model) : undefined,
     });
     const copy = parseAdCopy(r.text);
     if (!copy) {

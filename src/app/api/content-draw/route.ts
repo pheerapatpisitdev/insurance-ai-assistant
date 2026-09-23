@@ -10,7 +10,8 @@ import { drawBackground } from "@/app/content/actions";
  * side and the page stays usable. The limits and the budget are drawBackground's own.
  */
 
-export const maxDuration = 120;
+/** two image models at 90 s each plus the request's translation; 120 cut the fallback off */
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null) as { id?: unknown; request?: unknown; painter?: unknown } | null;

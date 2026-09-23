@@ -134,7 +134,9 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
     }
     if (template) await countHookUse(template, items.length).catch((e) => console.error("hook count failed:", e));
     const costThb = items.reduce((s, i) => s + i.costThb, 0);
-    return { ok: true, items, costThb, missing: planned.plans.length - items.length };
+    // against the count asked for: a planner reply repaired short gives fewer plans, and the
+    // owner is told rather than handed two posts for three
+    return { ok: true, items, costThb, missing: Math.max(0, count - items.length) };
   } catch (e) {
     if (e instanceof BudgetExceeded) return { ok: false, error: "ถึงงบค่า AI ของเดือนนี้แล้ว" };
     if (e instanceof UnreadableReply) return { ok: false, error: e.message };
@@ -228,6 +230,8 @@ export async function saveContentEdits(
     // plain colour: an editor opened before the photograph landed does not know it exists
     const kept = item.output.poster?.background;
     if (output.poster && !output.poster.background && kept && !opts.plain) output.poster = { ...output.poster, background: kept };
+    // back to the plain colour: nobody drew it any more
+    if (opts.plain && !output.poster?.background) delete output.pictureBy;
     const flags = flagsFor(output, brief?.text ?? "", await listWords(), item.flags.fixes);
     return { ok: true, item: await saveOutput(id, output, flags) };
   } catch (e) {
@@ -286,16 +290,17 @@ export type DrawBackgroundResult = { ok: true; item: ContentItem } | { ok: false
  * over it. Counted against the content ceiling like every other content call.
  */
 export async function drawBackground(id: string, request = "", painter?: string): Promise<DrawBackgroundResult> {
-  // only an id from the list; "none" is the page's to honour by not asking
-  const chosen = painterOf(painter);
-  if (!chosen.modelId) return { ok: false, error: "เลือกโมเดลวาดภาพก่อนนะครับ" };
   if (!drawPerHour(`draw:${await caller()}`)) {
     return { ok: false, error: "วาดรูปครบ 40 รูปในชั่วโมงนี้แล้ว รอสักพักนะครับ" };
   }
   try {
-    if (await contentSpentThisMonth() >= CONTENT_MONTH_CAP_THB) {
+    const spent = await contentSpentThisMonth();
+    if (spent >= CONTENT_MONTH_CAP_THB) {
       return { ok: false, error: `เดือนนี้ใช้งบสร้างคอนเทนต์ครบ ${CONTENT_MONTH_CAP_THB} บาทแล้ว` };
     }
+    // only an id from the list, อัตโนมัติ settled on the money left; "none" draws nothing
+    const chosen = painterOf(painter, CONTENT_MONTH_CAP_THB - spent);
+    if (!chosen.modelId) return { ok: false, error: "งบคอนเทนต์เหลือน้อย อัตโนมัติจึงไม่วาดภาพ เลือกโมเดลวาดเองได้ครับ" };
     const item = await getContent(id);
     if (!item) return { ok: false, error: "ไม่พบชิ้นงานนี้" };
     const poster = item.output.poster ?? defaultPoster(item.output.hooks[0], contentProduct(item.planHref)?.name ?? "");

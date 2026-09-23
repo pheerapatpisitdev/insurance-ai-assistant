@@ -66,3 +66,17 @@ describe("findWords", () => {
     expect(findWords("คุ้มครองชีวิตถึงอายุ 99 ปี", words)).toEqual([]);
   });
 });
+
+describe("brackets in the copy", () => {
+  const brief = "- เบี้ย 4,914 บาท/เดือน";
+  it("still checks an amount written inside square brackets", async () => {
+    const { strayNumbers } = await import("@/lib/content/check");
+    expect(strayNumbers("[ตัวอย่าง: เบี้ยแค่ 3,500 บาท/เดือน]", brief)).toEqual(["3,500 บาท"]);
+  });
+
+  it("leaves a script's time markers alone, and an unclosed one hides nothing", async () => {
+    const { strayNumbers } = await import("@/lib/content/check");
+    expect(strayNumbers("[3–15 วิ] เบี้ย 4,914 บาท/เดือน", brief)).toEqual([]);
+    expect(strayNumbers("[3–15 วิ เบี้ยแค่ 3,500 บาท\n\n[15–30 วิ] ต่อ", brief)).toEqual(["3,500 บาท"]);
+  });
+});

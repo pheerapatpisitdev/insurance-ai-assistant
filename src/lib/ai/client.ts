@@ -173,6 +173,16 @@ function liveKeys(config: Config): Record<string, string> {
   return Object.fromEntries(Object.entries(config.keys).filter(([provider]) => !config.off.has(provider)));
 }
 
+/** The named text models that can answer now: the first as given, the rest cheapest first. */
+function keptTo(config: Config, names: string[]): ModelRow[] {
+  const keys = liveKeys(config);
+  const usable = (name: string) => config.models.find((m) => m.kind === "text" && m.enabled && m.model_name === name && keys[m.provider]);
+  const [first, ...rest] = [...new Set(names)];
+  const tail = rest.map(usable).filter((m): m is ModelRow => Boolean(m)).sort((a, b) => priceOf(a) - priceOf(b));
+  const head = usable(first);
+  return head ? [head, ...tail] : tail;
+}
+
 function candidates(config: Config, tier: Tier): ModelRow[] {
   return fallbackOrder(config.models, tier, tier === "small" ? config.smallModel : config.largeModel, liveKeys(config));
 }
@@ -203,18 +213,26 @@ export interface ChatOptions {
    * a pick that is down is answered by the next rather than not at all.
    */
   prefer?: string;
+  /**
+   * With `prefer`: the only models its fallback may use, cheapest first. /content passes the
+   * writers it offers, so a pick of ประหยัด that fails is not answered by Sonnet at six
+   * times the price, nor by a model the bake-off turned away for its Thai.
+   */
+  within?: string[];
 }
 
 /** Sends one prompt, trying providers in order until one answers. */
-export async function chat({ tier, task, messages, maxTokens = 700, json, timeoutMs, effort, only, prefer }: ChatOptions): Promise<ChatResult> {
+export async function chat({ tier, task, messages, maxTokens = 700, json, timeoutMs, effort, only, prefer, within }: ChatOptions): Promise<ChatResult> {
   const config = await loadConfig();
   await assertWithinBudget(config);
   const tried: string[] = [];
   const chain = only
     ? config.models.filter((m) => m.kind === "text" && m.enabled && m.model_name === only && liveKeys(config)[m.provider])
-    : prefer
-      ? fallbackOrder(config.models, tier, prefer, liveKeys(config))
-      : candidates(config, tier);
+    : prefer && within
+      ? keptTo(config, [prefer, ...within])
+      : prefer
+        ? fallbackOrder(config.models, tier, prefer, liveKeys(config))
+        : candidates(config, tier);
   if (only && chain.length === 0) throw new Error(`โมเดล ${only} ใช้ไม่ได้ในตอนนี้`);
   for (const model of chain) {
     const call = CALLERS[model.provider];
@@ -249,7 +267,7 @@ export async function chat({ tier, task, messages, maxTokens = 700, json, timeou
  */
 const IMAGE_PREFERENCE = ["gpt-image-medium", "gemini-image-lite"];
 
-/** an image takes far longer than a reply; 90 seconds each, two tries, inside the page's 300 */
+/** an image takes far longer than a reply; 90 seconds each, two tries, inside the route's 300 */
 const IMAGE_TIMEOUT_MS = 90_000;
 
 export interface DrawResult extends DrawnImage {
@@ -269,7 +287,10 @@ export async function drawImage({ task, prompt, prefer }: { task: string; prompt
     .map((id) => config.models.find((m) => m.id === id && m.kind === "image" && m.enabled))
     .filter((m): m is ModelRow => Boolean(m && keys[m.provider] && IMAGE_CALLERS[m.provider]));
   const tried: string[] = [];
+  // a provider that has just run out the clock is not asked again for its other quality
+  const stalled = new Set<string>();
   for (const model of models) {
+    if (stalled.has(model.provider)) continue;
     try {
       const img = await IMAGE_CALLERS[model.provider]({
         apiKey: keys[model.provider], model: model.model_name, prompt, params: model.params ?? {},
@@ -279,6 +300,7 @@ export async function drawImage({ task, prompt, prefer }: { task: string; prompt
       await record(model.model_name, task, 0, 0, costThb);
       return { ...img, model: model.model_name, id: model.id, costThb };
     } catch (e) {
+      if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) stalled.add(model.provider);
       tried.push(`${model.model_name}: ${e instanceof Error ? e.message : e}`);
     }
   }

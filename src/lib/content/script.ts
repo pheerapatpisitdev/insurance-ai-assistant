@@ -19,7 +19,8 @@ export interface Scene {
   screen: string[];
 }
 
-const TIME = /\[([^\]]*?วิ[^\]]*)\]/g;
+/** "[3–15 วิ]": a digit and วิ inside one pair of brackets — "[ตัดไปที่วิวทะเล]" is not a time */
+const TIME = /\[([^\[\]]*\d[^\[\]]*วิ[^\[\]]*)\]/g;
 const SCREEN = /\{\s*จอ\s*:\s*([^}]*)\}/g;
 const PAREN = /\(([^()]*)\)/g;
 
@@ -28,11 +29,18 @@ function scene(time: string | null, text: string): Scene {
   let rest = text.replace(SCREEN, " ");
   // a bracket with a figure in it is part of the sentence ("(6 แผน)"); one without is an action
   const acts: string[] = [];
-  rest = rest.replace(PAREN, (whole, inner: string) => {
-    if (/\d/.test(inner)) return whole;
-    if (inner.trim()) acts.push(inner.trim());
-    return " ";
-  });
+  // innermost first, again until none are left, so "(ชี้ไปที่กล้อง (ยิ้ม))" is two actions
+  const kept: string[] = [];
+  for (let before = ""; before !== rest;) {
+    before = rest;
+    rest = rest.replace(PAREN, (_, inner: string) => {
+      if (/\d/.test(inner)) { kept.push(inner); return `\u0000${kept.length - 1}\u0001`; }
+      if (inner.trim()) acts.push(inner.trim());
+      return " ";
+    });
+  }
+  // a bracket with a figure in it stays in the sentence, as it was written
+  while (/\u0000\d+\u0001/.test(rest)) rest = rest.replace(/\u0000(\d+)\u0001/g, (_, i: string) => `(${kept[Number(i)]})`);
   return { time, say: rest.replace(/\s+/g, " ").trim(), acts, screen };
 }
 

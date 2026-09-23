@@ -25,8 +25,13 @@ const UNIT: Record<string, number> = { "ล้าน": 1_000_000, "แสน": 1
  */
 const AMOUNT = /(\d[\d,]*(?:\.\d+)?)\s*(ล้าน|แสน|หมื่น|พัน)?\s*(บาท|%)?/g;
 
-/** a script's own time markers, `[0–3 วิ]`, are stage directions and not claims */
-const stripMarkers = (text: string) => text.replace(/\[[^\]]*\]/g, " ");
+/**
+ * A script's own time markers, `[0–3 วิ]`, are stage directions and not claims.
+ *
+ * Only those: it was every `[…]`, so "[ตัวอย่าง: เบี้ยแค่ 3,500 บาท/เดือน]" went unchecked,
+ * and a marker left unclosed hid everything up to the next "]".
+ */
+const stripMarkers = (text: string) => text.replace(/\[\s*\d+\s*[–-]\s*\d+\s*วิ[^\[\]\n]*\]/g, " ");
 
 interface Amount {
   raw: string;

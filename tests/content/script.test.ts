@@ -36,4 +36,21 @@ describe("a script read as a shot list", () => {
       { time: null, say: "พูดยาวๆ ไม่มีเวลา", acts: [], screen: [] },
     ]);
   });
+
+  it("does not take a scene direction with วิ in it for a time", () => {
+    const list = scenes("เปิด", "[3–15 วิ] พูด [ตัดไปที่วิวทะเล] ต่อ", "");
+    expect(list.map((s) => s.time)).toEqual(["0–3 วิ", "3–15 วิ"]);
+  });
+
+  it("keeps a stretch whose marker was left unclosed from swallowing the next", () => {
+    const list = scenes("เปิด", "[3–15 วิ (ยิ้ม) ประโยคแรก\n\n[15–30 วิ] ประโยคสอง", "");
+    expect(list.at(-1)).toMatchObject({ time: "15–30 วิ", say: "ประโยคสอง" });
+    expect(list.some((s) => s.time?.includes("ประโยคแรก"))).toBe(false);
+  });
+
+  it("peels actions inside actions", () => {
+    const [, s] = scenes("เปิด", "[3–15 วิ] (ชี้ไปที่กล้อง (ยิ้ม)) สวัสดีครับ", "");
+    expect(s.acts.sort()).toEqual(["ชี้ไปที่กล้อง", "ยิ้ม"].sort());
+    expect(s.say).toBe("สวัสดีครับ");
+  });
 });
