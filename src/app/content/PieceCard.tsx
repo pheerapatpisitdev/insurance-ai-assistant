@@ -2,10 +2,11 @@
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { FORMAT_SHORT } from "@/lib/content/prompt";
 import type { ContentItem } from "@/lib/content/store";
+import { SAVE_LABEL, usePictureSaver } from "./savePicture";
 
 /**
  * One piece on the workbench, in the shape of Maryjane's piece-card: the picture on top, the
- * words under it, and a bar of three buttons — the decision, the tools, the bin.
+ * words under it, and a bar of four buttons — the decision, the picture, the tools, the bin.
  *
  * The picture is the piece's poster, drawn by /api/content-poster from the words the writer
  * chose; a piece from before posters gets one drawn from its hook.
@@ -28,15 +29,18 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
   const blocking = (item.flags.policy ?? []).some((f) => f.severity === "block");
   const toCheck = item.flags.numbers.length + item.flags.words.length + (item.flags.policy?.length ?? 0);
   const cell = "flex min-h-11 items-center justify-center gap-1.5 text-sm hover:bg-[var(--ct-soft)] disabled:opacity-50";
+  const picture = posterUrl(item.output.poster ?? defaultPoster(item.output.hooks[0], productName));
+  const saver = usePictureSaver(picture, `poster-${item.id.slice(0, 8)}.png`);
 
   return (
     <article className="overflow-hidden rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)]">
       <button type="button" onClick={onEdit} className="relative block w-full text-left" aria-label="เปิดแก้ไขชิ้นนี้">
         {/* eslint-disable-next-line @next/next/no-img-element -- a drawn PNG from our own route, not an asset to optimise */}
         <img
-          src={posterUrl(item.output.poster ?? defaultPoster(item.output.hooks[0], productName))}
+          src={picture}
           alt={item.output.hooks[0]}
           loading="lazy"
+          onLoad={drawing ? undefined : saver.ready}
           className="aspect-square w-full bg-[var(--ct-ground)] object-cover"
         />
         {drawing && (
@@ -63,7 +67,7 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
         )}
       </div>
 
-      <div className="grid grid-cols-3 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
+      <div className="grid grid-cols-4 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
         {item.status === "used" ? (
           <button type="button" onClick={onCopy} className={cell}>คัดลอก</button>
         ) : (
@@ -71,6 +75,9 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
             ✓ ใช้จริง
           </button>
         )}
+        <button type="button" disabled={drawing || saver.state === "saving"} onClick={saver.save} className={cell} aria-live="polite">
+          {drawing ? "รอภาพ…" : SAVE_LABEL[saver.state]}
+        </button>
         <button type="button" onClick={onEdit} className={cell}>แก้ไข</button>
         <button type="button" disabled={busy} onClick={onDelete} className={`${cell} text-[var(--ct-alert)]`}>
           ลบ

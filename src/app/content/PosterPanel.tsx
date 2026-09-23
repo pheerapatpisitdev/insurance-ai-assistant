@@ -4,6 +4,7 @@ import {
   BLOCK_KINDS, BLOCK_LABEL, LAYOUTS, LAYOUT_LABEL, MAX_CHARS, SIZES, THEMES, THEME_LABEL,
   posterUrl, type BlockKind, type PosterSpec, type SizeId,
 } from "@/lib/content/poster";
+import { SAVE_LABEL, usePictureSaver } from "./savePicture";
 
 /**
  * The poster, editable: its four lines, where they sit, which colours, which size to download.
@@ -51,6 +52,7 @@ export function PosterPanel({ value, onChange, onDraw }: Props) {
   const drawable = value.blocks.some((b) => b.kind === "headline");
   const [size, setSize] = useState<SizeId>("square");
   const [shown, setShown] = useState(value);
+  const saver = usePictureSaver(posterUrl(shown, size), `poster-${size}.png`);
 
   // a new picture once typing pauses, not on every keystroke
   useEffect(() => {
@@ -71,6 +73,7 @@ export function PosterPanel({ value, onChange, onDraw }: Props) {
           <img
             src={posterUrl(shown, size)}
             alt="ตัวอย่างโปสเตอร์"
+            onLoad={saver.ready}
             className="w-full rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)]"
             style={{ aspectRatio: `${SIZES[size].width} / ${SIZES[size].height}` }}
           />
@@ -85,13 +88,14 @@ export function PosterPanel({ value, onChange, onDraw }: Props) {
           ))}
         </div>
         {drawable && (
-          <a
-            href={posterUrl(value, size, true)}
-            download={`poster-${size}.png`}
-            className="mt-2 block rounded-lg bg-[var(--ct-solid)] px-3 py-2 text-center text-sm font-medium text-[var(--ct-solid-ink)]"
+          <button
+            type="button"
+            onClick={saver.save}
+            disabled={saver.state === "saving" || shown !== value}
+            className="mt-2 block w-full rounded-lg bg-[var(--ct-solid)] px-3 py-2 text-center text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50"
           >
-            ดาวน์โหลดรูป PNG
-          </a>
+            {SAVE_LABEL[saver.state]}
+          </button>
         )}
       </div>
 
