@@ -8,6 +8,7 @@ import {
 } from "@/calc/pension/engine";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { pensionMessage, pensionQuoteText } from "@/lib/pension-cta";
+import { Highlighted } from "@/components/Highlighted";
 
 /**
  * บำนาญ สมาร์ท 95's calculator, on its own sales page — the main contract worked from
@@ -177,7 +178,8 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
                   </div>
                   <div className="text-2xl font-semibold tabular-nums text-[var(--op-figure)]">{baht2(q.totalModePremium)} บาท</div>
                   <div className="mt-1 text-xs text-[var(--op-accent)]">
-                    ปีละ {baht2(q.totalAnnualPremium)} บาท · ชำระ {q.payYears} ปี
+                    {/* the yearly figure, marked as every quote card marks its price lines */}
+                    <Highlighted>ปีละ {baht2(q.totalAnnualPremium)} บาท</Highlighted> · ชำระ {q.payYears} ปี
                   </div>
                   {q.riders.length > 0 && (
                     <table className="mt-3 w-full text-sm">
@@ -206,8 +208,9 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
                     <dd className="text-lg font-semibold tabular-nums">{baht(q.sumAssured)} บาท</dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--op-mute)]">บำนาญช่วงแรก (รับรายเดือน)</dt>
-                    <dd className="text-lg font-semibold tabular-nums">{baht(q.monthlyPension)} บาท/เดือน</dd>
+                    {/* what a pension is bought for: the monthly income it starts paying */}
+                    <dt className="text-[var(--op-mute)]"><Highlighted>บำนาญช่วงแรก (รับรายเดือน)</Highlighted></dt>
+                    <dd className="text-lg font-semibold tabular-nums"><Highlighted>{baht(q.monthlyPension)} บาท/เดือน</Highlighted></dd>
                   </div>
                 </dl>
                 <table className="w-full text-sm">

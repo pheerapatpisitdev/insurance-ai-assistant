@@ -11,6 +11,7 @@ import { cardPath, valueTablePath } from "@/lib/card-link";
 import { coverRows } from "@/lib/cover-rows";
 import { CoverTable } from "@/components/plb/CoverTable";
 import { ContactButtons } from "@/components/sales/ContactButtons";
+import { Highlighted } from "@/components/Highlighted";
 
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
 const PER_LABEL = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" } as const;
@@ -217,14 +218,19 @@ export function PlbCalculator({ table, sticky = false }: PlbCalculatorProps) {
                   Muted labels with the figures in white on the display face: an agent
                   reading a yearly premium off the screen should not have to lean in. */}
               <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
+                {/* highlighted, as on the quote card: what the premium comes to by the day and per instalment */}
                 <div>
-                  ตกวันละ{" "}
-                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDayText(annual.total)}</span> บาท
+                  <Highlighted>
+                    ตกวันละ{" "}
+                    <span className="lg-figure tabular-nums">{perDayText(annual.total)}</span> บาท
+                  </Highlighted>
                 </div>
                 {others.map((m) => (
                   <div key={m.mode}>
-                    {PAY_MODE_LABEL[m.mode]}{" "}
-                    <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+                    <Highlighted>
+                      {PAY_MODE_LABEL[m.mode]}{" "}
+                      <span className="lg-figure tabular-nums">{formatBaht(m.total)}</span> บาท
+                    </Highlighted>
                   </div>
                 ))}
               </div>
@@ -238,9 +244,10 @@ export function PlbCalculator({ table, sticky = false }: PlbCalculatorProps) {
             <div className="pt-4 text-sm text-[var(--lg-mute)]">สัญญานี้จ่ายอะไร</div>
             <dl className="mt-2 space-y-2">
               <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-sm text-[var(--lg-mute)]">เสียชีวิตภายใน {term.years} ปี</dt>
+                {/* what the family receives inside the term, marked as on the quote card */}
+                <dt className="text-sm text-[var(--lg-mute)]"><Highlighted>เสียชีวิตภายใน {term.years} ปี</Highlighted></dt>
                 <dd className="lg-figure shrink-0 whitespace-nowrap text-lg tabular-nums text-[var(--lg-white)]">
-                  {sumAssured.toLocaleString("en-US")} บาท
+                  <Highlighted>{sumAssured.toLocaleString("en-US")} บาท</Highlighted>
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-3">

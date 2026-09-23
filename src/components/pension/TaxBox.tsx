@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { pensionTax } from "@/calc/pension/engine";
+import { Highlighted } from "@/components/Highlighted";
 
 // dropped, not rounded — the rule every premium in this app is shown by
 const baht = (n: number) => Math.floor(n).toLocaleString("en-US");
@@ -35,7 +36,9 @@ export function TaxBox() {
       </div>
       <div className="mt-4 rounded-lg bg-[var(--op-figure-bg)] p-4 text-sm">
         ซื้อเบี้ยบำนาญเพิ่มเพื่อลดหย่อนได้อีกสูงสุด <span className="text-lg font-semibold tabular-nums">{baht(t.maxPremium)} บาท</span>
-        {" "}· ประหยัดภาษีได้ประมาณ <span className="font-semibold tabular-nums">{baht(t.taxSaved)} บาท</span>
+        {" "}·{" "}
+        {/* the tax a customer keeps is the second reason a pension is bought */}
+        <Highlighted>ประหยัดภาษีได้ประมาณ <span className="font-semibold tabular-nums">{baht(t.taxSaved)} บาท</span></Highlighted>
       </div>
     </section>
   );

@@ -9,6 +9,7 @@ import { ci123Message, ci123QuoteText, stagePays, sumWords, type Ci123Age } from
 import { cardPath } from "@/lib/card-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import type { Ci123Table } from "@/lib/ci123-table";
+import { Highlighted } from "@/components/Highlighted";
 
 const PER_LABEL: Record<PayMode, string> = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" };
 const ROW_MODES: PayMode[] = ["annual", "semi", "monthly"];
@@ -141,14 +142,19 @@ export function Ci123Calculator({ table, sticky = false }: { table: Ci123Table; 
                 <span className="ml-2 text-base text-[var(--lg-mute)]">บาท {PER_LABEL[headline.mode]}</span>
               </div>
               <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
+                {/* highlighted, as on the quote card: what the premium comes to by the day and per instalment */}
                 <div>
-                  ตกวันละ{" "}
-                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDayText(annual.total)}</span> บาท
+                  <Highlighted>
+                    ตกวันละ{" "}
+                    <span className="lg-figure tabular-nums">{perDayText(annual.total)}</span> บาท
+                  </Highlighted>
                 </div>
                 {others.map((m) => (
                   <div key={m.mode}>
-                    {PAY_MODE_LABEL[m.mode]}{" "}
-                    <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+                    <Highlighted>
+                      {PAY_MODE_LABEL[m.mode]}{" "}
+                      <span className="lg-figure tabular-nums">{formatBaht(m.total)}</span> บาท
+                    </Highlighted>
                   </div>
                 ))}
               </div>
@@ -177,9 +183,14 @@ export function Ci123Calculator({ table, sticky = false }: { table: Ci123Table; 
             <dl className="mt-2 space-y-2">
               {table.stages.map((s) => (
                 <div key={s.key} className="flex items-baseline justify-between gap-3">
-                  <dt className={`text-sm ${s.major ? "text-[var(--lg-white)]" : "text-[var(--lg-mute)]"}`}>{s.label}</dt>
+                  {/* the severe stage pays the whole sum, and is marked as on the quote card */}
+                  <dt className={`text-sm ${s.major ? "text-[var(--lg-white)]" : "text-[var(--lg-mute)]"}`}>
+                    {s.major ? <Highlighted>{s.label}</Highlighted> : s.label}
+                  </dt>
                   <dd className={`lg-figure tabular-nums ${s.major ? "text-xl text-[var(--lg-gold)]" : "text-base text-[var(--lg-white)]"}`}>
-                    {stagePays(s, sum).toLocaleString("en-US")}
+                    {s.major
+                      ? <Highlighted>{stagePays(s, sum).toLocaleString("en-US")}</Highlighted>
+                      : stagePays(s, sum).toLocaleString("en-US")}
                   </dd>
                 </div>
               ))}

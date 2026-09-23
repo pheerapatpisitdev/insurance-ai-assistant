@@ -17,6 +17,8 @@ import { cardPath, valueTablePath } from "@/lib/card-link";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { getPlan } from "@/calc/plans/registry";
+import { Highlighted } from "@/components/Highlighted";
+import { largestAt } from "@/lib/highlighter";
 
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
 const PER_LABEL = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" } as const;
@@ -224,14 +226,19 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
   /** The instalments the headline did not take, under the plan's own price or under the total. */
   const instalments = paidAnnual ? (
     <div className="space-y-1 text-sm text-[var(--lg-mute)]">
+      {/* highlighted, as on the quote card: what the premium comes to by the day and per instalment */}
       <div>
-        ตกวันละ{" "}
-        <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDayText(paidAnnual.total)}</span> บาท
+        <Highlighted>
+          ตกวันละ{" "}
+          <span className="lg-figure tabular-nums">{perDayText(paidAnnual.total)}</span> บาท
+        </Highlighted>
       </div>
       {others.map((m) => (
         <div key={m.mode}>
-          {PAY_MODE_LABEL[m.mode]}{" "}
-          <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+          <Highlighted>
+            {PAY_MODE_LABEL[m.mode]}{" "}
+            <span className="lg-figure tabular-nums">{formatBaht(m.total)}</span> บาท
+          </Highlighted>
         </div>
       ))}
     </div>
@@ -474,14 +481,19 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
               <hr className="lg-rule" />
               <div className="pt-4 text-sm text-[var(--lg-mute)]">ครอบครัวได้รับเมื่อเสียชีวิต</div>
               <dl className="mt-2 space-y-2">
-                {deathBenefitRows(death).map((row) => (
-                  <div key={row.label} className="flex items-baseline justify-between gap-3">
-                    <dt className="text-sm text-[var(--lg-mute)]">{row.label}</dt>
-                    <dd className="lg-figure text-lg tabular-nums text-[var(--lg-white)]">
-                      {row.amount.toLocaleString("en-US")} บาท
-                    </dd>
-                  </div>
-                ))}
+                {/* the most the family can receive is marked, as on the quote card */}
+                {deathBenefitRows(death).map((row, at, all) => {
+                  const mark = at === largestAt(all.map((r) => r.amount));
+                  const amount = `${row.amount.toLocaleString("en-US")} บาท`;
+                  return (
+                    <div key={row.label} className="flex items-baseline justify-between gap-3">
+                      <dt className="text-sm text-[var(--lg-mute)]">{mark ? <Highlighted>{row.label}</Highlighted> : row.label}</dt>
+                      <dd className="lg-figure text-lg tabular-nums text-[var(--lg-white)]">
+                        {mark ? <Highlighted>{amount}</Highlighted> : amount}
+                      </dd>
+                    </div>
+                  );
+                })}
               </dl>
             </div>
           )}

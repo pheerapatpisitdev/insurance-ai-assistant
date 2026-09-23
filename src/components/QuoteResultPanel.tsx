@@ -6,6 +6,8 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import { WarningList } from "./WarningList";
+import { Highlighted } from "@/components/Highlighted";
+import { largestAt } from "@/lib/highlighter";
 
 export interface QuoteResultPanelProps {
   result: QuoteResult;
@@ -95,12 +97,13 @@ export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums
           <dl className="mt-2 space-y-1">
             {modePremiums.map((m) => (
               <div key={m.mode} className="flex items-baseline justify-between gap-3">
+                {/* the instalments beside the one chosen are marked, as a quote card marks its price lines */}
                 <dt className={`text-sm ${m.mode === mode ? "font-semibold text-[var(--op-figure)]" : "text-[var(--op-accent)]"}`}>
-                  {PAY_MODE_LABEL[m.mode]}
+                  {m.mode === mode ? PAY_MODE_LABEL[m.mode] : <Highlighted>{PAY_MODE_LABEL[m.mode]}</Highlighted>}
                   {m.belowMinimum && <span className="ml-1 text-xs text-[var(--op-mute)]">(ต่ำกว่าขั้นต่ำ {result.meta.minMonthlyTotal.toLocaleString("en-US")} บาท)</span>}
                 </dt>
                 <dd className={`tabular-nums ${m.mode === mode ? "text-2xl font-semibold text-[var(--op-figure)]" : "text-[var(--op-accent)]"}`}>
-                  {formatBaht(m.total)} บาท
+                  {m.mode === mode ? `${formatBaht(m.total)} บาท` : <Highlighted>{formatBaht(m.total)} บาท</Highlighted>}
                 </dd>
               </div>
             ))}
@@ -117,12 +120,18 @@ export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums
       {result.deathBenefit && !incomplete && (
         <div className="rounded-lg border border-[var(--op-line)] bg-[var(--op-ground)] p-4 text-sm">
           <div className="font-medium text-[var(--op-ink)]">ผลประโยชน์กรณีเสียชีวิต</div>
-          {deathBenefitRows(result.deathBenefit).map((row) => (
-            <div key={row.label} className="mt-1 flex justify-between gap-3">
-              <span className="text-[var(--op-mute)]">{row.label}</span>
-              <span className="font-semibold tabular-nums">{row.amount.toLocaleString("en-US")} บาท</span>
-            </div>
-          ))}
+          {/* the most the family can receive is marked, unless the plan is a savings plan whose
+              maturity below is the figure it is bought for — one mark per quote, as on the card */}
+          {deathBenefitRows(result.deathBenefit).map((row, at, all) => {
+            const mark = !result.maturityBenefit && at === largestAt(all.map((r) => r.amount));
+            const amount = `${row.amount.toLocaleString("en-US")} บาท`;
+            return (
+              <div key={row.label} className="mt-1 flex justify-between gap-3">
+                <span className="text-[var(--op-mute)]">{mark ? <Highlighted>{row.label}</Highlighted> : row.label}</span>
+                <span className="font-semibold tabular-nums">{mark ? <Highlighted>{amount}</Highlighted> : amount}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -130,9 +139,9 @@ export function QuoteResultPanel({ result, mode, derivedSumAssured, modePremiums
         <div className="rounded-lg border border-[var(--op-line)] bg-[var(--op-ground)] p-4 text-sm">
           <div className="font-medium text-[var(--op-ink)]">ผลประโยชน์ครบสัญญา</div>
           <div className="mt-1 flex justify-between gap-3">
-            <span className="text-[var(--op-mute)]">ครบสัญญาอายุ {result.maturityBenefit.age} ปี</span>
+            <span className="text-[var(--op-mute)]"><Highlighted>ครบสัญญาอายุ {result.maturityBenefit.age} ปี</Highlighted></span>
             <span className="font-semibold tabular-nums">
-              {result.maturityBenefit.amount.toLocaleString("en-US")} บาท
+              <Highlighted>{result.maturityBenefit.amount.toLocaleString("en-US")} บาท</Highlighted>
             </span>
           </div>
           {result.maturityBenefit.survivalTotal !== undefined && (

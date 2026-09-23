@@ -15,6 +15,7 @@ import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
 import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { getPlan } from "@/calc/plans/registry";
+import { Highlighted } from "@/components/Highlighted";
 
 /** How each instalment reads on the card, where it labels a figure rather than follows it. */
 const PER_LABEL = { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" } as const;
@@ -222,14 +223,19 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
                   Muted labels with the figures in white on the display face: an agent
                   reading a yearly premium off the screen should not have to lean in. */}
               <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
+                {/* highlighted, as on the quote card: what the premium comes to by the day and per instalment */}
                 <div>
-                  ตกวันละ{" "}
-                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDayText(annual.total)}</span> บาท
+                  <Highlighted>
+                    ตกวันละ{" "}
+                    <span className="lg-figure tabular-nums">{perDayText(annual.total)}</span> บาท
+                  </Highlighted>
                 </div>
                 {others.map((m) => (
                   <div key={m.mode}>
-                    {PAY_MODE_LABEL[m.mode]}{" "}
-                    <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+                    <Highlighted>
+                      {PAY_MODE_LABEL[m.mode]}{" "}
+                      <span className="lg-figure tabular-nums">{formatBaht(m.total)}</span> บาท
+                    </Highlighted>
                   </div>
                 ))}
               </div>
@@ -247,11 +253,16 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
                 [`ตรวจพบระยะเริ่มต้น (${table.illness.earlyCount} โรค) ต่อโรค`, benefit.early],
                 ["เสียชีวิต", sumAssured],
                 [`อยู่ครบสัญญาอายุ ${table.maturityAge} ปี`, sumAssured],
-              ].map(([label, amount]) => (
+              ].map(([label, amount], at) => (
                 <div key={label as string} className="flex items-baseline justify-between gap-3">
-                  <dt className="text-sm text-[var(--lg-mute)]">{label}</dt>
+                  {/* the severe-illness lump sum leads, and is marked as on the quote card */}
+                  <dt className="text-sm text-[var(--lg-mute)]">
+                    {at === 0 ? <Highlighted>{label as string}</Highlighted> : label}
+                  </dt>
                   <dd className="lg-figure text-lg tabular-nums text-[var(--lg-white)]">
-                    {(amount as number).toLocaleString("en-US")} บาท
+                    {at === 0
+                      ? <Highlighted>{(amount as number).toLocaleString("en-US")} บาท</Highlighted>
+                      : <>{(amount as number).toLocaleString("en-US")} บาท</>}
                   </dd>
                 </div>
               ))}

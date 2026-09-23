@@ -22,3 +22,12 @@ const SHAPE = (fill: string) =>
 export function highlighterUri(color: string): string {
   return `url("data:image/svg+xml,${encodeURIComponent(SHAPE(color))}")`;
 }
+
+/**
+ * Which of a block's figures carries the highlighter: the largest, the first when two tie.
+ * The death benefit bands are the usual caller — the one the family most stands to receive
+ * is the one the card and the sales page both mark.
+ */
+export function largestAt(amounts: readonly number[]): number {
+  return amounts.reduce((best, n, i) => (n > amounts[best] ? i : best), 0);
+}

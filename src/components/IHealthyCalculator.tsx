@@ -28,6 +28,7 @@ import { LinkButton } from "@/components/sales/LinkButton";
 import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
 import type { Lang } from "@/lib/ihealthy-lang";
 import { WORDS, baseWords } from "@/lib/ihealthy-words";
+import { Highlighted } from "@/components/Highlighted";
 
 export interface IHealthyCalculatorProps {
   table: IHealthyTable;
@@ -465,11 +466,12 @@ export function IHealthyCalculator(
                       should find it in the same place every time, not somewhere along a
                       sentence. */}
                   <dl className="mt-3 space-y-1.5 text-sm">
+                    {/* the other instalments, marked as every quote card marks its price lines */}
                     {shown.others.map((m) => (
                       <div key={m.mode} className="flex items-baseline justify-between gap-3">
-                        <dt className="text-[var(--lg-mute)]">{w.mode[m.mode]}</dt>
+                        <dt className="text-[var(--lg-mute)]"><Highlighted>{w.mode[m.mode]}</Highlighted></dt>
                         <dd className="lg-figure tabular-nums text-[var(--lg-white)]">
-                          {formatBaht(m.total)} <span className="text-xs text-[var(--lg-mute)]">{w.baht}</span>
+                          <Highlighted>{formatBaht(m.total)} {w.baht}</Highlighted>
                         </dd>
                       </div>
                     ))}
@@ -490,11 +492,14 @@ export function IHealthyCalculator(
             )}
             <div className="border-t border-[var(--lg-panel-line)] pt-4 text-sm text-[var(--lg-mute)]">
               <p>
-                {w.annualLimit}{" "}
-                <span className="lg-figure tabular-nums text-[var(--lg-white)]">
-                  {plan.annualMax.toLocaleString("en-US")}
-                </span>{" "}
-                {w.baht}
+                {/* the yearly ceiling is what a health plan is chosen by; marked as on the card */}
+                <Highlighted>
+                  {w.annualLimit}{" "}
+                  <span className="lg-figure tabular-nums">
+                    {plan.annualMax.toLocaleString("en-US")}
+                  </span>{" "}
+                  {w.baht}
+                </Highlighted>
                 {coverage === "Deductible" && ` · ${w.deductible(plan.deductible)}`}
                 {coverage === "Co-Payment" && ` · ${w.copay(data.copayPercent)}`}
               </p>
