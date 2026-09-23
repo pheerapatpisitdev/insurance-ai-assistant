@@ -48,16 +48,12 @@ export const AGENTS = [
 
 export const ABOUT_INSURER = `แบบประกันนี้รับประกันโดย ${INSURER} ครับ 🙏`;
 
-export const ABOUT_AGENTS = [
-  "ดูแลโดยตัวแทนที่ได้รับใบอนุญาตจาก คปภ.",
-  ...AGENTS.map((a) => `• ${a.name} — ใบอนุญาตเลขที่ ${a.licence}`),
-].join("\n");
-
 export const ABOUT_TRUST = "ถ้าอยากคุยรายละเอียดกับตัวแทนโดยตรง เดี๋ยวมีคนมาตอบในแชทนี้ครับ";
 
 /**
- * The answer to a question about who stands behind the policy: the insurer, then the people
- * selling it. Built from constants and never from a model — asked the same question, a model
+ * The answer to a question about who stands behind the policy: the insurer, and only the
+ * insurer — the owner took the agents' names and licence numbers out of the chat on
+ * 2026-09-23. Built from constants and never from a model — asked the same question, a model
  * agreed with whichever company name the customer had guessed.
  *
  * It ends there. It used to close by asking for an age and a sex, which reads as not
@@ -66,7 +62,7 @@ export const ABOUT_TRUST = "ถ้าอยากคุยรายละเอ�
  */
 export function aboutCompany(question: string): string {
   const tail = asksAboutTrust(question) ? ["", ABOUT_TRUST] : [];
-  return [ABOUT_INSURER, "", ABOUT_AGENTS, ...tail].join("\n");
+  return [ABOUT_INSURER, ...tail].join("\n");
 }
 
 /**

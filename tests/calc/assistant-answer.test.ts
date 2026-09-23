@@ -230,12 +230,12 @@ describe("who stands behind the policy", () => {
     expect(answer.messages[0].text).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
   });
 
-  it("names both licensed agents, and never their national ids", async () => {
+  it("names the insurer alone, with no agents or licence numbers", async () => {
     routed = { intent: "other" };
     const answer = await answerQuestion(said("ของบริษัทอะไรครับ"), null);
-    expect(answer.messages[0].text).toContain("6001028534");
-    expect(answer.messages[0].text).toContain("6401024117");
-    expect(answer.messages[0].text).toContain("คปภ.");
+    expect(answer.messages[0].text).toBe("แบบประกันนี้รับประกันโดย บมจ. กรุงไทย-แอกซ่า ประกันชีวิต ครับ 🙏");
+    expect(answer.messages[0].text).not.toContain("6001028534");
+    expect(answer.messages[0].text).not.toContain("ใบอนุญาต");
     // the question was answered; it does not then ask for details it may already have
     expect(answer.messages[0].text).not.toContain("บอกเพศกับอายุ");
     // the licences carry a national id beside the number; it must never reach a customer
@@ -289,7 +289,8 @@ describe("who stands behind the policy", () => {
     routed = { intent: "other" };
     const answer = await answerQuestion(said("มีใบอนุญาตตัวแทนไหม บริษัทน่าเชื่อถือหรือเปล่า"), null);
     expect(answer.messages[0].text).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
-    expect(answer.messages[0].text).toContain("ใบอนุญาต");
+    expect(answer.messages[0].text).toContain("เดี๋ยวมีคนมาตอบในแชทนี้");
+    expect(answer.messages[0].text).not.toContain("6001028534");
   });
 
   it("never asks a model who the insurer is", async () => {
