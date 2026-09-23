@@ -207,7 +207,7 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
           { href: "/admin/messenger", label: "Messenger", icon: "chat", hue: "#2b2e73" },
           // the advertising account sits next to the inbox it fills
           { href: "/admin/ads", label: "ADS", icon: "megaphone", hue: "#352f80" },
-          { href: "/admin/api", label: "API", icon: "code", hue: "#3e338a" },
+          { href: "/admin/api", label: "MCP", icon: "code", hue: "#3e338a" },
         ],
       },
     ];
