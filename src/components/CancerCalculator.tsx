@@ -7,7 +7,9 @@ import { formatBaht } from "@/calc/money";
 import { displayPremium, perDayText } from "@/lib/legacy-cta";
 import { sumWords } from "@/lib/ci123-cta";
 import { cancerMessage, cancerQuoteText, type CancerAge } from "@/lib/cancer-cta";
-import { CPR_STAGES, HIC_INVASIVE_EXTRA_DAYS, HIC_MAX_DAYS, cprStagePays } from "@/lib/cancer-benefits";
+import {
+  CPR_STAGES, HIC_INVASIVE_EXTRA_DAYS, HIC_MAX_DAYS, cancerDeathTotals, cprStagePays, deathTotalsTitle,
+} from "@/lib/cancer-benefits";
 import { cardPath } from "@/lib/card-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import type { CancerTable } from "@/lib/cancer-table";
@@ -221,6 +223,28 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
               </div>
             </dl>
           </div>
+
+          {/* the family's total from all three contracts, the same helper the shared card uses */}
+          {(() => {
+            const totals = cancerDeathTotals(t.cpr, t.death, age as number);
+            return (
+              <div className="pt-1">
+                <hr className="lg-rule" />
+                <div className="pt-4 text-sm text-[var(--lg-mute)]">{deathTotalsTitle(totals)}</div>
+                <dl className="mt-2 space-y-2">
+                  {totals.rows.map((r) => (
+                    <div key={r.label} className="flex items-baseline justify-between gap-3">
+                      <dt className="text-sm text-[var(--lg-mute)]">{r.label}</dt>
+                      <dd className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">{r.amount.toLocaleString("en-US")} บาท</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="mt-2 text-xs text-[var(--lg-mute)] opacity-80">
+                  เงินมะเร็งจ่ายเมื่อตรวจพบ ไม่ได้จ่ายเมื่อเสียชีวิต · ยังไม่รวมค่าชดเชยรายวัน
+                </p>
+              </div>
+            );
+          })()}
 
           <p className="border-t border-[var(--lg-panel-line)] pt-4 text-xs leading-[1.8] text-[var(--lg-mute)] opacity-80">
             เบี้ยปีแรก ส่วน CPR และ HIC เป็นสัญญาปีต่อปี เบี้ยปรับตามอายุ · โรคมะเร็งเป็นไปตามคำนิยามในกรมธรรม์

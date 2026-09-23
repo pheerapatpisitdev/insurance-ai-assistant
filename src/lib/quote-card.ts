@@ -21,7 +21,10 @@ import { displayPremium, perDayText } from "@/lib/legacy-cta";
 import { riderDiseases } from "@/calc/riders/diseases";
 import { ci123Stages } from "@/lib/ci123-table";
 import { stagePays } from "@/lib/ci123-cta";
-import { CANCER_DAILY_RIDER, CANCER_RIDER, CPR_STAGES, HIC_INVASIVE_EXTRA_DAYS, HIC_MAX_DAYS, cprStagePays } from "@/lib/cancer-benefits";
+import {
+  CANCER_DAILY_RIDER, CANCER_RIDER, CPR_STAGES, HIC_INVASIVE_EXTRA_DAYS, HIC_MAX_DAYS, cancerDeathTotals,
+  cprStagePays, deathTotalsTitle,
+} from "@/lib/cancer-benefits";
 
 /**
  * The quote as a picture: what a customer can keep, and what a chat can send them.
@@ -685,6 +688,14 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
     });
   }
   if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
+  // the cancer set adds up what the family receives across all three contracts
+  if (cancer && result.deathBenefit) {
+    const totals = cancerDeathTotals(cancer.amount, result.deathBenefit, input.age);
+    sections.push({
+      title: deathTotalsTitle(totals),
+      rows: totals.rows.map((r) => ({ label: r.label, amount: money(r.amount) })),
+    });
+  }
   if (ci) {
     sections.push({
       title: "ตรวจพบโรคร้ายแรง รับเงินก้อน",

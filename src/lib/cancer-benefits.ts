@@ -61,3 +61,39 @@ export function cprStagePays(stage: CprStage, sumAssured: number): number {
   const pays = Math.round(sumAssured * stage.share);
   return stage.cap === null ? pays : Math.min(pays, stage.cap);
 }
+
+/**
+ * What the family receives from every contract in the set, told as the owner asked: death
+ * on its own, and death after an invasive cancer was found.
+ *
+ * Neither rider pays on death — CPR pays on a diagnosis and HIC on a hospital day — so the
+ * first case is the base contract alone, and the second is CPR's whole sum (stage 4 pays it
+ * less whatever the earlier stages already paid, so the total never passes it) on top. HIC
+ * is left out: what it adds depends on days nobody can know in advance.
+ *
+ * One band, the one this person is in now, because the card already lists both bands of the
+ * death benefit and a four-row total would repeat it.
+ */
+export interface DeathTotals {
+  /** the age the base contract's death benefit steps down at, when this person is under it */
+  beforeAge?: number;
+  rows: { label: string; amount: number }[];
+}
+
+export function cancerDeathTotals(
+  cpr: number, death: { beforeAge: number; sumBefore: number; sumFrom: number }, age: number,
+): DeathTotals {
+  const before = age < death.beforeAge;
+  const sum = before ? death.sumBefore : death.sumFrom;
+  return {
+    ...(before ? { beforeAge: death.beforeAge } : {}),
+    rows: [
+      { label: "เสียชีวิตทั่วไป", amount: sum },
+      { label: "ตรวจพบมะเร็งระยะลุกลาม แล้วเสียชีวิต", amount: cpr + sum },
+    ],
+  };
+}
+
+export function deathTotalsTitle(t: DeathTotals): string {
+  return `รวมทุกสัญญา กรณีเสียชีวิต${t.beforeAge ? `ก่อนอายุ ${t.beforeAge} ปี` : ""}`;
+}

@@ -85,6 +85,23 @@ describe("quoteCard, for the cancer set", () => {
   it("shows the surrender values of the base, which the larger tiers mostly pay for", () => {
     expect(section("มูลค่าเงินสดสะสม (หากเวนคืน)")?.rows.length).toBeGreaterThan(0);
   });
+
+  it("adds up what the family receives from every contract, with and without a cancer", () => {
+    // neither rider pays on death: death alone is the base's 2 × 150,000; after an invasive
+    // cancer CPR has paid its whole 750,000 as well
+    expect(section("รวมทุกสัญญา กรณีเสียชีวิตก่อนอายุ 60 ปี")?.rows).toEqual([
+      { label: "เสียชีวิตทั่วไป", amount: "300,000" },
+      { label: "ตรวจพบมะเร็งระยะลุกลาม แล้วเสียชีวิต", amount: "1,050,000" },
+    ]);
+  });
+
+  it("totals the one band left for someone already past the booster age", () => {
+    const older = quoteCard({ ...input, age: 62 }, TODAY)!;
+    expect(older.sections.find((s) => s.title === "รวมทุกสัญญา กรณีเสียชีวิต")?.rows).toEqual([
+      { label: "เสียชีวิตทั่วไป", amount: "150,000" },
+      { label: "ตรวจพบมะเร็งระยะลุกลาม แล้วเสียชีวิต", amount: "900,000" },
+    ]);
+  });
 });
 
 describe("the top cancer tier", () => {
