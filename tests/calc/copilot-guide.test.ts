@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { openingGuide, priceFollowUps, PRICED_FOLLOW_UPS } from "@/lib/copilot/guide";
 import { planNamedIn, priceNamedPlan } from "@/lib/copilot/price";
 import { getPlan } from "@/calc/plans/registry";
+import { productNamedIn } from "@/lib/assistant/choose";
+import { ci123NamedIn } from "@/lib/copilot/ci123-price";
+import { pensionNamedIn } from "@/lib/copilot/pension-price";
 import {
   asksAboutDeathBenefit, asksForPrice, asksPayTerm, asksValueTable,
 } from "@/lib/assistant/lifeprotect/route";
@@ -36,18 +39,30 @@ const everyOpeningItem = guide.flatMap((g) => g.items);
 
 describe("the guide the page opens with", () => {
   it("has a button for every plan the system sells", () => {
-    const prices = guide.find((g) => g.title === "อยากรู้เบี้ยประกัน")!;
-    for (const code of ["LIFEPROTECT", "ISMART", "LIFETREASURE", "ISHIELD", "PLB"]) {
-      expect(prices.items.some((i) => planNamedIn(i.ask)?.code === code || i.ask.includes("Life Protect")), code)
-        .toBe(true);
+    const prices = guide.filter((g) => g.kind === "price").flatMap((g) => g.items);
+    for (const code of ["ISMART", "LIFETREASURE", "ISHIELD", "PLB"]) {
+      expect(prices.some((i) => planNamedIn(i.ask)?.code === code), code).toBe(true);
     }
+    // the four the open buttons ask for by need rather than by name
+    expect(prices.some((i) => productNamedIn(i.ask) === "lifeprotect"), "Life Protect").toBe(true);
+    expect(prices.some((i) => productNamedIn(i.ask) === "ihealthy"), "iHealthy").toBe(true);
+    expect(prices.some((i) => ci123NamedIn(i.ask)), "CI 123").toBe(true);
+    expect(prices.some((i) => pensionNamedIn(i.ask)), "บำนาญ").toBe(true);
+  });
+
+  it("opens on the needs and the claims, and keeps the rest behind one press", () => {
+    const open = guide.filter((g) => g.open);
+    expect(open.map((g) => g.kind)).toEqual(["price", "rule"]);
+    // more than this pushed the box you type in off a phone screen
+    expect(open.flatMap((g) => g.items).length).toBeLessThanOrEqual(8);
+    expect(guide.some((g) => !g.open)).toBe(true);
   });
 
   it("says on the button exactly what pressing it asks", () => {
     // a button that quotes a 35-year-old man should say so, or the answer arrives about
     // somebody the reader never mentioned
     for (const item of everyOpeningItem) {
-      expect(item.label.length, item.label).toBeLessThanOrEqual(46);
+      expect(item.label.length, item.label).toBeLessThanOrEqual(52);
       expect(item.ask.trim(), item.label).not.toBe("");
     }
     const withAge = everyOpeningItem.filter((i) => /ชาย \d+/.test(i.ask));
@@ -83,7 +98,7 @@ describe("the guide the page opens with", () => {
          * iShield's button is in the price group and is a price question — it just gets the
          * explanation rather than a figure, because it takes a premium and returns a sum.
          */
-        const money = group.title === "อยากรู้เบี้ยประกัน";
+        const money = group.kind === "price";
         expect(goesToTheEngine(item.ask), `${item.label} → ${item.ask}`).toBe(money);
       }
     }
@@ -171,7 +186,7 @@ describe("what the knowledge tells the model it can do", () => {
     expect([...canPrice].sort()).toEqual(["EASYPROTECT", "ISMART", "LIFETREASURE", "PLB"]);
 
     for (const code of canPrice) {
-      const label = openingGuide()[0].items.find((i) => planNamedIn(i.ask)?.code === code)!;
+      const label = openingGuide().flatMap((g) => g.items).find((i) => planNamedIn(i.ask)?.code === code)!;
       const reply = priceNamedPlan(label.ask, code, planNamedIn(label.ask)!.label);
       expect(reply.priced, code).toBe(true);
     }

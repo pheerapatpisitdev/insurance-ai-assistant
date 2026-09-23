@@ -186,7 +186,7 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain p-3 sm:p-4">
         {turns.length === 0 && (
           /**
-           * The first group only, and the rest behind a press.
+           * The open groups only, and the rest behind a press.
            *
            * All three at once came to eleven buttons, which on a phone pushed the box you type
            * in off the bottom of the screen — a guide that hides the thing it is guiding you
@@ -196,25 +196,20 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
              inside a bordered panel is a frame drawn twice. */
           <div className="my-auto space-y-4 px-1 py-2">
             <p className="text-sm text-[var(--hm-mute)]">ไม่รู้จะเริ่มตรงไหน กดเลือกได้เลยครับ</p>
-            <div>
-              <p className="mb-2 text-xs font-medium text-[var(--hm-mute)]">{guide[0]?.title}</p>
-              <Chips items={guide[0]?.items ?? []} onPick={ask} disabled={busy} />
-            </div>
-            {more
-              ? guide.slice(1).map((group) => (
-                <div key={group.title}>
-                  <p className="mb-2 text-xs font-medium text-[var(--hm-mute)]">{group.title}</p>
-                  <Chips items={group.items} onPick={ask} disabled={busy} />
-                </div>
-              ))
-              : guide.length > 1 && (
-                <button
-                  type="button" onClick={() => setMore(true)}
-                  className="text-sm text-[var(--hm-accent)] underline underline-offset-2"
-                >
-                  ถามเรื่องเงื่อนไขและสัญญาเพิ่มเติม
-                </button>
-              )}
+            {guide.filter((group) => group.open || more).map((group) => (
+              <div key={group.title}>
+                <p className="mb-2 text-xs font-medium text-[var(--hm-mute)]">{group.title}</p>
+                <Chips items={group.items} onPick={ask} disabled={busy} />
+              </div>
+            ))}
+            {!more && guide.some((group) => !group.open) && (
+              <button
+                type="button" onClick={() => setMore(true)}
+                className="text-sm text-[var(--hm-accent)] underline underline-offset-2"
+              >
+                ดูแบบประกันอื่นและคำถามเพิ่มเติม
+              </button>
+            )}
           </div>
         )}
 
