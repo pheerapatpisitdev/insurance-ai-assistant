@@ -88,9 +88,12 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
   }
 
   try {
-    if (await contentSpentThisMonth() >= CONTENT_MONTH_CAP_THB) {
+    const spent = await contentSpentThisMonth();
+    if (spent >= CONTENT_MONTH_CAP_THB) {
       return { ok: false, error: `เดือนนี้ใช้งบสร้างคอนเทนต์ครบ ${CONTENT_MONTH_CAP_THB} บาทแล้ว (กันไว้ให้บอทตอบลูกค้า)` };
     }
+    // อัตโนมัติ decides on the money actually left, not on what the page last saw
+    const writeWith = writerOf(input.writer, CONTENT_MONTH_CAP_THB - spent).model;
     const [avoid, template, words] = await Promise.all([
       usedHooks(),
       input.hookTemplateId ? getHookTemplate(input.hookTemplateId) : Promise.resolve(null),
@@ -101,7 +104,7 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
     if (input.format === "ad") {
       const angles = Math.min(MAX_ANGLES, Math.max(1, Math.round(Number(input.adAngles) || 2)));
       const tones = Math.min(MAX_TONES, Math.max(1, Math.round(Number(input.adTones) || 2)));
-      const round = await writeAds({ brief: brief.text, angles, tones, hint: angleText, prefer: writerOf(input.writer).model });
+      const round = await writeAds({ brief: brief.text, angles, tones, hint: angleText, prefer: writeWith });
       const planShare = round.planThb / round.pieces.length;
       const items: ContentItem[] = [];
       for (const w of round.pieces) {
@@ -116,7 +119,7 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
     }
 
     const planned = await plan({ brief: brief.text, count, angle: angleText, avoid, template });
-    const written = await write({ brief: brief.text, format: input.format, angle, custom, length, plans: planned.plans }, { prefer: writerOf(input.writer).model });
+    const written = await write({ brief: brief.text, format: input.format, angle, custom, length, plans: planned.plans }, { prefer: writeWith });
 
     // each piece carries its own writing cost and an equal share of the planner's
     const planShare = planned.costThb / written.length;

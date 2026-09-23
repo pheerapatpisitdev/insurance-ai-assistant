@@ -4,7 +4,7 @@ import {
   BLOCK_KINDS, BLOCK_LABEL, LAYOUTS, LAYOUT_LABEL, MAX_CHARS, SIZES, THEMES, THEME_LABEL,
   posterUrl, type BlockKind, type PosterSpec, type SizeId,
 } from "@/lib/content/poster";
-import { DEFAULT_PAINTER, PAINTERS, painterOf } from "@/lib/content/models";
+import { PAINTERS, painterOf } from "@/lib/content/models";
 import { SAVE_LABEL, usePictureSaver } from "./savePicture";
 
 /**
@@ -41,7 +41,7 @@ interface Props {
 
 export function PosterPanel({ value, onChange, onDraw, busy }: Props) {
   const [request, setRequest] = useState("");
-  const [painter, setPainter] = useState(DEFAULT_PAINTER);
+  const [painter, setPainter] = useState("standard");
   const price = `~฿${painterOf(painter).thb.toFixed(2)}`;
   const [drawing, setDrawing] = useState(false);
   const [drawError, setDrawError] = useState<string | null>(null);

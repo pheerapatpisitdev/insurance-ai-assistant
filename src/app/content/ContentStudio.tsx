@@ -7,7 +7,7 @@ import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { FORMAT_LABEL, FORMAT_SHORT, type AngleId, type Format, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
-import { DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
+import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, generateContent, removeContent, setContentStatus } from "./actions";
 import { drawPicture } from "./draw";
@@ -64,8 +64,8 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(PICK_KEY) ?? "{}") as { writer?: string; painter?: string };
-      if (saved.writer) setWriter(writerOf(saved.writer).id);
-      if (saved.painter) setPainter(painterOf(saved.painter).id);
+      if (saved.writer === AUTO || WRITERS.some((w) => w.id === saved.writer)) setWriter(saved.writer!);
+      if (saved.painter === AUTO || PAINTERS.some((p) => p.id === saved.painter)) setPainter(saved.painter!);
     } catch { /* storage unavailable: the defaults stand */ }
   }, []);
   const pick = (next: { writer?: string; painter?: string }) => {
@@ -115,7 +115,8 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     if (pending) return;
     setError(undefined);
     const asked = pieceCount;
-    const paintWith = painter;
+    // อัตโนมัติ is settled at the press, on the money left then
+    const paintWith = painterOf(painter, Math.max(0, spend.cap - spend.spent)).id;
     setMaking(asked);
     try {
       let res: Awaited<ReturnType<typeof generateContent>>;
@@ -222,9 +223,11 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
 
   const pieceCount = format === "ad" ? adAngles * adTones : count;
   // what one piece costs with the picks made, the picture included (scripts have none)
-  const perPiece = writerOf(writer).thb + OVERHEAD_THB + (format === "script" ? 0 : painterOf(painter).thb);
-  const estimate = (pieceCount * perPiece).toFixed(1);
   const left = Math.max(0, spend.cap - spend.spent);
+  const writes = writerOf(writer, left);
+  const paints = painterOf(painter, left);
+  const perPiece = writes.thb + OVERHEAD_THB + (format === "script" ? 0 : paints.thb);
+  const estimate = (pieceCount * perPiece).toFixed(1);
   const more = Math.floor(left / perPiece);
 
   return (
@@ -337,19 +340,25 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
           <div>
             <span className="mb-1.5 block text-sm font-medium">โมเดลเขียน</span>
             <div className="flex flex-wrap gap-2">
+              <button type="button" aria-pressed={writer === AUTO} onClick={() => pick({ writer: AUTO })} className={chip(writer === AUTO)}>อัตโนมัติ</button>
               {WRITERS.map((w) => (
                 <button key={w.id} type="button" aria-pressed={writer === w.id} onClick={() => pick({ writer: w.id })} className={chip(writer === w.id)}>
                   {w.label} <span className="opacity-70">฿{w.thb.toFixed(2)}</span>
                 </button>
               ))}
             </div>
-            <span className="mt-1 block text-xs text-[var(--ct-mute)]">{writerOf(writer).short} · ราคาต่อชิ้น</span>
+            <span className="mt-1 block text-xs text-[var(--ct-mute)]">
+              {writer === AUTO
+                ? `ตอนนี้ใช้ ${writes.short} — งบเหลือต่ำกว่า ฿${AUTO_FLOOR_THB} จะสลับเป็นแบบประหยัดเอง`
+                : `${writes.short} · ราคาต่อชิ้น`}
+            </span>
           </div>
 
           {format !== "script" && (
             <div>
               <span className="mb-1.5 block text-sm font-medium">ภาพประกอบ</span>
               <div className="flex flex-wrap gap-2">
+                <button type="button" aria-pressed={painter === AUTO} onClick={() => pick({ painter: AUTO })} className={chip(painter === AUTO)}>อัตโนมัติ</button>
                 {PAINTERS.map((p) => (
                   <button key={p.id} type="button" aria-pressed={painter === p.id} onClick={() => pick({ painter: p.id })} className={chip(painter === p.id)}>
                     {p.label}{p.thb > 0 && <span className="opacity-70"> ฿{p.thb.toFixed(2)}</span>}
@@ -357,7 +366,9 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                 ))}
               </div>
               <span className="mt-1 block text-xs text-[var(--ct-mute)]">
-                {painter === "none" ? "ใช้โปสเตอร์สีพื้น วาดทีหลังได้ในหน้าแก้ไข" : `${painterOf(painter).short} · ราคาต่อภาพ วาดให้ทุกชิ้นหลังเขียนเสร็จ`}
+                {painter === AUTO
+                  ? `ตอนนี้${paints.modelId ? `วาดด้วย ${paints.short}` : "ไม่วาดภาพ"} — งบเหลือต่ำกว่า ฿${AUTO_FLOOR_THB} จะหยุดวาดเอง`
+                  : painter === "none" ? "ใช้โปสเตอร์สีพื้น วาดทีหลังได้ในหน้าแก้ไข" : `${paints.short} · ราคาต่อภาพ วาดให้ทุกชิ้นหลังเขียนเสร็จ`}
               </span>
             </div>
           )}

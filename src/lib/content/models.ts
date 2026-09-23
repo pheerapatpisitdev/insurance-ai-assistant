@@ -27,17 +27,35 @@ export const PAINTERS: Painter[] = [
   { id: "gemini", modelId: "gemini-image", label: "Gemini", short: "Gemini Image", thb: 2.41 },
 ];
 
-export const DEFAULT_WRITER = "best";
-export const DEFAULT_PAINTER = "standard";
+/**
+ * อัตโนมัติ: the best while the month's content budget has room, the cheap ones near its end.
+ *
+ * The owner asked for a choice that decides for itself. What decides is money: below this
+ * much left, a round of Sonnet with pictures could take the last of the month's budget, so
+ * the writer drops to Gemini Flash and the pictures stop. The default for both rows.
+ */
+export const AUTO = "auto";
+export const AUTO_FLOOR_THB = 5;
+
+export const DEFAULT_WRITER = AUTO;
+export const DEFAULT_PAINTER = AUTO;
 
 /** the planner, the proofreader and the rest, per piece, on the cheap model */
 export const OVERHEAD_THB = 0.03;
 
-export const writerOf = (id: string | null | undefined): Writer =>
-  WRITERS.find((w) => w.id === id) ?? WRITERS.find((w) => w.id === DEFAULT_WRITER)!;
+const byId = <T extends { id: string }>(list: T[], id: string) => list.find((x) => x.id === id)!;
 
-export const painterOf = (id: string | null | undefined): Painter =>
-  PAINTERS.find((p) => p.id === id) ?? PAINTERS.find((p) => p.id === DEFAULT_PAINTER)!;
+/** A writer id as the owner picked it — "auto" included — made into the model to use. */
+export function writerOf(id: string | null | undefined, leftThb = Infinity): Writer {
+  if (id === AUTO || !WRITERS.some((w) => w.id === id)) return byId(WRITERS, leftThb >= AUTO_FLOOR_THB ? "best" : "cheap");
+  return byId(WRITERS, id!);
+}
+
+/** A painter id, "auto" included, made into the painter to use; "none" draws nothing. */
+export function painterOf(id: string | null | undefined, leftThb = Infinity): Painter {
+  if (id === AUTO || !PAINTERS.some((p) => p.id === id)) return byId(PAINTERS, leftThb >= AUTO_FLOOR_THB ? "standard" : "none");
+  return byId(PAINTERS, id!);
+}
 
 /** A model's name as the card shows it — including a fallback the owner did not pick. */
 const SHORT: Record<string, string> = {
