@@ -159,9 +159,12 @@ export async function answerAny(
    */
   if (ci123NamedIn(asked) && asksCi123Price(asked)) {
     const priced = priceCi123(asked);
+    // "CI123 ชาย 35 ทุน 1 ล้าน บริษัทอะไร" is two questions, and the second is not left unanswered
+    const company = asksAboutCompany(asked) ? [{ text: writtenFor(channel, aboutCompany(asked)) }] : [];
     return {
       messages: [
         { text: writtenFor(channel, priced.text), ...(priced.cards?.[0] ? { card: priced.cards[0] } : {}) },
+        ...company,
       ],
       priced: priced.priced,
       ...(priced.guide?.length ? { guide: priced.guide } : {}),

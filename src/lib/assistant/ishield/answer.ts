@@ -8,7 +8,7 @@ import { cardPath, diseaseCardPath, valueTablePath } from "@/lib/card-link";
 import { valueTableCard } from "@/lib/quote-card";
 import diseases from "../../../../data/riders/ishield-diseases.json";
 import {
-  asksDiseaseList, coverIn, FORM_RECEIVED, handOverForm, peopleIn, saysFormDone, stallReply,
+  aboutCompany, asksAboutCompany, asksDiseaseList, coverIn, FORM_RECEIVED, handOverForm, peopleIn, saysFormDone, stallReply,
   stalls, WANTS_IN, wantsToBuy, type Reply,
 } from "../common";
 import { writtenFor, type Channel } from "../channel";
@@ -256,6 +256,10 @@ export function answerIShield(
       slots,
     };
   }
+
+  // "บริษัทอะไร" was answered with the quote again: the life brain had this check and these
+  // two did not. The agency's own sentence, whatever else the conversation is about.
+  if (asksAboutCompany(asked)) return { messages: [{ text: said(aboutCompany(asked)) }], slots };
 
   if (wantsToBuy(asked, priced)) {
     const form = handOverForm(priced);
