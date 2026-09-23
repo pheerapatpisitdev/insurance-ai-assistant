@@ -113,7 +113,10 @@ function Rows({ title, rows, p }: { title: string; rows: CardRow[]; p: CardPalet
           key={r.label}
           style={{ ...band(H.row), width: "100%", justifyContent: "space-between", alignItems: "center" }}
         >
-          <div style={{ display: "flex", fontSize: 27, color: p.mute }}>{r.label}</div>
+          {/* a marked row is marked across: what the figure is for, then the figure */}
+          {r.mark
+            ? <div style={{ display: "flex", fontSize: 27 }}><Marked p={p}>{r.label}</Marked></div>
+            : <div style={{ display: "flex", fontSize: 27, color: p.mute }}>{r.label}</div>}
           <div
             style={{
               display: "flex", fontFamily: "Trirong", fontSize: 34, color: p.ink,

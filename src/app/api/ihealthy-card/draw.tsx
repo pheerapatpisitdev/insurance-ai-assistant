@@ -146,7 +146,7 @@ export function Row(
 ) {
   return (
     <div style={{ display: "flex", height, flexShrink: 0, borderTop: `1px solid ${GRID}` }}>
-      <Cell width={TITLE_W} height={height} align="flex-start" size={21} color={WHITE} weight={500}>
+      <Cell width={TITLE_W} height={height} align="flex-start" size={21} color={WHITE} weight={500} mark={mark}>
         {label}
       </Cell>
       {cells.map((c, i) => (

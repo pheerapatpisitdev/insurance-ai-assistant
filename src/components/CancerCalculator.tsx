@@ -240,7 +240,9 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
                 <dl className="mt-2 space-y-2">
                   {totals.rows.map((r) => (
                     <div key={r.label} className="flex items-baseline justify-between gap-3">
-                      <dt className="text-sm text-[var(--lg-mute)]">{r.label}</dt>
+                      <dt className="text-sm text-[var(--lg-mute)]">
+                        {r.mark ? <Highlighted>{r.label}</Highlighted> : r.label}
+                      </dt>
                       <dd className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">
                         {r.mark
                           ? <Highlighted>{r.amount.toLocaleString("en-US")} บาท</Highlighted>
