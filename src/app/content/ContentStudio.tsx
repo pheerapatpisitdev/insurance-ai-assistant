@@ -6,7 +6,7 @@ import { fullText } from "@/lib/content/output";
 import { MAX_PIECES } from "@/lib/content/plan";
 import type { AngleId, Format, Length } from "@/lib/content/prompt";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
-import { contentSpend, contentWorkbench, generateContent, setContentStatus } from "./actions";
+import { contentSpend, contentWorkbench, generateContent, removeContent, setContentStatus } from "./actions";
 import { PieceCard } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
 
@@ -18,8 +18,9 @@ import { PieceEditor } from "./PieceEditor";
  * tools are used; then the pieces; then the used list. After a round is written the page
  * scrolls to the pieces, so the long form is not what the owner has to scroll back past.
  *
- * A piece is รอตรวจ, ใช้จริง or in the bin, the same three states Maryjane's workbench tabs
- * show. Marking a piece ใช้จริง also teaches the formula library its hook.
+ * A piece is รอตรวจ or ใช้จริง. Maryjane's workbench has a bin as well; the owner did not want
+ * one, so ลบ deletes, after one confirmation. Marking a piece ใช้จริง also teaches the formula
+ * library its hook.
  */
 
 interface Props {
@@ -41,7 +42,6 @@ const FORMATS: { id: Format; label: string }[] = [
 const TABS: { id: ContentStatus; label: string }[] = [
   { id: "draft", label: "รอตรวจ" },
   { id: "used", label: "ใช้จริง" },
-  { id: "trashed", label: "ถังขยะ" },
 ];
 
 /** what a piece has cost on average so far (Sonnet ≈ ฿0.69 on 2026-09-23), for the estimate */
@@ -125,6 +125,18 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     setCounts((c) => ({ ...c, [item.status]: Math.max(0, c[item.status] - 1), [status]: c[status] + 1 }));
     if (status === "used") setUsed((list) => [{ ...item, status }, ...list]);
     if (item.status === "used") setUsed((list) => list.filter((x) => x.id !== item.id));
+  }
+
+  async function remove(item: ContentItem) {
+    if (!window.confirm("ลบชิ้นนี้ถาวร? ลบแล้วกู้คืนไม่ได้")) return;
+    setBusy(item.id);
+    const res = await removeContent(item.id);
+    setBusy(null);
+    if (!res.ok) { setError("ลบไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
+    if (editing === item.id) setEditing(null);
+    setItems((list) => list.filter((x) => x.id !== item.id));
+    setUsed((list) => list.filter((x) => x.id !== item.id));
+    setCounts((c) => ({ ...c, [item.status]: Math.max(0, c[item.status] - 1) }));
   }
 
   function saved(next: ContentItem) {
@@ -282,7 +294,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
 
           {items.length === 0 && !pending ? (
             <p className="rounded-xl border border-dashed border-[var(--ct-line)] px-4 py-10 text-center text-sm text-[var(--ct-mute)]">
-              {tab === "draft" ? "ยังไม่มีชิ้นงานรอตรวจ — เลือกแบบประกันแล้วกดสร้างได้เลย" : tab === "used" ? "ยังไม่มีชิ้นงานที่ใช้จริง" : "ถังขยะว่าง"}
+              {tab === "draft" ? "ยังไม่มีชิ้นงานรอตรวจ — เลือกแบบประกันแล้วกดสร้างได้เลย" : "ยังไม่มีชิ้นงานที่ใช้จริง"}
             </p>
           ) : (
             <div className="grid gap-4 @xl:grid-cols-2">
@@ -307,6 +319,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                     busy={busy === item.id}
                     onEdit={() => setEditing(item.id)}
                     onStatus={(s) => changeStatus(item, s)}
+                    onDelete={() => remove(item)}
                     onCopy={() => copy(item)}
                   />
                 ),

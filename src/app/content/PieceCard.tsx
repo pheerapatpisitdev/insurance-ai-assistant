@@ -17,16 +17,17 @@ interface Props {
   busy: boolean;
   onEdit: () => void;
   onStatus: (status: ContentItem["status"]) => void;
+  onDelete: () => void;
   onCopy: () => void;
 }
 
-export function PieceCard({ item, index, productName, busy, onEdit, onStatus, onCopy }: Props) {
+export function PieceCard({ item, index, productName, busy, onEdit, onStatus, onDelete, onCopy }: Props) {
   const blocking = (item.flags.policy ?? []).some((f) => f.severity === "block");
   const toCheck = item.flags.numbers.length + item.flags.words.length + (item.flags.policy?.length ?? 0);
   const cell = "flex min-h-11 items-center justify-center gap-1.5 text-sm hover:bg-[var(--ct-soft)] disabled:opacity-50";
 
   return (
-    <article className={`overflow-hidden rounded-xl border bg-[var(--ct-panel)] ${item.status === "trashed" ? "border-[var(--ct-hair)] opacity-70" : "border-[var(--ct-hair)]"}`}>
+    <article className="overflow-hidden rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)]">
       <button type="button" onClick={onEdit} className="relative block w-full text-left" aria-label="เปิดแก้ไขชิ้นนี้">
         {/* eslint-disable-next-line @next/next/no-img-element -- a drawn PNG from our own route, not an asset to optimise */}
         <img
@@ -55,25 +56,17 @@ export function PieceCard({ item, index, productName, busy, onEdit, onStatus, on
       </div>
 
       <div className="grid grid-cols-3 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
-        {item.status === "trashed" ? (
-          <button type="button" disabled={busy} onClick={() => onStatus("draft")} className={`${cell} col-span-3`}>
-            ↩ กู้คืน
-          </button>
+        {item.status === "used" ? (
+          <button type="button" onClick={onCopy} className={cell}>คัดลอก</button>
         ) : (
-          <>
-            {item.status === "used" ? (
-              <button type="button" onClick={onCopy} className={cell}>คัดลอก</button>
-            ) : (
-              <button type="button" disabled={busy} onClick={() => onStatus("used")} className={`${cell} font-medium text-[var(--ct-accent)]`}>
-                ✓ ใช้จริง
-              </button>
-            )}
-            <button type="button" onClick={onEdit} className={cell}>แก้ไข</button>
-            <button type="button" disabled={busy} onClick={() => onStatus("trashed")} className={`${cell} text-[var(--ct-alert)]`}>
-              ทิ้ง
-            </button>
-          </>
+          <button type="button" disabled={busy} onClick={() => onStatus("used")} className={`${cell} font-medium text-[var(--ct-accent)]`}>
+            ✓ ใช้จริง
+          </button>
         )}
+        <button type="button" onClick={onEdit} className={cell}>แก้ไข</button>
+        <button type="button" disabled={busy} onClick={onDelete} className={`${cell} text-[var(--ct-alert)]`}>
+          ลบ
+        </button>
       </div>
     </article>
   );

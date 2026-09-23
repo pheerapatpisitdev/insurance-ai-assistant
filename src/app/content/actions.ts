@@ -14,7 +14,7 @@ import { checkPolicy } from "@/lib/content/policy";
 import { proofread, type Fix } from "@/lib/content/proofread";
 import { ANGLES, LENGTHS, type AngleId, type Format, type Length } from "@/lib/content/prompt";
 import {
-  CONTENT_MONTH_CAP_THB, addHookTemplate, contentSpentThisMonth, countByStatus, countHookUse, getContent,
+  CONTENT_MONTH_CAP_THB, addHookTemplate, contentSpentThisMonth, countByStatus, countHookUse, deleteContent, getContent,
   getHookTemplate, isContentStatus, listContent, listWords, saveBackground, saveContent, saveOutput, setFixes, setStatus,
   usedHooks, type ContentItem, type ContentStatus, type Flags,
 } from "@/lib/content/store";
@@ -164,6 +164,17 @@ export async function setContentStatus(id: string, status: ContentStatus): Promi
   }
 }
 
+/** Deletes a piece outright — the owner asked for no bin. The page confirms before calling. */
+export async function removeContent(id: string): Promise<{ ok: boolean }> {
+  try {
+    await deleteContent(id);
+    return { ok: true };
+  } catch (e) {
+    console.error("content delete failed:", e);
+    return { ok: false };
+  }
+}
+
 export type EditResult = { ok: true; item: ContentItem } | { ok: false; error: string };
 
 /** The owner's edits, kept — and checked again, because an edit can add a number too. */
@@ -201,7 +212,7 @@ export async function contentWorkbench(filter: { status: ContentStatus; planHref
     return { items, counts };
   } catch (e) {
     console.error("content workbench failed:", e);
-    return { items: [], counts: { draft: 0, used: 0, trashed: 0 } };
+    return { items: [], counts: { draft: 0, used: 0 } };
   }
 }
 

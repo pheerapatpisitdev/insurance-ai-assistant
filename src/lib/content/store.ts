@@ -38,8 +38,14 @@ export interface ContentItem {
   hookTemplateId: string | null;
 }
 
-/** รอตรวจ, ใช้จริง, ถังขยะ — the star this replaced meant ใช้จริง */
-export const CONTENT_STATUSES = ["draft", "used", "trashed"] as const;
+/**
+ * รอตรวจ and ใช้จริง — the star this replaced meant ใช้จริง.
+ *
+ * There was a third, ถังขยะ, and the owner took it out on 2026-09-23: deleting a piece now
+ * deletes it. Rows thrown away before that still say "trashed" in the table (the column's
+ * check allows it) and are never listed.
+ */
+export const CONTENT_STATUSES = ["draft", "used"] as const;
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];
 export const isContentStatus = (v: unknown): v is ContentStatus =>
   typeof v === "string" && (CONTENT_STATUSES as readonly string[]).includes(v);
@@ -212,6 +218,18 @@ export async function addHookTemplate(t: { template: string; category: HookCateg
   });
   // 23505 is the unique index on the formula's text: the library has it already, which is fine
   if (error && error.code !== "23505") throw new Error(error.message);
+}
+
+/** A piece gone for good, with the pictures drawn for it. Formulas drawn from it keep their text. */
+export async function deleteContent(id: string): Promise<void> {
+  const db = supabaseAdmin();
+  const { data: files } = await db.storage.from("content-media").list(id);
+  if (files?.length) {
+    const { error } = await db.storage.from("content-media").remove(files.map((f) => `${id}/${f.name}`));
+    if (error) throw new Error(`ลบรูปไม่สำเร็จ: ${error.message}`);
+  }
+  const { error } = await db.from("ins_content").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 /* ------------------------------ pictures ------------------------------ */
