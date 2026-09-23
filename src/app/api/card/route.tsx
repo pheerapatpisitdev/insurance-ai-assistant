@@ -188,7 +188,9 @@ function Chart({ chart, p }: { chart: CardChart; p: CardPalette }) {
           )}
           <polyline fill="none" stroke={p.line.cash} strokeWidth={5} points={chart.cash} />
           {chart.breakEven && (
-            <circle cx={chart.breakEven.x} cy={chart.breakEven.y} r={9} fill={p.figure} />
+            // the highlighter's yellow, as the value table marks the same year; ringed in ink so
+            // it still reads where it sits on top of the navy line
+            <circle cx={chart.breakEven.x} cy={chart.breakEven.y} r={11} fill={p.highlighter} stroke={p.figure} strokeWidth={3} />
           )}
         </svg>
         <div style={label({ right: w - 78, top: 6, justifyContent: "flex-end" })}>{chart.topLabel}</div>
@@ -228,8 +230,14 @@ function Chart({ chart, p }: { chart: CardChart; p: CardPalette }) {
         {chart.breakEven && (
           <div style={{ display: "flex", alignItems: "center" }}>
             {/* a drawn dot rather than a bullet character — the Thai faces have no ● in them */}
-            <div style={{ display: "flex", width: 14, height: 14, borderRadius: 7, background: p.figure, marginRight: 10 }} />
-            <div style={{ display: "flex", fontSize: 23, color: p.figure }}>{chart.breakEven.label}</div>
+            <div
+              style={{
+                // room for the marker, which reaches back 16px past the words it sits behind
+                display: "flex", width: 16, height: 16, borderRadius: 8, marginRight: 26,
+                background: p.highlighter, border: `2px solid ${p.figure}`,
+              }}
+            />
+            <div style={{ display: "flex", fontSize: 23 }}><Marked p={p}>{chart.breakEven.label}</Marked></div>
           </div>
         )}
       </div>
