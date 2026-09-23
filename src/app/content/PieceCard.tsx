@@ -16,13 +16,15 @@ interface Props {
   index: number;
   productName: string;
   busy: boolean;
+  /** its photograph is being drawn */
+  drawing?: boolean;
   onEdit: () => void;
   onStatus: (status: ContentItem["status"]) => void;
   onDelete: () => void;
   onCopy: () => void;
 }
 
-export function PieceCard({ item, index, productName, busy, onEdit, onStatus, onDelete, onCopy }: Props) {
+export function PieceCard({ item, index, productName, busy, drawing, onEdit, onStatus, onDelete, onCopy }: Props) {
   const blocking = (item.flags.policy ?? []).some((f) => f.severity === "block");
   const toCheck = item.flags.numbers.length + item.flags.words.length + (item.flags.policy?.length ?? 0);
   const cell = "flex min-h-11 items-center justify-center gap-1.5 text-sm hover:bg-[var(--ct-soft)] disabled:opacity-50";
@@ -37,6 +39,11 @@ export function PieceCard({ item, index, productName, busy, onEdit, onStatus, on
           loading="lazy"
           className="aspect-square w-full bg-[var(--ct-ground)] object-cover"
         />
+        {drawing && (
+          <span className="absolute inset-x-3 bottom-3 rounded-full bg-[var(--ct-panel)] px-3 py-1 text-center text-xs text-[var(--ct-mute)]">
+            กำลังวาดภาพ… ราว 20–40 วินาที
+          </span>
+        )}
         <span className="absolute left-3 top-3 rounded-full bg-[var(--ct-panel)] px-2.5 py-0.5 text-xs text-[var(--ct-mute)]">
           {FORMAT_SHORT[item.format]} {index + 1}
         </span>

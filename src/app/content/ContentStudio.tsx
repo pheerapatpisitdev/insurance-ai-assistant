@@ -7,7 +7,7 @@ import { MAX_PIECES } from "@/lib/content/plan";
 import { FORMAT_LABEL, FORMAT_SHORT, type AngleId, type Format, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
-import { contentSpend, contentWorkbench, generateContent, removeContent, setContentStatus } from "./actions";
+import { contentSpend, contentWorkbench, drawBackground, generateContent, removeContent, setContentStatus } from "./actions";
 import { PieceCard } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
 
@@ -74,6 +74,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [drawing, setDrawing] = useState<Set<string>>(() => new Set());
   const pieces = useRef<HTMLElement>(null);
 
   const nameOf = (h: string) => products.find((p) => p.href === h)?.name ?? h;
@@ -113,7 +114,28 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
       await reload("draft", "");
       setSpend(await contentSpend());
       pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      void drawPictures(res.items.filter((i) => i.format !== "script"));
     });
+  }
+
+  /**
+   * Every new post and ad gets its photograph ordered as soon as its card is up — the owner
+   * asked not to press วาดภาพ piece by piece. The cards show their words first and the
+   * pictures arrive on their own; one that fails keeps its plain poster and the button.
+   */
+  async function drawPictures(list: ContentItem[]) {
+    if (list.length === 0) return;
+    const ids = list.map((i) => i.id);
+    setDrawing((d) => new Set([...d, ...ids]));
+    const results = await Promise.all(list.map(async (item) => {
+      const res = await drawBackground(item.id).catch(() => null);
+      setDrawing((d) => { const n = new Set(d); n.delete(item.id); return n; });
+      if (res?.ok) saved(res.item);
+      return res?.ok ? null : (res?.error ?? "วาดรูปไม่สำเร็จ");
+    }));
+    const failed = results.filter((e): e is string => e !== null);
+    if (failed.length > 0) setError(`วาดภาพไม่สำเร็จ ${failed.length} ชิ้น (${failed[0]}) — กด “แก้ไข” แล้ววาดใหม่ได้`);
+    setSpend(await contentSpend().catch(() => spend));
   }
 
   async function changeStatus(item: ContentItem, status: ContentStatus) {
@@ -347,6 +369,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                     index={i}
                     productName={nameOf(item.planHref)}
                     busy={busy === item.id}
+                    drawing={drawing.has(item.id)}
                     onEdit={() => setEditing(item.id)}
                     onStatus={(s) => changeStatus(item, s)}
                     onDelete={() => remove(item)}

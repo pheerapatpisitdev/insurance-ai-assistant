@@ -30,8 +30,8 @@ import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 const MAX_CUSTOM = 120;
 const perHour = limiter(10, 60 * 60_000);
 const proofPerHour = limiter(40, 60 * 60_000);
-/** a picture is about ฿0.4 and takes half a minute; twenty an hour is more than a person makes */
-const drawPerHour = limiter(20, 60 * 60_000);
+/** a picture is about ฿0.4 and takes half a minute; every new post orders one, so forty an hour */
+const drawPerHour = limiter(40, 60 * 60_000);
 
 async function caller(): Promise<string> {
   const h = await headers();
@@ -273,7 +273,7 @@ export type DrawBackgroundResult = { ok: true; item: ContentItem } | { ok: false
  */
 export async function drawBackground(id: string, request = ""): Promise<DrawBackgroundResult> {
   if (!drawPerHour(`draw:${await caller()}`)) {
-    return { ok: false, error: "วาดรูปครบ 20 รูปในชั่วโมงนี้แล้ว รอสักพักนะครับ" };
+    return { ok: false, error: "วาดรูปครบ 40 รูปในชั่วโมงนี้แล้ว รอสักพักนะครับ" };
   }
   try {
     if (await contentSpentThisMonth() >= CONTENT_MONTH_CAP_THB) {
@@ -288,7 +288,10 @@ export async function drawBackground(id: string, request = ""): Promise<DrawBack
     });
     const img = await drawImage({ task: "content-image", prompt });
     const background = await saveBackground(item.id, img.bytes, img.mimeType);
-    const saved = await saveOutput(item.id, { ...item.output, poster: { ...poster, background } }, item.flags);
+    // the drawing takes half a minute; an edit saved meanwhile is read again, not written over
+    const latest = (await getContent(id)) ?? item;
+    const words = latest.output.poster ?? poster;
+    const saved = await saveOutput(item.id, { ...latest.output, poster: { ...words, background } }, latest.flags);
     return { ok: true, item: saved };
   } catch (e) {
     if (e instanceof BudgetExceeded) return { ok: false, error: "ถึงงบค่า AI ของเดือนนี้แล้ว" };
