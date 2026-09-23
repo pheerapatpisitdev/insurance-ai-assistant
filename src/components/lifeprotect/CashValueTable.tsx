@@ -1,4 +1,5 @@
 import { formatBaht } from "@/calc/money";
+import { Highlighted } from "@/components/Highlighted";
 import type { Projection } from "@/lib/cash-projection";
 import { CardButton } from "@/components/sales/CardButton";
 import { PrintButton } from "@/components/sales/PrintButton";
@@ -167,7 +168,10 @@ export function CashValueTable({ projection, caption, cardPath, planName }: Cash
                   className={crossover ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold-lit)]" : ""}
                 >
                   <td className={`${CELL} text-left text-[var(--lg-mute)]`}>{r.policyYear}</td>
-                  <td className={`${CELL} ${RULE} text-left text-[var(--lg-mute)]`}>{r.age}</td>
+                  {/* the break-even year's age and surrender value, marked as the value-table picture marks them */}
+                  <td className={`${CELL} ${RULE} text-left text-[var(--lg-mute)]`}>
+                    {crossover ? <Highlighted>{r.age}</Highlighted> : r.age}
+                  </td>
                   <td className={`${CELL} ${RULE} text-right`}>
                     {r.premiumDue ? formatBaht(r.premiumDue) : "—"}
                   </td>
@@ -184,10 +188,12 @@ export function CashValueTable({ projection, caption, cardPath, planName }: Cash
                       under the table, where it is said once instead of fifty times. */}
                   <td className={`${CELL} ${RULE} text-right ${labelHere ? "font-medium" : ""}`}>
                     {labelHere
-                      ? "จุดคุ้มทุน >"
+                      ? <Highlighted>จุดคุ้มทุน &gt;</Highlighted>
                       : r.premiumDue && r.premiumPaid !== null ? formatBaht(r.premiumPaid) : "—"}
                   </td>
-                  <td className={`${CELL} ${RULE} text-right`}>{formatBaht(r.cashValue)}</td>
+                  <td className={`${CELL} ${RULE} text-right`}>
+                    {crossover ? <Highlighted>{formatBaht(r.cashValue)}</Highlighted> : formatBaht(r.cashValue)}
+                  </td>
                   <td className={`${CELL} ${RULE} pr-3 text-right`}>{formatBaht(r.cover)}</td>
                 </tr>
               );

@@ -4,6 +4,7 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { cardInputFrom, valueTableCard, type ValueTableCard, type ValueTableRow } from "@/lib/quote-card";
 import { cardPaletteFor, type CardPalette } from "@/lib/card-theme";
+import { highlighterUri } from "@/lib/highlighter";
 
 export const runtime = "nodejs";
 /** The figures come from a dated rate table, so a day of caching is as far as it can go. */
@@ -118,8 +119,12 @@ const CELL_PAD = 11;
  * ladder down the table instead of a column.
  */
 function Cell(
-  { i, cols, height, color, rule, children }:
-  { i: number; cols: typeof COLS; height: number; color: string; rule: string; children: string },
+  { i, cols, height, color, rule, mark, highlighter, children }:
+  {
+    i: number; cols: typeof COLS; height: number; color: string; rule: string; children: string;
+    /** drawn with the quote card's highlighter stroke behind the figure */
+    mark?: boolean; highlighter?: string;
+  },
 ) {
   return (
     <div
@@ -135,7 +140,16 @@ function Cell(
         color,
       }}
     >
-      {children}
+      {mark && highlighter ? (
+        <div
+          style={{
+            display: "flex", padding: "1px 8px",
+            backgroundImage: highlighterUri(highlighter), backgroundSize: "100% 100%", backgroundRepeat: "no-repeat",
+          }}
+        >
+          {children}
+        </div>
+      ) : children}
     </div>
   );
 }
@@ -186,7 +200,14 @@ function Half(
             style={{ ...band(H.row), width: half, fontSize: 22, ...(ground ? { background: ground } : {}) }}
           >
             {cells.map((cell, i) => (
-              <Cell key={columns[i]} i={i} cols={cols} height={H.row} color={ink} rule={p.rule}>{cell}</Cell>
+              <Cell
+                key={columns[i]} i={i} cols={cols} height={H.row} color={ink} rule={p.rule}
+                // the break-even year: the age it happens at and the surrender value that gets there
+                mark={r.breakEven && (columns[i] === "อายุ" || columns[i] === "เวนคืนได้")}
+                highlighter={p.highlighter}
+              >
+                {cell}
+              </Cell>
             ))}
           </div>
         );
