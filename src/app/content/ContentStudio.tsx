@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { fullText } from "@/lib/content/output";
+import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { FORMAT_LABEL, FORMAT_SHORT, type AngleId, type Format, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
@@ -411,9 +412,18 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             <ul className="max-h-[60vh] divide-y divide-[var(--ct-hair)] overflow-y-auto">
               {used.slice(0, 20).map((u) => (
                 <li key={u.id}>
-                  <button type="button" onClick={() => openUsed(u)} className="block w-full px-4 py-2.5 text-left hover:bg-[var(--ct-ground)]">
-                    <span className="block text-xs text-[var(--ct-mute)]">{nameOf(u.planHref)} · {FORMAT_SHORT[u.format]}</span>
-                    <span className="line-clamp-2 text-sm">{u.output.hooks[0]}</span>
+                  <button type="button" onClick={() => openUsed(u)} className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-[var(--ct-ground)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- the card's own poster, from the browser cache */}
+                    <img
+                      src={posterUrl(u.output.poster ?? defaultPoster(u.output.hooks[0], nameOf(u.planHref)))}
+                      alt=""
+                      loading="lazy"
+                      className="size-14 shrink-0 rounded-md border border-[var(--ct-hair)] bg-[var(--ct-ground)] object-cover"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-xs text-[var(--ct-mute)]">{nameOf(u.planHref)} · {FORMAT_SHORT[u.format]}</span>
+                      <span className="line-clamp-2 text-sm">{u.output.hooks[0]}</span>
+                    </span>
                   </button>
                 </li>
               ))}
