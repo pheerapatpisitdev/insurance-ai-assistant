@@ -31,7 +31,8 @@ export type MenuIcon =
   | "shieldCheck"
   | "heart"
   | "building"
-  | "clock";
+  | "clock"
+  | "pulse";
 
 export interface MenuLink {
   href: string;
@@ -78,9 +79,9 @@ export interface MenuGroup {
 }
 
 /**
- * The nine sales pages, in the five kinds of cover the agency sells.
+ * The ten sales pages, in the five kinds of cover the agency sells.
  *
- * Grouped because nine names in one column is a list to be read through, and an agent
+ * Grouped because ten names in one column is a list to be read through, and an agent
  * reaching for a page is not reading — they know whether the customer in front of them is
  * asking about dying, about being ill, about a hospital bill, about retiring, or about their
  * staff. The headings answer that before the names are read at all.
@@ -101,7 +102,7 @@ export interface MenuGroup {
  * on are plainly the same thing.
  */
 /**
- * The nine names are English; the five headings above them are not.
+ * The ten names are English; the five headings above them are not.
  *
  * Four of these read as Thai transliterations of English names the company already owns —
  * อีซี่ โพรเทค 6 is Easy Protect 6 — and set beside Life Protect x 2, iShield and iHealthy
@@ -129,6 +130,8 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
     links: [
       { href: "/legacy", label: "Family Legacy", icon: "home", hue: "#722b73" },
       { href: "/ishield", label: "iShield", icon: "shieldCheck", hue: "#8a337c" },
+      // a rider sold on the smallest Life Protect+ 100, which is why it is here and not a plan
+      { href: "/ci123", label: "CI 123", icon: "pulse", hue: "#7c2d6e" },
     ],
   },
   {
@@ -154,7 +157,7 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
 ];
 
 /**
- * The same nine, flat.
+ * The same ten, flat.
  *
  * `/other-plans` lists them as cards in one grid and has no use for the headings, and the
  * test that checks none of the pages on disk has been left out of the menu counts them here.

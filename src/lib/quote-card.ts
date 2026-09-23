@@ -19,6 +19,8 @@ import { lifeTreasureTable } from "@/lib/lifetreasure-table";
 import { easyProtectTable } from "@/lib/easyprotect-table";
 import { displayPremium, perDayText } from "@/lib/legacy-cta";
 import { riderDiseases } from "@/calc/riders/diseases";
+import { ci123Stages } from "@/lib/ci123-table";
+import { stagePays } from "@/lib/ci123-cta";
 
 /**
  * The quote as a picture: what a customer can keep, and what a chat can send them.
@@ -605,6 +607,12 @@ export function valueTableCard(input: PlanCardInput, today: Date = new Date()): 
 const CI_RIDER = "DCI";
 
 /**
+ * CI 123, which pays by the stage of an illness rather than once, so it is drawn as the six
+ * amounts a diagnosis can pay instead of the single lump sum DCI's section says.
+ */
+const STAGED_CI_RIDER = "CI123";
+
+/**
  * The card for one tier of an agency bundle.
  *
  * A bundle is sold whole, so it is drawn whole: what it is made of, what the family receives,
@@ -628,14 +636,24 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
   const modes = bundleModePremiums(bundle, input.tier, who, today);
   const { premium, perDay: perDayLine, others } = premiumLines(modes, result.meta.expired);
 
-  const covered = result.items.filter((it) => it.eligible);
+  // CI 123's benefit components are rows of the quote (the workbook itemises them) but not
+  // contracts of their own, so "what this is made of" names the rider once
+  const covered = result.items.filter((it) => it.eligible && !it.code.includes(":"));
   const ci = covered.find((it) => it.code === CI_RIDER);
+  const staged = covered.find((it) => it.code === STAGED_CI_RIDER);
 
   const sections: CardSection[] = [];
   if (covered.length) {
     sections.push({
       title: "ชุดนี้ประกอบด้วย",
       rows: covered.map((it) => ({ label: it.name, amount: money(it.amount) })),
+    });
+  }
+  // what a diagnosis pays is what this set is bought for, so it comes before the death benefit
+  if (staged) {
+    sections.push({
+      title: "ตรวจพบโรคร้ายแรง รับเงินก้อนตามระยะของโรค",
+      rows: ci123Stages().map((st) => ({ label: st.label, amount: money(stagePays(st, staged.amount)) })),
     });
   }
   if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
@@ -657,7 +675,8 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
   // The Legacy sales card is about the immediate family and critical-illness protection.
   // Its surrender figures are not part of the shared quote, while other bundle cards may
   // still use the common cash-value block.
-  if (input.bundleCode !== "LEGACY_FAMILY" && cashRows.length) {
+  // The CI 123 set is the same: its base is the smallest Life Protect+ 100, there to carry the rider.
+  if (input.bundleCode !== "LEGACY_FAMILY" && input.bundleCode !== "CI123_SET" && cashRows.length) {
     sections.push({ title: CASH_TITLE, rows: cashRows });
   }
 

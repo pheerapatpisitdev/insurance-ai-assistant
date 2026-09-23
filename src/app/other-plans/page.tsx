@@ -23,7 +23,7 @@ import { quoteModePremiums } from "@/calc/mode-premiums";
  * English.
  */
 const PICKER_NAME: Record<string, string> = { EASYPROTECT: "Easy Protect 6" };
-const BUNDLE_PICKER_NAME: Record<string, string> = { LEGACY_FAMILY: "Family Legacy" };
+const BUNDLE_PICKER_NAME: Record<string, string> = { LEGACY_FAMILY: "Family Legacy", CI123_SET: "CI 123" };
 const pickerPlans = () => listPlans().map((p) => ({ ...p, name: PICKER_NAME[p.code] ?? p.name }));
 const pickerBundles = () => listBundles().map((b) => ({ ...b, name: BUNDLE_PICKER_NAME[b.code] ?? b.name }));
 

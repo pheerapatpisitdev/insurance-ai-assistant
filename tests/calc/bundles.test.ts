@@ -4,8 +4,22 @@ import { bundleAgeRange, bundleModePremiums, bundleQuoteInput, describeTier, quo
 import { quote } from "@/calc/quote";
 
 describe("bundle registry", () => {
-  it("lists the legacy bundle", () => {
-    expect(listBundles()).toEqual([{ code: "LEGACY_FAMILY", name: "มรดกเพื่อครอบครัว" }]);
+  it("lists the legacy bundle and the CI 123 set", () => {
+    expect(listBundles()).toEqual([
+      { code: "LEGACY_FAMILY", name: "มรดกเพื่อครอบครัว" },
+      { code: "CI123_SET", name: "ประกันโรคร้ายแรง CI 123" },
+    ]);
+  });
+
+  it("sells CI 123 as seven sums on Life Protect+ 100 paid to age 99 at its 150,000 minimum", () => {
+    const bundle = getBundle("CI123_SET")!;
+    expect(bundle.planCode).toBe("LIFEPROTECT");
+    expect(bundle.variant).toBe("WLF99H");
+    expect(bundle.tiers.map((t) => t.sumAssured)).toEqual(Array(7).fill(150_000));
+    expect(bundle.tiers.map((t) => t.riders)).toEqual(
+      [500_000, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000, 10_000_000]
+        .map((sumAssured) => [{ code: "CI123", sumAssured }]),
+    );
   });
 
   it("sells the legacy bundle as ten tiers of Life Protect x 2 paid to age 99", () => {

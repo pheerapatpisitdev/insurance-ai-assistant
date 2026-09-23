@@ -5,6 +5,7 @@ import ci123Diseases from "../../../data/riders/ci123-diseases.json";
 import rrssDiseases from "../../../data/riders/rrss-diseases.json";
 import { pricedHere } from "./price";
 import { PENSION_LABEL, pensionNamedIn } from "./pension-price";
+import { CI123_LABEL, ci123NamedIn } from "./ci123-price";
 import { PENSION_AGES, PENSION_LIMITS } from "@/calc/pension/engine";
 import { FAQ as LIFE_FAQ } from "@/lib/assistant/lifeprotect/faq";
 import { FAQ as HEALTH_FAQ } from "@/lib/assistant/ihealthy/faq";
@@ -79,6 +80,20 @@ const PENSION_SECTION = [
   "- รับประกันจ่ายบำนาญ 15 ปีแรก",
   "- เสียชีวิตก่อนรับบำนาญ: ปีที่ 1–2 คืนเบี้ย 100% ปีที่ 3 ขึ้นไป 110% ของเบี้ยที่จ่ายมา หรือมูลค่าเวนคืน แล้วแต่อย่างไหนมากกว่า",
   "- เบี้ยใช้ลดหย่อนภาษีแบบบำนาญได้ตามเกณฑ์สรรพากร · หน้าเครื่องคิดพร้อมตารางรายปีและคำนวณภาษี: /bumnan95",
+].join("\n");
+
+/**
+ * CI 123 as the agency sells it on its own page: the rider on the smallest Life Protect+ 100.
+ * The rider's own rules are in the plan sections above; this says only that it is priced here
+ * and on what, so the model neither refuses a price the chat can give nor invents a base.
+ */
+const CI123_SECTION = [
+  `## ${CI123_LABEL} แบบชุด (หน้า /ci123)`,
+  "- คิดเบี้ยในแชทนี้ได้ — บอกอายุ เพศ และทุน CI 123 (เช่น “CI 123 ชาย 35 ทุน 1 ล้าน”)",
+  "- CI 123 เป็นสัญญาเพิ่มเติม ซื้อเดี่ยวไม่ได้ ชุดนี้คู่กับประกันชีวิต Life Protect+ 100 (ไลฟ์ โพรเทค+ 100) ชำระเบี้ยถึงอายุ 99 ทุน 150,000 บาท เบี้ยที่คิดให้รวมทั้งสองสัญญา",
+  "- รับอายุแรกเกิดถึง 75 ปี · หน้า /ci123 มีทุน 5 แสน 1 2 3 4 5 และ 10 ล้าน",
+  "- จ่ายตามระยะ (% ของทุน CI 123): ระยะก่อนเริ่มต้น 20% สูงสุด 100,000 · ระยะเริ่มต้นถึงปานกลาง 25% · โรคเด็ก 25% · เงื่อนไขพิเศษ 10% · ภาวะวิกฤต 25% (นับรวมวงเงินเดียวกับระยะรุนแรง) · ระยะรุนแรง 100% แล้วสัญญาสิ้นสุด",
+  "- ระยะเวลารอคอย 90 วัน · เบี้ยส่วน CI 123 คิดตามอายุจริง ปรับขึ้นทุกปี",
 ].join("\n");
 
 /** One plan's rules as sentences. The shapes are the workbook's; the wording is for reading. */
@@ -399,13 +414,14 @@ export async function assembleKnowledge(question = ""): Promise<string> {
      * by hand and forbid quoting any other — which outranked everything below it, so fixing
      * the per-plan lines alone would have left the assistant refusing anyway.
      */
-    `**สำคัญ:** แชทนี้คิดเบี้ยให้ได้เฉพาะแบบเหล่านี้: ${priceableNames().join(", ")}, ${PENSION_LABEL} และ iHealthy Ultra`,
+    `**สำคัญ:** แชทนี้คิดเบี้ยให้ได้เฉพาะแบบเหล่านี้: ${priceableNames().join(", ")}, ${PENSION_LABEL}, ${CI123_LABEL} (แบบชุดคู่ Life Protect+ 100) และ iHealthy Ultra`,
     "แบบที่ไม่อยู่ในรายการนี้ ตอบได้แต่เรื่องเงื่อนไข ห้ามเสนอว่าจะคิดเบี้ยให้ และให้ชี้ไปที่หน้า /other-plans แทน",
     "",
     plans,
     // fetched by its name, like the illness lists: the spine above already says it exists and
     // can be priced, and every other question would pay for its rules without reading them
     ...(question === "" || pensionNamedIn(question) ? ["", PENSION_SECTION] : []),
+    ...(question === "" || ci123NamedIn(question) ? ["", CI123_SECTION] : []),
     /**
      * Group insurance, said in four lines and no more.
      *

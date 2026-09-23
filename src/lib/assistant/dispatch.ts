@@ -13,6 +13,7 @@ import type { Routed } from "./lifeprotect/route";
 import type { AnySlots, Undecided } from "./slots";
 import { planNamedIn, priceNamedPlan } from "@/lib/copilot/price";
 import { asksPensionPrice, pensionNamedIn, pricePension } from "@/lib/copilot/pension-price";
+import { asksCi123Price, ci123NamedIn, priceCi123 } from "@/lib/copilot/ci123-price";
 import type { GuideItem } from "@/lib/copilot/guide";
 import { writtenFor, type Channel } from "./channel";
 import { answerFromLibrary } from "@/lib/copilot/library";
@@ -145,6 +146,23 @@ export async function answerAny(
     const priced = pricePension(asked);
     return {
       messages: [{ text: writtenFor(channel, priced.text) }],
+      priced: priced.priced,
+      ...(priced.guide?.length ? { guide: priced.guide } : {}),
+      slots: stored ?? { product: "undecided", ...personIn(stored) },
+    };
+  }
+
+  /**
+   * CI 123, priced the same way and for the same reason as the pension plan above: its name is
+   * distinctive, a settled Life Protect or legacy conversation would read "CI123 ทุน 1 ล้าน"
+   * as its own sum, and nothing about the conversation it interrupts has to change.
+   */
+  if (ci123NamedIn(asked) && asksCi123Price(asked)) {
+    const priced = priceCi123(asked);
+    return {
+      messages: [
+        { text: writtenFor(channel, priced.text), ...(priced.cards?.[0] ? { card: priced.cards[0] } : {}) },
+      ],
       priced: priced.priced,
       ...(priced.guide?.length ? { guide: priced.guide } : {}),
       slots: stored ?? { product: "undecided", ...personIn(stored) },
