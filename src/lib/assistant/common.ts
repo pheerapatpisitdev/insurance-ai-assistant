@@ -282,10 +282,13 @@ export function recentTurns(history: ChatMessage[], count: number): ChatMessage[
  * when he had asked who would be insuring his life. The gap is spelled out word by word
  * rather than left as "anything at all", because "บริษัทจะตรวจสุขภาพไหม" is a question about
  * underwriting and must not be answered with a company's name.
+ *
+ * "บ." is บริษัท as people type it on a phone: "ขอโทษค่ะ บ.ชื่ออะไรคะ" came off the
+ * advertisement and was not heard.
  */
 const INSURER_FILLER = String.raw`(?:\s*(?:ประกัน(?:ชีวิต)?|ของ|นี้|นั้น|อัน|ชื่อ))*\s*`;
 const INSURER_QUESTION = new RegExp(
-  String.raw`บริษัท${INSURER_FILLER}(?:อะไร|ไหน|ไร)`
+  String.raw`(?:บริษัท|บ\.)${INSURER_FILLER}(?:อะไร|ไหน|ไร)`
   + String.raw`|ของ\s*บริษัท|ของ\s*อะไร|ของ\s*ใคร|เจ้า\s*ไหน|ของ\s*ค่าย|ค่าย\s*ไหน`
   + String.raw`|ผู้รับประกัน|รับประกันโดย|แบรนด์`
   + String.raw`|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential`

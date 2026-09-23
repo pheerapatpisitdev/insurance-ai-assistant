@@ -244,7 +244,7 @@ describe("who stands behind the policy", () => {
 
   it("hears the short way people actually ask it", async () => {
     // real customers, this morning: the sentence is elliptical, the question is the same
-    for (const asked of ["ของอะไรครับ", "ประกันของใครคะ", "เจ้าไหนครับ", "ของค่ายไหน"]) {
+    for (const asked of ["ของอะไรครับ", "ประกันของใครคะ", "เจ้าไหนครับ", "ของค่ายไหน", "ขอโทษค่ะ บ.ชื่ออะไรคะ", "บ. อะไรครับ", "บ.ไหน"]) {
       routed = { intent: "other" };
       const answer = await answerQuestion(said(asked), null);
       expect(answer.messages[0].text, asked).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
