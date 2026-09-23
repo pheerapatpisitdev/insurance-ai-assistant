@@ -1,0 +1,50 @@
+import { describe, expect, it } from "vitest";
+import { briefFor } from "@/lib/content/brief";
+import { CONTENT_PRODUCTS } from "@/lib/content/products";
+import { SALES_PAGES } from "@/lib/shell/menu";
+
+describe("the products the generator offers", () => {
+  it("are every sales page but group insurance", () => {
+    const pages = SALES_PAGES.map((p) => p.href).filter((h) => h !== "/group-insurance").sort();
+    expect(CONTENT_PRODUCTS.map((p) => p.href).sort()).toEqual(pages);
+  });
+});
+
+describe("briefFor", () => {
+  const today = new Date("2026-09-23");
+
+  it("builds a brief for every product, with its name, points and figures", () => {
+    for (const p of CONTENT_PRODUCTS) {
+      const b = briefFor(p.href, today)!;
+      expect(b, p.href).not.toBeNull();
+      expect(b.text).toContain(p.name);
+      expect(b.text).toContain(p.points[0]);
+      expect(b.text, p.href).toMatch(/\d/);
+    }
+  });
+
+  it("carries today's prices while the table is current", () => {
+    const b = briefFor("/lifeprotect", today)!;
+    expect(b.expired).toBe(false);
+    expect(b.text).toContain("เบี้ย");
+    expect(b.text).not.toContain("ห้ามระบุเบี้ย");
+  });
+
+  it("drops every price, and says so, once a rate table has lapsed", () => {
+    for (const href of ["/lifeprotect", "/ci123", "/cancer"]) {
+      const b = briefFor(href, new Date("2099-01-01"))!;
+      expect(b.expired, href).toBe(true);
+      expect(b.text, href).toContain("ห้ามระบุเบี้ย");
+      expect(b.text, href).not.toMatch(/เบี้ย[^\n]*\d[^\n]*บาท/);
+    }
+  });
+
+  it("says the pension bands as the page does, in whole per cent", () => {
+    // the engine stores 0.15; "0.15% ของทุน" once reached a brief
+    expect(briefFor("/bumnan95", today)!.text).toContain("รับ 15% ของทุน");
+  });
+
+  it("knows nothing of a page it does not offer", () => {
+    expect(briefFor("/group-insurance", today)).toBeNull();
+  });
+});
