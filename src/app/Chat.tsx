@@ -141,7 +141,11 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
             className="mt-0.5 h-10 w-auto shrink-0"
           />
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">ถามเรื่องแบบประกัน</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            ถามอะไรก็ได้ที่อยากถาม เกี่ยวกับผลิตภัณฑ์ภายใต้บริษัท{" "}
+            {/* the company name kept on one line: Thai wraps anywhere, and it split as กรุงไทยแอก / ซ่า */}
+            <span className="whitespace-nowrap">กรุงไทยแอกซ่า ประกันชีวิต</span>
+          </h1>
           <p className="mt-1 text-sm text-[var(--hm-mute)]">
             ถามเงื่อนไขก็ได้ ขอเบี้ยก็ได้ — เบี้ยคิดจากตารางจริง ตัวเดียวกับที่บอทและหน้าขายใช้ ·{" "}
             <Link href="/other-plans" className="underline underline-offset-2">แบบประกันอื่นๆ</Link>
