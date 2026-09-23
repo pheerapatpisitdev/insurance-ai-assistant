@@ -1,5 +1,8 @@
 import { chat, parseJsonReply } from "@/lib/ai/client";
+import { DISCLAIMER, TAX_LINE, type ContentOutput } from "./output";
 import { buildMessages, type AngleId, type Ask } from "./prompt";
+
+export { DISCLAIMER, TAX_LINE, fullText, type ContentOutput } from "./output";
 
 /**
  * One call to the model, and what comes back made into a post.
@@ -9,19 +12,6 @@ import { buildMessages, type AngleId, type Ask } from "./prompt";
  * strangers deciding whether to keep scrolling, and the cheap models write Thai that reads
  * like a form. About a baht a piece at the prices on 2026-09-23.
  */
-
-/** The regulator's line, the same words the sales pages end on. Added here, never by the model. */
-export const DISCLAIMER = "ผู้ซื้อควรทำความเข้าใจรายละเอียดความคุ้มครองและเงื่อนไขก่อนตัดสินใจทำประกันภัยทุกครั้ง";
-export const TAX_LINE = "สิทธิประโยชน์ทางภาษีเป็นไปตามเงื่อนไขที่กรมสรรพากรกำหนด";
-
-export interface ContentOutput {
-  hooks: string[];
-  body: string;
-  closing: string;
-  hashtags: string[];
-  imagePrompt: string;
-  disclaimer: string;
-}
 
 interface Raw {
   hooks?: unknown;
@@ -50,17 +40,6 @@ export function parseOutput(reply: string, angle: AngleId): ContentOutput | null
     imagePrompt: text(raw.imagePrompt),
     disclaimer: angle === "tax" ? `${DISCLAIMER}\n${TAX_LINE}` : DISCLAIMER,
   };
-}
-
-/** The piece as it will be pasted: one hook, the body, the closing, the tags, the disclaimer. */
-export function fullText(out: ContentOutput, hook = 0): string {
-  return [
-    out.hooks[hook] ?? out.hooks[0],
-    out.body,
-    out.closing,
-    out.hashtags.join(" "),
-    out.disclaimer,
-  ].filter(Boolean).join("\n\n");
 }
 
 export interface Written {

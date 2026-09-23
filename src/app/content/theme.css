@@ -1,0 +1,38 @@
+/* The content generator in the application's palette.
+
+   A tool page, like the calculator: the colours and none of the sales furniture. Named --ct-*
+   and set on the page's own wrapper, for the reason home-theme.css gives for --hm-*.
+
+   The one colour with a job of its own is sand: the checks' warnings. It is the palette's
+   "look here" block rather than red, because a flagged number is something to read before
+   posting, not a failure — red stays the error colour and nothing else. */
+.content-page {
+  color-scheme: light;
+  --ct-ground: var(--bot-band);
+  --ct-panel: var(--bot-surface);
+  --ct-line: var(--bot-line-strong);
+  --ct-hair: var(--bot-line);
+  --ct-ink: var(--bot-ink);
+  --ct-mute: var(--bot-ink-mute);
+  --ct-accent: var(--bot-navy);
+  --ct-solid: var(--bot-navy);
+  --ct-solid-ink: var(--bot-surface);
+  --ct-soft: var(--bot-navy-soft);
+  --ct-warn-bg: var(--bot-sand-soft);
+  --ct-warn-ink: var(--bot-sand-ink);
+  --ct-warn-line: var(--bot-sand-line);
+  --ct-alert: var(--bot-red-ink);
+  --ct-alert-bg: var(--bot-red-soft);
+  --ct-alert-line: var(--bot-red);
+
+  background: var(--ct-ground);
+  color: var(--ct-ink);
+  min-height: 100vh;
+}
+
+body:has(.content-page) { background: var(--ct-ground); }
+
+.content-page :is(button, a, select, input, textarea, summary):focus-visible {
+  outline: 3px solid var(--ct-accent);
+  outline-offset: 3px;
+}

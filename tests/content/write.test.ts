@@ -51,6 +51,12 @@ describe("buildMessages", () => {
     expect(user.content).toContain("โพสต์เฟซบุ๊ก");
   });
 
+  it("speaks as the site does, with ครับ", () => {
+    // the first live post ended "นะคะ"; every other word this system says ends ครับ
+    const [system] = buildMessages({ brief, format: "post", angle: "", custom: "", length: null });
+    expect(system.content).toContain("ใช้คำลงท้าย “ครับ” เท่านั้น");
+  });
+
   it("asks a script for its length and its time markers", () => {
     const [, user] = buildMessages({ brief, format: "script", angle: "tax", custom: "", length: "60" });
     expect(user.content).toContain("60 วินาที");

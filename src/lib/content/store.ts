@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ContentWord, WordHit, WordKind } from "./check";
 import type { Fix } from "./proofread";
 import type { AngleId, Format, Length } from "./prompt";
-import type { ContentOutput } from "./write";
+import type { ContentOutput } from "./output";
 
 /**
  * Where generated pieces and the owner's word list are kept: ins_content, ins_content_words.

@@ -1,6 +1,8 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import type { ContentWord, WordKind } from "@/lib/content/check";
+import { addWord, deleteWord, listWords } from "@/lib/content/store";
 
 /**
  * What the assistant knows on top of the plan rules.
@@ -72,5 +74,43 @@ export async function deleteNote(id: string): Promise<void> {
     revalidatePath("/admin/knowledge");
   } catch (e) {
     console.error("ลบบันทึกไม่สำเร็จ:", e);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * The words the content generator's first check looks for
+ *
+ * Claims an advertisement must not make, and misspellings with their
+ * fix. Kept here rather than on /content because that page is public
+ * and this list decides what the owner is warned about.
+ * ------------------------------------------------------------------ */
+
+const MAX_WORD = 60;
+
+export async function listContentWords(): Promise<ContentWord[]> {
+  return listWords();
+}
+
+export async function addContentWord(word: string, kind: WordKind, fix: string): Promise<{ ok: boolean; error?: string }> {
+  const w = word.trim().slice(0, MAX_WORD);
+  const f = fix.trim().slice(0, MAX_WORD);
+  if (!w) return { ok: false, error: "พิมพ์คำก่อนนะครับ" };
+  if (kind === "misspelling" && !f) return { ok: false, error: "คำสะกดผิดต้องใส่คำที่ถูกด้วยครับ" };
+  try {
+    await addWord(w, kind, kind === "misspelling" ? f : null);
+    revalidatePath("/admin/knowledge");
+    return { ok: true };
+  } catch (e) {
+    console.error("เพิ่มคำไม่สำเร็จ:", e);
+    return { ok: false, error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
+  }
+}
+
+export async function removeContentWord(word: string): Promise<void> {
+  try {
+    await deleteWord(word);
+    revalidatePath("/admin/knowledge");
+  } catch (e) {
+    console.error("ลบคำไม่สำเร็จ:", e);
   }
 }

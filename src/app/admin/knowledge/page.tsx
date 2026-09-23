@@ -1,5 +1,6 @@
-import { listNotes } from "./actions";
+import { listContentWords, listNotes } from "./actions";
 import { Notes } from "./Notes";
+import { Words } from "./Words";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,11 @@ export const dynamic = "force-dynamic";
  * through a paid advertisement.
  */
 export default async function KnowledgePage() {
-  const notes = await listNotes();
-  return <Notes initial={notes} />;
+  const [notes, words] = await Promise.all([listNotes(), listContentWords()]);
+  return (
+    <>
+      <Notes initial={notes} />
+      <Words initial={words} />
+    </>
+  );
 }
