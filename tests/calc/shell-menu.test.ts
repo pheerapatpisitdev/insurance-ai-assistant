@@ -19,7 +19,7 @@ const routeExists = (href: string) => {
 
 describe("every place the menu says you can go", () => {
   it("is a page that exists", () => {
-    for (const group of menuGroups(true)) {
+    for (const group of [...menuGroups(true), ...menuGroups(false)]) {
       for (const link of group.links) {
         expect(routeExists(link.href), `${link.label} → ${link.href}`).toBe(true);
       }
@@ -46,10 +46,10 @@ describe("every place the menu says you can go", () => {
    * nothing in the menu is one today.
    */
   it("keeps every page in the menu in the same tab", () => {
-    const groups = menuGroups(true);
+    const groups = menuGroups(false);
     const sales = groups.filter((g) => SALES_SECTIONS.some((s) => s.title === g.title));
     expect(sales).toHaveLength(SALES_SECTIONS.length);
-    expect(groups.flatMap((g) => g.links).some((l) => l.external)).toBe(false);
+    expect([...groups, ...menuGroups(true)].flatMap((g) => g.links).some((l) => l.external)).toBe(false);
   });
 
   /**
@@ -82,7 +82,7 @@ describe("every place the menu says you can go", () => {
   });
 
   it("lists no destination twice inside one group", () => {
-    for (const group of menuGroups(true)) {
+    for (const group of [...menuGroups(true), ...menuGroups(false)]) {
       const hrefs = group.links.map((l) => l.href);
       expect(new Set(hrefs).size, group.title ?? "(untitled)").toBe(hrefs.length);
     }
@@ -95,8 +95,10 @@ describe("every place the menu says you can go", () => {
    * owner took the first one out. Every destination is listed once again.
    */
   it("lists every destination exactly once", () => {
-    const all = menuGroups(true).flatMap((g) => g.links.map((l) => l.href));
-    expect(new Set(all).size).toBe(all.length);
+    for (const signedIn of [true, false]) {
+      const all = menuGroups(signedIn).flatMap((g) => g.links.map((l) => l.href));
+      expect(new Set(all).size).toBe(all.length);
+    }
   });
 });
 
@@ -149,11 +151,15 @@ describe("what the menu shows to somebody who has not signed in", () => {
     for (const page of SALES_PAGES) expect(out).toContain(page.href);
   });
 
-  it("gives an agent everything back", () => {
-    const out = hrefs(true);
-    for (const page of ["/admin", "/admin/crm", "/admin/api", "/other-plans", "/"]) {
-      expect(out, page).toContain(page);
-    }
+  /**
+   * The owner's rule (2026-09-23): inside /admin the menu is the back office and only the
+   * back office. The sales pages, the calculator and the assistant are reached from the mark
+   * at the top, which goes home.
+   */
+  it("gives the back office its own tools and nothing else", () => {
+    expect(hrefs(true).sort()).toEqual(
+      ["/admin", "/admin/crm", "/admin/ai", "/admin/knowledge", "/admin/messenger", "/admin/ads", "/admin/api"].sort(),
+    );
   });
 
   it("names no group a signed-out reader has nothing in", () => {

@@ -171,22 +171,47 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
 export const SALES_PAGES: MenuLink[] = SALES_SECTIONS.flatMap((s) => s.links);
 
 /**
- * The menu, in the order the work is done in.
+ * The two menus: the back office's, and everybody else's.
  *
- * Selling first, because that is what the day is for; the assistant's own settings next,
- * because they are tended weekly rather than hourly; the channels after that, because they
- * are set up once and then left alone.
+ * Inside /admin the menu lists the back-office tools and nothing more. It used to carry the
+ * whole site as well — the calculator, the assistant, the content workbench and all eleven
+ * sales pages under the back office's seven — and the tools the owner opens /admin for were
+ * a third of a long column. The owner asked for the back office's menu to hold only the back
+ * office (2026-09-23). The rest of the site is one click away on the mark at the top, which
+ * goes home.
  *
- * Without a session the back office is not in it at all. Everything under /admin is gated
- * and always was, but a gate is a different thing from a sign: naming the pages tells a
- * stranger the shape of the tool and where to knock. What is left is what an agent sends
- * customers anyway — the calculator, the assistant, the six sales pages — so a customer
- * standing on one can still reach the others.
+ * Everywhere else the back office is not in it at all. A gate is a different thing from a
+ * sign: naming the pages tells a stranger the shape of the tool and where to knock. What is
+ * left is what an agent sends customers anyway — the calculator, the assistant, the sales
+ * pages — so a customer standing on one can still reach the others.
  */
 export function menuGroups(signedIn: boolean): MenuGroup[] {
-  const groups: MenuGroup[] = [];
-
-  if (signedIn) groups.push({ links: [{ href: "/admin", label: "ภาพรวม", icon: "grid", hue: "#2b736f" }] });
+  if (signedIn) {
+    return [
+      {
+        links: [
+          { href: "/admin", label: "ภาพรวม", icon: "grid", hue: "#2b736f" },
+          { href: "/admin/crm", label: "ลูกค้า", icon: "users", hue: "#33638a" },
+        ],
+      },
+      {
+        title: "ผู้ช่วย AI",
+        links: [
+          { href: "/admin/ai", label: "ตั้งค่า", icon: "sliders", hue: "#2b4673" },
+          { href: "/admin/knowledge", label: "สอน AI", icon: "book", hue: "#33458a" },
+        ],
+      },
+      {
+        title: "ช่องทาง",
+        links: [
+          { href: "/admin/messenger", label: "Messenger", icon: "chat", hue: "#2b2e73" },
+          // the advertising account sits next to the inbox it fills
+          { href: "/admin/ads", label: "ADS", icon: "megaphone", hue: "#352f80" },
+          { href: "/admin/api", label: "API", icon: "code", hue: "#3e338a" },
+        ],
+      },
+    ];
+  }
 
   /**
    * ประกันภัยกลุ่ม used to be here as well as under its own heading below.
@@ -200,7 +225,7 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
    * ประกันภัยกลุ่ม, read as a mistake however well meant — so the owner took this one out.
    * The page is still both things; it is now reached from one place.
    */
-  groups.push({
+  const groups: MenuGroup[] = [{
     title: "งานขาย",
     links: [
       // "จัดแบบเอง" rather than "คำนวณเบี้ย": every sales page in this menu works out a
@@ -211,28 +236,8 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
       { href: "/", label: "ถาม AI", icon: "spark", hue: "#2b5f73" },
       // open to everyone, as the owner asked: its own hourly and monthly limits are the guard
       { href: "/content", label: "สร้างคอนเทนต์", icon: "pen", hue: "#2e5a80" },
-      ...(signedIn ? [{ href: "/admin/crm", label: "ลูกค้า", icon: "users" as const, hue: "#33638a" }] : []),
     ],
-  });
-
-  if (signedIn) {
-    groups.push({
-      title: "ผู้ช่วย AI",
-      links: [
-        { href: "/admin/ai", label: "ตั้งค่า", icon: "sliders", hue: "#2b4673" },
-        { href: "/admin/knowledge", label: "สอน AI", icon: "book", hue: "#33458a" },
-      ],
-    });
-    groups.push({
-      title: "ช่องทาง",
-      links: [
-        { href: "/admin/messenger", label: "Messenger", icon: "chat", hue: "#2b2e73" },
-        // the advertising account sits next to the inbox it fills
-        { href: "/admin/ads", label: "ADS", icon: "megaphone", hue: "#352f80" },
-        { href: "/admin/api", label: "API", icon: "code", hue: "#3e338a" },
-      ],
-    });
-  }
+  }];
 
   // Sales pages are part of the calculator, so the sidebar keeps the user in the same tab.
   // `external` remains available for a genuinely off-site link added in the future.

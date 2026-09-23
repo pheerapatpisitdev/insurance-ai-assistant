@@ -139,7 +139,7 @@ describe("the menu can be read on every skin the site wears", () => {
  */
 describe("the colours the menu wears itself", () => {
   it("draws every icon clearly on its own chip", () => {
-    for (const group of menuGroups(true)) {
+    for (const group of [...menuGroups(true), ...menuGroups(false)]) {
       for (const link of group.links) {
         // the chip is a gradient from the hue to a darker mix of it; the lit half is the
         // hard case for white, so that is the one checked
@@ -151,7 +151,7 @@ describe("the colours the menu wears itself", () => {
   it("gives no two links in a group the same colour", () => {
     // two orange chips side by side is one chip twice: the point of them is to be reached
     // for without reading, and that only works while they differ from their neighbours
-    for (const group of menuGroups(true)) {
+    for (const group of [...menuGroups(true), ...menuGroups(false)]) {
       const hues = group.links.map((l) => l.hue);
       expect(new Set(hues).size, group.title ?? "ภาพรวม").toBe(hues.length);
     }
