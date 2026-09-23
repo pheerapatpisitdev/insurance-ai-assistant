@@ -9,7 +9,7 @@ import type { IShieldTable } from "@/lib/ishield-table";
 import {
   cashAt, deathBenefitOf, iShieldModes, illnessBenefit, payYears, termAt, termTakes,
 } from "@/lib/ishield-quote";
-import { iShieldMessage, iShieldQuoteText, type IShieldAge } from "@/lib/ishield-cta";
+import { iShieldQuoteText, type IShieldAge } from "@/lib/ishield-cta";
 import { cardPath, valueTablePath } from "@/lib/card-link";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
 import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
@@ -96,7 +96,6 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
       + (annual && !table.expired ? ` · เบี้ย ${formatBaht(annual.total)} บาท/ปี` : "")
     : "";
 
-  const message = iShieldMessage({ sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
   const card = who && headline
     ? cardPath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured, mode: headline.mode })
@@ -308,11 +307,11 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
         </div>
       )}
 
-      <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
+      <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
 
-      {sticky && (
+      {sticky && (quoteText || card) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} compact />
+          <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} compact />
         </div>
       )}
     </div>

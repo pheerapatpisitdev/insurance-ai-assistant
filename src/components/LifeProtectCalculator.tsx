@@ -12,7 +12,7 @@ import {
 import { cashProjection } from "@/lib/cash-projection";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
 import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
-import { ageWord, lifeProtectMessage, lifeProtectQuoteText, type LifeProtectAge } from "@/lib/lifeprotect-cta";
+import { ageWord, lifeProtectQuoteText, type LifeProtectAge } from "@/lib/lifeprotect-cta";
 import { cardPath, valueTablePath } from "@/lib/card-link";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import { ContactButtons } from "@/components/sales/ContactButtons";
@@ -177,10 +177,6 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
       + (annual && !table.expired ? ` · เบี้ย ${formatBaht(annual.total)} บาท/ปี` : "")
     : "";
 
-  const message = lifeProtectMessage({
-    sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline,
-    rider: riderPart && picked ? picked.option.name : undefined,
-  });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
   const card = who && headline
     ? cardPath({ kind: "plan", planCode: table.planCode, variant, age: who.age, sex, sumAssured, mode: headline.mode })
@@ -542,11 +538,11 @@ export function LifeProtectCalculator({ table, sticky = false }: LifeProtectCalc
         </div>
       )}
 
-      <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
+      <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
 
-      {sticky && (
+      {sticky && (quoteText || card) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} compact />
+          <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} compact />
         </div>
       )}
     </div>

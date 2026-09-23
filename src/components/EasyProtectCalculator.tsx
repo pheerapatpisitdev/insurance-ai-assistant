@@ -9,7 +9,7 @@ import type { EasyProtectTable } from "@/lib/easyprotect-table";
 import {
   cashAt, deathBenefitOf, easyProtectModes, leverage, payYears, termAt, totalPaid,
 } from "@/lib/easyprotect-quote";
-import { easyProtectMessage, easyProtectQuoteText, type EasyProtectAge } from "@/lib/easyprotect-cta";
+import { easyProtectQuoteText, type EasyProtectAge } from "@/lib/easyprotect-cta";
 import { cardPath, valueTablePath } from "@/lib/card-link";
 import { ageWord } from "@/lib/lifeprotect-cta";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
@@ -95,7 +95,6 @@ export function EasyProtectCalculator({ table, sticky = false }: EasyProtectCalc
       + (annual && !table.expired ? ` · เบี้ย ${formatBaht(annual.total)} บาท/ปี` : "")
     : "";
 
-  const message = easyProtectMessage({ sumAssured, age, sex, ageMax: table.ageMax, premium: headline });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
   const card = who && headline
     ? cardPath({
@@ -308,11 +307,11 @@ export function EasyProtectCalculator({ table, sticky = false }: EasyProtectCalc
         </div>
       )}
 
-      <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
+      <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
 
-      {sticky && (
+      {sticky && (quoteText || card) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} compact />
+          <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} compact />
         </div>
       )}
     </div>

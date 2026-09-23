@@ -7,7 +7,7 @@ import {
   type PensionBasis, type PensionMode, type PensionPay, type PensionRiders, type WaiverOption,
 } from "@/calc/pension/engine";
 import { ContactButtons } from "@/components/sales/ContactButtons";
-import { pensionMessage, pensionQuoteText } from "@/lib/pension-cta";
+import { pensionQuoteText } from "@/lib/pension-cta";
 import { Highlighted } from "@/components/Highlighted";
 
 /**
@@ -66,7 +66,6 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
   );
   const q = result?.ok ? result.quote : null;
   const who = { age: age === "" ? PENSION_LIMITS.ageMin : age, sex };
-  const message = pensionMessage(who, q);
   const copyText = q ? pensionQuoteText(who, q) : undefined;
 
   return (
@@ -282,10 +281,10 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
           </section>
         )}
 
-        <ContactButtons message={message} copyText={copyText} />
-        {sticky && (
+        <ContactButtons copyText={copyText} />
+        {sticky && copyText && (
           <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-            <ContactButtons message={message} copyText={copyText} compact />
+            <ContactButtons copyText={copyText} compact />
           </div>
         )}
     </div>

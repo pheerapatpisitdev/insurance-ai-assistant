@@ -6,7 +6,7 @@ import { formatBaht } from "@/calc/money";
 import { PER, displayPremium, perDayText } from "@/lib/legacy-cta";
 import type { PlbTable } from "@/lib/plb-table";
 import { coverEndsAt, perMillion, plbModes, termAt, totalPaid } from "@/lib/plb-quote";
-import { plbMessage, plbQuoteText, type PlbAge } from "@/lib/plb-cta";
+import { plbQuoteText, type PlbAge } from "@/lib/plb-cta";
 import { cardPath, valueTablePath } from "@/lib/card-link";
 import { coverRows } from "@/lib/cover-rows";
 import { CoverTable } from "@/components/plb/CoverTable";
@@ -70,7 +70,6 @@ export function PlbCalculator({ table, sticky = false }: PlbCalculatorProps) {
     .filter((m) => m.mode !== headline?.mode && !m.belowMinimum)
     .sort((a, b) => a.total - b.total);
 
-  const message = plbMessage({ sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
   const card = who && headline
     ? cardPath({ kind: "plan", planCode: table.planCode, variant: term.variant, age: who.age, sex, sumAssured, mode: headline.mode })
@@ -297,11 +296,11 @@ export function PlbCalculator({ table, sticky = false }: PlbCalculatorProps) {
         </div>
       )}
 
-      <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} tableLabel={{ full: "บันทึกตารางความคุ้มครอง", compact: "ตาราง" }} />
+      <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} tableLabel={{ full: "บันทึกตารางความคุ้มครอง", compact: "ตาราง" }} />
 
-      {sticky && (
+      {sticky && (quoteText || card) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} tableLabel={{ full: "บันทึกตารางความคุ้มครอง", compact: "ตาราง" }} compact />
+          <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} tableLabel={{ full: "บันทึกตารางความคุ้มครอง", compact: "ตาราง" }} compact />
         </div>
       )}
     </div>

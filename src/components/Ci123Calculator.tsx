@@ -5,7 +5,7 @@ import type { PayMode, Sex } from "@/calc/types";
 import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { displayPremium, perDayText } from "@/lib/legacy-cta";
-import { ci123Message, ci123QuoteText, stagePays, sumWords, type Ci123Age } from "@/lib/ci123-cta";
+import { ci123QuoteText, stagePays, sumWords, type Ci123Age } from "@/lib/ci123-cta";
 import { cardPath } from "@/lib/card-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import type { Ci123Table } from "@/lib/ci123-table";
@@ -53,7 +53,6 @@ export function Ci123Calculator({ table, sticky = false }: { table: Ci123Table; 
     .sort((a, b) => a.total - b.total);
   const base = at >= 0 ? table.basePremiums[sex][at] : null;
 
-  const message = ci123Message({ sum, age, sex, range: RANGE, premium: headline });
   const card = typeof age === "number" && headline
     ? cardPath({ kind: "bundle", bundleCode: table.bundleCode, tier, age, sex, mode: headline.mode })
     : undefined;
@@ -226,11 +225,11 @@ export function Ci123Calculator({ table, sticky = false }: { table: Ci123Table; 
         <AllSums table={table} age={age} sex={sex} tier={tier} onPick={setTier} />
       )}
 
-      <ContactButtons message={message} copyText={quoteText} cardPath={card} />
+      <ContactButtons copyText={quoteText} cardPath={card} />
 
-      {sticky && (
+      {sticky && (quoteText || card) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={card} compact />
+          <ContactButtons copyText={quoteText} cardPath={card} compact />
         </div>
       )}
     </div>

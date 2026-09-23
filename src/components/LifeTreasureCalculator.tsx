@@ -9,7 +9,7 @@ import type { LifeTreasureTable } from "@/lib/lifetreasure-table";
 import {
   cashAt, deathBenefitOf, leverage, lifeTreasureModes, payYears, termAt, totalPaid,
 } from "@/lib/lifetreasure-quote";
-import { lifeTreasureMessage, lifeTreasureQuoteText, type LifeTreasureAge } from "@/lib/lifetreasure-cta";
+import { lifeTreasureQuoteText, type LifeTreasureAge } from "@/lib/lifetreasure-cta";
 import { cardPath, valueTablePath } from "@/lib/card-link";
 import { ageWord } from "@/lib/lifeprotect-cta";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
@@ -95,9 +95,6 @@ export function LifeTreasureCalculator({ table, sticky = false }: LifeTreasureCa
       + (annual && !table.expired ? ` · เบี้ย ${formatBaht(annual.total)} บาท/ปี` : "")
     : "";
 
-  const message = lifeTreasureMessage({
-    sumAssured, termLabel: term.label, age, sex, ageMax: table.ageMax, premium: headline,
-  });
   // the same figures the card is showing, or nothing: a copied quote must never say more than the page
   const card = who && headline
     ? cardPath({ kind: "plan", planCode: table.planCode, variant, age: who.age, sex, sumAssured, mode: headline.mode })
@@ -331,11 +328,11 @@ export function LifeTreasureCalculator({ table, sticky = false }: LifeTreasureCa
         </div>
       )}
 
-      <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
+      <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
 
-      {sticky && (
+      {sticky && (quoteText || card) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={card} tableCardPath={tableCard} compact />
+          <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} compact />
         </div>
       )}
     </div>

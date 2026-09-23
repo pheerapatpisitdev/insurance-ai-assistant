@@ -6,7 +6,7 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { displayPremium, perDayText } from "@/lib/legacy-cta";
 import { sumWords } from "@/lib/ci123-cta";
-import { cancerMessage, cancerQuoteText, type CancerAge } from "@/lib/cancer-cta";
+import { cancerQuoteText, type CancerAge } from "@/lib/cancer-cta";
 import {
   CPR_STAGES, HIC_INVASIVE_EXTRA_DAYS, HIC_MAX_DAYS, cancerDeathTotals, cprStagePays, deathTotalsTitle,
 } from "@/lib/cancer-benefits";
@@ -56,7 +56,6 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
     .sort((a, b) => a.total - b.total);
   const parts = at >= 0 ? table.parts[sex][tier - 1][at] : null;
 
-  const message = cancerMessage({ cpr: t.cpr, hic: t.hic, age, sex, range: RANGE, premium: headline });
   const card = typeof age === "number" && headline
     ? cardPath({ kind: "bundle", bundleCode: table.bundleCode, tier, age, sex, mode: headline.mode })
     : undefined;
@@ -268,11 +267,11 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
         <AllTiers table={table} age={age} sex={sex} tier={tier} onPick={setTier} />
       )}
 
-      <ContactButtons message={message} copyText={quoteText} cardPath={card} />
+      <ContactButtons copyText={quoteText} cardPath={card} />
 
-      {sticky && (
+      {sticky && (quoteText || card) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={card} compact />
+          <ContactButtons copyText={quoteText} cardPath={card} compact />
         </div>
       )}
     </div>

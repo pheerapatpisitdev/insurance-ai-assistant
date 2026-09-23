@@ -137,7 +137,6 @@ export interface IHealthyWords {
 
 /** The labels the shared sales buttons carry; each defaults to its Thai on every other page. */
 export interface ContactWords {
-  chat: { full: string; compact: string };
   card: { full: string; compact: string; working: string; copied: string; failed: string };
   send: { full: string; compact: string; copied: string; copiedCompact: string };
   copy: { full: string; compact: string; copied: string };
@@ -201,7 +200,6 @@ function riderReader(p: RiderPhrases): (thai: string) => string {
 }
 
 const THAI_CONTACT: ContactWords = {
-  chat: { full: "ทักเพจปรึกษาฟรี", compact: "ทักเพจ" },
   card: { full: "ส่งการ์ด", compact: "การ์ด", working: "กำลังสร้าง…", copied: "คัดลอกรูปแล้ว ✓", failed: "เปิดรูปในแท็บใหม่" },
   send: { full: "ส่งให้ลูกค้า", compact: "ส่งต่อ", copied: "คัดลอกแล้ว เปิด Inbox ✓", copiedCompact: "คัดลอกแล้ว ✓" },
   copy: { full: "คัดลอกข้อความ", compact: "คัดลอก", copied: "คัดลอกแล้ว ✓" },
@@ -392,7 +390,6 @@ const en: IHealthyWords = {
   linkCopied: "Copied ✓",
 
   contact: {
-    chat: { full: "Chat with us — free advice", compact: "Chat" },
     card: { full: "Send card", compact: "Card", working: "Creating…", copied: "Image copied ✓", failed: "Open image in a new tab" },
     send: { full: "Send to customer", compact: "Share", copied: "Copied — opening Inbox ✓", copiedCompact: "Copied ✓" },
     copy: { full: "Copy text", compact: "Copy", copied: "Copied ✓" },
@@ -542,7 +539,6 @@ const zh: IHealthyWords = {
   linkCopied: "已复制 ✓",
 
   contact: {
-    chat: { full: "联系我们 · 免费咨询", compact: "联系" },
     card: { full: "发送卡片", compact: "卡片", working: "正在生成…", copied: "图片已复制 ✓", failed: "在新标签页打开图片" },
     send: { full: "发送给客户", compact: "分享", copied: "已复制，正在打开收件箱 ✓", copiedCompact: "已复制 ✓" },
     copy: { full: "复制文字", compact: "复制", copied: "已复制 ✓" },
@@ -684,7 +680,6 @@ const ru: IHealthyWords = {
 
   contact: {
     // the compact four share one row at the bottom of a phone, so each is a single short word
-    chat: { full: "Написать нам — бесплатная консультация", compact: "Чат" },
     card: { full: "Отправить карточку", compact: "Фото", working: "Создаём…", copied: "Изображение скопировано ✓", failed: "Открыть изображение в новой вкладке" },
     send: { full: "Отправить клиенту", compact: "Послать", copied: "Скопировано, открываем Inbox ✓", copiedCompact: "Скопировано ✓" },
     copy: { full: "Скопировать текст", compact: "Копия", copied: "Скопировано ✓" },
@@ -826,7 +821,6 @@ const my: IHealthyWords = {
 
   contact: {
     // the compact four share one row at the bottom of a phone, so each is one short word
-    chat: { full: "ပေ့ချ်သို့ စကားပြောရန် — အခမဲ့ အကြံပေး", compact: "ချတ်" },
     card: { full: "ကတ် ပို့ရန်", compact: "ပုံ", working: "ပြုလုပ်နေသည်…", copied: "ပုံ ကူးယူပြီး ✓", failed: "ပုံကို တက်ဘ်အသစ်တွင် ဖွင့်ရန်" },
     send: { full: "ဖောက်သည်ထံ ပို့ရန်", compact: "ပို့", copied: "ကူးယူပြီး Inbox ဖွင့်နေသည် ✓", copiedCompact: "ကူးပြီး ✓" },
     copy: { full: "စာသား ကူးယူရန်", compact: "ကူး", copied: "ကူးယူပြီး ✓" },

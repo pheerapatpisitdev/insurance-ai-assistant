@@ -25,7 +25,7 @@ import type { AttachedRider } from "@/lib/ihealthy-rider-quote";
 import type { Attached } from "@/components/ihealthy/RiderPanel";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import { LinkButton } from "@/components/sales/LinkButton";
-import { iHealthyMessage, iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
+import { iHealthyQuoteText, type IHealthyCtaFacts } from "@/lib/ihealthy-cta";
 import type { Lang } from "@/lib/ihealthy-lang";
 import { WORDS, baseWords } from "@/lib/ihealthy-words";
 import { Highlighted } from "@/components/Highlighted";
@@ -259,10 +259,8 @@ export function IHealthyCalculator(
     minMonthly: table.minMonthly,
     shown,
   };
-  // Both stay in Thai whatever the page is read in: the message lands in the Page's inbox,
-  // where the Messenger bot and the agents read Thai, and the copied quote is the agent's.
+  // Stays in Thai whatever the page is read in: the copied quote is the agent's.
   const quoteText = iHealthyQuoteText(cta);
-  const message = iHealthyMessage(cta);
   /**
    * What the card calls the attached riders, in the reader's language. `extras.label` and the
    * table's own label are Thai because the quote text is built from them; this is the same
@@ -595,12 +593,12 @@ export function IHealthyCalculator(
       </div>
 
       <div className="print:hidden">
-        <ContactButtons message={message} copyText={quoteText} cardPath={picture} words={w.contact} />
+        <ContactButtons copyText={quoteText} cardPath={picture} words={w.contact} />
       </div>
 
-      {sticky && (
+      {sticky && (quoteText || picture) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden print:hidden">
-          <ContactButtons message={message} copyText={quoteText} cardPath={picture} words={w.contact} compact />
+          <ContactButtons copyText={quoteText} cardPath={picture} words={w.contact} compact />
         </div>
       )}
     </div>
