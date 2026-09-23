@@ -172,16 +172,30 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     setSpend(await contentSpend().catch(() => spend));
   }
 
+  /**
+   * Pieces whose status is being changed right now. A second tap before the first had
+   * answered — the busy state is not on screen until the next render — marked the same
+   * piece used twice and put it in the ใช้จริง rail twice.
+   */
+  const moving = useRef(new Set<string>());
+
   async function changeStatus(item: ContentItem, status: ContentStatus) {
+    // ✓ ใช้จริง on a piece opened from the ใช้จริง rail: it is used already
+    if (item.status === status) { if (editing === item.id) setEditing(null); return; }
+    if (moving.current.has(item.id)) return;
+    moving.current.add(item.id);
     setBusy(item.id);
-    const res = await setContentStatus(item.id, status);
+    const res = await setContentStatus(item.id, status).finally(() => moving.current.delete(item.id));
     setBusy(null);
     if (!res.ok) { setError("เปลี่ยนสถานะไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
     if (editing === item.id) setEditing(null);
     setItems((list) => list.filter((x) => x.id !== item.id));
     setCounts((c) => ({ ...c, [item.status]: Math.max(0, c[item.status] - 1), [status]: c[status] + 1 }));
-    if (status === "used") setUsed((list) => [{ ...item, status }, ...list]);
-    if (item.status === "used") setUsed((list) => list.filter((x) => x.id !== item.id));
+    // one row per piece in the rail, whatever order the updates arrive in
+    setUsed((list) => {
+      const others = list.filter((x) => x.id !== item.id);
+      return status === "used" ? [{ ...item, status }, ...others] : others;
+    });
   }
 
   async function remove(item: ContentItem) {
