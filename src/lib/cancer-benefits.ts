@@ -20,21 +20,41 @@ export interface CprStage {
   share: number;
   /** the most this stage pays, when the sheet caps it */
   cap: number | null;
+  /** the biopsy must be taken this many days after cover starts */
+  waitingDays: number;
+  /** what the sheet adds under the stage */
+  note?: string;
+  /** stages 2 and 3 may be claimed again, within the sum assured */
+  repeatable?: true;
+  /** the stage that pays the sum assured, less whatever was already paid */
+  major?: true;
 }
 
 /**
- * Stages 1–3 can each be claimed more than once, but all claims together never pass the
- * sum assured; stage 4 pays the sum assured less whatever the earlier stages already paid.
+ * Stages 2 and 3 can be claimed more than once (rows 12 and 18), but all claims together never
+ * pass the sum assured; stage 4 pays the sum assured less whatever the earlier stages already paid.
  */
 export const CPR_STAGES: readonly CprStage[] = [
   // L8: MIN(D28*10/100, 50,000)
-  { label: "ขั้น 1 มะเร็งระยะไม่ลุกลามขั้นต้น", share: 0.1, cap: 50_000 },
+  {
+    label: "ขั้น 1 มะเร็งระยะไม่ลุกลามขั้นต้น", share: 0.1, cap: 50_000, waitingDays: 120,
+    note: "รวมมะเร็งผิวหนังชนิดบาเซลเซลและสแควมัสเซล",
+  },
   // L13: D28*15/100 — L14 caps cervical cancer / CIN III at 100,000
-  { label: "ขั้น 2 มะเร็งระยะไม่ลุกลาม", share: 0.15, cap: null },
+  {
+    label: "ขั้น 2 มะเร็งระยะไม่ลุกลาม", share: 0.15, cap: null, waitingDays: 90, repeatable: true,
+    note: "รวมมะเร็งรังไข่ระยะแรก · มะเร็งปากมดลูกหรือ CIN III จ่ายไม่เกิน 100,000 บาท",
+  },
   // L19: D28*30/100
-  { label: "ขั้น 3 ระยะไม่ลุกลาม ผ่าตัดอวัยวะออก", share: 0.3, cap: null },
+  {
+    label: "ขั้น 3 ระยะไม่ลุกลาม ผ่าตัดอวัยวะออก", share: 0.3, cap: null, waitingDays: 90, repeatable: true,
+    note: "ผ่าตัดแบบ Radical surgery ที่อวัยวะที่กำหนด · เคยเคลมขั้น 2 ที่อวัยวะเดิม จ่าย 15%",
+  },
   // L23: the whole sum assured
-  { label: "ขั้น 4 มะเร็งระยะลุกลาม", share: 1, cap: null },
+  {
+    label: "ขั้น 4 มะเร็งระยะลุกลาม", share: 1, cap: null, waitingDays: 60, major: true,
+    note: "จ่ายเต็มทุน หักส่วนที่จ่ายไปแล้ว",
+  },
 ];
 
 export function cprStagePays(stage: CprStage, sumAssured: number): number {

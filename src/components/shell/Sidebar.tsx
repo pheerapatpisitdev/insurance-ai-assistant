@@ -85,6 +85,9 @@ function Icon({ name }: { name: MenuIcon }) {
     // CI 123 pays by the stage of an illness, so its mark is a heartbeat
     case "pulse":
       return <svg {...common}><path d="M3.5 12h4l2-5.5 4 11 2-5.5h5" /></svg>;
+    // the cancer set: the awareness ribbon, a loop crossing into two tails
+    case "ribbon":
+      return <svg {...common}><path d="M12 4c-2 0-3 1.5-3 3.2 0 2.3 1.6 4.4 5.8 12.3M12 4c2 0 3 1.5 3 3.2 0 2.3-1.6 4.4-5.8 12.3" /></svg>;
     // อีซี่ โพรเทค 6 is sold on the premium having a last year, so its mark is a clock
     case "clock":
       return <svg {...common}><path d="M12 4.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zM12 8v4.3l3 1.7" /></svg>;
