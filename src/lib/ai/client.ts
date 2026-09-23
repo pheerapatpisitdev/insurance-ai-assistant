@@ -353,15 +353,48 @@ export function parseJsonReply<T>(text: string): T | null {
   const end = body.lastIndexOf("}");
   if (start < 0 || end <= start) return null;
   const json = body.slice(start, end + 1);
-  try {
-    return JSON.parse(json) as T;
-  } catch {
+  const attempts = [json, escapeBareControls(json)];
+  attempts.push(closeBrackets(attempts[1]));
+  for (const attempt of attempts) {
     try {
-      return JSON.parse(escapeBareControls(json)) as T;
-    } catch {
-      return null;
-    }
+      return JSON.parse(attempt) as T;
+    } catch { /* the next repair */ }
   }
+  return null;
+}
+
+/**
+ * A missing closing bracket, put back.
+ *
+ * Sonnet 5 at low effort wrote a Family Legacy post whose poster object was never closed —
+ * `…]}]}` where `…]}}]}` belonged — twice in a row on 2026-09-23, and the owner was told
+ * "AI ตอบกลับมาไม่ครบ" for a post that was all there. Walking the brackets outside strings:
+ * a closer that does not match the innermost open one first closes what was left open, and
+ * whatever is still open at the end is closed. A reply that was fine is returned unchanged.
+ */
+export function closeBrackets(json: string): string {
+  const stack: string[] = [];
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (const ch of json) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === "{" || ch === "[") {
+      stack.push(ch === "{" ? "}" : "]");
+    } else if (ch === "}" || ch === "]") {
+      // close whatever was left open inside, as long as this closer matches something further out
+      if (stack.includes(ch)) while (stack.length && stack[stack.length - 1] !== ch) out += stack.pop();
+      if (stack[stack.length - 1] === ch) stack.pop();
+      else continue; // a stray closer with nothing to close
+    }
+    out += ch;
+  }
+  return out + stack.reverse().join("");
 }
 
 /**
