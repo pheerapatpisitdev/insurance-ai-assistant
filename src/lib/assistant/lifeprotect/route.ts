@@ -143,6 +143,40 @@ export function lifeProtectVariantIn(text: string): string | undefined {
 }
 
 /**
+ * A sum and what it doubles to, said together: "ทุน 2,500,000 เพิ่มเป็น 5,000,000".
+ *
+ * It is the quotation's own headline read back — "ทุน 1,000,000 บาท เพิ่มเป็น 2,000,000" — and
+ * it settles what a lone figure cannot: the first number is the sum assured and the second is
+ * what the family receives. Read alone, "ทุน 2,500,000" is taken as the family's figure and
+ * halved, so a customer who wrote both was quoted 1,250,000 rising to 2,500,000.
+ *
+ * Returned as the family's figure, because that is what `coverWanted` holds. Only a pair
+ * where the second is twice the first counts: that is the doubling this plan pays, and any
+ * other pair is not a statement of it. After จาก it is a change of sum being asked for, and
+ * is left to the reading it had before.
+ */
+const AMOUNT_WORD = String.raw`(\d[\d,]*(?:\.\d+)?)\s*(ล้าน|แสน)?\s*(?:บาท)?`;
+// "จาก 1 ล้าน เพิ่มเป็น 2 ล้าน" is a request to raise the sum, not a statement of one
+const BOOSTED = new RegExp(
+  `(?<![\\d,.]|จาก\\s*)${AMOUNT_WORD}\\s*(?:เพิ่ม(?:ขึ้น)?\\s*เป็น|กลายเป็น|x\\s*2\\s*=|→|->)\\s*(?:ได้\\s*)?${AMOUNT_WORD}`, "i",
+);
+
+function amountOf(digits: string, scale: string | undefined): number {
+  const n = Number(digits.replace(/,/g, ""));
+  // rounded, so "1.1 ล้าน" is 1,100,000 and not a float a hair above it
+  return Math.round(n * (scale === "ล้าน" ? 1_000_000 : scale === "แสน" ? 100_000 : 1));
+}
+
+export function boostedCoverIn(text: string): number | undefined {
+  const m = BOOSTED.exec(text);
+  if (!m) return undefined;
+  const sum = amountOf(m[1], m[2]);
+  const family = amountOf(m[3], m[4]);
+  if (!Number.isFinite(sum) || sum < 10_000 || family !== sum * 2) return undefined;
+  return family;
+}
+
+/**
  * How people ask what the plan pays out — nearly always as a multiple of the sum, because
  * that is how the adverts word it. "ทำทุน 1 ล้าน ครอบครัวได้ 2 ล้านจริงไหม" is the campaign's
  * own headline being checked, and it is answered from the rate tables, so it must not be
@@ -228,7 +262,10 @@ function clean(raw: Routed, history: ChatMessage[]): Routed {
   if (namedPeople.length) out.sex = namedPeople[0].sex;
   else if (sexBesideDate) out.sex = sexBesideDate;
   else if (raw.sex === "M" || raw.sex === "F") out.sex = raw.sex;
-  if (typeof raw.coverWanted === "number" && raw.coverWanted > 0) out.coverWanted = Math.trunc(raw.coverWanted);
+  // "ทุน 2,500,000 เพิ่มเป็น 5,000,000" names both halves, and says outright which is which
+  const boosted = boostedCoverIn(last);
+  if (boosted !== undefined) out.coverWanted = boosted;
+  else if (typeof raw.coverWanted === "number" && raw.coverWanted > 0) out.coverWanted = Math.trunc(raw.coverWanted);
   // the model first, the message itself when the model read no amount at all
   else out.coverWanted = coverIn(last);
   if (raw.mode === "annual" || raw.mode === "semi" || raw.mode === "monthly") out.mode = raw.mode;
