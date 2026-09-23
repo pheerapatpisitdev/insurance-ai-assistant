@@ -227,6 +227,23 @@ describe("a customer whose message says what they came for", () => {
   });
 });
 
+describe("a sum and what it doubles to", () => {
+  /**
+   * A customer on a Life Protect quotation wrote "ทุน 2,500,000 เพิ่มเป็น 5,000,000 หละคะ" and
+   * was sent 1,250,000 rising to 2,500,000. Whatever the model reads, the headline she gets
+   * back is the one she wrote.
+   */
+  it("quotes the sum assured the customer named, not half of it", async () => {
+    const stored = { product: "lifeprotect" as const, intent: "quote" as const, age: 40, sex: "F" as const, coverWanted: 1_000_000 };
+    for (const r of [{ intent: "quote", coverWanted: 2_500_000 }, { intent: "quote" }, { intent: "quote", coverWanted: 5_000_000 }]) {
+      routed = r;
+      const answer = await answerAny(said("ทุน 2,500,000 เพิ่มเป็น 5,000,000 หละคะ"), stored);
+      expect(answer.priced, JSON.stringify(r)).toBe(true);
+      expect(answer.messages[0].text, JSON.stringify(r)).toContain("ทุน 2,500,000 บาท เพิ่มเป็น 5,000,000");
+    }
+  });
+});
+
 describe("a conversation already under way", () => {
   it("treats a session from before this existed as the life plan", async () => {
     routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 };

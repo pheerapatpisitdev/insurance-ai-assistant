@@ -8,7 +8,7 @@ vi.mock("@/lib/ai/client", async () => {
   return { ...actual, chat };
 });
 
-const { asksValueTable, mergeSlots, routeMessage } = await import("@/lib/assistant/lifeprotect/route");
+const { asksValueTable, boostedCoverIn, mergeSlots, routeMessage } = await import("@/lib/assistant/lifeprotect/route");
 // these read a customer rather than a plan, and now live where both brains can reach them
 const { affirms, ageFromBirthdate, asksCheaper, saysFormDone, stalls, wantsToBuy } = await import("@/lib/assistant/common");
 
@@ -275,5 +275,37 @@ describe("carrying the conversation forward", () => {
   it("lets the newest turn overwrite what it names", () => {
     const merged = mergeSlots({ intent: "quote", coverWanted: 1000000 }, { intent: "quote", coverWanted: 500000 });
     expect(merged.coverWanted).toBe(500000);
+  });
+});
+
+/**
+ * "ทุน 2,500,000 เพิ่มเป็น 5,000,000 หละคะ" names the sum assured and what it doubles to.
+ *
+ * Read as a lone figure, 2,500,000 was taken for the family's amount and halved, and the
+ * customer was quoted 1,250,000 rising to 2,500,000 — half of what she asked for.
+ */
+describe("a sum and what it doubles to, said together", () => {
+  it("reads the second figure as what the family receives", () => {
+    expect(boostedCoverIn("ทุน 2,500,000 เพิ่มเป็น 5,000,000 หละคะ")).toBe(5_000_000);
+    expect(boostedCoverIn("ทุน 1,000,000 บาท เพิ่มเป็น 2,000,000")).toBe(2_000_000);
+    expect(boostedCoverIn("2.5 ล้าน เพิ่มเป็น 5 ล้าน")).toBe(5_000_000);
+    expect(boostedCoverIn("ทุน 3 ล้าน เพิ่มขึ้นเป็น 6 ล้าน")).toBe(6_000_000);
+    expect(boostedCoverIn("1.1 ล้าน เพิ่มเป็น 2.2 ล้าน")).toBe(2_200_000);
+  });
+
+  it("does not read a pair that is not the plan's doubling", () => {
+    expect(boostedCoverIn("ทุน 2 ล้าน เพิ่มเป็น 3 ล้าน")).toBeUndefined();
+    expect(boostedCoverIn("ทุน 2,500,000")).toBeUndefined();
+  });
+
+  it("leaves a request to raise the sum to the reading it had", () => {
+    expect(boostedCoverIn("จาก 1 ล้าน เพิ่มเป็น 2 ล้าน ได้ไหม")).toBeUndefined();
+    expect(boostedCoverIn("ขอจาก 1,000,000 เพิ่มเป็น 2,000,000")).toBeUndefined();
+  });
+
+  it("wins over the model's reading of the same message", async () => {
+    reply.text = JSON.stringify({ intent: "quote", coverWanted: 2_500_000 });
+    const routed = await routeMessage(said("ทุน 2,500,000 เพิ่มเป็น 5,000,000 หละคะ"));
+    expect(routed.coverWanted).toBe(5_000_000);
   });
 });
