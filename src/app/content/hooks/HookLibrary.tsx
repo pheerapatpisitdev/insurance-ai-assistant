@@ -1,0 +1,83 @@
+"use client";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { HOOK_CATEGORIES, HOOK_CATEGORY_LABEL, type HookCategory, type HookTemplate } from "@/lib/content/hooks";
+
+/**
+ * The formula library as Maryjane's hook-library shows it: a search, a chip per category, and
+ * one row per formula with how often it has been used and a way to use it now.
+ *
+ * "ใช้อันนี้" opens the workbench with the formula already chosen. Formulas drawn from the
+ * owner's own posts say which hook they came from, so a good one can be traced back to the
+ * post that earned it.
+ */
+
+const WEEK = 7 * 24 * 60 * 60_000;
+
+export function HookLibrary({ items }: { items: HookTemplate[] }) {
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<HookCategory | "ALL">("ALL");
+  const [copied, setCopied] = useState<string | null>(null);
+  const [now] = useState(() => Date.now());
+
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((h) =>
+      (category === "ALL" || h.category === category)
+      && (!q || h.template.toLowerCase().includes(q) || (h.exampleHook ?? "").toLowerCase().includes(q)));
+  }, [items, query, category]);
+
+  async function copy(h: HookTemplate) {
+    try {
+      await navigator.clipboard.writeText(h.template);
+      setCopied(h.id);
+      setTimeout(() => setCopied(null), 1500);
+    } catch { /* the row still shows the text to select by hand */ }
+  }
+
+  const chipCls = (on: boolean) =>
+    `rounded-full border px-3 py-1 text-xs ${on ? "border-[var(--ct-solid)] bg-[var(--ct-soft)] text-[var(--ct-accent)]" : "border-[var(--ct-line)] text-[var(--ct-mute)] hover:bg-[var(--ct-panel)]"}`;
+
+  return (
+    <div className="mt-5 space-y-4">
+      <input
+        value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาสูตร เช่น ลูก, ภาษี, เรื่องที่ควรรู้"
+        className="w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-2.5 text-sm outline-none focus:border-[var(--ct-accent)]"
+      />
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => setCategory("ALL")} className={chipCls(category === "ALL")}>ทั้งหมด {items.length}</button>
+        {HOOK_CATEGORIES.map((c) => (
+          <button key={c} type="button" onClick={() => setCategory(c)} className={chipCls(category === c)}>
+            {HOOK_CATEGORY_LABEL[c]}
+          </button>
+        ))}
+      </div>
+
+      {shown.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-[var(--ct-line)] p-6 text-center text-sm text-[var(--ct-mute)]">ไม่พบสูตรที่ตรงกับคำค้น</p>
+      ) : (
+        <ul className="divide-y divide-[var(--ct-hair)] rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)]">
+          {shown.map((h) => (
+            <li key={h.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1 basis-60">
+                <p className="text-sm">
+                  “{h.template}”
+                  {h.seed
+                    ? <span className="ml-2 text-xs text-[var(--ct-mute)]">ตั้งต้น</span>
+                    : now - new Date(h.createdAt).getTime() < WEEK && <span className="ml-2 text-xs text-[var(--ct-accent)]">ใหม่</span>}
+                </p>
+                {h.exampleHook && <p className="mt-0.5 truncate text-xs text-[var(--ct-mute)]">จากโพสต์: {h.exampleHook}</p>}
+              </div>
+              <span className="shrink-0 rounded bg-[var(--ct-ground)] px-2 py-1 text-xs text-[var(--ct-mute)]">{HOOK_CATEGORY_LABEL[h.category]}</span>
+              <span className="w-14 shrink-0 text-right text-sm tabular-nums text-[var(--ct-accent)]" title="จำนวนครั้งที่ใช้">{h.useCount}×</span>
+              <Link href={`/content?hook=${h.id}`} className="shrink-0 rounded-lg border border-[var(--ct-line)] px-3 py-1.5 text-sm hover:bg-[var(--ct-soft)]">ใช้อันนี้</Link>
+              <button type="button" onClick={() => copy(h)} className="shrink-0 rounded-lg px-2 py-1.5 text-sm text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]">
+                {copied === h.id ? "✓" : "คัดลอก"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

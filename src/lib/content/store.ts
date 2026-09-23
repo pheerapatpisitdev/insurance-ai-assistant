@@ -1,6 +1,8 @@
 import { monthSpend, monthStart, type SpendLine } from "@/lib/ai/ledger";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ContentWord, WordHit, WordKind } from "./check";
+import { isHookCategory, type HookCategory, type HookTemplate } from "./hooks";
+import type { PolicyFinding } from "./policy";
 import type { Fix } from "./proofread";
 import type { AngleId, Format, Length } from "./prompt";
 import type { ContentOutput } from "./output";
@@ -15,6 +17,8 @@ export interface Flags {
   numbers: string[];
   /** words from the owner's list */
   words: WordHit[];
+  /** Facebook's advertising rules; absent on pieces written before the rules were checked */
+  policy?: PolicyFinding[];
   /** the proofreader's suggestions; null until it has run */
   fixes: Fix[] | null;
 }
@@ -30,8 +34,15 @@ export interface ContentItem {
   flags: Flags;
   model: string | null;
   costThb: number;
-  starred: boolean;
+  status: ContentStatus;
+  hookTemplateId: string | null;
 }
+
+/** รอตรวจ, ใช้จริง, ถังขยะ — the star this replaced meant ใช้จริง */
+export const CONTENT_STATUSES = ["draft", "used", "trashed"] as const;
+export type ContentStatus = (typeof CONTENT_STATUSES)[number];
+export const isContentStatus = (v: unknown): v is ContentStatus =>
+  typeof v === "string" && (CONTENT_STATUSES as readonly string[]).includes(v);
 
 /**
  * What content may spend in a month, on its own.
@@ -51,7 +62,7 @@ export async function contentSpentThisMonth(): Promise<number> {
   return contentBaht((await monthSpend(monthStart())).lines);
 }
 
-const COLUMNS = "id, created_at, plan_href, format, angle, length, output, flags, model, cost_thb, starred";
+const COLUMNS = "id, created_at, plan_href, format, angle, length, output, flags, model, cost_thb, status, hook_template_id";
 
 function toItem(r: Record<string, unknown>): ContentItem {
   const flags = (r.flags ?? {}) as Partial<Flags>;
@@ -63,20 +74,23 @@ function toItem(r: Record<string, unknown>): ContentItem {
     angle: (r.angle ?? "") as AngleId,
     length: (r.length ?? null) as Length | null,
     output: r.output as ContentOutput,
-    flags: { numbers: flags.numbers ?? [], words: flags.words ?? [], fixes: flags.fixes ?? null },
+    flags: { numbers: flags.numbers ?? [], words: flags.words ?? [], policy: flags.policy ?? [], fixes: flags.fixes ?? null },
     model: (r.model as string | null) ?? null,
     costThb: Number(r.cost_thb ?? 0),
-    starred: Boolean(r.starred),
+    status: isContentStatus(r.status) ? r.status : "draft",
+    hookTemplateId: (r.hook_template_id as string | null) ?? null,
   };
 }
 
 export async function saveContent(row: {
   planHref: string; format: Format; angle: AngleId; length: Length | null;
   output: ContentOutput; flags: Flags; rateVersion: string | null; model: string; costThb: number;
+  hookTemplateId: string | null;
 }): Promise<ContentItem> {
   const { data, error } = await supabaseAdmin().from("ins_content").insert({
     plan_href: row.planHref, format: row.format, angle: row.angle || null, length: row.length,
     output: row.output, flags: row.flags, rate_version: row.rateVersion, model: row.model, cost_thb: row.costThb,
+    hook_template_id: row.hookTemplateId,
   }).select(COLUMNS).single();
   if (error) throw new Error(`บันทึกคอนเทนต์ไม่สำเร็จ: ${error.message}`);
   return toItem(data as Record<string, unknown>);
@@ -88,18 +102,46 @@ export async function getContent(id: string): Promise<ContentItem | null> {
   return data ? toItem(data as Record<string, unknown>) : null;
 }
 
-export async function listContent(filter: { planHref?: string; starred?: boolean } = {}, limit = 30): Promise<ContentItem[]> {
+export async function listContent(filter: { status?: ContentStatus; planHref?: string } = {}, limit = 40): Promise<ContentItem[]> {
   let q = supabaseAdmin().from("ins_content").select(COLUMNS).order("created_at", { ascending: false }).limit(limit);
+  if (filter.status) q = q.eq("status", filter.status);
   if (filter.planHref) q = q.eq("plan_href", filter.planHref);
-  if (filter.starred) q = q.eq("starred", true);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, unknown>[]).map(toItem);
 }
 
-export async function setStarred(id: string, starred: boolean): Promise<void> {
-  const { error } = await supabaseAdmin().from("ins_content").update({ starred }).eq("id", id);
+/** How many pieces sit under each tab. Three head-only counts; the table is small. */
+export async function countByStatus(planHref?: string): Promise<Record<ContentStatus, number>> {
+  const counts = await Promise.all(CONTENT_STATUSES.map(async (status) => {
+    let q = supabaseAdmin().from("ins_content").select("id", { count: "exact", head: true }).eq("status", status);
+    if (planHref) q = q.eq("plan_href", planHref);
+    const { count, error } = await q;
+    if (error) throw new Error(error.message);
+    return [status, count ?? 0] as const;
+  }));
+  return Object.fromEntries(counts) as Record<ContentStatus, number>;
+}
+
+export async function setStatus(id: string, status: ContentStatus): Promise<void> {
+  const { error } = await supabaseAdmin().from("ins_content").update({ status }).eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+/** The owner's edits, with the checks run again over what they now say. */
+export async function saveOutput(id: string, output: ContentOutput, flags: Flags): Promise<ContentItem> {
+  const { data, error } = await supabaseAdmin().from("ins_content")
+    .update({ output, flags }).eq("id", id).select(COLUMNS).single();
+  if (error) throw new Error(error.message);
+  return toItem(data as Record<string, unknown>);
+}
+
+/** The hooks of pieces the owner used, newest first — what the planner is told not to repeat. */
+export async function usedHooks(limit = 40): Promise<string[]> {
+  const { data, error } = await supabaseAdmin().from("ins_content").select("output")
+    .eq("status", "used").order("created_at", { ascending: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as { output: ContentOutput }[]).map((r) => r.output?.hooks?.[0] ?? "").filter(Boolean);
 }
 
 export async function setFixes(item: ContentItem, fixes: Fix[]): Promise<void> {
@@ -126,4 +168,48 @@ export async function addWord(word: string, kind: WordKind, fix: string | null):
 export async function deleteWord(word: string): Promise<void> {
   const { error } = await supabaseAdmin().from("ins_content_words").delete().eq("word", word);
   if (error) throw new Error(error.message);
+}
+
+/* ---------------------------- hook formulas ---------------------------- */
+
+const HOOK_COLUMNS = "id, category, template, example_hook, use_count, seed, created_at";
+
+function toTemplate(r: Record<string, unknown>): HookTemplate {
+  return {
+    id: String(r.id),
+    category: (isHookCategory(r.category) ? r.category : "CLAIM") as HookCategory,
+    template: String(r.template),
+    exampleHook: (r.example_hook as string | null) ?? null,
+    useCount: Number(r.use_count ?? 0),
+    seed: Boolean(r.seed),
+    createdAt: String(r.created_at),
+  };
+}
+
+export async function listHookTemplates(): Promise<HookTemplate[]> {
+  const { data, error } = await supabaseAdmin().from("ins_hook_templates").select(HOOK_COLUMNS)
+    .order("use_count", { ascending: false }).order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map(toTemplate);
+}
+
+export async function getHookTemplate(id: string): Promise<HookTemplate | null> {
+  const { data, error } = await supabaseAdmin().from("ins_hook_templates").select(HOOK_COLUMNS).eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? toTemplate(data as Record<string, unknown>) : null;
+}
+
+/** read-then-write, which can lose a count to a race; one owner clicking one button cannot race */
+export async function countHookUse(t: HookTemplate, by: number): Promise<void> {
+  const { error } = await supabaseAdmin().from("ins_hook_templates").update({ use_count: t.useCount + by }).eq("id", t.id);
+  if (error) throw new Error(error.message);
+}
+
+/** A new formula, unless the library already has it (same words, any case or spacing). */
+export async function addHookTemplate(t: { template: string; category: HookCategory; exampleHook: string; sourceId: string }): Promise<void> {
+  const { error } = await supabaseAdmin().from("ins_hook_templates").insert({
+    template: t.template, category: t.category, example_hook: t.exampleHook, source_content_id: t.sourceId,
+  });
+  // 23505 is the unique index on the formula's text: the library has it already, which is fine
+  if (error && error.code !== "23505") throw new Error(error.message);
 }

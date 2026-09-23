@@ -1,40 +1,59 @@
 import { describe, expect, it } from "vitest";
-import { DISCLAIMER, TAX_LINE, fullText, parseOutput } from "@/lib/content/write";
+import { DISCLAIMER, TAX_LINE, fullText, parsePieces } from "@/lib/content/write";
+import { atFold } from "@/lib/content/output";
 import { buildMessages } from "@/lib/content/prompt";
+import type { PiecePlan } from "@/lib/content/plan";
+
+const plans: PiecePlan[] = [
+  { angle: "พ่อแม่ที่ลูกยังเรียน", hook: "ถ้าพรุ่งนี้ไม่มีเรา บ้านนี้ไปต่อได้ไหมครับ" },
+  { angle: "คนที่คิดว่าแพง", hook: "วันละ 20 บาท คุ้มครอง 1,000,000 บาท" },
+];
 
 const reply = JSON.stringify({
-  hooks: ["ถ้าพรุ่งนี้ไม่มีเรา ครอบครัวจะอยู่ยังไง?", "วันละไม่ถึง 5 บาท", "พ่อบ้านวัย 35 คนหนึ่ง…", "เกินมา"],
-  body: "บรรทัดหนึ่ง\nบรรทัดสอง",
-  closing: "ทักแชทมาได้เลยครับ",
-  hashtags: ["ประกันชีวิต", "#วางแผนการเงิน"],
-  imagePrompt: "a Thai family at breakfast, warm light, no text",
+  pieces: [
+    { body: "บรรทัดหนึ่ง\nบรรทัดสอง", closing: "ทักแชทมาได้เลยครับ", hashtags: ["ประกันชีวิต", "#วางแผนการเงิน", "#ประกันชีวิต"], imagePrompt: "a Thai family at breakfast, no text" },
+    { body: "อีกชิ้น", closing: "", hashtags: [], imagePrompt: "" },
+  ],
 });
 
-describe("parseOutput", () => {
-  it("reads the model's JSON, keeps three hooks, and marks every hashtag", () => {
-    const out = parseOutput("```json\n" + reply + "\n```", "family")!;
-    expect(out.hooks).toHaveLength(3);
-    expect(out.hashtags).toEqual(["#ประกันชีวิต", "#วางแผนการเงิน"]);
-    expect(out.imagePrompt).toContain("no text");
+describe("parsePieces", () => {
+  it("makes one post per plan, with the planned hook and angle", () => {
+    const out = parsePieces("```json\n" + reply + "\n```", plans, "family")!;
+    expect(out).toHaveLength(2);
+    expect(out[0].hooks).toEqual([plans[0].hook]);
+    expect(out[0].angle).toBe(plans[0].angle);
+    expect(out[0].hashtags).toEqual(["#ประกันชีวิต", "#วางแผนการเงิน"]);
+  });
+
+  it("keeps the planned hook even when the writer rewrote it", () => {
+    // told to keep a hook, models reword it; the hook is what every check was run against
+    const rewritten = JSON.stringify({ pieces: [{ hook: "hook ใหม่ที่แต่งเอง", body: "x" }, { body: "y" }] });
+    expect(parsePieces(rewritten, plans, "")![0].hooks).toEqual([plans[0].hook]);
+  });
+
+  it("refuses a reply one piece short, rather than show posts for the wrong angles", () => {
+    const short = JSON.stringify({ pieces: [{ body: "x" }] });
+    expect(parsePieces(short, plans, "")).toBeNull();
+    expect(parsePieces(JSON.stringify({ pieces: [{ body: "x" }, { body: " " }] }), plans, "")).toBeNull();
+    expect(parsePieces("ขอโทษครับ", plans, "")).toBeNull();
+  });
+
+  it("drops extra pieces instead of billing the owner for angles nobody planned", () => {
+    const extra = JSON.stringify({ pieces: [{ body: "a" }, { body: "b" }, { body: "c" }] });
+    expect(parsePieces(extra, plans, "")).toHaveLength(2);
   });
 
   it("puts the regulator's line on every piece, written by code and not by the model", () => {
-    expect(parseOutput(reply, "family")!.disclaimer).toBe(DISCLAIMER);
-    expect(parseOutput(reply, "tax")!.disclaimer).toBe(`${DISCLAIMER}\n${TAX_LINE}`);
-  });
-
-  it("refuses a reply with no hook or no body rather than showing half a post", () => {
-    expect(parseOutput("ขอโทษครับ ตอบไม่ได้", "family")).toBeNull();
-    expect(parseOutput(JSON.stringify({ hooks: [], body: "x", closing: "" }), "family")).toBeNull();
-    expect(parseOutput(JSON.stringify({ hooks: ["a"], body: " ", closing: "" }), "family")).toBeNull();
+    expect(parsePieces(reply, plans, "family")![0].disclaimer).toBe(DISCLAIMER);
+    expect(parsePieces(reply, plans, "tax")![1].disclaimer).toBe(`${DISCLAIMER}\n${TAX_LINE}`);
   });
 });
 
 describe("fullText", () => {
-  it("is the chosen hook, the body, the closing, the tags and the disclaimer, in that order", () => {
-    const out = parseOutput(reply, "family")!;
-    const text = fullText(out, 1);
-    expect(text.startsWith("วันละไม่ถึง 5 บาท\n\nบรรทัดหนึ่ง")).toBe(true);
+  it("is the hook, the body, the closing, the tags and the disclaimer, in that order", () => {
+    const [out] = parsePieces(reply, plans, "family")!;
+    const text = fullText(out);
+    expect(text.startsWith(`${plans[0].hook}\n\nบรรทัดหนึ่ง`)).toBe(true);
     expect(text.indexOf("ทักแชท")).toBeLessThan(text.indexOf("#ประกันชีวิต"));
     expect(text.endsWith(DISCLAIMER)).toBe(true);
   });
@@ -42,29 +61,43 @@ describe("fullText", () => {
 
 describe("buildMessages", () => {
   const brief = "## Life Protect x 2\n- ทุน 100,000 บาท";
+  const ask = { brief, format: "post" as const, angle: "family" as const, custom: "", length: null, plans };
 
-  it("hands the model the brief and forbids it every number it was not given", () => {
-    const [system, user] = buildMessages({ brief, format: "post", angle: "family", custom: "", length: null });
-    expect(system.role).toBe("system");
+  it("hands the model the brief and the plans, and forbids it every number it was not given", () => {
+    const [system, user] = buildMessages(ask);
     expect(system.content).toContain("ห้ามคำนวณ");
     expect(user.content).toContain(brief);
     expect(user.content).toContain("โพสต์เฟซบุ๊ก");
+    expect(user.content).toContain(`hook: ${plans[1].hook}`);
   });
 
-  it("speaks as the site does, with ครับ", () => {
-    // the first live post ended "นะคะ"; every other word this system says ends ครับ
-    const [system] = buildMessages({ brief, format: "post", angle: "", custom: "", length: null });
+  it("tells the writer Facebook's rules and to speak with ครับ", () => {
+    const [system] = buildMessages(ask);
+    expect(system.content).toContain("กฎโฆษณาของ Facebook");
     expect(system.content).toContain("ใช้คำลงท้าย “ครับ” เท่านั้น");
   });
 
   it("asks a script for its length and its time markers", () => {
-    const [, user] = buildMessages({ brief, format: "script", angle: "tax", custom: "", length: "60" });
+    const [, user] = buildMessages({ ...ask, format: "script", angle: "tax", length: "60" });
     expect(user.content).toContain("60 วินาที");
     expect(user.content).toContain("ลดหย่อนภาษี");
   });
 
   it("uses the owner's own angle when they typed one", () => {
-    const [, user] = buildMessages({ brief, format: "post", angle: "custom", custom: "คนทำงานฟรีแลนซ์", length: null });
+    const [, user] = buildMessages({ ...ask, angle: "custom", custom: "คนทำงานฟรีแลนซ์" });
     expect(user.content).toContain("คนทำงานฟรีแลนซ์");
+  });
+});
+
+describe("atFold", () => {
+  it("splits where the reader's screen folds the post, counting Thai marks as characters", () => {
+    const { shown, hidden, length } = atFold("ผู้".repeat(50), 125);
+    expect(length).toBe(150);
+    expect([...shown]).toHaveLength(125);
+    expect([...hidden]).toHaveLength(25);
+  });
+
+  it("hides nothing in a short post", () => {
+    expect(atFold("สั้นๆ").hidden).toBe("");
   });
 });

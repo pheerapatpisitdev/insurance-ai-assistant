@@ -1,4 +1,6 @@
 import type { ChatMessage } from "@/lib/ai/types";
+import type { PiecePlan } from "./plan";
+import { POLICY_RULES_TH } from "./policy";
 
 /**
  * What the content generator asks of the model.
@@ -34,6 +36,8 @@ export interface Ask {
   /** the owner's own angle, used when `angle` is "custom" */
   custom: string;
   length: Length | null;
+  /** one per piece, from the planner; the writer writes to them and does not change their hooks */
+  plans: PiecePlan[];
 }
 
 const SYSTEM = [
@@ -49,10 +53,15 @@ const SYSTEM = [
   "7. ห้ามเขียนข้อความเตือนหรือ disclaimer เอง ระบบจะต่อท้ายให้",
   "8. ผู้เขียนเป็นตัวแทนผู้ชาย ใช้คำลงท้าย “ครับ” เท่านั้น ห้ามใช้ “ค่ะ” หรือ “คะ”",
   "",
-  "ตอบเป็น JSON อย่างเดียว ไม่มีข้อความอื่น ตามรูปแบบนี้:",
-  '{"hooks":["…","…","…"],"body":"…","closing":"…","hashtags":["#…"],"imagePrompt":"…"}',
-  "- hooks: ประโยคเปิด 3 แบบ คนละแนว (คำถามที่แทงใจ / ข้อเท็จจริงหรือตัวเลขจากข้อมูล / ภาพสถานการณ์) แต่ละแบบไม่เกิน 2 บรรทัด",
-  "- body: เนื้อหาหลัก ไม่รวมประโยคเปิดและประโยคปิด ใช้ \\n ขึ้นบรรทัดใหม่",
+  POLICY_RULES_TH,
+  "",
+  "คุณจะได้รับแผนของแต่ละชิ้น (มุม + hook) มาแล้ว ให้เขียนเนื้อหาของทุกชิ้นตามแผน เรียงตามลำดับ",
+  "ห้ามเปลี่ยน hook และห้ามพิมพ์ hook ซ้ำในเนื้อหา — hook จะถูกวางไว้หน้าเนื้อหาอยู่แล้ว",
+  "ถ้า hook สัญญาว่าจะเล่า N ข้อ เนื้อหาต้องมีครบ N ข้อพอดี เรียงเลข 1, 2, 3…",
+  "",
+  "ตอบเป็น JSON อย่างเดียว ไม่มีข้อความอื่น ตามรูปแบบนี้ (จำนวนชิ้นเท่ากับแผน):",
+  '{"pieces":[{"body":"…","closing":"…","hashtags":["#…"],"imagePrompt":"…"}]}',
+  "- body: เนื้อหาหลัก ต่อจาก hook ไม่รวมประโยคปิด ใช้ \\n ขึ้นบรรทัดใหม่",
   "- closing: ประโยคปิดที่ชวนให้ทักแชทหรือคอมเมนต์ 1–2 บรรทัด",
   "- hashtags: 3–6 แท็กภาษาไทยหรืออังกฤษ",
   "- imagePrompt: คำบรรยายภาพประกอบเป็นภาษาอังกฤษ 1–2 ประโยค คนไทย แสงธรรมชาติ ห้ามมีตัวหนังสือในภาพ",
@@ -70,7 +79,7 @@ function formatBrief(a: Ask): string {
   const label = secs === "180" ? "2–3 นาที" : `${secs} วินาที`;
   return [
     `งาน: สคริปต์พูดหน้ากล้อง ความยาวรวมประมาณ ${label}`,
-    "- hooks คือประโยคที่พูดใน 3 วินาทีแรก",
+    "- hook คือประโยคที่พูดใน 3 วินาทีแรก [0–3 วิ] body จึงเริ่มหลังจากนั้น",
     "- body แบ่งเป็นช่วง ขึ้นต้นแต่ละช่วงด้วยเวลาในวงเล็บเหลี่ยม เช่น [3–15 วิ] เขียนเป็นภาษาพูด",
     "- ใส่ท่าทางในวงเล็บ เช่น (ชี้ไปที่กล้อง) และข้อความขึ้นจอเป็น {จอ: …} เฉพาะจุดสำคัญ",
     "- closing คือช่วงปิดท้าย ขึ้นต้นด้วยเวลาในวงเล็บเหลี่ยมเช่นกัน",
@@ -84,14 +93,19 @@ function angleLine(a: Ask): string {
   return found ? `มุมที่อยากเล่า: ${found.label}` : "";
 }
 
+export function planLines(plans: PiecePlan[]): string {
+  return [
+    "แผนของแต่ละชิ้น:",
+    ...plans.map((p, i) => `ชิ้นที่ ${i + 1}\n  มุม: ${p.angle}\n  hook: ${p.hook}`),
+  ].join("\n");
+}
+
 export function buildMessages(a: Ask): ChatMessage[] {
   const user = [
-    "ข้อมูลผลิตภัณฑ์:",
-    a.brief,
-    "",
-    formatBrief(a),
-    angleLine(a),
-  ].filter(Boolean).join("\n");
+    `ข้อมูลผลิตภัณฑ์:\n${a.brief}`,
+    [formatBrief(a), angleLine(a)].filter(Boolean).join("\n"),
+    planLines(a.plans),
+  ].join("\n\n");
   return [
     { role: "system", content: SYSTEM },
     { role: "user", content: user },

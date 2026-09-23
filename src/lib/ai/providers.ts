@@ -8,6 +8,13 @@ export interface CallArgs {
   /** ask the provider for strict JSON where it supports it */
   json?: boolean;
   signal?: AbortSignal;
+  /**
+   * How hard a Claude model may think before it answers. Sonnet 5 thinks by default when a
+   * request says nothing, and the thinking is billed as output and counts against max_tokens —
+   * a 500-character post came back costing 1,700 tokens, and longer ones hit the cap mid-JSON.
+   * Only Anthropic reads this; the other providers ignore it.
+   */
+  effort?: "low" | "medium" | "high";
 }
 export interface CallResult {
   text: string;
@@ -37,13 +44,15 @@ function splitSystem(messages: ChatMessage[]) {
 }
 
 export const CALLERS: Record<string, (a: CallArgs) => Promise<CallResult>> = {
-  async anthropic({ apiKey, model, messages, maxTokens, signal }) {
+  async anthropic({ apiKey, model, messages, maxTokens, signal, effort }) {
     const { system, rest } = splitSystem(messages);
     const data = await postJson("https://api.anthropic.com/v1/messages", {
       "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
     }, {
       model, max_tokens: maxTokens,
+      // Haiku 4.5 and the 4.5-and-older models reject effort with a 400
+      ...(effort && !/haiku|4-5|claude-3/.test(model) ? { output_config: { effort } } : {}),
       ...(system ? { system } : {}),
       messages: rest.map((m) => ({ role: m.role, content: m.content })),
     }, signal);

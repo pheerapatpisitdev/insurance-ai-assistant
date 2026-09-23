@@ -182,10 +182,19 @@ export interface ChatOptions {
   messages: ChatMessage[];
   maxTokens?: number;
   json?: boolean;
+  /**
+   * How long each provider may take before the next is tried. Left out, the providers' own
+   * 25 seconds applies, which is right for a chat reply and wrong for a whole Facebook post:
+   * a large model writing a thousand words of Thai takes longer than that, and was being cut
+   * off and silently replaced by a faster, thinner one.
+   */
+  timeoutMs?: number;
+  /** thinking effort for Claude models; see CallArgs.effort */
+  effort?: "low" | "medium" | "high";
 }
 
 /** Sends one prompt, trying providers in order until one answers. */
-export async function chat({ tier, task, messages, maxTokens = 700, json }: ChatOptions): Promise<ChatResult> {
+export async function chat({ tier, task, messages, maxTokens = 700, json, timeoutMs, effort }: ChatOptions): Promise<ChatResult> {
   const config = await loadConfig();
   await assertWithinBudget(config);
   const tried: string[] = [];
@@ -193,7 +202,8 @@ export async function chat({ tier, task, messages, maxTokens = 700, json }: Chat
     const call = CALLERS[model.provider];
     if (!call) continue;
     try {
-      const r = await call({ apiKey: config.keys[model.provider], model: model.model_name, messages, maxTokens, json });
+      const signal = timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined;
+      const r = await call({ apiKey: config.keys[model.provider], model: model.model_name, messages, maxTokens, json, signal, effort });
       const costThb = (r.inputTokens / 1e6 * model.price.inputPerMTokUsd
         + r.outputTokens / 1e6 * model.price.outputPerMTokUsd) * USD_TO_THB;
       await record(model.model_name, task, r.inputTokens, r.outputTokens, costThb);

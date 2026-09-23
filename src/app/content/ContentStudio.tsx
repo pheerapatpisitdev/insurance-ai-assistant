@@ -1,32 +1,36 @@
 "use client";
-import { useState, useTransition } from "react";
+import Link from "next/link";
+import { useRef, useState, useTransition } from "react";
+import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { fullText } from "@/lib/content/output";
-import type { Fix } from "@/lib/content/proofread";
+import { MAX_PIECES } from "@/lib/content/plan";
 import type { AngleId, Format, Length } from "@/lib/content/prompt";
-import type { ContentItem } from "@/lib/content/store";
-import { contentHistory, generateContent, proofreadContent, starContent } from "./actions";
+import type { ContentItem, ContentStatus } from "@/lib/content/store";
+import { contentSpend, contentWorkbench, generateContent, setContentStatus } from "./actions";
+import { PieceCard } from "./PieceCard";
+import { PieceEditor } from "./PieceEditor";
 
 /**
- * Pick a product, pick post or script, press one button, get a piece to read and paste.
+ * The content workbench, laid out as the owner's Maryjane project lays out its run page:
+ * the tools on the left, the pieces in the middle, the pieces actually used on the right.
  *
- * The piece arrives editable, because the owner's name goes under it. The checks sit beside
- * it rather than inside it: a sand panel listing any amount the tables never had, any word on
- * the owner's list, and the proofreader's suggestions — each of those last two one click to
- * accept. Nothing is changed without that click.
+ * On a phone the three stack — tools first, because on this page nothing exists until the
+ * tools are used; then the pieces; then the used list. After a round is written the page
+ * scrolls to the pieces, so the long form is not what the owner has to scroll back past.
+ *
+ * A piece is รอตรวจ, ใช้จริง or in the bin, the same three states Maryjane's workbench tabs
+ * show. Marking a piece ใช้จริง also teaches the formula library its hook.
  */
 
 interface Props {
   products: { href: string; name: string }[];
   angles: { id: string; label: string }[];
   lengths: { id: Length; label: string }[];
-  initialHistory: ContentItem[];
-}
-
-interface Draft {
-  hooks: string[];
-  body: string;
-  closing: string;
-  tags: string;
+  hooks: HookTemplate[];
+  initialHook: string | null;
+  initial: { items: ContentItem[]; counts: Record<ContentStatus, number> };
+  initialUsed: ContentItem[];
+  spend: { spent: number; cap: number };
 }
 
 const FORMATS: { id: Format; label: string }[] = [
@@ -34,73 +38,51 @@ const FORMATS: { id: Format; label: string }[] = [
   { id: "script", label: "สคริปต์วิดีโอ" },
 ];
 
-const draftOf = (item: ContentItem): Draft => ({
-  hooks: [...item.output.hooks],
-  body: item.output.body,
-  closing: item.output.closing,
-  tags: item.output.hashtags.join(" "),
-});
+const TABS: { id: ContentStatus; label: string }[] = [
+  { id: "draft", label: "รอตรวจ" },
+  { id: "used", label: "ใช้จริง" },
+  { id: "trashed", label: "ถังขยะ" },
+];
 
-/** the first place `find` occurs, replaced; a fix that no longer matches changes nothing */
-function applyTo(d: Draft, fix: { find: string; replace: string }): Draft {
-  const i = d.hooks.findIndex((h) => h.includes(fix.find));
-  if (i >= 0) return { ...d, hooks: d.hooks.map((h, j) => (j === i ? h.replace(fix.find, fix.replace) : h)) };
-  if (d.body.includes(fix.find)) return { ...d, body: d.body.replace(fix.find, fix.replace) };
-  if (d.closing.includes(fix.find)) return { ...d, closing: d.closing.replace(fix.find, fix.replace) };
-  return d;
-}
+/** what a piece has cost on average so far (Sonnet ≈ ฿0.69 on 2026-09-23), for the estimate */
+const PER_PIECE_THB = 0.7;
 
 const chip = (on: boolean) =>
   `rounded-full border px-3 py-1.5 text-sm ${on
     ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]"
     : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-ink)] hover:bg-[var(--ct-soft)]"}`;
 
-const field = "w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm leading-relaxed outline-none focus:border-[var(--ct-accent)]";
+const field = "w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
 
-function when(iso: string): string {
-  return new Date(iso).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-}
-
-export function ContentStudio({ products, angles, lengths, initialHistory }: Props) {
+export function ContentStudio({ products, angles, lengths, hooks, initialHook, initial, initialUsed, spend: initialSpend }: Props) {
   const [href, setHref] = useState(products[0]?.href ?? "");
   const [format, setFormat] = useState<Format>("post");
   const [angle, setAngle] = useState<AngleId>("");
   const [custom, setCustom] = useState("");
   const [length, setLength] = useState<Length>("60");
+  const [count, setCount] = useState(3);
+  const [hookId, setHookId] = useState(initialHook ?? "");
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
+  const [spend, setSpend] = useState(initialSpend);
 
-  const [item, setItem] = useState<ContentItem | null>(null);
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [hook, setHook] = useState(0);
-  const [fixes, setFixes] = useState<Fix[] | null>(null);
-  const [proofing, setProofing] = useState(false);
-  const [applied, setApplied] = useState<Set<string>>(new Set());
-  const [copied, setCopied] = useState(false);
-
-  const [history, setHistory] = useState(initialHistory);
-  const [histPlan, setHistPlan] = useState("");
-  const [histStarred, setHistStarred] = useState(false);
+  const [tab, setTab] = useState<ContentStatus>("draft");
+  const [plan, setPlan] = useState("");
+  const [items, setItems] = useState(initial.items);
+  const [counts, setCounts] = useState(initial.counts);
+  const [used, setUsed] = useState(initialUsed);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const pieces = useRef<HTMLElement>(null);
 
   const nameOf = (h: string) => products.find((p) => p.href === h)?.name ?? h;
+  const chosenHook = hooks.find((h) => h.id === hookId) ?? null;
 
-  async function runProofread(id: string) {
-    setProofing(true);
-    try {
-      setFixes(await proofreadContent(id));
-    } finally {
-      setProofing(false);
-    }
-  }
-
-  function open(next: ContentItem) {
-    setItem(next);
-    setDraft(draftOf(next));
-    setHook(0);
-    setApplied(new Set());
-    setCopied(false);
-    setFixes(next.flags.fixes);
-    if (!next.flags.fixes) void runProofread(next.id);
+  async function reload(nextTab = tab, nextPlan = plan) {
+    const wb = await contentWorkbench({ status: nextTab, planHref: nextPlan || undefined });
+    setItems(wb.items);
+    setCounts(wb.counts);
   }
 
   function generate() {
@@ -108,269 +90,259 @@ export function ContentStudio({ products, angles, lengths, initialHistory }: Pro
     start(async () => {
       let res: Awaited<ReturnType<typeof generateContent>>;
       try {
-        res = await generateContent({ href, format, angle, custom, length: format === "script" ? length : null });
+        res = await generateContent({
+          href, format, angle, custom, length: format === "script" ? length : null, count, hookTemplateId: hookId || null,
+        });
       } catch {
         /**
-         * The connection dropped mid-write — on a phone, usually because the owner switched to
-         * another app during the half-minute wait. The server carries on and saves the piece
-         * regardless, so it is very likely already in the history rather than lost.
+         * The connection dropped mid-write — on a phone, usually because the owner switched
+         * to another app during the wait. The server carries on and saves the pieces
+         * regardless, so they are very likely already under รอตรวจ rather than lost.
          */
-        setError("การเชื่อมต่อหลุดระหว่างรอ ชิ้นงานอาจสร้างเสร็จแล้ว ลองดูใน “ที่เคยสร้าง” ด้านล่างก่อนกดสร้างใหม่นะครับ");
-        setHistory(await contentHistory({ planHref: histPlan || undefined, starred: histStarred }).catch(() => history));
+        setError("การเชื่อมต่อหลุดระหว่างรอ ชิ้นงานอาจสร้างเสร็จแล้ว ดูในแท็บ “รอตรวจ” ก่อนกดสร้างใหม่นะครับ");
+        setTab("draft");
+        await reload("draft", "").catch(() => {});
         return;
       }
       if (!res.ok) { setError(res.error); return; }
-      open(res.item);
-      setHistory((list) => [res.item, ...list.filter((x) => x.id !== res.item.id)]);
+      if (res.missing > 0) setError(`ได้ ${res.items.length} จาก ${count} ชิ้น — อีก ${res.missing} ชิ้นเขียนไม่สำเร็จ กดสร้างเพิ่มได้`);
+      setTab("draft");
+      setPlan("");
+      setEditing(null);
+      await reload("draft", "");
+      setSpend(await contentSpend());
+      pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
-  function accept(fix: { find: string; replace: string }) {
-    setDraft((d) => (d ? applyTo(d, fix) : d));
-    setApplied((s) => new Set(s).add(fix.find));
+  async function changeStatus(item: ContentItem, status: ContentStatus) {
+    setBusy(item.id);
+    const res = await setContentStatus(item.id, status);
+    setBusy(null);
+    if (!res.ok) { setError("เปลี่ยนสถานะไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
+    if (editing === item.id) setEditing(null);
+    setItems((list) => list.filter((x) => x.id !== item.id));
+    setCounts((c) => ({ ...c, [item.status]: Math.max(0, c[item.status] - 1), [status]: c[status] + 1 }));
+    if (status === "used") setUsed((list) => [{ ...item, status }, ...list]);
+    if (item.status === "used") setUsed((list) => list.filter((x) => x.id !== item.id));
   }
 
-  async function copy() {
-    if (!item || !draft) return;
-    const text = fullText({
-      ...item.output,
-      hooks: draft.hooks, body: draft.body, closing: draft.closing,
-      hashtags: draft.tags.split(/\s+/).filter(Boolean),
-    }, hook);
+  function saved(next: ContentItem) {
+    setItems((list) => list.map((x) => (x.id === next.id ? next : x)));
+    setUsed((list) => list.map((x) => (x.id === next.id ? next : x)));
+  }
+
+  async function copy(item: ContentItem) {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(fullText(item.output));
+      setCopied(item.id);
+      setTimeout(() => setCopied(null), 2000);
     } catch {
-      setError("คัดลอกไม่ได้ ลองเลือกข้อความแล้วคัดลอกเองนะครับ");
+      setError("คัดลอกไม่ได้ กด “แก้ไข” แล้วเลือกข้อความคัดลอกเองนะครับ");
     }
   }
 
-  async function toggleStar(target: ContentItem) {
-    const starred = !target.starred;
-    await starContent(target.id, starred);
-    const flip = (x: ContentItem) => (x.id === target.id ? { ...x, starred } : x);
-    setHistory((list) => list.map(flip));
-    setItem((x) => (x ? flip(x) : x));
+  async function openUsed(item: ContentItem) {
+    if (tab !== "used" || plan) {
+      setTab("used");
+      setPlan("");
+      await reload("used", "");
+    }
+    setEditing(item.id);
+    pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  async function filterHistory(plan: string, starred: boolean) {
-    setHistPlan(plan);
-    setHistStarred(starred);
-    setHistory(await contentHistory({ planHref: plan || undefined, starred }));
-  }
-
-  const flagged = item && (item.flags.numbers.length > 0 || item.flags.words.length > 0);
-  const openFixes = (fixes ?? []).filter((f) => !applied.has(f.find));
+  const estimate = (count * PER_PIECE_THB).toFixed(1);
+  const left = Math.max(0, spend.cap - spend.spent);
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">สร้างคอนเทนต์</h1>
-      <p className="mt-1 text-sm text-[var(--ct-mute)]">
-        เลือกแบบประกัน แล้วให้ AI เขียนโพสต์หรือสคริปต์จากข้อมูลจริงของแบบนั้น ตัวเลขทุกตัวมาจากตารางเบี้ย อ่านทวนก่อนโพสต์ทุกครั้ง
-      </p>
-
-      <section className="mt-5 space-y-4 rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-4">
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium">แบบประกัน</span>
-          <select value={href} onChange={(e) => setHref(e.target.value)} className={field}>
-            {products.map((p) => <option key={p.href} value={p.href}>{p.name}</option>)}
-          </select>
-        </label>
-
+      <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <span className="mb-1.5 block text-sm font-medium">ทำอะไร</span>
-          <div className="flex flex-wrap gap-2">
-            {FORMATS.map((f) => (
-              <button key={f.id} type="button" aria-pressed={format === f.id} onClick={() => setFormat(f.id)} className={chip(format === f.id)}>
-                {f.label}
-              </button>
-            ))}
-          </div>
+          <h1 className="text-xl font-semibold">สร้างคอนเทนต์</h1>
+          <p className="mt-1 text-sm text-[var(--ct-mute)]">AI เขียนจากข้อมูลจริงของแบบประกัน ตัวเลขทุกตัวมาจากตารางเบี้ย อ่านทวนก่อนโพสต์ทุกครั้ง</p>
         </div>
+        <Link href="/content/hooks" className="rounded-full border border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-1.5 text-sm hover:bg-[var(--ct-soft)]">
+          คลังสูตรประโยคเปิด →
+        </Link>
+      </div>
 
-        {format === "script" && (
+      <div className="mt-5 grid items-start gap-4 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_240px]">
+        {/* ---------------------------------- tools ---------------------------------- */}
+        <aside className="space-y-4 rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+          <div className="border-b border-[var(--ct-hair)] pb-3">
+            <h2 className="font-semibold">เครื่องมือ</h2>
+            <p className="mt-0.5 text-xs text-[var(--ct-mute)]">เลือกแล้วกดสร้าง ชิ้นงานจะไปอยู่ที่ “รอตรวจ”</p>
+          </div>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">แบบประกัน</span>
+            <select value={href} onChange={(e) => setHref(e.target.value)} className={field}>
+              {products.map((p) => <option key={p.href} value={p.href}>{p.name}</option>)}
+            </select>
+          </label>
+
           <div>
-            <span className="mb-1.5 block text-sm font-medium">ความยาวคลิป</span>
+            <span className="mb-1.5 block text-sm font-medium">ทำอะไร</span>
             <div className="flex flex-wrap gap-2">
-              {lengths.map((l) => (
-                <button key={l.id} type="button" aria-pressed={length === l.id} onClick={() => setLength(l.id)} className={chip(length === l.id)}>
-                  {l.label}
+              {FORMATS.map((f) => (
+                <button key={f.id} type="button" aria-pressed={format === f.id} onClick={() => setFormat(f.id)} className={chip(format === f.id)}>{f.label}</button>
+              ))}
+            </div>
+          </div>
+
+          {format === "script" && (
+            <div>
+              <span className="mb-1.5 block text-sm font-medium">ความยาวคลิป</span>
+              <div className="flex flex-wrap gap-2">
+                {lengths.map((l) => (
+                  <button key={l.id} type="button" aria-pressed={length === l.id} onClick={() => setLength(l.id)} className={chip(length === l.id)}>{l.label}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <span className="mb-1.5 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" aria-pressed={angle === ""} onClick={() => setAngle("")} className={chip(angle === "")}>ให้ AI เลือก</button>
+              {angles.map((a) => (
+                <button key={a.id} type="button" aria-pressed={angle === a.id} onClick={() => setAngle(a.id as AngleId)} className={chip(angle === a.id)}>{a.label}</button>
+              ))}
+              <button type="button" aria-pressed={angle === "custom"} onClick={() => setAngle("custom")} className={chip(angle === "custom")}>พิมพ์เอง</button>
+            </div>
+            {angle === "custom" && (
+              <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={120} placeholder="เช่น คนทำงานฟรีแลนซ์ที่ไม่มีสวัสดิการ" className={`${field} mt-2`} />
+            )}
+          </div>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">สูตรประโยคเปิด <span className="font-normal text-[var(--ct-mute)]">(ไม่ใช้ก็ได้)</span></span>
+            <select value={hookId} onChange={(e) => setHookId(e.target.value)} className={field}>
+              <option value="">ไม่ใช้สูตร — ให้ AI คิดเอง</option>
+              {hooks.map((h) => <option key={h.id} value={h.id}>{h.template}</option>)}
+            </select>
+            {chosenHook && (
+              <span className="mt-1 block text-xs text-[var(--ct-mute)]">หมวด {HOOK_CATEGORY_LABEL[chosenHook.category]} · ใช้ไปแล้ว {chosenHook.useCount} ครั้ง</span>
+            )}
+          </label>
+
+          <div>
+            <span className="mb-1.5 block text-sm font-medium">จำนวนชิ้น <span className="font-normal text-[var(--ct-mute)]">(แต่ละชิ้นคนละมุม)</span></span>
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: MAX_PIECES }, (_, i) => i + 1).map((n) => (
+                <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={`${chip(count === n)} min-w-10`}>{n}</button>
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <p role="alert" className="rounded-lg border border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] px-3 py-2 text-sm text-[var(--ct-alert)]">{error}</p>
+          )}
+
+          <div>
+            <button type="button" onClick={generate} disabled={pending || !href} className="w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
+              {pending ? `กำลังเขียน ${count} ชิ้น… (ราว 20–40 วินาที)` : `สร้าง ${count} ชิ้น`}
+            </button>
+            <p className="mt-2 text-xs text-[var(--ct-mute)]">
+              ราว ฿{estimate} · งบคอนเทนต์เดือนนี้เหลือ ฿{left.toFixed(2)} จาก ฿{spend.cap}
+            </p>
+          </div>
+        </aside>
+
+        {/* ---------------------------------- pieces ---------------------------------- */}
+        <section ref={pieces} className="@container min-w-0 scroll-mt-4 space-y-3 lg:row-span-2 xl:row-span-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div role="tablist" aria-label="สถานะชิ้นงาน" className="inline-flex items-center gap-1 rounded-full border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-1">
+              {TABS.map((t) => (
+                <button
+                  key={t.id} type="button" role="tab" aria-selected={tab === t.id}
+                  onClick={() => { setTab(t.id); setEditing(null); void reload(t.id, plan); }}
+                  className={`rounded-full px-3 py-1.5 text-sm ${tab === t.id ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]"}`}
+                >
+                  {t.label} <span className="tabular-nums">{counts[t.id]}</span>
                 </button>
               ))}
             </div>
-          </div>
-        )}
-
-        <div>
-          <span className="mb-1.5 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" aria-pressed={angle === ""} onClick={() => setAngle("")} className={chip(angle === "")}>ให้ AI เลือก</button>
-            {angles.map((a) => (
-              <button key={a.id} type="button" aria-pressed={angle === a.id} onClick={() => setAngle(a.id as AngleId)} className={chip(angle === a.id)}>
-                {a.label}
-              </button>
-            ))}
-            <button type="button" aria-pressed={angle === "custom"} onClick={() => setAngle("custom")} className={chip(angle === "custom")}>พิมพ์เอง</button>
-          </div>
-          {angle === "custom" && (
-            <input
-              value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={120}
-              placeholder="เช่น คนทำงานฟรีแลนซ์ที่ไม่มีสวัสดิการ"
-              className={`${field} mt-2`}
-            />
-          )}
-        </div>
-
-        {error && (
-          <p role="alert" className="rounded-lg border border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] px-3 py-2 text-sm text-[var(--ct-alert)]">{error}</p>
-        )}
-
-        <button
-          type="button" onClick={generate} disabled={pending || !href}
-          className="w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50 sm:w-auto"
-        >
-          {pending ? "กำลังเขียน… (ราว 20–40 วินาที)" : "สร้างคอนเทนต์"}
-        </button>
-      </section>
-
-      {item && draft && (
-        <section className="mt-5 rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-base font-semibold">
-              {nameOf(item.planHref)} · {item.format === "post" ? "โพสต์เฟซบุ๊ก" : "สคริปต์วิดีโอ"}
-            </h2>
-            <span className="text-xs text-[var(--ct-mute)]">{item.model} · ฿{item.costThb.toFixed(2)}</span>
-          </div>
-
-          <fieldset className="mt-4">
-            <legend className="mb-1.5 text-sm font-medium">ประโยคเปิด — เลือก 1 แบบ</legend>
-            <div className="space-y-2">
-              {draft.hooks.map((h, i) => (
-                <label key={i} className={`flex gap-2 rounded-lg border p-2 ${hook === i ? "border-[var(--ct-accent)] bg-[var(--ct-soft)]" : "border-[var(--ct-hair)]"}`}>
-                  <input type="radio" name="hook" checked={hook === i} onChange={() => setHook(i)} className="mt-2.5" />
-                  <textarea
-                    value={h} rows={2} aria-label={`ประโยคเปิดแบบที่ ${i + 1}`}
-                    onChange={(e) => setDraft({ ...draft, hooks: draft.hooks.map((x, j) => (j === i ? e.target.value : x)) })}
-                    className="w-full resize-y bg-transparent text-sm leading-relaxed outline-none"
-                  />
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <label className="mt-4 block">
-            <span className="mb-1 block text-sm font-medium">เนื้อหา</span>
-            <textarea value={draft.body} rows={item.format === "script" ? 14 : 10} onChange={(e) => setDraft({ ...draft, body: e.target.value })} className={field} />
-          </label>
-          <label className="mt-3 block">
-            <span className="mb-1 block text-sm font-medium">ประโยคปิด</span>
-            <textarea value={draft.closing} rows={2} onChange={(e) => setDraft({ ...draft, closing: e.target.value })} className={field} />
-          </label>
-          <label className="mt-3 block">
-            <span className="mb-1 block text-sm font-medium">แฮชแท็ก</span>
-            <input value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })} className={field} />
-          </label>
-          <p className="mt-3 whitespace-pre-line text-xs text-[var(--ct-mute)]">
-            ต่อท้ายให้อัตโนมัติ: {item.output.disclaimer}
-          </p>
-
-          {(flagged || proofing || openFixes.length > 0) && (
-            <div className="mt-4 space-y-3 rounded-lg border border-[var(--ct-warn-line)] bg-[var(--ct-warn-bg)] p-3 text-sm text-[var(--ct-warn-ink)]">
-              {item.flags.numbers.length > 0 && (
-                <div>
-                  <p className="font-medium">ตัวเลขที่ไม่มีในข้อมูลของแบบนี้ — ตรวจก่อนโพสต์</p>
-                  <p className="mt-0.5">{item.flags.numbers.join(" · ")}</p>
-                </div>
-              )}
-              {item.flags.words.length > 0 && (
-                <div>
-                  <p className="font-medium">คำที่ควรเลี่ยงหรือสะกดผิด</p>
-                  <ul className="mt-1 space-y-1">
-                    {item.flags.words.map((w) => (
-                      <li key={w.word} className="flex flex-wrap items-center gap-2">
-                        <span>{w.kind === "banned" ? `“${w.word}” — คำโฆษณาที่ควรเลี่ยง` : `“${w.word}” → “${w.fix}”`}</span>
-                        {w.fix && !applied.has(w.word) && (
-                          <button type="button" onClick={() => accept({ find: w.word, replace: w.fix! })} className="rounded border border-[var(--ct-warn-line)] bg-[var(--ct-panel)] px-2 py-0.5 text-xs">แก้</button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {proofing && <p>กำลังตรวจภาษา…</p>}
-              {openFixes.length > 0 && (
-                <div>
-                  <p className="font-medium">AI ตรวจภาษาเสนอแก้</p>
-                  <ul className="mt-1 space-y-1">
-                    {openFixes.map((f) => (
-                      <li key={f.find} className="flex flex-wrap items-center gap-2">
-                        <span>“{f.find}” → “{f.replace}”{f.why ? <span className="opacity-75"> ({f.why})</span> : null}</span>
-                        <button type="button" onClick={() => accept(f)} className="rounded border border-[var(--ct-warn-line)] bg-[var(--ct-panel)] px-2 py-0.5 text-xs">รับ</button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={copy} className="rounded-lg bg-[var(--ct-solid)] px-4 py-2 text-sm font-medium text-[var(--ct-solid-ink)]">
-              {copied ? "คัดลอกแล้ว ✓" : "คัดลอกทั้งชิ้น"}
-            </button>
-            <button type="button" onClick={generate} disabled={pending} className="rounded-lg border border-[var(--ct-line)] px-4 py-2 text-sm disabled:opacity-50">
-              สร้างใหม่
-            </button>
-            <button type="button" onClick={() => toggleStar(item)} aria-pressed={item.starred} className="rounded-lg border border-[var(--ct-line)] px-4 py-2 text-sm">
-              {item.starred ? "★ ติดดาวแล้ว" : "☆ ติดดาว"}
-            </button>
-          </div>
-
-          {item.output.imagePrompt && (
-            <details className="mt-4 text-sm">
-              <summary className="cursor-pointer text-[var(--ct-mute)]">คำสั่งวาดรูปประกอบ (ใช้กับเครื่องมือสร้างรูป)</summary>
-              <p className="mt-2 rounded-lg bg-[var(--ct-ground)] p-2 text-xs">{item.output.imagePrompt}</p>
-            </details>
-          )}
-        </section>
-      )}
-
-      <section className="mt-8">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold">ที่เคยสร้าง</h2>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <select value={histPlan} onChange={(e) => filterHistory(e.target.value, histStarred)} aria-label="กรองตามแบบประกัน" className="rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-2 py-1">
+            <select
+              value={plan} aria-label="กรองตามแบบประกัน"
+              onChange={(e) => { setPlan(e.target.value); setEditing(null); void reload(tab, e.target.value); }}
+              className="rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-2 py-1.5 text-sm"
+            >
               <option value="">ทุกแบบ</option>
               {products.map((p) => <option key={p.href} value={p.href}>{p.name}</option>)}
             </select>
-            <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={histStarred} onChange={(e) => filterHistory(histPlan, e.target.checked)} />
-              เฉพาะที่ติดดาว
-            </label>
           </div>
-        </div>
-        {history.length === 0 ? (
-          <p className="mt-3 rounded-lg border border-dashed border-[var(--ct-line)] px-3 py-6 text-center text-sm text-[var(--ct-mute)]">ยังไม่มีชิ้นงาน</p>
-        ) : (
-          <ul className="mt-3 divide-y divide-[var(--ct-hair)] rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)]">
-            {history.map((h) => (
-              <li key={h.id} className="flex items-start gap-3 p-3">
-                <button type="button" onClick={() => { open(h); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="min-w-0 flex-1 text-left">
-                  <p className="text-xs text-[var(--ct-mute)]">
-                    {when(h.createdAt)} · {nameOf(h.planHref)} · {h.format === "post" ? "โพสต์" : "สคริปต์"}
-                    {(h.flags.numbers.length > 0 || h.flags.words.length > 0) && " · มีจุดต้องตรวจ"}
-                  </p>
-                  <p className="mt-0.5 truncate text-sm">{h.output.hooks[0]}</p>
-                </button>
-                <button type="button" onClick={() => toggleStar(h)} aria-label={h.starred ? "เอาดาวออก" : "ติดดาว"} className="shrink-0 text-lg leading-none text-[var(--ct-accent)]">
-                  {h.starred ? "★" : "☆"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+
+          {pending && (
+            <div className="rounded-xl border border-dashed border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-6 text-center text-sm text-[var(--ct-mute)]">
+              AI กำลังวางแผนมุม แล้วเขียน {count} ชิ้น… ไปทำอย่างอื่นก่อนได้ ชิ้นงานจะถูกเก็บไว้ที่ “รอตรวจ”
+            </div>
+          )}
+
+          {items.length === 0 && !pending ? (
+            <p className="rounded-xl border border-dashed border-[var(--ct-line)] px-4 py-10 text-center text-sm text-[var(--ct-mute)]">
+              {tab === "draft" ? "ยังไม่มีชิ้นงานรอตรวจ — เลือกแบบประกันแล้วกดสร้างได้เลย" : tab === "used" ? "ยังไม่มีชิ้นงานที่ใช้จริง" : "ถังขยะว่าง"}
+            </p>
+          ) : (
+            <div className="grid gap-4 @xl:grid-cols-2">
+              {items.map((item, i) =>
+                editing === item.id ? (
+                  <div key={item.id} className="@xl:col-span-2">
+                    <PieceEditor
+                      key={item.id}
+                      item={item}
+                      productName={nameOf(item.planHref)}
+                      onSaved={saved}
+                      onStatus={(s) => changeStatus(item, s)}
+                      onClose={() => setEditing(null)}
+                    />
+                  </div>
+                ) : (
+                  <PieceCard
+                    key={item.id}
+                    item={item}
+                    index={i}
+                    productName={nameOf(item.planHref)}
+                    busy={busy === item.id}
+                    onEdit={() => setEditing(item.id)}
+                    onStatus={(s) => changeStatus(item, s)}
+                    onCopy={() => copy(item)}
+                  />
+                ),
+              )}
+            </div>
+          )}
+          {copied && <p role="status" className="text-sm text-[var(--ct-mute)]">คัดลอกแล้ว ✓</p>}
+        </section>
+
+        {/* ------------------------------- used rail ------------------------------- */}
+        <aside className="rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] lg:col-start-1 lg:row-start-2 xl:sticky xl:top-4 xl:col-start-3 xl:row-start-1">
+          <div className="flex items-end justify-between gap-2 border-b border-[var(--ct-hair)] p-4 pb-3">
+            <div>
+              <h2 className="font-semibold">ใช้จริง</h2>
+              <p className="mt-0.5 text-xs text-[var(--ct-mute)]">ชิ้นที่เลือกไปโพสต์แล้ว</p>
+            </div>
+            <span className="text-2xl tabular-nums text-[var(--ct-accent)]">{counts.used}</span>
+          </div>
+          {used.length === 0 ? (
+            <p className="m-4 rounded-lg border border-dashed border-[var(--ct-line)] px-3 py-6 text-center text-xs text-[var(--ct-mute)]">
+              กด “✓ ใช้จริง” ที่ชิ้นงาน แล้วจะย้ายมาอยู่ตรงนี้ — ระบบจะจำประโยคเปิดไว้เป็นสูตรใหม่ และไม่เขียนซ้ำ
+            </p>
+          ) : (
+            <ul className="max-h-[60vh] divide-y divide-[var(--ct-hair)] overflow-y-auto">
+              {used.slice(0, 20).map((u) => (
+                <li key={u.id}>
+                  <button type="button" onClick={() => openUsed(u)} className="block w-full px-4 py-2.5 text-left hover:bg-[var(--ct-ground)]">
+                    <span className="block text-xs text-[var(--ct-mute)]">{nameOf(u.planHref)} · {u.format === "post" ? "โพสต์" : "สคริปต์"}</span>
+                    <span className="line-clamp-2 text-sm">{u.output.hooks[0]}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
