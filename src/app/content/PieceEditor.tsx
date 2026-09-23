@@ -153,8 +153,8 @@ export function PieceEditor({ item, productName, drawing, onSaved, onStatus, onC
             edit({ ...draft, poster });
           }}
           busy={drawing}
-          onDraw={async (request) => {
-            const res = await drawPicture(item.id, request);
+          onDraw={async (request, painter) => {
+            const res = await drawPicture(item.id, request, painter);
             if (!res.ok) return res.error;
             // the picture is saved already; only the background joins the draft, so poster
             // words the owner has typed but not yet saved are kept

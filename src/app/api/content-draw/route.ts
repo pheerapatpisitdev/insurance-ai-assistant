@@ -13,9 +13,10 @@ import { drawBackground } from "@/app/content/actions";
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null) as { id?: unknown; request?: unknown } | null;
+  const body = await req.json().catch(() => null) as { id?: unknown; request?: unknown; painter?: unknown } | null;
   const id = typeof body?.id === "string" ? body.id : "";
   if (!/^[0-9a-f-]{36}$/i.test(id)) return Response.json({ ok: false, error: "ไม่พบชิ้นงานนี้" }, { status: 400 });
   const request = typeof body?.request === "string" ? body.request.slice(0, 300) : "";
-  return Response.json(await drawBackground(id, request));
+  const painter = typeof body?.painter === "string" ? body.painter : undefined;
+  return Response.json(await drawBackground(id, request, painter));
 }

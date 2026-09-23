@@ -105,13 +105,13 @@ const WRITE_TIMEOUT_MS = 60_000;
  * short enough to finish, and a piece that fails costs only itself. The planner already made
  * the angles distinct, so no writer needs to see the others' plans.
  */
-export async function write(ask: Ask, opts: { only?: string } = {}): Promise<WrittenPiece[]> {
+export async function write(ask: Ask, opts: { only?: string; prefer?: string } = {}): Promise<WrittenPiece[]> {
   const settled = await Promise.allSettled(ask.plans.map(async (p) => {
     const r = await chat({
       tier: "large", task: "content", messages: buildMessages({ ...ask, plans: [p] }),
       // low effort: ad copy from a fixed brief needs little reasoning, and the room left over
       // is for the post; 4,000 covers what thinking remains plus a long script
-      maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low", only: opts.only,
+      maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low", only: opts.only, prefer: opts.prefer,
     });
     const [output] = parsePieces(r.text, [p], ask.angle) ?? [];
     if (!output) {
@@ -133,7 +133,7 @@ export async function write(ask: Ask, opts: { only?: string } = {}): Promise<Wri
  * A round of ads: the cheap model designs the angles and tones, then every cell is written in
  * parallel by the large one, as posts are. A cell that fails costs only itself.
  */
-export async function writeAds(opts: { brief: string; angles: number; tones: number; hint: string }): Promise<{ pieces: WrittenPiece[]; planThb: number; planned: number }> {
+export async function writeAds(opts: { brief: string; angles: number; tones: number; hint: string; prefer?: string }): Promise<{ pieces: WrittenPiece[]; planThb: number; planned: number }> {
   const m = await chat({ tier: "small", task: "content-plan", messages: matrixMessages(opts.brief, opts.angles, opts.tones, opts.hint), maxTokens: 900, json: true })
     .catch(() => null);
   const matrix = parseMatrix(m?.text ?? "", opts.angles, opts.tones);
@@ -141,7 +141,7 @@ export async function writeAds(opts: { brief: string; angles: number; tones: num
   const settled = await Promise.allSettled(cells.map(async (cell) => {
     const r = await chat({
       tier: "large", task: "content", messages: adCopyMessages(opts.brief, cell),
-      maxTokens: 3000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low",
+      maxTokens: 3000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low", prefer: opts.prefer,
     });
     const copy = parseAdCopy(r.text);
     if (!copy) {

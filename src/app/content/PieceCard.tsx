@@ -2,6 +2,7 @@
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { FORMAT_SHORT } from "@/lib/content/prompt";
 import type { ContentItem } from "@/lib/content/store";
+import { shortModel } from "@/lib/content/models";
 import { SAVE_LABEL, usePictureSaver } from "./savePicture";
 
 /**
@@ -61,6 +62,11 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
       <div className="space-y-1.5 p-3">
         <p className="line-clamp-2 text-sm font-semibold leading-snug">{item.output.hooks[0]}</p>
         {item.output.angle && <p className="text-xs text-[var(--ct-mute)]">มุม: {item.output.angle}</p>}
+        {item.model && (
+          <p className="text-[0.7rem] text-[var(--ct-mute)]">
+            เขียนโดย {shortModel(item.model)}{item.output.pictureBy ? ` · ภาพ ${item.output.pictureBy}` : ""}
+          </p>
+        )}
         <p className="line-clamp-4 whitespace-pre-line text-sm leading-relaxed">{item.output.body}</p>
         {item.output.hashtags.length > 0 && (
           <p className="line-clamp-1 text-xs text-[var(--ct-accent)]">{item.output.hashtags.join(" ")}</p>

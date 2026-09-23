@@ -20,6 +20,7 @@ import {
 } from "@/lib/content/store";
 import { UnreadableReply, plan, write, writeAds } from "@/lib/content/write";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
+import { PAINTERS, painterOf, writerOf } from "@/lib/content/models";
 
 /**
  * The content workbench's doors, open to anyone who finds the page — the owner put it in the
@@ -65,6 +66,8 @@ export interface GenerateInput {
   /** for ads: how many selling angles, and how many tones each is written in */
   adAngles?: number;
   adTones?: number;
+  /** an id from WRITERS; anything else is the default */
+  writer?: string;
 }
 
 export type GenerateResult =
@@ -98,7 +101,7 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
     if (input.format === "ad") {
       const angles = Math.min(MAX_ANGLES, Math.max(1, Math.round(Number(input.adAngles) || 2)));
       const tones = Math.min(MAX_TONES, Math.max(1, Math.round(Number(input.adTones) || 2)));
-      const round = await writeAds({ brief: brief.text, angles, tones, hint: angleText });
+      const round = await writeAds({ brief: brief.text, angles, tones, hint: angleText, prefer: writerOf(input.writer).model });
       const planShare = round.planThb / round.pieces.length;
       const items: ContentItem[] = [];
       for (const w of round.pieces) {
@@ -113,7 +116,7 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
     }
 
     const planned = await plan({ brief: brief.text, count, angle: angleText, avoid, template });
-    const written = await write({ brief: brief.text, format: input.format, angle, custom, length, plans: planned.plans });
+    const written = await write({ brief: brief.text, format: input.format, angle, custom, length, plans: planned.plans }, { prefer: writerOf(input.writer).model });
 
     // each piece carries its own writing cost and an equal share of the planner's
     const planShare = planned.costThb / written.length;
@@ -279,7 +282,10 @@ export type DrawBackgroundResult = { ok: true; item: ContentItem } | { ok: false
  * lettering at all, calm on the side the words will sit, and the drawing route sets the Thai
  * over it. Counted against the content ceiling like every other content call.
  */
-export async function drawBackground(id: string, request = ""): Promise<DrawBackgroundResult> {
+export async function drawBackground(id: string, request = "", painter?: string): Promise<DrawBackgroundResult> {
+  // only an id from the list; "none" is the page's to honour by not asking
+  const chosen = painterOf(painter);
+  if (!chosen.modelId) return { ok: false, error: "เลือกโมเดลวาดภาพก่อนนะครับ" };
   if (!drawPerHour(`draw:${await caller()}`)) {
     return { ok: false, error: "วาดรูปครบ 40 รูปในชั่วโมงนี้แล้ว รอสักพักนะครับ" };
   }
@@ -294,12 +300,14 @@ export async function drawBackground(id: string, request = ""): Promise<DrawBack
       scene: item.output.imagePrompt, layout: poster.layout, theme: poster.theme,
       request: await inEnglish(request),
     });
-    const img = await drawImage({ task: "content-image", prompt });
+    const img = await drawImage({ task: "content-image", prompt, prefer: chosen.modelId });
+    // the fallback may have drawn it; name what actually did
+    const by = PAINTERS.find((p) => p.modelId === img.id)?.short ?? (img.id === "gemini-image-lite" ? "Gemini Lite Image" : img.model);
     const background = await saveBackground(item.id, img.bytes, img.mimeType);
     // the drawing takes half a minute; an edit saved meanwhile is read again, not written over
     const latest = (await getContent(id)) ?? item;
     const words = latest.output.poster ?? poster;
-    const saved = await saveOutput(item.id, { ...latest.output, poster: { ...words, background } }, latest.flags);
+    const saved = await saveOutput(item.id, { ...latest.output, poster: { ...words, background }, pictureBy: by }, latest.flags);
     return { ok: true, item: saved };
   } catch (e) {
     if (e instanceof BudgetExceeded) return { ok: false, error: "ถึงงบค่า AI ของเดือนนี้แล้ว" };

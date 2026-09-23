@@ -2,12 +2,12 @@
 import type { DrawBackgroundResult } from "./actions";
 
 /** Order a piece's photograph through /api/content-draw, which is not queued behind the page's other actions. */
-export async function drawPicture(id: string, request = ""): Promise<DrawBackgroundResult> {
+export async function drawPicture(id: string, request = "", painter?: string): Promise<DrawBackgroundResult> {
   try {
     const res = await fetch("/api/content-draw", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, request }),
+      body: JSON.stringify({ id, request, painter }),
     });
     return await res.json() as DrawBackgroundResult;
   } catch {

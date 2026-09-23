@@ -44,6 +44,8 @@ export interface ContentOutput {
    * headline in hooks[0], primary text in body, description in closing.
    */
   ad?: { angle: string; tone: string };
+  /** who drew the photograph behind the poster, as the card names it ("GPT Image HD") */
+  pictureBy?: string;
 }
 
 /** The piece as it will be pasted: one hook, the body, the closing, the tags, the footer. */

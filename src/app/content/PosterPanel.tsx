@@ -4,6 +4,7 @@ import {
   BLOCK_KINDS, BLOCK_LABEL, LAYOUTS, LAYOUT_LABEL, MAX_CHARS, SIZES, THEMES, THEME_LABEL,
   posterUrl, type BlockKind, type PosterSpec, type SizeId,
 } from "@/lib/content/poster";
+import { DEFAULT_PAINTER, PAINTERS, painterOf } from "@/lib/content/models";
 import { SAVE_LABEL, usePictureSaver } from "./savePicture";
 
 /**
@@ -33,20 +34,22 @@ interface Props {
   value: PosterSpec;
   onChange: (p: PosterSpec) => void;
   /** orders a photograph behind the words; resolves to an error to show, or null when done */
-  onDraw: (request: string) => Promise<string | null>;
+  onDraw: (request: string, painter: string) => Promise<string | null>;
   /** a photograph is already being drawn for this piece, ordered by the page */
   busy?: boolean;
 }
 
 export function PosterPanel({ value, onChange, onDraw, busy }: Props) {
   const [request, setRequest] = useState("");
+  const [painter, setPainter] = useState(DEFAULT_PAINTER);
+  const price = `~฿${painterOf(painter).thb.toFixed(2)}`;
   const [drawing, setDrawing] = useState(false);
   const [drawError, setDrawError] = useState<string | null>(null);
 
   async function draw() {
     setDrawing(true);
     setDrawError(null);
-    setDrawError(await onDraw(request).catch(() => "วาดรูปไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"));
+    setDrawError(await onDraw(request, painter).catch(() => "วาดรูปไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"));
     setDrawing(false);
   }
 
@@ -137,9 +140,17 @@ export function PosterPanel({ value, onChange, onDraw, busy }: Props) {
             placeholder="อยากได้ภาพแบบไหน (ไม่ใส่ก็ได้) เช่น พ่อกับลูกสาวอ่านนิทานก่อนนอน"
             className="w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-1.5 text-xs outline-none focus:border-[var(--ct-accent)]"
           />
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="mr-1 font-medium">วาดด้วย</span>
+            {PAINTERS.filter((p) => p.modelId).map((p) => (
+              <button key={p.id} type="button" aria-pressed={painter === p.id} onClick={() => setPainter(p.id)} className={chip(painter === p.id)}>
+                {p.label} ฿{p.thb.toFixed(2)}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-1.5">
             <button type="button" onClick={draw} disabled={drawing || busy} className="rounded-lg bg-[var(--ct-solid)] px-3 py-1.5 text-xs font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
-              {drawing || busy ? "กำลังวาด… ราว 20–40 วินาที" : value.background ? "วาดภาพใหม่ (~฿0.4)" : "วาดภาพพื้นหลังด้วย AI (~฿0.4)"}
+              {drawing || busy ? "กำลังวาด… ราว 20–40 วินาที" : value.background ? `วาดภาพใหม่ (${price})` : `วาดภาพพื้นหลังด้วย AI (${price})`}
             </button>
             {value.background && !drawing && !busy && (
               <button type="button" onClick={() => onChange({ layout: value.layout, theme: value.theme, blocks: value.blocks })} className="rounded-lg border border-[var(--ct-line)] px-3 py-1.5 text-xs">

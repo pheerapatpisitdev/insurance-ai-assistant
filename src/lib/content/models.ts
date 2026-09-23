@@ -1,0 +1,48 @@
+/**
+ * The models the owner may pick on /content, and nothing else.
+ *
+ * Chosen on 2026-09-23 from a bake-off of one Life Protect post written by six models:
+ * Sonnet 5 read most like a person; GPT-5 close behind; Gemini 3.7 Flash clean and a sixth
+ * of the price. GPT-5 mini wrote broken Thai and both GLMs leaked instructions into the
+ * post, so they are not offered. The server takes only an id from these lists — a model
+ * name sent from the browser is never passed on.
+ *
+ * Prices are per piece and per picture as measured then, for the estimate under the button.
+ * Browser-safe: nothing here imports the AI client.
+ */
+
+export interface Writer { id: string; model: string; label: string; short: string; thb: number }
+export interface Painter { id: string; modelId: string | null; label: string; short: string; thb: number }
+
+export const WRITERS: Writer[] = [
+  { id: "best", model: "claude-sonnet-5", label: "ดีที่สุด", short: "Sonnet 5", thb: 0.61 },
+  { id: "balanced", model: "gpt-5", label: "สมดุล", short: "GPT-5", thb: 0.51 },
+  { id: "cheap", model: "gemini-3.7-flash", label: "ประหยัด", short: "Gemini Flash", thb: 0.1 },
+];
+
+export const PAINTERS: Painter[] = [
+  { id: "none", modelId: null, label: "ไม่วาดภาพ", short: "สีพื้น", thb: 0 },
+  { id: "standard", modelId: "gpt-image-medium", label: "มาตรฐาน", short: "GPT Image", thb: 0.43 },
+  { id: "sharp", modelId: "gpt-image-high", label: "คมชัด", short: "GPT Image HD", thb: 0.86 },
+  { id: "gemini", modelId: "gemini-image", label: "Gemini", short: "Gemini Image", thb: 2.41 },
+];
+
+export const DEFAULT_WRITER = "best";
+export const DEFAULT_PAINTER = "standard";
+
+/** the planner, the proofreader and the rest, per piece, on the cheap model */
+export const OVERHEAD_THB = 0.03;
+
+export const writerOf = (id: string | null | undefined): Writer =>
+  WRITERS.find((w) => w.id === id) ?? WRITERS.find((w) => w.id === DEFAULT_WRITER)!;
+
+export const painterOf = (id: string | null | undefined): Painter =>
+  PAINTERS.find((p) => p.id === id) ?? PAINTERS.find((p) => p.id === DEFAULT_PAINTER)!;
+
+/** A model's name as the card shows it — including a fallback the owner did not pick. */
+const SHORT: Record<string, string> = {
+  "claude-sonnet-5": "Sonnet 5", "gpt-5": "GPT-5", "gemini-3.7-flash": "Gemini Flash",
+  "gpt-5-mini": "GPT-5 mini", "glm-5.3": "GLM-5.3", "glm-5.3-flash": "GLM Flash",
+  "claude-haiku-4-5-20251001": "Haiku", "gemini-3.1-flash-lite": "Gemini Lite",
+};
+export const shortModel = (name: string | null | undefined): string => (name ? SHORT[name] ?? name : "");

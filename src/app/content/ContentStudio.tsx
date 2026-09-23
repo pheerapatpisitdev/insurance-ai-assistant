@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { footer, fullText } from "@/lib/content/output";
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { FORMAT_LABEL, FORMAT_SHORT, type AngleId, type Format, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
+import { DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, generateContent, removeContent, setContentStatus } from "./actions";
 import { drawPicture } from "./draw";
@@ -45,8 +46,8 @@ const TABS: { id: ContentStatus; label: string }[] = [
   { id: "used", label: "ใช้จริง" },
 ];
 
-/** what a piece has cost on average so far (Sonnet ≈ ฿0.69 on 2026-09-23), for the estimate */
-const PER_PIECE_THB = 0.7;
+/** the models last picked, kept in this browser; a private window simply starts on the defaults */
+const PICK_KEY = "content-models";
 
 const chip = (on: boolean) =>
   `rounded-full border px-3 py-1.5 text-sm ${on
@@ -58,6 +59,20 @@ const field = "w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-pan
 export function ContentStudio({ products, angles, lengths, hooks, initialHook, initial, initialUsed, spend: initialSpend }: Props) {
   const [href, setHref] = useState(products[0]?.href ?? "");
   const [format, setFormat] = useState<Format>("post");
+  const [writer, setWriter] = useState(DEFAULT_WRITER);
+  const [painter, setPainter] = useState(DEFAULT_PAINTER);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PICK_KEY) ?? "{}") as { writer?: string; painter?: string };
+      if (saved.writer) setWriter(writerOf(saved.writer).id);
+      if (saved.painter) setPainter(painterOf(saved.painter).id);
+    } catch { /* storage unavailable: the defaults stand */ }
+  }, []);
+  const pick = (next: { writer?: string; painter?: string }) => {
+    if (next.writer) setWriter(next.writer);
+    if (next.painter) setPainter(next.painter);
+    try { localStorage.setItem(PICK_KEY, JSON.stringify({ writer, painter, ...next })); } catch { /* not kept */ }
+  };
   const [angle, setAngle] = useState<AngleId>("");
   const [custom, setCustom] = useState("");
   const [length, setLength] = useState<Length>("60");
@@ -100,13 +115,14 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     if (pending) return;
     setError(undefined);
     const asked = pieceCount;
+    const paintWith = painter;
     setMaking(asked);
     try {
       let res: Awaited<ReturnType<typeof generateContent>>;
       try {
         res = await generateContent({
           href, format, angle, custom, length: format === "script" ? length : null, count,
-          hookTemplateId: format === "ad" ? null : hookId || null, adAngles, adTones,
+          hookTemplateId: format === "ad" ? null : hookId || null, adAngles, adTones, writer,
         });
       } catch {
         /**
@@ -127,7 +143,8 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
       await reload("draft", "");
       setMaking(0);
       pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      void drawPictures(res.items.filter((i) => i.format !== "script"));
+      // the painter as it was at the press, even if the owner changes it while waiting
+      if (paintWith !== "none") void drawPictures(res.items.filter((i) => i.format !== "script"), paintWith);
       setSpend(await contentSpend().catch(() => spend));
     } finally {
       setMaking(0);
@@ -139,12 +156,12 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
    * asked not to press วาดภาพ piece by piece. The cards show their words first and the
    * pictures arrive on their own; one that fails keeps its plain poster and the button.
    */
-  async function drawPictures(list: ContentItem[]) {
+  async function drawPictures(list: ContentItem[], paintWith: string) {
     if (list.length === 0) return;
     const ids = list.map((i) => i.id);
     setDrawing((d) => new Set([...d, ...ids]));
     const results = await Promise.all(list.map(async (item) => {
-      const res = await drawPicture(item.id);
+      const res = await drawPicture(item.id, "", paintWith);
       setDrawing((d) => { const n = new Set(d); n.delete(item.id); return n; });
       if (res?.ok) saved(res.item);
       return res?.ok ? null : (res?.error ?? "วาดรูปไม่สำเร็จ");
@@ -204,8 +221,11 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   }
 
   const pieceCount = format === "ad" ? adAngles * adTones : count;
-  const estimate = (pieceCount * PER_PIECE_THB).toFixed(1);
+  // what one piece costs with the picks made, the picture included (scripts have none)
+  const perPiece = writerOf(writer).thb + OVERHEAD_THB + (format === "script" ? 0 : painterOf(painter).thb);
+  const estimate = (pieceCount * perPiece).toFixed(1);
   const left = Math.max(0, spend.cap - spend.spent);
+  const more = Math.floor(left / perPiece);
 
   return (
     <div>
@@ -314,6 +334,34 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             </>
           )}
 
+          <div>
+            <span className="mb-1.5 block text-sm font-medium">โมเดลเขียน</span>
+            <div className="flex flex-wrap gap-2">
+              {WRITERS.map((w) => (
+                <button key={w.id} type="button" aria-pressed={writer === w.id} onClick={() => pick({ writer: w.id })} className={chip(writer === w.id)}>
+                  {w.label} <span className="opacity-70">฿{w.thb.toFixed(2)}</span>
+                </button>
+              ))}
+            </div>
+            <span className="mt-1 block text-xs text-[var(--ct-mute)]">{writerOf(writer).short} · ราคาต่อชิ้น</span>
+          </div>
+
+          {format !== "script" && (
+            <div>
+              <span className="mb-1.5 block text-sm font-medium">ภาพประกอบ</span>
+              <div className="flex flex-wrap gap-2">
+                {PAINTERS.map((p) => (
+                  <button key={p.id} type="button" aria-pressed={painter === p.id} onClick={() => pick({ painter: p.id })} className={chip(painter === p.id)}>
+                    {p.label}{p.thb > 0 && <span className="opacity-70"> ฿{p.thb.toFixed(2)}</span>}
+                  </button>
+                ))}
+              </div>
+              <span className="mt-1 block text-xs text-[var(--ct-mute)]">
+                {painter === "none" ? "ใช้โปสเตอร์สีพื้น วาดทีหลังได้ในหน้าแก้ไข" : `${painterOf(painter).short} · ราคาต่อภาพ วาดให้ทุกชิ้นหลังเขียนเสร็จ`}
+              </span>
+            </div>
+          )}
+
           {error && (
             <p role="alert" className="rounded-lg border border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] px-3 py-2 text-sm text-[var(--ct-alert)]">{error}</p>
           )}
@@ -325,7 +373,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                 : format === "ad" ? `สร้างโฆษณา ${pieceCount} แบบ` : `สร้าง ${count} ชิ้น`}
             </button>
             <p className="mt-2 text-xs text-[var(--ct-mute)]">
-              ราว ฿{estimate} · งบคอนเทนต์เดือนนี้เหลือ ฿{left.toFixed(2)} จาก ฿{spend.cap}
+              ราว ฿{estimate} · สร้างได้อีกราว {more} ชิ้น · งบคอนเทนต์เดือนนี้เหลือ ฿{left.toFixed(2)} จาก ฿{spend.cap}
             </p>
           </div>
         </aside>

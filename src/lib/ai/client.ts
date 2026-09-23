@@ -198,16 +198,23 @@ export interface ChatOptions {
    * enabled and its provider's key live, like any other.
    */
   only?: string;
+  /**
+   * A model to try first, ahead of the tier's own choice; the usual fallback follows it, so
+   * a pick that is down is answered by the next rather than not at all.
+   */
+  prefer?: string;
 }
 
 /** Sends one prompt, trying providers in order until one answers. */
-export async function chat({ tier, task, messages, maxTokens = 700, json, timeoutMs, effort, only }: ChatOptions): Promise<ChatResult> {
+export async function chat({ tier, task, messages, maxTokens = 700, json, timeoutMs, effort, only, prefer }: ChatOptions): Promise<ChatResult> {
   const config = await loadConfig();
   await assertWithinBudget(config);
   const tried: string[] = [];
   const chain = only
     ? config.models.filter((m) => m.kind === "text" && m.enabled && m.model_name === only && liveKeys(config)[m.provider])
-    : candidates(config, tier);
+    : prefer
+      ? fallbackOrder(config.models, tier, prefer, liveKeys(config))
+      : candidates(config, tier);
   if (only && chain.length === 0) throw new Error(`โมเดล ${only} ใช้ไม่ได้ในตอนนี้`);
   for (const model of chain) {
     const call = CALLERS[model.provider];
@@ -247,15 +254,18 @@ const IMAGE_TIMEOUT_MS = 90_000;
 
 export interface DrawResult extends DrawnImage {
   model: string;
+  /** the model_configs id — two qualities of one model share a name, not an id */
+  id: string;
   costThb: number;
 }
 
-/** Draws one picture, checking the month's budget first and recording what it cost. */
-export async function drawImage({ task, prompt }: { task: string; prompt: string }): Promise<DrawResult> {
+/** Draws one picture, checking the month's budget first and recording what it cost. `prefer` is a model_configs id. */
+export async function drawImage({ task, prompt, prefer }: { task: string; prompt: string; prefer?: string }): Promise<DrawResult> {
   const config = await loadConfig();
   await assertWithinBudget(config);
   const keys = liveKeys(config);
-  const models = IMAGE_PREFERENCE
+  // a picked model goes first; the cheap list stays behind it for when it is down
+  const models = [...new Set(prefer ? [prefer, ...IMAGE_PREFERENCE] : IMAGE_PREFERENCE)]
     .map((id) => config.models.find((m) => m.id === id && m.kind === "image" && m.enabled))
     .filter((m): m is ModelRow => Boolean(m && keys[m.provider] && IMAGE_CALLERS[m.provider]));
   const tried: string[] = [];
@@ -267,7 +277,7 @@ export async function drawImage({ task, prompt }: { task: string; prompt: string
       });
       const costThb = Number(model.price.perImageUsd ?? 0) * USD_TO_THB;
       await record(model.model_name, task, 0, 0, costThb);
-      return { ...img, model: model.model_name, costThb };
+      return { ...img, model: model.model_name, id: model.id, costThb };
     } catch (e) {
       tried.push(`${model.model_name}: ${e instanceof Error ? e.message : e}`);
     }
