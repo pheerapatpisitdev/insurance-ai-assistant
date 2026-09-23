@@ -97,9 +97,18 @@ export const CALLERS: Record<string, (a: CallArgs) => Promise<CallResult>> = {
     };
   },
 
-  // Z.ai speaks the OpenAI chat format on its own host.
+  /**
+   * Z.ai speaks the OpenAI chat format on its own host.
+   *
+   * GLM thinks before it answers, and the thinking counts against max_tokens — the GPT-5
+   * trouble again. Probed 2026-09-23: at the default, glm-5.3 spent all 200 tokens and
+   * answered nothing, glm-5.3-flash got 12 characters out, and a Facebook post from either
+   * ran past the 60-second limit. Thinking cannot be switched off ("always engages in
+   * thinking… use low, high, or max"); at "low" both answer a Thai question in about eight
+   * seconds. Never used until then, so nobody had seen it.
+   */
   async zai(args) {
-    return openAiCompatible("https://api.z.ai/api/paas/v4/chat/completions", args);
+    return openAiCompatible("https://api.z.ai/api/paas/v4/chat/completions", args, { reasoning_effort: "low" });
   },
 };
 
@@ -121,10 +130,11 @@ export function openAiReasoning(model: string, effort?: CallArgs["effort"]): { r
   return { reasoning_effort: effort ?? "minimal" };
 }
 
-async function openAiCompatible(url: string, { apiKey, model, messages, maxTokens, json, signal }: CallArgs): Promise<CallResult> {
+async function openAiCompatible(url: string, { apiKey, model, messages, maxTokens, json, signal }: CallArgs, extra: Record<string, unknown> = {}): Promise<CallResult> {
   const data = await postJson(url, { Authorization: `Bearer ${apiKey}` }, {
     model, messages, max_tokens: maxTokens,
     ...(json ? { response_format: { type: "json_object" } } : {}),
+    ...extra,
   }, signal);
   return {
     text: data.choices?.[0]?.message?.content ?? "",

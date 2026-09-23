@@ -192,14 +192,24 @@ export interface ChatOptions {
   timeoutMs?: number;
   /** thinking effort for Claude models; see CallArgs.effort */
   effort?: "low" | "medium" | "high";
+  /**
+   * One named model and nothing else — no fallback. For comparing models side by side, where
+   * a reply quietly written by another would make the comparison a lie. The model must be
+   * enabled and its provider's key live, like any other.
+   */
+  only?: string;
 }
 
 /** Sends one prompt, trying providers in order until one answers. */
-export async function chat({ tier, task, messages, maxTokens = 700, json, timeoutMs, effort }: ChatOptions): Promise<ChatResult> {
+export async function chat({ tier, task, messages, maxTokens = 700, json, timeoutMs, effort, only }: ChatOptions): Promise<ChatResult> {
   const config = await loadConfig();
   await assertWithinBudget(config);
   const tried: string[] = [];
-  for (const model of candidates(config, tier)) {
+  const chain = only
+    ? config.models.filter((m) => m.kind === "text" && m.enabled && m.model_name === only && liveKeys(config)[m.provider])
+    : candidates(config, tier);
+  if (only && chain.length === 0) throw new Error(`โมเดล ${only} ใช้ไม่ได้ในตอนนี้`);
+  for (const model of chain) {
     const call = CALLERS[model.provider];
     if (!call) continue;
     try {

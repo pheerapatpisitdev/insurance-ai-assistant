@@ -105,13 +105,13 @@ const WRITE_TIMEOUT_MS = 60_000;
  * short enough to finish, and a piece that fails costs only itself. The planner already made
  * the angles distinct, so no writer needs to see the others' plans.
  */
-export async function write(ask: Ask): Promise<WrittenPiece[]> {
+export async function write(ask: Ask, opts: { only?: string } = {}): Promise<WrittenPiece[]> {
   const settled = await Promise.allSettled(ask.plans.map(async (p) => {
     const r = await chat({
       tier: "large", task: "content", messages: buildMessages({ ...ask, plans: [p] }),
       // low effort: ad copy from a fixed brief needs little reasoning, and the room left over
       // is for the post; 4,000 covers what thinking remains plus a long script
-      maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low",
+      maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low", only: opts.only,
     });
     const [output] = parsePieces(r.text, [p], ask.angle) ?? [];
     if (!output) {
