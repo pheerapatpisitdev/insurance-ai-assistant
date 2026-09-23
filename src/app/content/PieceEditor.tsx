@@ -143,7 +143,7 @@ export function PieceEditor({ item, productName, drawing, onSaved, onStatus, onC
         <button type="button" onClick={onClose} className="rounded-lg border border-[var(--ct-line)] px-3 py-1 text-sm">ปิด</button>
       </div>
 
-      <div className="mt-4">
+      {item.format !== "script" && <div className="mt-4">
         <p className="mb-1.5 text-sm font-medium">รูปโพสต์</p>
         <PosterPanel
           value={draft.poster}
@@ -165,7 +165,7 @@ export function PieceEditor({ item, productName, drawing, onSaved, onStatus, onC
             return null;
           }}
         />
-      </div>
+      </div>}
 
       {isAd ? (
         <div className="mt-4 space-y-3">

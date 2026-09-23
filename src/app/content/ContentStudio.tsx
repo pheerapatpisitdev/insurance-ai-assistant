@@ -12,6 +12,7 @@ import { contentSpend, contentWorkbench, generateContent, removeContent, setCont
 import { drawPicture } from "./draw";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
+import { ScriptCard } from "./ScriptCard";
 
 /**
  * The content workbench, laid out as the owner's Maryjane project lays out its run page:
@@ -387,6 +388,17 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                       onClose={() => setEditing(null)}
                     />
                   </div>
+                ) : item.format === "script" ? (
+                  <ScriptCard
+                    key={item.id}
+                    item={item}
+                    index={i}
+                    busy={busy === item.id}
+                    onEdit={() => setEditing(item.id)}
+                    onStatus={(s) => changeStatus(item, s)}
+                    onDelete={() => remove(item)}
+                    onCopy={() => copy(item)}
+                  />
                 ) : (
                   <PieceCard
                     key={item.id}
