@@ -1,9 +1,10 @@
 import type { Bundle } from "../types";
 import legacyFamily from "../../../data/bundles/legacy-family.json";
 import ci123 from "../../../data/bundles/ci123.json";
+import cancer from "../../../data/bundles/cancer.json";
 
 /** Display order for the bundle picker. */
-const BUNDLES: Bundle[] = [legacyFamily as Bundle, ci123 as Bundle];
+const BUNDLES: Bundle[] = [legacyFamily as Bundle, ci123 as Bundle, cancer as Bundle];
 
 export function listBundles(): { code: string; name: string }[] {
   return BUNDLES.map((b) => ({ code: b.code, name: b.name }));

@@ -21,6 +21,7 @@ import { displayPremium, perDayText } from "@/lib/legacy-cta";
 import { riderDiseases } from "@/calc/riders/diseases";
 import { ci123Stages } from "@/lib/ci123-table";
 import { stagePays } from "@/lib/ci123-cta";
+import { CANCER_DAILY_RIDER, CANCER_RIDER, CPR_STAGES, HIC_INVASIVE_EXTRA_DAYS, HIC_MAX_DAYS, cprStagePays } from "@/lib/cancer-benefits";
 
 /**
  * The quote as a picture: what a customer can keep, and what a chat can send them.
@@ -612,6 +613,9 @@ const CI_RIDER = "DCI";
  */
 const STAGED_CI_RIDER = "CI123";
 
+/** Bundles whose base is only there to carry a rider, so its surrender value is not the point */
+const NO_CASH_BUNDLES = new Set(["LEGACY_FAMILY", "CI123_SET", "CANCER_SET"]);
+
 /**
  * The card for one tier of an agency bundle.
  *
@@ -641,12 +645,17 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
   const covered = result.items.filter((it) => it.eligible && !it.code.includes(":"));
   const ci = covered.find((it) => it.code === CI_RIDER);
   const staged = covered.find((it) => it.code === STAGED_CI_RIDER);
+  const cancer = covered.find((it) => it.code === CANCER_RIDER);
+  const cancerDaily = covered.find((it) => it.code === CANCER_DAILY_RIDER);
 
   const sections: CardSection[] = [];
   if (covered.length) {
     sections.push({
       title: "ชุดนี้ประกอบด้วย",
-      rows: covered.map((it) => ({ label: it.name, amount: money(it.amount) })),
+      // HIC's sum is a daily amount, and a bare "3,000 บาท" beside a lump sum reads as one
+      rows: covered.map((it) => ({
+        label: it.code === CANCER_DAILY_RIDER ? `${it.name} ต่อวัน` : it.name, amount: money(it.amount),
+      })),
     });
   }
   // what a diagnosis pays is what this set is bought for, so it comes before the death benefit
@@ -654,6 +663,21 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
     sections.push({
       title: "ตรวจพบโรคร้ายแรง รับเงินก้อนตามระยะของโรค",
       rows: ci123Stages().map((st) => ({ label: st.label, amount: money(stagePays(st, staged.amount)) })),
+    });
+  }
+  if (cancer) {
+    sections.push({
+      title: "ตรวจพบมะเร็ง รับเงินก้อนตามระยะ",
+      rows: CPR_STAGES.map((st) => ({ label: st.label, amount: money(cprStagePays(st, cancer.amount)) })),
+    });
+  }
+  if (cancerDaily) {
+    sections.push({
+      title: "นอนโรงพยาบาลเพราะมะเร็ง รับรายวัน",
+      rows: [
+        { label: `ต่อวัน สูงสุด ${HIC_MAX_DAYS} วัน`, amount: money(cancerDaily.amount) },
+        { label: `ระยะลุกลาม ขยายอีก ${HIC_INVASIVE_EXTRA_DAYS} วัน`, amount: money(cancerDaily.amount) },
+      ],
     });
   }
   if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
@@ -676,7 +700,8 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
   // Its surrender figures are not part of the shared quote, while other bundle cards may
   // still use the common cash-value block.
   // The CI 123 set is the same: its base is the smallest Life Protect+ 100, there to carry the rider.
-  if (input.bundleCode !== "LEGACY_FAMILY" && input.bundleCode !== "CI123_SET" && cashRows.length) {
+  // So is the cancer set, built on the same smallest base.
+  if (!NO_CASH_BUNDLES.has(input.bundleCode) && cashRows.length) {
     sections.push({ title: CASH_TITLE, rows: cashRows });
   }
 

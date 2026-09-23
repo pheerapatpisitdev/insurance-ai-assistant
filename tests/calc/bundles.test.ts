@@ -4,10 +4,11 @@ import { bundleAgeRange, bundleModePremiums, bundleQuoteInput, describeTier, quo
 import { quote } from "@/calc/quote";
 
 describe("bundle registry", () => {
-  it("lists the legacy bundle and the CI 123 set", () => {
+  it("lists the legacy bundle, the CI 123 set and the cancer set", () => {
     expect(listBundles()).toEqual([
       { code: "LEGACY_FAMILY", name: "มรดกเพื่อครอบครัว" },
       { code: "CI123_SET", name: "ประกันโรคร้ายแรง CI 123" },
+      { code: "CANCER_SET", name: "ประกันมะเร็ง" },
     ]);
   });
 
