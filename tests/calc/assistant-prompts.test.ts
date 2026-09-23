@@ -44,6 +44,9 @@ describe("what the model is told", () => {
   for (const [name, prompt] of [["plan info", PLAN_INFO_SYSTEM], ["small talk", SMALL_TALK_SYSTEM]] as const) {
     it(`keeps ${name} away from the company, an invented identity and a figure of its own`, () => {
       expect(prompt).toContain("ห้ามยืนยันหรือปฏิเสธชื่อบริษัทที่ลูกค้าเอ่ยถึง");
+      // asked outright, it names the insurer rather than refusing: "บ.ชื่ออะไรคะ" got
+      // "ในส่วนนี้ผมไม่สามารถแจ้งชื่อบริษัทได้ครับ" from a model told only what not to say
+      expect(prompt).toContain("แบบประกันนี้รับประกันโดย บมจ. กรุงไทย-แอกซ่า ประกันชีวิต");
       expect(prompt).toContain("ห้ามอ้างว่าเป็นตัวแทน");
       expect(prompt).toContain("ห้ามบอกว่าตัวเองเป็นคน");
     });
