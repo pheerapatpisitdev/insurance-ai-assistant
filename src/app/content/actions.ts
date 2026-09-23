@@ -1,19 +1,21 @@
 "use server";
 import { headers } from "next/headers";
-import { BudgetExceeded, chat } from "@/lib/ai/client";
+import { BudgetExceeded, chat, drawImage } from "@/lib/ai/client";
+import { backgroundPrompt, stripThai } from "@/lib/content/background";
 import { limiter } from "@/lib/assistant/rate-limit";
 import { briefFor } from "@/lib/content/brief";
 import { findWords, strayNumbers, type ContentWord } from "@/lib/content/check";
 import { parseTemplatize, templatizeMessages } from "@/lib/content/hooks";
 import type { ContentOutput } from "@/lib/content/output";
-import { parsePoster, posterText } from "@/lib/content/poster";
+import { defaultPoster, parsePoster, posterText } from "@/lib/content/poster";
+import { contentProduct } from "@/lib/content/products";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { checkPolicy } from "@/lib/content/policy";
 import { proofread, type Fix } from "@/lib/content/proofread";
 import { ANGLES, LENGTHS, type AngleId, type Format, type Length } from "@/lib/content/prompt";
 import {
   CONTENT_MONTH_CAP_THB, addHookTemplate, contentSpentThisMonth, countByStatus, countHookUse, getContent,
-  getHookTemplate, isContentStatus, listContent, listWords, saveContent, saveOutput, setFixes, setStatus,
+  getHookTemplate, isContentStatus, listContent, listWords, saveBackground, saveContent, saveOutput, setFixes, setStatus,
   usedHooks, type ContentItem, type ContentStatus, type Flags,
 } from "@/lib/content/store";
 import { UnreadableReply, plan, write } from "@/lib/content/write";
@@ -27,6 +29,8 @@ import { UnreadableReply, plan, write } from "@/lib/content/write";
 const MAX_CUSTOM = 120;
 const perHour = limiter(10, 60 * 60_000);
 const proofPerHour = limiter(40, 60 * 60_000);
+/** a picture is about ฿0.4 and takes half a minute; twenty an hour is more than a person makes */
+const drawPerHour = limiter(20, 60 * 60_000);
 
 async function caller(): Promise<string> {
   const h = await headers();
@@ -206,5 +210,57 @@ export async function contentSpend(): Promise<{ spent: number; cap: number }> {
     return { spent: await contentSpentThisMonth(), cap: CONTENT_MONTH_CAP_THB };
   } catch {
     return { spent: 0, cap: CONTENT_MONTH_CAP_THB };
+  }
+}
+
+/**
+ * The owner's picture request in English. Image models read Thai badly and try to draw it, so
+ * a request typed in Thai is translated first by the cheap model — once, a fraction of a baht.
+ */
+async function inEnglish(request: string): Promise<string> {
+  const text = request.trim().slice(0, 300);
+  if (!text || !/[\u0E00-\u0E7F]/.test(text)) return text;
+  const r = await chat({
+    tier: "small", task: "content-image-brief", maxTokens: 200,
+    messages: [
+      { role: "system", content: "Translate the Thai photo direction into one short English sentence for an image model. Describe only what should be seen. Reply with the sentence only." },
+      { role: "user", content: text },
+    ],
+  });
+  return stripThai(r.text).slice(0, 300);
+}
+
+export type DrawBackgroundResult = { ok: true; item: ContentItem } | { ok: false; error: string };
+
+/**
+ * A photograph behind a piece's poster, drawn by an image model and kept with the piece.
+ *
+ * The words on the poster are not the model's business: it is asked for a picture with no
+ * lettering at all, calm on the side the words will sit, and the drawing route sets the Thai
+ * over it. Counted against the content ceiling like every other content call.
+ */
+export async function drawBackground(id: string, request = ""): Promise<DrawBackgroundResult> {
+  if (!drawPerHour(`draw:${await caller()}`)) {
+    return { ok: false, error: "วาดรูปครบ 20 รูปในชั่วโมงนี้แล้ว รอสักพักนะครับ" };
+  }
+  try {
+    if (await contentSpentThisMonth() >= CONTENT_MONTH_CAP_THB) {
+      return { ok: false, error: `เดือนนี้ใช้งบสร้างคอนเทนต์ครบ ${CONTENT_MONTH_CAP_THB} บาทแล้ว` };
+    }
+    const item = await getContent(id);
+    if (!item) return { ok: false, error: "ไม่พบชิ้นงานนี้" };
+    const poster = item.output.poster ?? defaultPoster(item.output.hooks[0], contentProduct(item.planHref)?.name ?? "");
+    const prompt = backgroundPrompt({
+      scene: item.output.imagePrompt, layout: poster.layout, theme: poster.theme,
+      request: await inEnglish(request),
+    });
+    const img = await drawImage({ task: "content-image", prompt });
+    const background = await saveBackground(item.id, img.bytes, img.mimeType);
+    const saved = await saveOutput(item.id, { ...item.output, poster: { ...poster, background } }, item.flags);
+    return { ok: true, item: saved };
+  } catch (e) {
+    if (e instanceof BudgetExceeded) return { ok: false, error: "ถึงงบค่า AI ของเดือนนี้แล้ว" };
+    console.error("content background failed:", e);
+    return { ok: false, error: "วาดรูปไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
   }
 }

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { monthSpend, monthStart } from "./ledger";
+import { IMAGE_CALLERS, type DrawnImage } from "./images";
 import { CALLERS, EMBEDDERS, JUDGE, type JudgeAnswer, type JudgeQuestion } from "./providers";
 import type { ChatMessage, ChatResult, ModelRow, Tier } from "./types";
 
@@ -47,7 +48,7 @@ async function loadConfig(): Promise<Config> {
   // this app may use, and the keys themselves, live in this app's own tables.
   const [keys, models, prefs, settings, switches] = await Promise.all([
     supabase.rpc("ins_get_api_keys", { p_passphrase: passphrase() }),
-    supabase.from("model_configs").select("id, provider, kind, model_name, enabled, price"),
+    supabase.from("model_configs").select("id, provider, kind, model_name, enabled, price, params"),
     supabase.from("ins_model_prefs").select("model_id, enabled"),
     supabase.from("ins_ai_settings").select("small_model, large_model, monthly_budget_thb").maybeSingle(),
     supabase.from("ins_api_keys").select("provider, enabled"),
@@ -214,6 +215,48 @@ export async function chat({ tier, task, messages, maxTokens = 700, json, timeou
   }
   if (tried.length === 0) throw new Error("ไม่มีคีย์ผู้ให้บริการ AI ที่ใช้ได้ในตอนนี้");
   throw new Error(`ไม่มีผู้ให้บริการ AI ที่ตอบได้\n${tried.join("\n")}`);
+}
+
+/**
+ * Image models to try, in order, by their model_configs id. Cheapest first — gpt-image-2 at
+ * medium quality is $0.012 a picture — then Gemini's lite model at $0.034 if OpenAI is down.
+ * Nothing past the list is tried: the dearest image model is five times the first, and a
+ * picture nobody asked to be expensive should not become so because a provider was busy.
+ */
+const IMAGE_PREFERENCE = ["gpt-image-medium", "gemini-image-lite"];
+
+/** an image takes far longer than a reply; 90 seconds each, two tries, inside the page's 300 */
+const IMAGE_TIMEOUT_MS = 90_000;
+
+export interface DrawResult extends DrawnImage {
+  model: string;
+  costThb: number;
+}
+
+/** Draws one picture, checking the month's budget first and recording what it cost. */
+export async function drawImage({ task, prompt }: { task: string; prompt: string }): Promise<DrawResult> {
+  const config = await loadConfig();
+  await assertWithinBudget(config);
+  const keys = liveKeys(config);
+  const models = IMAGE_PREFERENCE
+    .map((id) => config.models.find((m) => m.id === id && m.kind === "image" && m.enabled))
+    .filter((m): m is ModelRow => Boolean(m && keys[m.provider] && IMAGE_CALLERS[m.provider]));
+  const tried: string[] = [];
+  for (const model of models) {
+    try {
+      const img = await IMAGE_CALLERS[model.provider]({
+        apiKey: keys[model.provider], model: model.model_name, prompt, params: model.params ?? {},
+        signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
+      });
+      const costThb = Number(model.price.perImageUsd ?? 0) * USD_TO_THB;
+      await record(model.model_name, task, 0, 0, costThb);
+      return { ...img, model: model.model_name, costThb };
+    } catch (e) {
+      tried.push(`${model.model_name}: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+  if (models.length === 0) throw new Error("ไม่มีโมเดลวาดรูปที่ใช้ได้ในตอนนี้");
+  throw new Error(`วาดรูปไม่สำเร็จ\n${tried.join("\n")}`);
 }
 
 /** Turns text into vectors for the knowledge base, trying each embedding provider in turn. */

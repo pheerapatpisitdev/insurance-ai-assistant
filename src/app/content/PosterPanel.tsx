@@ -28,7 +28,25 @@ const chip = (on: boolean) =>
     ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]"
     : "border-[var(--ct-line)] bg-[var(--ct-panel)] hover:bg-[var(--ct-soft)]"}`;
 
-export function PosterPanel({ value, onChange }: { value: PosterSpec; onChange: (p: PosterSpec) => void }) {
+interface Props {
+  value: PosterSpec;
+  onChange: (p: PosterSpec) => void;
+  /** orders a photograph behind the words; resolves to an error to show, or null when done */
+  onDraw: (request: string) => Promise<string | null>;
+}
+
+export function PosterPanel({ value, onChange, onDraw }: Props) {
+  const [request, setRequest] = useState("");
+  const [drawing, setDrawing] = useState(false);
+  const [drawError, setDrawError] = useState<string | null>(null);
+
+  async function draw() {
+    setDrawing(true);
+    setDrawError(null);
+    setDrawError(await onDraw(request).catch(() => "วาดรูปไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"));
+    setDrawing(false);
+  }
+
   const texts = textsOf(value);
   const drawable = value.blocks.some((b) => b.kind === "headline");
   const [size, setSize] = useState<SizeId>("square");
@@ -104,7 +122,31 @@ export function PosterPanel({ value, onChange }: { value: PosterSpec; onChange: 
             <button key={t} type="button" aria-pressed={value.theme === t} onClick={() => onChange({ ...value, theme: t })} className={chip(value.theme === t)}>{THEME_LABEL[t]}</button>
           ))}
         </div>
-        <p className="text-xs text-[var(--ct-mute)]">ตัวหนังสือไทยพิมพ์ด้วยฟอนต์จริง ไม่เพี้ยนแบบรูปที่ AI วาด · ตัวเลขบนภาพถูกตรวจเทียบตารางเบี้ยเมื่อกดบันทึก</p>
+        <div className="space-y-2 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-2.5">
+          <p className="text-xs font-medium">
+            ภาพพื้นหลัง {value.background ? "— มีภาพจาก AI แล้ว" : "— ตอนนี้เป็นสีพื้น"}
+          </p>
+          <input
+            value={request} onChange={(e) => setRequest(e.target.value)} maxLength={300}
+            placeholder="อยากได้ภาพแบบไหน (ไม่ใส่ก็ได้) เช่น พ่อกับลูกสาวอ่านนิทานก่อนนอน"
+            className="w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-1.5 text-xs outline-none focus:border-[var(--ct-accent)]"
+          />
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" onClick={draw} disabled={drawing} className="rounded-lg bg-[var(--ct-solid)] px-3 py-1.5 text-xs font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
+              {drawing ? "กำลังวาด… ราว 20–40 วินาที" : value.background ? "วาดภาพใหม่ (~฿0.4)" : "วาดภาพพื้นหลังด้วย AI (~฿0.4)"}
+            </button>
+            {value.background && !drawing && (
+              <button type="button" onClick={() => onChange({ layout: value.layout, theme: value.theme, blocks: value.blocks })} className="rounded-lg border border-[var(--ct-line)] px-3 py-1.5 text-xs">
+                ใช้สีพื้นแทน
+              </button>
+            )}
+          </div>
+          {drawError && <p role="alert" className="text-xs text-[var(--ct-alert)]">{drawError}</p>}
+          <p className="text-[0.7rem] leading-relaxed text-[var(--ct-mute)]">
+            AI วาดเฉพาะภาพ ไม่มีตัวหนังสือ แล้วระบบพิมพ์ข้อความไทยทับด้วยฟอนต์จริง จึงไม่เพี้ยน · ค่ารูปนับรวมในงบคอนเทนต์เดือนนี้
+          </p>
+        </div>
+        <p className="text-xs text-[var(--ct-mute)]">ตัวเลขบนภาพถูกตรวจเทียบตารางเบี้ยเมื่อกดบันทึก</p>
       </div>
     </div>
   );

@@ -10,7 +10,10 @@ export interface ModelRow {
   kind: string;
   model_name: string;
   enabled: boolean;
-  price: { inputPerMTokUsd: number; outputPerMTokUsd: number };
+  /** text models are priced per token; image models (kind "image") per picture */
+  price: { inputPerMTokUsd: number; outputPerMTokUsd: number; perImageUsd?: number };
+  /** provider settings for image models: size, quality, aspect ratio */
+  params?: Record<string, unknown> | null;
 }
 
 export interface ChatResult {

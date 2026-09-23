@@ -4,7 +4,7 @@ import { atFold, FOLD, fullText } from "@/lib/content/output";
 import { defaultPoster, type PosterSpec } from "@/lib/content/poster";
 import type { Fix } from "@/lib/content/proofread";
 import type { ContentItem } from "@/lib/content/store";
-import { proofreadContent, saveContentEdits } from "./actions";
+import { drawBackground, proofreadContent, saveContentEdits } from "./actions";
 import { PosterPanel } from "./PosterPanel";
 
 /**
@@ -126,7 +126,20 @@ export function PieceEditor({ item, productName, onSaved, onStatus, onClose }: P
 
       <div className="mt-4">
         <p className="mb-1.5 text-sm font-medium">รูปโพสต์</p>
-        <PosterPanel value={draft.poster} onChange={(poster) => edit({ ...draft, poster })} />
+        <PosterPanel
+          value={draft.poster}
+          onChange={(poster) => edit({ ...draft, poster })}
+          onDraw={async (request) => {
+            const res = await drawBackground(item.id, request);
+            if (!res.ok) return res.error;
+            // the picture is saved already; only the background joins the draft, so poster
+            // words the owner has typed but not yet saved are kept
+            const background = res.item.output.poster?.background;
+            setDraft((d) => ({ ...d, poster: { ...d.poster, background } }));
+            onSaved(res.item);
+            return null;
+          }}
+        />
       </div>
 
       <fieldset className="mt-4">

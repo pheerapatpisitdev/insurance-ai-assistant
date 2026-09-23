@@ -29,7 +29,13 @@ export interface PosterSpec {
   layout: Layout;
   theme: Theme;
   blocks: PosterBlock[];
+  /** a picture behind the words: a path in the content-media bucket, "<piece id>/<file id>.<ext>" */
+  background?: string;
 }
+
+/** the only shape a background may have; anything else could point the drawing route elsewhere */
+const BACKGROUND_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(png|jpe?g|webp)$/;
+export const isBackgroundPath = (v: unknown): v is string => typeof v === "string" && BACKGROUND_PATH.test(v);
 
 export const BLOCK_LABEL: Record<BlockKind, string> = {
   badge: "ป้ายเล็ก",
@@ -96,6 +102,7 @@ export function parsePoster(input: unknown): PosterSpec | null {
     layout: LAYOUTS.includes(raw.layout as Layout) ? (raw.layout as Layout) : "bottom",
     theme: THEMES.includes(raw.theme as Theme) ? (raw.theme as Theme) : "navy",
     blocks,
+    ...(isBackgroundPath(raw.background) ? { background: raw.background } : {}),
   };
 }
 

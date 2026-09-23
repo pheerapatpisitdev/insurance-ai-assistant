@@ -213,3 +213,23 @@ export async function addHookTemplate(t: { template: string; category: HookCateg
   // 23505 is the unique index on the formula's text: the library has it already, which is fine
   if (error && error.code !== "23505") throw new Error(error.message);
 }
+
+/* ------------------------------ pictures ------------------------------ */
+
+const MEDIA = "content-media";
+const EXT: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+
+/** Keeps a drawn picture under its piece; the path is what a poster's background names. */
+export async function saveBackground(pieceId: string, bytes: Buffer, mimeType: string): Promise<string> {
+  const path = `${pieceId}/${crypto.randomUUID()}.${EXT[mimeType] ?? "png"}`;
+  const { error } = await supabaseAdmin().storage.from(MEDIA).upload(path, bytes, { contentType: mimeType, upsert: false });
+  if (error) throw new Error(`เก็บรูปไม่สำเร็จ: ${error.message}`);
+  return path;
+}
+
+/** A background as a data URI for the drawing library, or null when it has gone. */
+export async function backgroundDataUri(path: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin().storage.from(MEDIA).download(path);
+  if (error || !data) return null;
+  return `data:${data.type || "image/png"};base64,${Buffer.from(await data.arrayBuffer()).toString("base64")}`;
+}

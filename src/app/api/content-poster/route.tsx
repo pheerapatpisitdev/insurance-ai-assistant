@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { limiter } from "@/lib/assistant/rate-limit";
-import { POSTER_THEMES } from "@/lib/card-theme";
+import { POSTER_THEMES, posterScrim } from "@/lib/card-theme";
+import { backgroundDataUri } from "@/lib/content/store";
 import { decodePoster, isSizeId, SIZES, type Layout, type PosterSpec } from "@/lib/content/poster";
 import { fitScale, fontSize, LINE_HEIGHT, metrics, withBreaks, type Canvas } from "@/lib/content/poster-layout";
 import { renderPng } from "@/lib/content/poster-png";
@@ -29,8 +30,11 @@ const JUSTIFY: Record<Layout, "flex-start" | "center" | "flex-end"> = {
   bottom: "flex-end",
 };
 
-function Poster({ spec, canvas }: { spec: PosterSpec; canvas: Canvas }) {
+function Poster({ spec, canvas, photo }: { spec: PosterSpec; canvas: Canvas; photo: string | null }) {
   const c = POSTER_THEMES[spec.theme];
+  // a square photograph drawn as "cover": a square as wide as the canvas's longer side, centred,
+  // so 4:5 and 9:16 crop it rather than stretch it (Maryjane's coverSide)
+  const cover = Math.max(canvas.width, canvas.height);
   const m = metrics(canvas);
   const scale = fitScale(spec, canvas);
   const ink = { badge: c.badgeInk, headline: c.headline, sub: c.sub, footer: c.footer } as const;
@@ -44,10 +48,15 @@ function Poster({ spec, canvas }: { spec: PosterSpec; canvas: Canvas }) {
         flexDirection: "column",
         justifyContent: JUSTIFY[spec.layout],
         padding: `${m.padTop}px ${m.padX}px ${m.padBottom}px`,
-        backgroundImage: `linear-gradient(160deg, ${c.from}, ${c.to})`,
+        backgroundImage: photo ? `url(${photo})` : `linear-gradient(160deg, ${c.from}, ${c.to})`,
+        ...(photo ? { backgroundSize: `${cover}px ${cover}px`, backgroundPosition: "center" } : {}),
         fontFamily: "Plex",
+        position: "relative",
       }}
     >
+      {photo && (
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", backgroundImage: posterScrim(spec.theme, spec.layout) }} />
+      )}
       {spec.blocks.map((b, i) => {
         const size = fontSize(b.kind, m, scale);
         return (
@@ -92,7 +101,9 @@ export async function GET(req: NextRequest) {
 
   let png: Buffer;
   try {
-    png = await renderPng(<Poster spec={spec} canvas={canvas} />, canvas);
+    // a picture that has gone missing draws the plain theme rather than failing the poster
+    const photo = spec.background ? await backgroundDataUri(spec.background) : null;
+    png = await renderPng(<Poster spec={spec} canvas={canvas} photo={photo} />, canvas);
   } catch (e) {
     console.error("poster render failed:", e);
     return new Response("วาดรูปไม่สำเร็จ ลองใหม่อีกครั้งนะครับ", { status: 500 });

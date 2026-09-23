@@ -156,3 +156,23 @@ export const POSTER_THEMES: Record<"navy" | "sand" | "white", PosterColors> = {
   // --bot-surface → --bot-band, navy words
   white: { from: "#ffffff", to: "#f2f2f2", headline: "#022162", sub: "#5b6472", footer: "#5f5436", badgeBg: "#022162", badgeInk: "#ffffff" },
 };
+
+/**
+ * The wash laid over a poster's photograph on the side its words sit, so they can be read —
+ * Maryjane's scrim (poster-render.tsx), tinted to the theme: the navy theme's white words need
+ * the photo darkened, the sand and white themes' navy words need it lightened. Strongest under
+ * the words and fading across the frame, so the picture is not drowned whole.
+ */
+const SCRIM_RGB: Record<"navy" | "sand" | "white", string> = {
+  navy: "1, 20, 61", // --bot-navy-deep
+  sand: "231, 227, 212", // --bot-sand-soft
+  white: "255, 255, 255", // --bot-surface
+};
+
+export function posterScrim(theme: "navy" | "sand" | "white", layout: "top" | "center" | "bottom"): string {
+  const c = SCRIM_RGB[theme];
+  const a = (alpha: number) => `rgba(${c}, ${alpha})`;
+  if (layout === "center") return `linear-gradient(180deg, ${a(0.25)} 0%, ${a(0.8)} 50%, ${a(0.25)} 100%)`;
+  const toward = layout === "top" ? "180deg" : "0deg";
+  return `linear-gradient(${toward}, ${a(0.85)} 0%, ${a(0.55)} 40%, ${a(0.05)} 100%)`;
+}
