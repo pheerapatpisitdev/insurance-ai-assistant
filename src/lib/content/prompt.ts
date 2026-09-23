@@ -32,7 +32,83 @@ export const LENGTHS: { id: Length; label: string }[] = [
   { id: "180", label: "2–3 นาที" },
 ];
 
-export interface Ask {
+/**
+ * What the piece is for, which decides how it ends. Without it every piece closed on
+ * "ทักแชท", whatever it was meant to do.
+ *
+ * The comment and share goals are worded against Facebook's engagement-bait rule: a post that
+ * asks for "comment YES" or "tag a friend" is shown to fewer people, so the model is told to
+ * earn the reply rather than ask for it.
+ */
+export const GOALS = [
+  {
+    id: "chat",
+    label: "ให้ทักแชท",
+    line: "เป้าหมาย: ให้คนอ่านทักแชทมาถาม — closing บอกให้ชัดว่าทักมาแล้วได้อะไร เช่น คำนวณเบี้ยตามอายุให้ ดูว่าแบบนี้เหมาะไหม",
+  },
+  {
+    id: "comment",
+    label: "ให้คอมเมนต์",
+    line: "เป้าหมาย: ให้คนอ่านคอมเมนต์ — closing เป็นคำถามจริงที่ตอบได้ง่ายจากชีวิตตัวเอง ห้ามเขียนแบบ “คอมเมนต์ว่าใช่” “พิมพ์ 1” หรือ “แท็กเพื่อน” (Facebook ลดการมองเห็นโพสต์แบบนั้น) ไม่ต้องชวนทักแชท",
+  },
+  {
+    id: "share",
+    label: "ให้คนเห็นเยอะ",
+    line: "เป้าหมาย: ให้คนเห็นเยอะและอยากเก็บไว้หรือส่งต่อ — body ให้ความรู้ที่คนอ่านเอาไปใช้ได้เองก่อน ขายน้อย พูดถึงแบบประกันแค่ช่วงท้าย ห้ามเขียน “แชร์เลย” หรือ “แท็กเพื่อน” (Facebook ลดการมองเห็น)",
+  },
+] as const;
+
+export type GoalId = (typeof GOALS)[number]["id"] | "";
+
+/**
+ * Niches a life-insurance page commonly speaks to, one tap each; the owner can type any other.
+ * Each is a group with its own reason to buy, which is what makes a niche worth naming.
+ */
+export const NICHES = [
+  "พ่อแม่ลูกเล็ก",
+  "คนโสดวัยทำงาน",
+  "ฟรีแลนซ์/เจ้าของกิจการ",
+  "มนุษย์เงินเดือนมีประกันกลุ่ม",
+  "ลูกที่ดูแลพ่อแม่",
+  "วัยใกล้เกษียณ",
+] as const;
+
+export const MAX_READER = 120;
+export const MAX_FACT = 400;
+
+/** What the owner can tell the round beyond its angle: who reads it, what it is for, what really happened. */
+export interface Steer {
+  /** who the piece talks to, in the owner's words: "แม่ลูกเล็ก วัย 30" */
+  reader?: string;
+  goal?: GoalId;
+  /**
+   * Something true the owner knows first-hand — a claim paid, a question a customer asked,
+   * a piece of news. The one place a piece may tell a real story; see steerLines.
+   */
+  fact?: string;
+}
+
+/** The steer as lines for any prompt — planner, writer or ad matrix. Empty when nothing was given. */
+export function steerLines(s: Steer): string {
+  const reader = s.reader?.trim();
+  const fact = s.fact?.trim();
+  const goal = GOALS.find((g) => g.id === s.goal);
+  return [
+    reader ? `คนอ่านคือ: ${reader} — เลือกคำ ตัวอย่าง และปัญหาที่คนกลุ่มนี้เจอจริง (ห้ามทักคนอ่านตรงๆ ว่าเป็นคนกลุ่มนี้ ตามกฎ Facebook)` : "",
+    goal ? goal.line : "",
+    fact
+      ? [
+          "เรื่องจริงจากเจ้าของเพจ (ใช้เป็นแกนของเรื่องได้ เล่าเป็นเรื่องจริงได้ ไม่ต้องบอกว่าสมมติ):",
+          `"""${fact}"""`,
+          "- ใช้เฉพาะรายละเอียดที่เขียนไว้ ห้ามเติมชื่อ อายุ ตัวเลข อาการ หรือเหตุการณ์ที่ไม่มีในนี้ ตัวเลขในเรื่องนี้คัดลอกได้ตรงตัวเท่านั้น",
+          "- ห้ามบอกว่าเงินหรือความคุ้มครองในเรื่องนี้มาจากแบบประกันที่กำลังเขียนถึง ถ้าเรื่องไม่ได้บอกไว้ชัด",
+          "- ห้ามใส่ชื่อจริงหรือข้อมูลที่ทำให้รู้ว่าเป็นลูกค้าคนไหน",
+        ].join("\n")
+      : "",
+  ].filter(Boolean).join("\n");
+}
+
+export interface Ask extends Steer {
   brief: string;
   format: Format;
   angle: AngleId;
@@ -47,11 +123,11 @@ export interface Ask {
 export const CORE_RULES = [
   "กฎที่ห้ามละเมิด:",
   "1. ใช้เฉพาะข้อมูลในหัวข้อ “ข้อมูลผลิตภัณฑ์” ห้ามเพิ่มความคุ้มครอง เงื่อนไข หรือสิทธิประโยชน์ที่ไม่มีในนั้น",
-  "2. ตัวเลขทุกตัว (เบี้ย ทุน อายุ เปอร์เซ็นต์ จำนวนโรค) ต้องคัดลอกจากข้อมูลตรงตัว ห้ามคำนวณ ห้ามปัดเศษ ห้ามแปลงรายปีเป็นรายเดือน ห้ามประมาณ ถ้าไม่มีตัวเลขที่ต้องการ ให้เขียนโดยไม่ใส่ตัวเลข",
+  "2. ตัวเลขทุกตัว (เบี้ย ทุน อายุ เปอร์เซ็นต์ จำนวนโรค) ต้องคัดลอกจากข้อมูล (หรือจากเรื่องจริงที่เจ้าของเพจให้มา) ตรงตัว ห้ามคำนวณ ห้ามปัดเศษ ห้ามแปลงรายปีเป็นรายเดือน ห้ามประมาณ ถ้าไม่มีตัวเลขที่ต้องการ ให้เขียนโดยไม่ใส่ตัวเลข",
   "3. ห้ามคำโฆษณาเกินจริง เช่น การันตี รับประกันผลตอบแทน ดีที่สุด ถูกที่สุด คุ้มที่สุด อันดับ 1 ไม่มีความเสี่ยง ได้เงินคืนแน่นอน",
   "4. ห้ามเขียนขัดกับ “ข้อควรระวัง” และถ้าข้อควรระวังบอกว่าห้ามระบุเบี้ย ห้ามใส่ราคาเลย",
   "5. ห้ามพูดถึงหรือเปรียบเทียบกับบริษัทประกันอื่น",
-  "6. ห้ามแต่งว่าเป็นเรื่องของลูกค้าจริงหรือรีวิวจริง ถ้าเล่าเป็นเรื่อง ให้เขียนชัดว่าเป็นสถานการณ์สมมติ เช่น “สมมติว่า…”",
+  "6. ห้ามแต่งว่าเป็นเรื่องของลูกค้าจริงหรือรีวิวจริง ถ้าเล่าเป็นเรื่อง ให้เขียนชัดว่าเป็นสถานการณ์สมมติ เช่น “สมมติว่า…” ยกเว้นเรื่องจริงที่เจ้าของเพจให้มาเอง",
   "7. ห้ามเขียนข้อความเตือนหรือ disclaimer เอง ระบบจะต่อท้ายให้",
   "8. ผู้เขียนเป็นตัวแทนผู้ชาย ใช้คำลงท้าย “ครับ” เท่านั้น ห้ามใช้ “ค่ะ” หรือ “คะ”",
   "",
@@ -82,7 +158,7 @@ const SYSTEM = [
   "ตอบเป็น JSON อย่างเดียว ไม่มีข้อความอื่น ตามรูปแบบนี้ (จำนวนชิ้นเท่ากับแผน):",
   `{"pieces":[{"body":"…","closing":"…","hashtags":["#…"],${POSTER_JSON}}]}`,
   "- body: เนื้อหาหลัก ต่อจาก hook ไม่รวมประโยคปิด ใช้ \\n ขึ้นบรรทัดใหม่",
-  "- closing: ประโยคปิดที่ชวนให้ทักแชทหรือคอมเมนต์ 1–2 บรรทัด",
+  "- closing: ประโยคปิด 1–2 บรรทัด ตาม “เป้าหมาย” ถ้าบอกไว้ ถ้าไม่บอกให้ชวนทักแชทหรือคอมเมนต์",
   "- hashtags: 3–6 แท็กภาษาไทยหรืออังกฤษ",
   POSTER_RULES,
 ].join("\n");
@@ -123,7 +199,7 @@ export function planLines(plans: PiecePlan[]): string {
 export function buildMessages(a: Ask): ChatMessage[] {
   const user = [
     `ข้อมูลผลิตภัณฑ์:\n${a.brief}`,
-    [formatBrief(a), angleLine(a)].filter(Boolean).join("\n"),
+    [formatBrief(a), angleLine(a), steerLines(a)].filter(Boolean).join("\n"),
     planLines(a.plans),
   ].join("\n\n");
   return [

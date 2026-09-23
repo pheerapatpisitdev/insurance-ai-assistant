@@ -90,6 +90,28 @@ describe("buildMessages", () => {
     expect(user.content).toContain("ลดหย่อนภาษี");
   });
 
+  it("says nothing of reader, goal or story when none was given", () => {
+    const [, user] = buildMessages(ask);
+    expect(user.content).not.toContain("คนอ่านคือ");
+    expect(user.content).not.toContain("เป้าหมาย:");
+    expect(user.content).not.toContain("เรื่องจริงจากเจ้าของเพจ");
+  });
+
+  it("carries the reader, the goal and the owner's true story, bound to its own words", () => {
+    const [, user] = buildMessages({ ...ask, reader: "พ่อแม่ลูกเล็ก", goal: "comment", fact: "ลูกค้าเคลมค่ารักษา 8 หมื่น" });
+    expect(user.content).toContain("คนอ่านคือ: พ่อแม่ลูกเล็ก");
+    expect(user.content).toContain("ห้ามทักคนอ่านตรงๆ");
+    // the comment goal is worded against engagement bait
+    expect(user.content).toContain("แท็กเพื่อน");
+    expect(user.content).toContain("ลูกค้าเคลมค่ารักษา 8 หมื่น");
+    expect(user.content).toContain("ห้ามเติมชื่อ อายุ ตัวเลข");
+  });
+
+  it("ignores a goal it does not know", () => {
+    const [, user] = buildMessages({ ...ask, goal: "viral" as never });
+    expect(user.content).not.toContain("เป้าหมาย:");
+  });
+
   it("uses the owner's own angle when they typed one", () => {
     const [, user] = buildMessages({ ...ask, angle: "custom", custom: "คนทำงานฟรีแลนซ์" });
     expect(user.content).toContain("คนทำงานฟรีแลนซ์");

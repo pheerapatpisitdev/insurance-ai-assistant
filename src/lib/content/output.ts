@@ -46,6 +46,11 @@ export interface ContentOutput {
   ad?: { angle: string; tone: string };
   /** who drew the photograph behind the poster, as the card names it ("GPT Image HD") */
   pictureBy?: string;
+  /**
+   * The true story the owner gave the round, kept so its numbers stay allowed when the piece
+   * is edited and checked again — they are in no brief.
+   */
+  fact?: string;
 }
 
 /** The piece as it will be pasted: one hook, the body, the closing, the tags, the footer. */

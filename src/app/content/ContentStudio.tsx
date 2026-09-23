@@ -5,7 +5,7 @@ import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { footer, fullText } from "@/lib/content/output";
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
-import { FORMAT_LABEL, FORMAT_SHORT, type AngleId, type Format, type Length } from "@/lib/content/prompt";
+import { FORMAT_LABEL, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
@@ -48,6 +48,8 @@ const TABS: { id: ContentStatus; label: string }[] = [
 
 /** the models last picked, kept in this browser; a private window simply starts on the defaults */
 const PICK_KEY = "content-models";
+/** the reader last named: a page usually speaks to one niche, so it is kept for the next visit */
+const READER_KEY = "content-reader";
 
 const chip = (on: boolean) =>
   `rounded-full border px-3 py-1.5 text-sm ${on
@@ -74,6 +76,16 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     try { localStorage.setItem(PICK_KEY, JSON.stringify({ writer, painter, ...next })); } catch { /* not kept */ }
   };
   const [angle, setAngle] = useState<AngleId>("");
+  const [reader, setReaderState] = useState("");
+  useEffect(() => {
+    try { setReaderState(localStorage.getItem(READER_KEY) ?? ""); } catch { /* storage unavailable */ }
+  }, []);
+  const setReader = (next: string) => {
+    setReaderState(next);
+    try { localStorage.setItem(READER_KEY, next); } catch { /* not kept */ }
+  };
+  const [goal, setGoal] = useState<GoalId>("");
+  const [fact, setFact] = useState("");
   const [custom, setCustom] = useState("");
   const [length, setLength] = useState<Length>("60");
   const [count, setCount] = useState(3);
@@ -124,6 +136,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
         res = await generateContent({
           href, format, angle, custom, length: format === "script" ? length : null, count,
           hookTemplateId: format === "ad" ? null : hookId || null, adAngles, adTones, writer,
+          reader, goal: format === "ad" ? "" : goal, fact: format === "ad" ? "" : fact,
         });
       } catch {
         /**
@@ -301,9 +314,42 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
               <button type="button" aria-pressed={angle === "custom"} onClick={() => setAngle("custom")} className={chip(angle === "custom")}>พิมพ์เอง</button>
             </div>
             {angle === "custom" && (
-              <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={120} placeholder="เช่น คนทำงานฟรีแลนซ์ที่ไม่มีสวัสดิการ" className={`${field} mt-2`} />
+              <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={120} placeholder="เช่น ค่ารักษาพยาบาลแพงขึ้นทุกปี" className={`${field} mt-2`} />
             )}
           </div>
+
+          <div>
+            <span className="mb-1.5 block text-sm font-medium">คนอ่านคือใคร <span className="font-normal text-[var(--ct-mute)]">(Niche · ระบบจำไว้ให้)</span></span>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" aria-pressed={reader === ""} onClick={() => setReader("")} className={chip(reader === "")}>ทุกคน</button>
+              {NICHES.map((n) => (
+                <button key={n} type="button" aria-pressed={reader === n} onClick={() => setReader(n)} className={chip(reader === n)}>{n}</button>
+              ))}
+            </div>
+            <input value={reader} onChange={(e) => setReader(e.target.value)} maxLength={MAX_READER} placeholder="หรือพิมพ์เอง เช่น พยาบาลกะดึก" className={`${field} mt-2`} />
+          </div>
+
+          {format !== "ad" && (
+            <>
+            <div>
+              <span className="mb-1.5 block text-sm font-medium">อ่านจบแล้วอยากให้ทำอะไร</span>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" aria-pressed={goal === ""} onClick={() => setGoal("")} className={chip(goal === "")}>ให้ AI เลือก</button>
+                {GOALS.map((g) => (
+                  <button key={g.id} type="button" aria-pressed={goal === g.id} onClick={() => setGoal(g.id)} className={chip(goal === g.id)}>{g.label}</button>
+                ))}
+              </div>
+            </div>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">เรื่องจริงจากคุณ <span className="font-normal text-[var(--ct-mute)]">(ไม่ใส่ก็ได้)</span></span>
+              <textarea value={fact} onChange={(e) => setFact(e.target.value)} maxLength={MAX_FACT} rows={3}
+                placeholder="เช่น เดือนที่แล้วลูกค้าเคลมค่ารักษาไป 8 หมื่น ตอนแรกเขาเกือบไม่ทำ — ไม่ต้องใส่ชื่อลูกค้า"
+                className={field} />
+              <span className="mt-1 block text-xs text-[var(--ct-mute)]">AI จะเล่าเป็นเรื่องจริงเฉพาะที่พิมพ์ไว้ ไม่เติมรายละเอียดเอง</span>
+            </label>
+            </>
+          )}
 
           {format === "ad" ? (
             <div className="space-y-3 rounded-lg bg-[var(--ct-ground)] p-3">

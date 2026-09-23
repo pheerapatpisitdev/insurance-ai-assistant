@@ -35,6 +35,12 @@ describe("planMessages", () => {
     expect(user.content).toContain("วางแผน 3 ชิ้น");
   });
 
+  it("plans hooks for the reader and the story the owner gave", () => {
+    const [, user] = planMessages({ brief: "ข้อมูล", count: 2, angle: "", avoid: [], template: null, reader: "ฟรีแลนซ์", fact: "ลูกค้าถามว่าป่วยแล้วซื้อได้ไหม" });
+    expect(user.content).toContain("คนอ่านคือ: ฟรีแลนซ์");
+    expect(user.content).toContain("ลูกค้าถามว่าป่วยแล้วซื้อได้ไหม");
+  });
+
   it("says nothing about avoiding when nothing has been used yet", () => {
     expect(avoidSection([])).toBe("");
     const [, user] = planMessages({ brief: "ข้อมูล", count: 1, angle: "", avoid: [], template: null });

@@ -12,7 +12,7 @@ import { contentProduct } from "@/lib/content/products";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { checkPolicy } from "@/lib/content/policy";
 import { proofread, type Fix } from "@/lib/content/proofread";
-import { ANGLES, LENGTHS, type AngleId, type Format, type Length } from "@/lib/content/prompt";
+import { ANGLES, GOALS, LENGTHS, MAX_FACT, MAX_READER, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
 import {
   CONTENT_MONTH_CAP_THB, addHookTemplate, contentSpentThisMonth, countByStatus, countHookUse, deleteContent, getContent,
   getHookTemplate, isContentStatus, listContent, listWords, saveBackground, saveContent, saveOutput, setFixes, setStatus,
@@ -68,6 +68,10 @@ export interface GenerateInput {
   adTones?: number;
   /** an id from WRITERS; anything else is the default */
   writer?: string;
+  /** who the piece talks to, what it is for, and something true the owner knows; all optional */
+  reader?: string;
+  goal?: GoalId;
+  fact?: string;
 }
 
 export type GenerateResult =
@@ -82,6 +86,12 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
   const length = input.format === "script" && LENGTHS.some((l) => l.id === input.length) ? input.length : null;
   const custom = (input.custom ?? "").trim().slice(0, MAX_CUSTOM);
   const count = Math.min(MAX_PIECES, Math.max(1, Math.round(Number(input.count) || 1)));
+  const reader = (input.reader ?? "").trim().slice(0, MAX_READER);
+  const goal: GoalId = GOALS.some((g) => g.id === input.goal) ? input.goal! : "";
+  // an ad is a stranger's first sight of the page: no true story in it, and no goal but a chat
+  const fact = input.format === "ad" ? "" : (input.fact ?? "").trim().slice(0, MAX_FACT);
+  // the owner's story is the one other place a number may come from
+  const yardstick = fact ? `${brief.text}\n${fact}` : brief.text;
 
   if (!perHour(`content:${await caller()}`)) {
     return { ok: false, error: "สร้างครบ 10 รอบในชั่วโมงนี้แล้ว รอสักพักแล้วลองใหม่นะครับ" };
@@ -104,7 +114,8 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
     if (input.format === "ad") {
       const angles = Math.min(MAX_ANGLES, Math.max(1, Math.round(Number(input.adAngles) || 2)));
       const tones = Math.min(MAX_TONES, Math.max(1, Math.round(Number(input.adTones) || 2)));
-      const round = await writeAds({ brief: brief.text, angles, tones, hint: angleText, prefer: writeWith });
+      const hint = [angleText, reader ? `คนอ่านคือ ${reader}` : ""].filter(Boolean).join(" · ");
+      const round = await writeAds({ brief: brief.text, angles, tones, hint, prefer: writeWith });
       const planShare = round.planThb / round.pieces.length;
       const items: ContentItem[] = [];
       for (const w of round.pieces) {
@@ -118,16 +129,16 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
       return { ok: true, items, costThb, missing: round.planned - items.length };
     }
 
-    const planned = await plan({ brief: brief.text, count, angle: angleText, avoid, template });
-    const written = await write({ brief: brief.text, format: input.format, angle, custom, length, plans: planned.plans }, { prefer: writeWith });
+    const planned = await plan({ brief: brief.text, count, angle: angleText, avoid, template, reader, goal, fact });
+    const written = await write({ brief: brief.text, format: input.format, angle, custom, length, plans: planned.plans, reader, goal, fact }, { prefer: writeWith });
 
     // each piece carries its own writing cost and an equal share of the planner's
     const planShare = planned.costThb / written.length;
     const items: ContentItem[] = [];
     for (const w of written) {
       items.push(await saveContent({
-        planHref: brief.product.href, format: input.format, angle, length, output: w.output,
-        flags: flagsFor(w.output, brief.text, words, null),
+        planHref: brief.product.href, format: input.format, angle, length, output: fact ? { ...w.output, fact } : w.output,
+        flags: flagsFor(w.output, yardstick, words, null),
         rateVersion: brief.rateVersion, model: w.model, costThb: w.costThb + planShare,
         hookTemplateId: template?.id ?? null,
       }));
@@ -232,7 +243,7 @@ export async function saveContentEdits(
     if (output.poster && !output.poster.background && kept && !opts.plain) output.poster = { ...output.poster, background: kept };
     // back to the plain colour: nobody drew it any more
     if (opts.plain && !output.poster?.background) delete output.pictureBy;
-    const flags = flagsFor(output, brief?.text ?? "", await listWords(), item.flags.fixes);
+    const flags = flagsFor(output, [brief?.text ?? "", item.output.fact ?? ""].join("\n"), await listWords(), item.flags.fixes);
     return { ok: true, item: await saveOutput(id, output, flags) };
   } catch (e) {
     console.error("content save failed:", e);

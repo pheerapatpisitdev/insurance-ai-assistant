@@ -2,6 +2,7 @@ import { parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { hookTemplateSection } from "./hooks";
 import { POLICY_RULES_TH } from "./policy";
+import { steerLines, type Steer } from "./prompt";
 
 /**
  * The planner: before a word of body is written, decide each piece's angle and hook.
@@ -35,7 +36,7 @@ const SYSTEM = [
   "- แต่ละชิ้นต้องต่างมุมกันจริง คุยกับคนละกลุ่มหรือคนละปัญหา ไม่ใช่เรื่องเดียวเปลี่ยนคำเปิด",
   "- angle เป็นภาษาไทยประโยคเดียว บอกว่าเล่าจากมุมไหนและคุยกับใคร",
   "- hook สั้น กระแทกใจ อ่านจบใน 1 วินาที ลงท้ายด้วย “ครับ” ได้ถ้าเป็นคำถาม",
-  "- ตัวเลขใน hook ต้องคัดลอกจากข้อมูลผลิตภัณฑ์ตรงตัว ห้ามคำนวณหรือแต่งเอง",
+  "- ตัวเลขใน hook ต้องคัดลอกจากข้อมูลผลิตภัณฑ์ (หรือเรื่องจริงที่เจ้าของเพจให้มา) ตรงตัว ห้ามคำนวณหรือแต่งเอง",
   "- ห้ามบรรยายภาพ ฉาก หรือการออกแบบ",
   "",
   POLICY_RULES_TH,
@@ -53,10 +54,11 @@ export function planMessages(opts: {
   angle: string;
   avoid: string[];
   template: { template: string; category: string } | null;
-}): ChatMessage[] {
+} & Steer): ChatMessage[] {
   const user = [
     `ข้อมูลผลิตภัณฑ์:\n${opts.brief}`,
     opts.angle ? `มุมที่เจ้าของเพจอยากเล่า: ${opts.angle}` : "",
+    steerLines(opts),
     avoidSection(opts.avoid),
     opts.template ? hookTemplateSection(opts.template) : "",
     [
