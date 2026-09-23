@@ -77,7 +77,8 @@ export function cprStagePays(stage: CprStage, sumAssured: number): number {
 export interface DeathTotals {
   /** the age the base contract's death benefit steps down at, when this person is under it */
   beforeAge?: number;
-  rows: { label: string; amount: number }[];
+  /** `mark` is the row the owner wants highlighted: the total after a cancer */
+  rows: { label: string; amount: number; mark?: boolean }[];
 }
 
 export function cancerDeathTotals(
@@ -89,7 +90,7 @@ export function cancerDeathTotals(
     ...(before ? { beforeAge: death.beforeAge } : {}),
     rows: [
       { label: "เสียชีวิตทั่วไป", amount: sum },
-      { label: "ตรวจพบมะเร็งระยะลุกลาม แล้วเสียชีวิต", amount: cpr + sum },
+      { label: "ตรวจพบมะเร็งระยะลุกลาม แล้วเสียชีวิต", amount: cpr + sum, mark: true },
     ],
   };
 }

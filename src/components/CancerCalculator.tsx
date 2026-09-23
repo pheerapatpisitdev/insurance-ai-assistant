@@ -241,7 +241,11 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
                   {totals.rows.map((r) => (
                     <div key={r.label} className="flex items-baseline justify-between gap-3">
                       <dt className="text-sm text-[var(--lg-mute)]">{r.label}</dt>
-                      <dd className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">{r.amount.toLocaleString("en-US")} บาท</dd>
+                      <dd className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">
+                        {r.mark
+                          ? <Highlighted>{r.amount.toLocaleString("en-US")} บาท</Highlighted>
+                          : <>{r.amount.toLocaleString("en-US")} บาท</>}
+                      </dd>
                     </div>
                   ))}
                 </dl>

@@ -117,6 +117,11 @@ function Rows({ title, rows, p }: { title: string; rows: CardRow[]; p: CardPalet
           <div
             style={{
               display: "flex", fontFamily: "Trirong", fontSize: 34, color: p.ink,
+              // the pen stroke is stretched to the figure, with room for the nib either side
+              ...(r.mark ? {
+                padding: "4px 18px", marginRight: -18,
+                backgroundImage: highlighterUri(p.highlighter), backgroundSize: "100% 100%", backgroundRepeat: "no-repeat",
+              } : {}),
             }}
           >
             {r.amount} บาท

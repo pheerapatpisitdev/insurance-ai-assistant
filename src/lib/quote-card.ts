@@ -39,6 +39,8 @@ export interface CardRow {
   label: string;
   /** already grouped, e.g. "2,000,000" */
   amount: string;
+  /** drawn with a highlighter stroke behind it */
+  mark?: boolean;
 }
 
 /**
@@ -695,7 +697,7 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
     const totals = cancerDeathTotals(cancer.amount, result.deathBenefit, input.age);
     sections.push({
       title: deathTotalsTitle(totals),
-      rows: totals.rows.map((r) => ({ label: r.label, amount: money(r.amount) })),
+      rows: totals.rows.map((r) => ({ label: r.label, amount: money(r.amount), ...(r.mark ? { mark: true } : {}) })),
     });
   }
   if (ci) {
