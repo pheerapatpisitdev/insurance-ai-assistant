@@ -19,6 +19,8 @@ export interface EasyProtectAgeExample {
   age: number;
   /** the headline instalment at that age, or null when no price may be shown */
   premium: string | null;
+  /** the yearly premium, so a monthly one can stand beside the total it was added up from */
+  annualPremium: string | null;
   /** "/เดือน" or "/ปี", matching `premium` */
   per: string | null;
   /** all six years of premium added up, or null */
@@ -130,6 +132,7 @@ export function easyProtectFacts(today: Date = new Date()): EasyProtectCopyFacts
         return {
           age,
           premium: shown ? formatBaht(shown.total) : null,
+          annualPremium: annual && !table.expired ? formatBaht(annual.total) : null,
           per: shown ? PER[shown.mode] : null,
           total: total !== null && !table.expired ? formatBaht(total) : null,
           leverage: times !== null && !table.expired ? times.toFixed(1) : null,

@@ -16,6 +16,8 @@ export interface TermExample {
   years: number;
   /** the headline instalment, or null when no price may be shown */
   premium: string | null;
+  /** the yearly premium, so a monthly one can stand beside the total it was added up from */
+  annualPremium: string | null;
   /** "/เดือน" or "/ปี", matching `premium` */
   per: string | null;
   /** every premium over the term, or null */
@@ -95,6 +97,7 @@ export function lifeProtectFacts(today: Date = new Date()): LifeProtectCopyFacts
           label: term.label,
           years,
           premium: shown ? formatBaht(shown.total) : null,
+          annualPremium: annual && !table.expired ? formatBaht(annual.total) : null,
           per: shown ? PER[shown.mode] : null,
           total: shown && annual ? formatBaht(totalPaid(annual.total, years)) : null,
         };

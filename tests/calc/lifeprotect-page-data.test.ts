@@ -86,9 +86,9 @@ describe("lifeProtectFacts", () => {
     const f = lifeProtectFacts(WHILE_CURRENT);
     expect(f.example).toMatchObject({ age: 35, sum: "1,000,000" });
     expect(f.example.terms).toEqual([
-      { label: "จ่าย 9 ปี", years: 9, premium: "4,914", per: "/เดือน", total: "491,400" },
-      { label: "จ่าย 19 ปี", years: 19, premium: "2,583", per: "/เดือน", total: "545,300" },
-      { label: "จ่ายถึงอายุ 99", years: 64, premium: "1,548", per: "/เดือน", total: "1,100,800" },
+      { label: "จ่าย 9 ปี", years: 9, premium: "4,914", annualPremium: "54,600", per: "/เดือน", total: "491,400" },
+      { label: "จ่าย 19 ปี", years: 19, premium: "2,583", annualPremium: "28,700", per: "/เดือน", total: "545,300" },
+      { label: "จ่ายถึงอายุ 99", years: 64, premium: "1,548", annualPremium: "17,200", per: "/เดือน", total: "1,100,800" },
     ]);
   });
 

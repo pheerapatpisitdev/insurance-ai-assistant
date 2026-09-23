@@ -51,6 +51,20 @@ const baht = (n: number) => n.toLocaleString("en-US");
 /** a bundle table's premiums are in satang: [annual, semi-annual, monthly, …] */
 const annualBaht = (satang: number) => baht(Math.round(satang / 100));
 
+/**
+ * A premium and the total it adds up to, said so the sum works.
+ *
+ * The totals are the yearly premium times the years; stood beside a monthly premium they
+ * were a sum no reader could make ("4,914 บาท/เดือน รวม 491,400" — twelve payments of 4,914
+ * a year come to more). So a monthly figure carries its yearly one, and the total says it
+ * is for paying yearly.
+ */
+function premiumLine(t: { premium: string | null; per: string | null; annualPremium: string | null; total: string | null }, totalWords = "รวมทั้งสัญญา"): string {
+  const yearly = t.annualPremium && t.per !== "/ปี" ? ` หรือ ${t.annualPremium} บาท/ปี` : "";
+  const total = t.total ? ` · ถ้าจ่ายรายปี${totalWords} ${t.total} บาท` : "";
+  return `เบี้ย ${t.premium} บาท${t.per}${yearly}${total}`;
+}
+
 export const CONTENT_PRODUCTS: ContentProduct[] = [
   {
     href: "/lifeprotect",
@@ -78,7 +92,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         prices.push(`- เริ่มต้น: ผู้หญิงอายุ ${f.fromAge} ทุน ${f.fromSum} บาท (คุ้มครอง ${f.fromDouble} บาท) เบี้ยเฉลี่ยวันละ ${f.fromPerDay} บาท`);
       }
       for (const t of f.example.terms) {
-        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: เบี้ย ${t.premium} บาท${t.per} รวมทั้งสัญญา ${t.total} บาท`);
+        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: ${premiumLine(t)}`);
       }
       if (f.newborn.premium) {
         prices.push(`- ซื้อให้ลูกแรกเกิด: ทุน ${f.newborn.sum} บาท (คุ้มครอง ${f.newborn.double} บาท) ${f.newborn.termLabel} เบี้ย ${f.newborn.premium} บาท${f.newborn.per}`);
@@ -144,7 +158,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
       ];
       if (f.from.premium) prices.push(`- เริ่มต้น: ${sexWord(f.from.sex)}อายุ ${f.from.age} เบี้ย ${f.from.premium} บาท${f.from.per}`);
       for (const a of f.example.ages) {
-        if (a.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${a.age} ทุน ${f.example.sum} บาท: เบี้ย ${a.premium} บาท${a.per} รวม ${f.payYears} ปี ${a.total} บาท`);
+        if (a.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${a.age} ทุน ${f.example.sum} บาท: ${premiumLine(a, `รวม ${f.payYears} ปี`)}`);
       }
       if (f.growth?.breakEvenAge) prices.push(`- ตัวอย่างอายุ ${f.growth.age}: มูลค่าเวนคืนแซงเบี้ยที่จ่ายเมื่ออายุ ${f.growth.breakEvenAge}`);
       return { expired: f.expired, rateVersion: f.rateVersion, facts, prices };
@@ -171,7 +185,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         `- รับอายุ ${f.ageMin}–${f.ageMax} ปี · คุ้มครองถึงอายุ ${f.coverToAge} · ทุน ${f.saMin}–${f.saMax} บาท`,
       ];
       for (const t of f.example.terms) {
-        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: เบี้ย ${t.premium} บาท${t.per} รวม ${t.total} บาท (ส่งต่อได้ ${t.leverage} เท่าของเบี้ย)`);
+        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: ${premiumLine(t, "รวม")} (ส่งต่อได้ ${t.leverage} เท่าของเบี้ยที่จ่ายรายปี)`);
       }
       return { expired: f.expired, rateVersion: f.rateVersion, facts, prices };
     },
@@ -228,7 +242,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
       ];
       if (f.fromPerDay !== null) prices.push(`- เริ่มต้น: อายุ ${f.fromAge} ทุน ${f.fromSum} บาท เบี้ยเฉลี่ยวันละ ${f.fromPerDay} บาท`);
       for (const t of f.example.terms) {
-        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: เบี้ย ${t.premium} บาท${t.per} รวม ${t.total} บาท`);
+        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: ${premiumLine(t, "รวม")}`);
       }
       return { expired: f.expired, rateVersion: f.rateVersion, facts, prices };
     },

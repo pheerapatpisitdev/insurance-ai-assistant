@@ -48,3 +48,19 @@ describe("briefFor", () => {
     expect(briefFor("/group-insurance", today)).toBeNull();
   });
 });
+
+describe("a total beside a monthly premium", () => {
+  /**
+   * The totals are yearly premiums added up. Beside a monthly premium with nothing said,
+   * "4,914 บาท/เดือน รวมทั้งสัญญา 491,400" was a sum a reader could not make.
+   */
+  it("says it is for paying yearly, and gives the yearly premium beside the monthly one", () => {
+    for (const p of CONTENT_PRODUCTS) {
+      const lines = briefFor(p.href)?.text.split("\n") ?? [];
+      for (const line of lines.filter((l) => /บาท\/เดือน/.test(l) && /รวม/.test(l))) {
+        expect(line, p.name).toContain("ถ้าจ่ายรายปี");
+        expect(line, p.name).toMatch(/หรือ [\d,]+ บาท\/ปี/);
+      }
+    }
+  });
+});

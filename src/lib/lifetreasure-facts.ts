@@ -21,6 +21,8 @@ export interface LifeTreasureTermExample {
   years: number;
   /** the headline instalment, or null when no price may be shown */
   premium: string | null;
+  /** the yearly premium, so a monthly one can stand beside the total it was added up from */
+  annualPremium: string | null;
   /** "/เดือน" or "/ปี", matching `premium` */
   per: string | null;
   /** every premium over the paying term, or null */
@@ -135,6 +137,7 @@ export function lifeTreasureFacts(today: Date = new Date()): LifeTreasureCopyFac
           short: term.short,
           years: term.payTerm,
           premium: shown ? formatBaht(shown.total) : null,
+          annualPremium: annual && !table.expired ? formatBaht(annual.total) : null,
           per: shown ? PER[shown.mode] : null,
           total: total !== null && !table.expired ? formatBaht(total) : null,
           leverage: times !== null && !table.expired ? times.toFixed(1) : null,
