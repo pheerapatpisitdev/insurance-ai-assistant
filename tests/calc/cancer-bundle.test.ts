@@ -10,16 +10,19 @@ const bundle = getBundle("CANCER_SET")!;
 
 describe("the cancer set", () => {
   /**
-   * CPR may be at most 5× the base, so at the base's 150,000 minimum it tops out at 750,000;
-   * the last two tiers only raise HIC, whose daily amount the workbook lists as 1,000–10,000.
+   * CPR may be at most 5× the base, so the base rises with it: a fifth of CPR, never under
+   * the plan's 150,000 minimum. HIC climbs alongside, to the workbook's 10,000-a-day top.
    */
-  it("sells five tiers of CPR and HIC on Life Protect+ 100 at its 150,000 minimum", () => {
+  it("sells eight tiers of CPR and HIC on Life Protect+ 100, up to CPR 5 million", () => {
     expect(bundle.planCode).toBe("LIFEPROTECT");
     expect(bundle.variant).toBe("WLF99H");
-    expect(bundle.tiers.map((t) => t.sumAssured)).toEqual(Array(5).fill(150_000));
-    expect(bundle.tiers.map((t) => t.riders)).toEqual([
-      [300_000, 1_000], [500_000, 2_000], [750_000, 3_000], [750_000, 5_000], [750_000, 10_000],
-    ].map(([cpr, hic]) => [{ code: "CPR", sumAssured: cpr }, { code: "HIC", sumAssured: hic }]));
+    const cprs = [300_000, 500_000, 750_000, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000];
+    const hics = [1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 8_000, 10_000];
+    expect(bundle.tiers.map((t) => t.no)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(bundle.tiers.map((t) => t.sumAssured)).toEqual(cprs.map((c) => Math.max(150_000, c / 5)));
+    expect(bundle.tiers.map((t) => t.riders)).toEqual(
+      cprs.map((cpr, i) => [{ code: "CPR", sumAssured: cpr }, { code: "HIC", sumAssured: hics[i] }]),
+    );
   });
 
   it("is sold from birth to 65, the riders' own age limits", () => {
@@ -79,7 +82,17 @@ describe("quoteCard, for the cancer set", () => {
     ]);
   });
 
-  it("leaves out the surrender values of a base that only carries the riders", () => {
-    expect(section("มูลค่าเงินสดสะสม (หากเวนคืน)")).toBeUndefined();
+  it("shows the surrender values of the base, which the larger tiers mostly pay for", () => {
+    expect(section("มูลค่าเงินสดสะสม (หากเวนคืน)")?.rows.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the top cancer tier", () => {
+  /** base 14,400 + CPR 0.28 × 5,000 + HIC ROUND(11.39 × 10, 2), the workbook's age-30 male rates */
+  it("prices a man of 30 at 15,913.90 a year", () => {
+    const q = quoteBundle(bundle, 8, { age: 30, sex: "M", mode: "annual" }, TODAY)!;
+    const annual = Object.fromEntries(q.items.map((i) => [i.code, i.annual]));
+    expect(annual).toEqual({ WLF99H: 1_440_000, CPR: 140_000, HIC: 11_390 });
+    expect(q.totalAnnual).toBe(1_591_390);
   });
 });

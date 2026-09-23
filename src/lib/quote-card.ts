@@ -613,8 +613,12 @@ const CI_RIDER = "DCI";
  */
 const STAGED_CI_RIDER = "CI123";
 
-/** Bundles whose base is only there to carry a rider, so its surrender value is not the point */
-const NO_CASH_BUNDLES = new Set(["LEGACY_FAMILY", "CI123_SET", "CANCER_SET"]);
+/**
+ * Bundles whose base is only there to carry a rider, so its surrender value is not the point.
+ * The cancer set is not one: its base rises with CPR to a million, most of what its larger
+ * tiers cost, and what that buys back on surrender is part of the answer.
+ */
+const NO_CASH_BUNDLES = new Set(["LEGACY_FAMILY", "CI123_SET"]);
 
 /**
  * The card for one tier of an agency bundle.
@@ -700,7 +704,6 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
   // Its surrender figures are not part of the shared quote, while other bundle cards may
   // still use the common cash-value block.
   // The CI 123 set is the same: its base is the smallest Life Protect+ 100, there to carry the rider.
-  // So is the cancer set, built on the same smallest base.
   if (!NO_CASH_BUNDLES.has(input.bundleCode) && cashRows.length) {
     sections.push({ title: CASH_TITLE, rows: cashRows });
   }
