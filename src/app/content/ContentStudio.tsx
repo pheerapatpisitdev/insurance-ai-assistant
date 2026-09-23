@@ -8,7 +8,7 @@ import { FORMAT_LABEL, FORMAT_SHORT, type AngleId, type Format, type Length } fr
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, drawBackground, generateContent, removeContent, setContentStatus } from "./actions";
-import { PieceCard } from "./PieceCard";
+import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
 
 /**
@@ -75,6 +75,8 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<Set<string>>(() => new Set());
+  /** how many pieces the round in progress asked for — fixed at the press, not the live picker */
+  const [making, setMaking] = useState(0);
   const pieces = useRef<HTMLElement>(null);
 
   const nameOf = (h: string) => products.find((p) => p.href === h)?.name ?? h;
@@ -88,6 +90,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
 
   function generate() {
     setError(undefined);
+    setMaking(pieceCount);
     start(async () => {
       let res: Awaited<ReturnType<typeof generateContent>>;
       try {
@@ -339,8 +342,17 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
           </div>
 
           {pending && (
-            <div className="rounded-xl border border-dashed border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-6 text-center text-sm text-[var(--ct-mute)]">
-              AI กำลังวางแผนมุม แล้วเขียน {pieceCount} {format === "ad" ? "แบบ" : "ชิ้น"}… ไปทำอย่างอื่นก่อนได้ ชิ้นงานจะถูกเก็บไว้ที่ “รอตรวจ”
+            <div role="status" className="space-y-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-[var(--ct-accent)]">
+                <span className="size-2.5 rounded-full bg-[var(--ct-accent)] motion-safe:animate-pulse" />
+                กำลังสร้าง {making} {format === "ad" ? "แบบ" : "ชิ้น"}…
+              </p>
+              <div className="grid gap-4 @xl:grid-cols-2">
+                {Array.from({ length: making }, (_, i) => <PieceSkeleton key={i} />)}
+              </div>
+              <p className="text-xs text-[var(--ct-mute)]">
+                เปิดหน้านี้ไว้จนภาพขึ้นครบ — ถ้าออกไปก่อน ข้อความยังเก็บไว้ที่ “รอตรวจ” แต่ต้องกดวาดภาพเอง
+              </p>
             </div>
           )}
 

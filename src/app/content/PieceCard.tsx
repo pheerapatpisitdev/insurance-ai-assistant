@@ -79,3 +79,25 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
     </article>
   );
 }
+
+/** A card-shaped placeholder while a round is being written: picture, lines, the button bar. */
+export function PieceSkeleton() {
+  const bar = "rounded-full bg-[var(--ct-soft)]";
+  return (
+    <div aria-hidden="true" className="overflow-hidden rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] motion-safe:animate-pulse">
+      <div className="aspect-square w-full bg-[var(--ct-ground)]" />
+      <div className="space-y-2.5 p-3">
+        <div className={`h-4 w-4/5 ${bar}`} />
+        <div className={`h-3 w-1/3 ${bar}`} />
+        <div className={`h-3 w-full ${bar}`} />
+        <div className={`h-3 w-11/12 ${bar}`} />
+        <div className={`h-3 w-2/3 ${bar}`} />
+      </div>
+      <div className="grid grid-cols-3 gap-2 border-t border-[var(--ct-hair)] p-2.5">
+        <div className={`h-6 ${bar}`} />
+        <div className={`h-6 ${bar}`} />
+        <div className={`h-6 ${bar}`} />
+      </div>
+    </div>
+  );
+}
