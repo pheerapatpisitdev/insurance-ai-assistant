@@ -244,7 +244,7 @@ describe("who stands behind the policy", () => {
 
   it("hears the short way people actually ask it", async () => {
     // real customers, this morning: the sentence is elliptical, the question is the same
-    for (const asked of ["ของอะไรครับ", "ประกันของใครคะ", "เจ้าไหนครับ", "ของค่ายไหน", "ขอโทษค่ะ บ.ชื่ออะไรคะ", "บ. อะไรครับ", "บ.ไหน"]) {
+    for (const asked of ["ของอะไรครับ", "ประกันของใครคะ", "เจ้าไหนครับ", "ของค่ายไหน", "ขอโทษค่ะ บ.ชื่ออะไรคะ", "บ. อะไรครับ", "บ.ไหน", "บไหนคะ", "บ ไหนครับ", "บจก.ไหน", "บมจ.ไหน", "ประกันบ.ไหน"]) {
       routed = { intent: "other" };
       const answer = await answerQuestion(said(asked), null);
       expect(answer.messages[0].text, asked).toContain("กรุงไทย-แอกซ่า ประกันชีวิต");
@@ -268,7 +268,7 @@ describe("who stands behind the policy", () => {
   });
 
   it("does not hear a question about the company's own doings as a question about its name", async () => {
-    for (const asked of ["บริษัทจะตรวจสุขภาพไหม", "บริษัทพิจารณากี่วัน"]) {
+    for (const asked of ["บริษัทจะตรวจสุขภาพไหม", "บริษัทพิจารณากี่วัน", "แบบไหนดีครับ"]) {
       routed = { intent: "plan_info" };
       worded = "ตอบตามข้อมูลครับ";
       const answer = await answerQuestion(said(asked), null);

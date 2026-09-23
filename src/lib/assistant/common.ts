@@ -1,6 +1,7 @@
 import type { ChatMessage } from "@/lib/ai/types";
 import { listPlans } from "@/calc/plans/registry";
 import { siteUrl } from "@/lib/site-url";
+import { INSURER } from "@/lib/insurer";
 
 /**
  * What a bot on this page is, before it is a bot about any particular plan.
@@ -31,7 +32,7 @@ export const MAX_BUBBLES = 3;
  * the people — a licence, whether they can be trusted — is not a fact this code has, so it
  * is handed to someone who does.
  */
-export const INSURER = "บมจ. กรุงไทย-แอกซ่า ประกันชีวิต";
+export { INSURER };
 
 /**
  * The agents behind the page, as their own licences record them.
@@ -284,11 +285,13 @@ export function recentTurns(history: ChatMessage[], count: number): ChatMessage[
  * underwriting and must not be answered with a company's name.
  *
  * "บ." is บริษัท as people type it on a phone: "ขอโทษค่ะ บ.ชื่ออะไรคะ" came off the
- * advertisement and was not heard.
+ * advertisement and was not heard. Some drop the point ("บไหน", "บ ไหน") or write the long
+ * abbreviations ("บจก.ไหน", "บมจ.ไหน"). A bare บ counts only where it starts a word, because
+ * "แบบไหน" ends in บ too and asks which plan, not which company.
  */
 const INSURER_FILLER = String.raw`(?:\s*(?:ประกัน(?:ชีวิต)?|ของ|นี้|นั้น|อัน|ชื่อ))*\s*`;
 const INSURER_QUESTION = new RegExp(
-  String.raw`(?:บริษัท|บ\.)${INSURER_FILLER}(?:อะไร|ไหน|ไร)`
+  String.raw`(?:บริษัท|บ(?:จก|มจ)?\.|(?<![\u0E00-\u0E7F])บ(?:จก|มจ)?)${INSURER_FILLER}(?:อะไร|ไหน|ไร)`
   + String.raw`|ของ\s*บริษัท|ของ\s*อะไร|ของ\s*ใคร|เจ้า\s*ไหน|ของ\s*ค่าย|ค่าย\s*ไหน`
   + String.raw`|ผู้รับประกัน|รับประกันโดย|แบรนด์`
   + String.raw`|กรุงไทย|แอกซ่า|axa|เมืองไทย|เอไอเอ|\baia\b|ไทยประกัน|พรูเด็นเชียล|prudential`
