@@ -82,12 +82,6 @@ describe("quoteCard, for the cancer set", () => {
     ]);
   });
 
-  it("highlights what it costs by the day and by the other instalments", () => {
-    expect(card.markPrice).toBe(true);
-    // and only this set: the other bundles' cards are drawn as they were
-    expect(quoteCard({ ...input, bundleCode: "CI123_SET", tier: 2 }, TODAY)?.markPrice).toBeUndefined();
-  });
-
   it("shows the surrender values of the base, which the larger tiers mostly pay for", () => {
     expect(section("มูลค่าเงินสดสะสม (หากเวนคืน)")?.rows.length).toBeGreaterThan(0);
   });

@@ -98,8 +98,6 @@ export interface QuoteCard {
   perDay: string | null;
   /** the instalments the headline did not take, smallest first, one to a line */
   others: string[];
-  /** the day rate and the other instalments drawn with a highlighter stroke behind them */
-  markPrice?: boolean;
   /** the titled blocks of figures, in the order they are read */
   sections: CardSection[];
   /** drawn under the figures, for the plans whose cover rule has been read off their sheet */
@@ -190,6 +188,29 @@ function deathSection(db: DeathBenefit): CardSection {
     title: "ครอบครัวได้รับเมื่อเสียชีวิต",
     rows: deathBenefitRows(db).map((r) => ({ label: r.label, amount: money(r.amount) })),
   };
+}
+
+/**
+ * The one figure on a card drawn with a highlighter stroke, beside the price lines every card
+ * marks. Picked per product for what it is bought for, as the owner asked:
+ *
+ * - a life plan: the most the family can receive on death (Life Protect's doubled sum before
+ *   60; the single figure of a plan that never steps down)
+ * - iSmart, whose card has no death block: what the policy is worth when it ends at 80
+ * - iShield: the lump sum on a severe critical illness
+ * - CI 123: the severe stage, which pays the whole sum
+ * - the cancer set: the total after an invasive cancer (see `cancerDeathTotals`)
+ * - the legacy set: the most the family receives on death
+ *
+ * One per card, because a page of yellow is a page with nothing marked.
+ */
+function markRow(section: CardSection, pick: "largest" | "first" | "last"): CardSection {
+  if (!section.rows.length) return section;
+  const amount = (r: CardRow) => Number(r.amount.replace(/,/g, ""));
+  const at = pick === "first" ? 0
+    : pick === "last" ? section.rows.length - 1
+      : section.rows.reduce((best, r, i) => (amount(r) > amount(section.rows[best]) ? i : best), 0);
+  return { ...section, rows: section.rows.map((r, i) => (i === at ? { ...r, mark: true } : r)) };
 }
 
 /** The surrender values still ahead of this insured, plus whatever the schedule ends on. */
@@ -406,10 +427,18 @@ function planCard(input: PlanCardInput, today: Date): QuoteCard | undefined {
 
   const sections: CardSection[] = [];
   const ownBenefits = planBenefitSection(input);
-  if (ownBenefits) sections.push(ownBenefits);
-  if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
+  // a plan's own benefit block leads with what it is bought for; otherwise it is the death benefit
+  if (ownBenefits) sections.push(markRow(ownBenefits, "first"));
+  if (result.deathBenefit) {
+    const death = deathSection(result.deathBenefit);
+    sections.push(ownBenefits ? death : markRow(death, "largest"));
+  }
   const cashRows = cashRowsFor(input.planCode, input.variant, input.sex, input.age, input.sumAssured);
-  if (cashRows.length) sections.push({ title: CASH_TITLE, rows: cashRows });
+  if (cashRows.length) {
+    const cash = { title: CASH_TITLE, rows: cashRows };
+    // a savings plan with no death block of its own (iSmart) is bought for what it ends on
+    sections.push(ownBenefits || result.deathBenefit ? cash : markRow(cash, "last"));
+  }
 
   // the same figures the sections carry, drawn: a cover the plan does not step down from is
   // still a line, and a card with no price still shows what the policy is worth
@@ -675,6 +704,8 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
       title: "ตรวจพบโรคร้ายแรง รับเงินก้อนตามระยะของโรค",
       rows: ci123Stages().map((st) => ({ label: st.label, amount: money(stagePays(st, staged.amount)) })),
     });
+    // the severe stage is last, and it is the one that pays the whole sum
+    sections[sections.length - 1] = markRow(sections[sections.length - 1], "last");
   }
   if (cancer) {
     sections.push({
@@ -691,7 +722,11 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
       ],
     });
   }
-  if (result.deathBenefit) sections.push(deathSection(result.deathBenefit));
+  if (result.deathBenefit) {
+    const death = deathSection(result.deathBenefit);
+    // the legacy set is bought for what the family receives; the other two mark a diagnosis
+    sections.push(!staged && !cancer ? markRow(death, "largest") : death);
+  }
   // the cancer set adds up what the family receives across all three contracts
   if (cancer && result.deathBenefit) {
     const totals = cancerDeathTotals(cancer.amount, result.deathBenefit, input.age);
@@ -730,8 +765,6 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
     premium,
     perDay: perDayLine,
     others,
-    // the owner's pick for the cancer set: what it costs by the day, the half-year and the year
-    ...(cancer ? { markPrice: true } : {}),
     sections,
   };
 }

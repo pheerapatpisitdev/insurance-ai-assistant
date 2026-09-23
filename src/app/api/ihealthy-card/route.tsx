@@ -116,7 +116,8 @@ export async function GET(req: NextRequest) {
           <div style={spacer(H.hairline, RULE)} />
           <div style={spacer(H.afterHairline)} />
 
-          <PlanTable card={card} selected={selected} />
+          {/* the yearly ceiling of the plan quoted is what a health plan is chosen by */}
+          <PlanTable card={card} selected={selected} markLabel="วงเงินค่ารักษาต่อปี" />
         </div>
 
       </div>

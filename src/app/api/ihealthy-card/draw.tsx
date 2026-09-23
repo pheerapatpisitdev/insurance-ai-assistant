@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { CardCell, CardColumn, CardTableRow } from "@/lib/ihealthy-card";
 import { CARD_PALETTE } from "@/lib/card-theme";
+import { highlighterUri } from "@/lib/highlighter";
 
 /**
  * The ink both health pictures are drawn with: the palette, the bands, and the three
@@ -96,9 +97,9 @@ export function Line({ label }: { label: string }) {
  * text is centred inside it. A cell that could grow would move every column to its right.
  */
 export function Cell(
-  { children, width, height, tint, dim, align = "center", weight = 400, size = 20, color = MUTE }: {
+  { children, width, height, tint, dim, mark, align = "center", weight = 400, size = 20, color = MUTE }: {
     children: string; width: number; height: number;
-    tint?: boolean; dim?: boolean; align?: "center" | "flex-start";
+    tint?: boolean; dim?: boolean; mark?: boolean; align?: "center" | "flex-start";
     weight?: number; size?: number; color?: string;
   },
 ) {
@@ -118,16 +119,29 @@ export function Cell(
         ...(dim ? { opacity: 0.85 } : {}),
       }}
     >
-      {children}
+      {mark ? (
+        // the same pen stroke the quote card uses, behind the one figure this card is about
+        <div
+          style={{
+            display: "flex", padding: "2px 10px",
+            backgroundImage: highlighterUri(CARD_PALETTE.highlighter),
+            backgroundSize: "100% 100%", backgroundRepeat: "no-repeat",
+          }}
+        >
+          {children}
+        </div>
+      ) : children}
     </div>
   );
 }
 
 /** One line of the table: a title, then a figure under each plan. */
 export function Row(
-  { label, cells, selected, height = H.row, weight = 400, color = MUTE }: {
+  { label, cells, selected, mark, height = H.row, weight = 400, color = MUTE }: {
     label: string; cells: CardCell[]; selected: number; height?: number;
     weight?: number; color?: string;
+    /** highlight the selected plan's figure on this row */
+    mark?: boolean;
   },
 ) {
   return (
@@ -138,7 +152,7 @@ export function Row(
       {cells.map((c, i) => (
         <Cell
           key={i} width={COL_W} height={height} tint={i === selected} dim={c.dim}
-          weight={weight} color={i === selected ? GOLD_LIT : color}
+          weight={weight} color={i === selected ? GOLD_LIT : color} mark={mark && i === selected}
         >
           {c.text}
         </Cell>
@@ -196,9 +210,11 @@ export const CARD_HEADERS = {
  * the whole of the difference between them, so it is the whole of what is passed in.
  */
 export function PlanTable(
-  { card, selected }: {
+  { card, selected, markLabel }: {
     card: { columns: CardColumn[]; rows: CardTableRow[]; premiumRows: { label: string; cells: CardCell[] }[] };
     selected: number;
+    /** the row whose selected figure gets the highlighter; the quote card marks the yearly ceiling */
+    markLabel?: string;
   },
 ) {
   return (
@@ -230,7 +246,7 @@ export function PlanTable(
 
       {card.rows.map((r) =>
         r.span === undefined ? (
-          <Row key={r.label} label={r.label} cells={r.cells} selected={selected} />
+          <Row key={r.label} label={r.label} cells={r.cells} selected={selected} mark={r.label === markLabel} />
         ) : (
           // One answer across every plan, because it is the same cover whichever is bought
           <div key={r.label} style={{ display: "flex", height: H.row, flexShrink: 0, borderTop: `1px solid ${GRID}` }}>
@@ -254,7 +270,8 @@ export function PlanTable(
         </div>
       )}
       {card.premiumRows.map((r) => (
-        <Row key={r.label} label={r.label} cells={r.cells} selected={selected} weight={600} color={WHITE} />
+        // the chosen plan's price in each instalment, marked as every quote card marks its price lines
+        <Row key={r.label} label={r.label} cells={r.cells} selected={selected} weight={600} color={WHITE} mark={markLabel !== undefined} />
       ))}
       {/* the table's own bottom edge; every row above draws only its top */}
       <div style={spacer(H.hairline, GRID)} />

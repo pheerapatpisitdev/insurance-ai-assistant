@@ -88,7 +88,8 @@ describe("quoteCard", () => {
     expect(section(quoteCard(MAN35, WHILE_CURRENT)!, DEATH)).toEqual({
       title: DEATH,
       rows: [
-        { label: "เสียชีวิตก่อนอายุ 60 ปี", amount: "2,000,000" },
+        // the most the family can receive is the figure the card highlights
+        { label: "เสียชีวิตก่อนอายุ 60 ปี", amount: "2,000,000", mark: true },
         { label: "อายุ 60 ปีขึ้นไป", amount: "1,000,000" },
       ],
     });
@@ -138,7 +139,7 @@ describe("quoteCard", () => {
     )!;
     expect(section(card, "ครอบครัวได้รับเมื่อเสียชีวิต")).toEqual({
       title: "ครอบครัวได้รับเมื่อเสียชีวิต",
-      rows: [{ label: "ทุกช่วงอายุ ถึงอายุ 99", amount: "10,000,000" }],
+      rows: [{ label: "ทุกช่วงอายุ ถึงอายุ 99", amount: "10,000,000", mark: true }],
     });
     // the surrender table was extracted for this plan, so the card carries it and the chart
     expect(section(card, CASH)).toBeDefined();
@@ -158,7 +159,7 @@ describe("quoteCard", () => {
     // the engine finds no death benefit for a plan with no booster, so the card states it
     expect(section(card, "ครอบครัวได้รับเมื่อเสียชีวิต")).toEqual({
       title: "ครอบครัวได้รับเมื่อเสียชีวิต",
-      rows: [{ label: "ตลอด 10 ปีที่คุ้มครอง (ถึงอายุ 45)", amount: "500,000" }],
+      rows: [{ label: "ตลอด 10 ปีที่คุ้มครอง (ถึงอายุ 45)", amount: "500,000", mark: true }],
     });
   });
 });
@@ -208,7 +209,7 @@ describe("the iShield card", () => {
   it("leads with what the contract pays, before what it is worth on surrender", () => {
     expect(card.sections.map((s) => s.title)).toEqual(["รับเงินก้อนเมื่อ", "มูลค่าเงินสดสะสม (หากเวนคืน)"]);
     expect(card.sections[0].rows).toEqual([
-      { label: "ตรวจพบโรคร้ายแรงระยะรุนแรง (50 โรค)", amount: "1,000,000" },
+      { label: "ตรวจพบโรคร้ายแรงระยะรุนแรง (50 โรค)", amount: "1,000,000", mark: true },
       { label: "ตรวจพบระยะเริ่มต้น (20 โรค) ต่อโรค", amount: "250,000" },
       { label: "เสียชีวิต", amount: "1,000,000" },
       { label: "อยู่ครบสัญญาอายุ 85 ปี", amount: "1,000,000" },

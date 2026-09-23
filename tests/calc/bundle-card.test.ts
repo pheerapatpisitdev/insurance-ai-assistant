@@ -92,7 +92,7 @@ describe("quoteCard, for a bundle", () => {
     expect(section(quoteCard(MAN40, WHILE_CURRENT)!, DEATH)).toEqual({
       title: DEATH,
       rows: [
-        { label: "เสียชีวิตก่อนอายุ 60 ปี", amount: "1,150,000" },
+        { label: "เสียชีวิตก่อนอายุ 60 ปี", amount: "1,150,000", mark: true },
         { label: "อายุ 60–74 ปี", amount: "1,000,000" },
         { label: "อายุ 75 ปีขึ้นไป", amount: "150,000" },
       ],

@@ -83,12 +83,12 @@ const spacer = (height: number, background?: string) => (
 ) as const;
 
 /**
- * A line with a highlighter stroke behind it, or the line as it was. The stroke is stretched
+ * A price line with a highlighter stroke behind it — every card marks what the premium comes
+ * to by the day and in the other instalments. The stroke is stretched
  * to the text with room for the nib either side, and pulled left by that much so the words
  * still start where the lines above and below them do.
  */
-function Marked({ on, p, children }: { on?: boolean; p: CardPalette; children: string }) {
-  if (!on) return <>{children}</>;
+function Marked({ p, children }: { p: CardPalette; children: string }) {
   return (
     <div
       style={{
@@ -321,12 +321,12 @@ export async function GET(req: NextRequest) {
         )}
         {card.perDay && (
           <div style={{ ...band(H.perDay), fontSize: 26, color: p.mute }}>
-            <Marked on={card.markPrice} p={p}>{card.perDay}</Marked>
+            <Marked p={p}>{card.perDay}</Marked>
           </div>
         )}
         {card.others.map((line) => (
           <div key={line} style={{ ...band(H.others), fontSize: 25, color: p.mute }}>
-            <Marked on={card.markPrice} p={p}>{line}</Marked>
+            <Marked p={p}>{line}</Marked>
           </div>
         ))}
 
