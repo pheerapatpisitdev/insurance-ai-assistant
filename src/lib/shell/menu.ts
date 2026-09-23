@@ -197,7 +197,7 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
       {
         title: "ผู้ช่วย AI",
         links: [
-          { href: "/admin/ai", label: "ตั้งค่า", icon: "sliders", hue: "#2b4673" },
+          { href: "/admin/ai", label: "API", icon: "sliders", hue: "#2b4673" },
           { href: "/admin/knowledge", label: "สอน AI", icon: "book", hue: "#33458a" },
         ],
       },
