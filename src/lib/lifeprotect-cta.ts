@@ -106,4 +106,57 @@ export function lifeProtectQuoteText(f: LifeProtectQuoteFacts): string {
   return lines.join("\n");
 }
 
+/**
+ * The quote as the chat bot sends it, in the owner's own words (2026-09-23).
+ *
+ * The copy button on the sales page keeps the plainer text above; only the bot talks like
+ * this. The wording is the owner's, kept as written — including the price claim and the tax
+ * line, which were raised with them and kept. Every figure still comes from the rate table.
+ */
+export function lifeProtectChatQuoteText(f: Omit<LifeProtectQuoteFacts, "rider"> & { coverToAge: number }): string {
+  const [headline] = f.modes;
+  const annual = f.modes.find((m) => m.mode === "annual");
+  const baht = (n: number) => n.toLocaleString("en-US");
+  const doubles = !f.death.alreadyPastAge;
+  const lines = [
+    "🛡️ Life Protect",
+    ...(doubles
+      ? [
+        `ทุน ${baht(f.sumAssured)} บาท เพิ่มเป็น ${baht(f.death.sumBefore)} ถึงอายุ ${f.death.beforeAge}`,
+        "ระบบ double ทุน ราคาเบี้ยถูกที่สุดจากประสบการณ์เท่าที่ผู้ขายทำงานมากกว่า 10 ปี",
+        "ยังไม่เห็นมีที่ไหนขาย",
+      ]
+      : [`ทุน ${baht(f.sumAssured)} บาท`]),
+    "",
+    // "จ่ายถึงอายุ 99" reads "ออมถึงอายุ 99", "จ่าย 9 ปี" reads "ออม 9 ปี"
+    `${SEX_WORD[f.sex]} อายุ ${ageWord(f.age)} · อย่างนี้ออม${f.termLabel.replace(/^จ่าย/, "")} คุ้มครอง ${f.coverToAge} ปี`,
+    `💰 เบี้ยประมาณ ${formatBaht(headline.total)} บาท${PER[headline.mode]}` + (annual ? ` (ตกวันละ ${perDayText(annual.total)} บาท)` : ""),
+    "ทั้งนี้เราสามารถเลือกระยะเวลาในการออมได้",
+    "เช่น 9ปี, 19 ปี, 99 ปี",
+    "",
+    ...INSTALMENT_ORDER.flatMap((mode) => {
+      const m = f.modes.find((x) => x.mode === mode);
+      return m ? [`${PAY_MODE_LABEL[m.mode]} ${formatBaht(m.total)} บาท`] : [];
+    }),
+    "",
+    "👪 ครอบครัวได้รับเมื่อเสียชีวิต (ตุยเย่)",
+    ...(doubles
+      ? [
+        `- เสียชีวิตก่อนอายุ ${f.death.beforeAge} ปี ภาระหนี้สินเยอะเลย เพิ่มทุนเป็น ${baht(f.death.sumBefore)} บาท`,
+        `- อายุ ${f.death.beforeAge} ปีขึ้นไปรับทุน ${baht(f.death.sumFrom)} บาท ตามเบี้ยจริง`,
+      ]
+      : deathBenefitRows(f.death).map((r) => `- ${r.label} ${baht(r.amount)} บาท`)),
+  ];
+  if (f.cash.length > 0) {
+    lines.push(
+      "", "🏦 มูลค่าเงินสดสะสม (หากเวนคืน)",
+      "เมื่อเราอายุมากขึ้น มองซ้ายมองขวา ไม่มีเงินที่ไหน ขายคืนโครงการ",
+      "ตามอายุดังนี้รับเงินสดไปเลย",
+      ...f.cash.map((r) => `- อายุ ${r.age} ปี ${baht(r.amount)} บาท`),
+    );
+  }
+  lines.push("", "📌 เบี้ยคงที่ตลอดระยะเวลาชำระ", "เบี้ยมาตรฐาน อาจต่างไปตามผลพิจารณารับประกัน", "ลดหย่อนภาษีได้ 100,000 บาท");
+  return lines.join("\n");
+}
+
 const INSTALMENT_ORDER: PayMode[] = ["monthly", "semi", "annual"];

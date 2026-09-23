@@ -19,7 +19,7 @@ const { answerQuestion } = await import("@/lib/assistant/lifeprotect/answer");
 const { asksValueTable, lifeProtectVariantIn } = await import("@/lib/assistant/lifeprotect/route");
 const { wantsToBuy } = await import("@/lib/assistant/common");
 const { lifeProtectTable } = await import("@/lib/lifeprotect-table");
-const { lifeProtectQuoteText } = await import("@/lib/lifeprotect-cta");
+const { lifeProtectChatQuoteText } = await import("@/lib/lifeprotect-cta");
 const { cashAt, deathBenefitOf, lifeProtectModes, termAt } = await import("@/lib/lifeprotect-quote");
 const { formatBaht } = await import("@/calc/money");
 
@@ -94,13 +94,13 @@ describe("a budget instead of a sum", () => {
 describe("a quote", () => {
   beforeEach(() => { routed = { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 }; });
 
-  it("says exactly what the sales page would say", async () => {
+  it("says the owner's wording, with the rate table's figures", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
     const table = lifeProtectTable();
     const term = termAt(table, "WLF99H");
     // two million reaching the family; before sixty that is a sum assured of one
     const SUM = 1_000_000;
-    const expected = lifeProtectQuoteText({
+    const expected = lifeProtectChatQuoteText({
       sumAssured: SUM,
       termLabel: term.label,
       age: 35,
@@ -108,6 +108,7 @@ describe("a quote", () => {
       modes: lifeProtectModes(table, term, { sex: "M", age: 35, sumAssured: SUM })!,
       death: deathBenefitOf(table, 35, SUM),
       cash: cashAt(term, "M", 35, SUM, table.ageMin),
+      coverToAge: table.coverToAge,
     });
     expect(answer.messages[0].text).toContain(expected);
     expect(answer.priced).toBe(true);
@@ -127,13 +128,12 @@ describe("a quote", () => {
 
   it("offers the two terms it did not quote", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
-    expect(answer.messages[0].text).toContain("จ่าย 9 ปี");
-    expect(answer.messages[0].text).toContain("จ่าย 19 ปี");
+    expect(answer.messages[0].text).toContain("ถ้าอยากดูแบบออม 9 ปี หรือ จ่าย 19 ปี คุ้มครองถึง 99 ปี");
   });
 
   it("quotes the term the customer named", async () => {
     const answer = await answerQuestion(said("จ่าย 19 ปีเท่าไหร่"), { intent: "quote", age: 35, sex: "M", coverWanted: 1_000_000 });
-    expect(answer.messages[0].text).toContain("จ่าย 19 ปี");
+    expect(answer.messages[0].text).toContain("อย่างนี้ออม 19 ปี คุ้มครอง 99 ปี");
     expect(answer.messages[0].card).toContain("variant=WLF19H");
   });
 

@@ -6,7 +6,7 @@ import { baseSumAssuredLimits } from "@/calc/rules";
 import { sumAssuredFromPremium } from "@/calc/sa-from-premium";
 import { formatBaht } from "@/calc/money";
 import { cardPath, valueTablePath } from "@/lib/card-link";
-import { lifeProtectQuoteText } from "@/lib/lifeprotect-cta";
+import { lifeProtectChatQuoteText } from "@/lib/lifeprotect-cta";
 import { lifeProtectFacts } from "@/lib/lifeprotect-facts";
 import { cashAt, deathBenefitOf, lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { lifeProtectTable, type LifeProtectTable } from "@/lib/lifeprotect-table";
@@ -191,7 +191,7 @@ function quoteFor(
 
   const annual = modes.find((m) => m.mode === "annual");
   return {
-    text: lifeProtectQuoteText({
+    text: lifeProtectChatQuoteText({
       sumAssured,
       termLabel: term.label,
       age,
@@ -199,6 +199,7 @@ function quoteFor(
       modes,
       death: deathBenefitOf(table, age, sumAssured),
       cash: cashAt(term, sex, age, sumAssured, table.ageMin),
+      coverToAge: table.coverToAge,
     }),
     card: cardPath({ kind: "plan", planCode: PLAN_CODE, variant, age, sex, sumAssured }),
     ...(annual ? { figures: { age, sex, plan: variant, sumAssured, annual: baht(annual.total), coverWanted } } : {}),
@@ -295,7 +296,7 @@ function answerQuote(slots: Routed): Reply {
 
   // the offer of the other terms belongs once, under the last price on the screen
   const last = messages.map((m) => Boolean(m.card)).lastIndexOf(true);
-  if (last >= 0) messages[last].text += `\n\n${otherTerms(table, variant)}`;
+  if (last >= 0) messages[last].text += `\n${otherTerms(table, variant)}`;
 
   // a couple priced together is two quotations and one record; the last is the one the
   // buttons sit under, so it is the one the lead is opened against
@@ -501,8 +502,10 @@ function hasQuote(slots: Routed): boolean {
 
 /** The terms this quote did not take, offered by name so the customer can ask for one. */
 function otherTerms(table: LifeProtectTable, quoted: string): string {
-  const rest = table.terms.filter((t) => QUOTABLE.has(t.variant) && t.variant !== quoted).map((t) => t.label);
-  return `ถ้าอยากดูแบบ${rest.join(" หรือ ")} หรือตารางมูลค่าทุกปี บอกได้เลยนะครับ เดี๋ยวคิดให้`;
+  // the owner's wording: the first term named as saving ("ออม 9 ปี"), the rest as paying
+  const rest = table.terms.filter((t) => QUOTABLE.has(t.variant) && t.variant !== quoted)
+    .map((t, i) => (i === 0 ? t.label.replace(/^จ่าย/, "ออม") : t.label));
+  return `ถ้าอยากดูแบบ${rest.join(" หรือ ")} คุ้มครองถึง ${table.coverToAge} ปี หรือตารางมูลค่าทุกปี บอกได้เลย เดี๋ยวคิดให้ฮะ`;
 }
 
 /**
