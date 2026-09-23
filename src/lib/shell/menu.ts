@@ -19,11 +19,11 @@ export type MenuIcon =
   | "calc"
   | "spark"
   | "users"
-  | "sliders"
+  | "key"
   | "book"
   | "chat"
   | "megaphone"
-  | "code"
+  | "plug"
   | "shield"
   | "home"
   | "umbrella"
@@ -197,7 +197,7 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
       {
         title: "ผู้ช่วย AI",
         links: [
-          { href: "/admin/ai", label: "API", icon: "sliders", hue: "#2b4673" },
+          { href: "/admin/ai", label: "API", icon: "key", hue: "#2b4673" },
           { href: "/admin/knowledge", label: "สอน AI", icon: "book", hue: "#33458a" },
         ],
       },
@@ -207,7 +207,7 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
           { href: "/admin/messenger", label: "Messenger", icon: "chat", hue: "#2b2e73" },
           // the advertising account sits next to the inbox it fills
           { href: "/admin/ads", label: "ADS", icon: "megaphone", hue: "#352f80" },
-          { href: "/admin/api", label: "MCP", icon: "code", hue: "#3e338a" },
+          { href: "/admin/api", label: "MCP", icon: "plug", hue: "#3e338a" },
         ],
       },
     ];

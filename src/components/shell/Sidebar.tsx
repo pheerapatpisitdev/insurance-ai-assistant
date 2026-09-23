@@ -58,16 +58,18 @@ function Icon({ name }: { name: MenuIcon }) {
       return <svg {...common}><path d="M11 4l1.7 4.3L17 10l-4.3 1.7L11 16l-1.7-4.3L5 10l4.3-1.7zM17.5 14.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" /></svg>;
     case "users":
       return <svg {...common}><path d="M3.5 19.5v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1M12.7 8a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0M16.5 14.7a4 4 0 0 1 4 3.8v1M15.4 5.3a3.2 3.2 0 0 1 0 5.4" /></svg>;
-    case "sliders":
-      return <svg {...common}><path d="M4 8h7M17 8h3M4 16h3M13 16h7M15 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4M9 14a2 2 0 1 1 0 4 2 2 0 0 1 0-4" /></svg>;
+    // the page holds the AI providers' keys
+    case "key":
+      return <svg {...common}><path d="M14.5 13.5a5 5 0 1 0-4-4L4 16v4h4v-2h2v-2h2zM16.5 7.5h.01" /></svg>;
     case "book":
       return <svg {...common}><path d="M4.5 5.5A2 2 0 0 1 6.5 3.5H19v14H6.5a2 2 0 0 0-2 2zM19 17.5v3H6.5M8 7.5h7M8 11h5" /></svg>;
     case "chat":
       return <svg {...common}><path d="M20 11.6c0 3.9-3.6 7-8 7a9 9 0 0 1-2.4-.3L5 20l1.2-3.3A6.6 6.6 0 0 1 4 11.6c0-3.9 3.6-7 8-7s8 3.1 8 7z" /></svg>;
     case "megaphone":
       return <svg {...common}><path d="M4 10.5v3A1.5 1.5 0 0 0 5.5 15H7l9 4.5v-15L7 9H5.5A1.5 1.5 0 0 0 4 10.5zM7 15v4.5M19 10.5a3 3 0 0 1 0 3" /></svg>;
-    case "code":
-      return <svg {...common}><path d="M9 8.5 5 12l4 3.5M15 8.5 19 12l-4 3.5M13.3 5.5l-2.6 13" /></svg>;
+    // MCP is how Claude or ChatGPT plugs into this tool
+    case "plug":
+      return <svg {...common}><path d="M9 3.5v4M15 3.5v4M6.5 7.5h11V11a5.5 5.5 0 0 1-11 0zM12 16.5v4" /></svg>;
     case "shield":
       return <svg {...common}><path d="M12 3.5 19 6v5.5c0 4-3 7.2-7 9-4-1.8-7-5-7-9V6z" /></svg>;
     case "home":
