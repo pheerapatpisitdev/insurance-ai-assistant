@@ -82,6 +82,25 @@ const spacer = (height: number, background?: string) => (
   { display: "flex", height, flexShrink: 0, ...(background ? { background } : {}) }
 ) as const;
 
+/**
+ * A line with a highlighter stroke behind it, or the line as it was. The stroke is stretched
+ * to the text with room for the nib either side, and pulled left by that much so the words
+ * still start where the lines above and below them do.
+ */
+function Marked({ on, p, children }: { on?: boolean; p: CardPalette; children: string }) {
+  if (!on) return <>{children}</>;
+  return (
+    <div
+      style={{
+        display: "flex", padding: "2px 16px", marginLeft: -16, color: p.ink,
+        backgroundImage: highlighterUri(p.highlighter), backgroundSize: "100% 100%", backgroundRepeat: "no-repeat",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function Rows({ title, rows, p }: { title: string; rows: CardRow[]; p: CardPalette }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
@@ -98,11 +117,6 @@ function Rows({ title, rows, p }: { title: string; rows: CardRow[]; p: CardPalet
           <div
             style={{
               display: "flex", fontFamily: "Trirong", fontSize: 34, color: p.ink,
-              // the pen stroke is stretched to the figure, with room for the nib either side
-              ...(r.mark ? {
-                padding: "4px 18px", marginRight: -18,
-                backgroundImage: highlighterUri(p.highlighter), backgroundSize: "100% 100%", backgroundRepeat: "no-repeat",
-              } : {}),
             }}
           >
             {r.amount} บาท
@@ -300,9 +314,15 @@ export async function GET(req: NextRequest) {
             ขอราคาปัจจุบันได้ทางแชท
           </div>
         )}
-        {card.perDay && <div style={{ ...band(H.perDay), fontSize: 26, color: p.mute }}>{card.perDay}</div>}
+        {card.perDay && (
+          <div style={{ ...band(H.perDay), fontSize: 26, color: p.mute }}>
+            <Marked on={card.markPrice} p={p}>{card.perDay}</Marked>
+          </div>
+        )}
         {card.others.map((line) => (
-          <div key={line} style={{ ...band(H.others), fontSize: 25, color: p.mute }}>{line}</div>
+          <div key={line} style={{ ...band(H.others), fontSize: 25, color: p.mute }}>
+            <Marked on={card.markPrice} p={p}>{line}</Marked>
+          </div>
         ))}
 
         {card.sections.map((s) => (

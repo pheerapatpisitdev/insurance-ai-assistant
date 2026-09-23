@@ -82,6 +82,12 @@ describe("quoteCard, for the cancer set", () => {
     ]);
   });
 
+  it("highlights what it costs by the day and by the other instalments", () => {
+    expect(card.markPrice).toBe(true);
+    // and only this set: the other bundles' cards are drawn as they were
+    expect(quoteCard({ ...input, bundleCode: "CI123_SET", tier: 2 }, TODAY)?.markPrice).toBeUndefined();
+  });
+
   it("shows the surrender values of the base, which the larger tiers mostly pay for", () => {
     expect(section("มูลค่าเงินสดสะสม (หากเวนคืน)")?.rows.length).toBeGreaterThan(0);
   });
@@ -91,7 +97,7 @@ describe("quoteCard, for the cancer set", () => {
     // cancer CPR has paid its whole 750,000 as well
     expect(section("รวมทุกสัญญา กรณีเสียชีวิตก่อนอายุ 60 ปี")?.rows).toEqual([
       { label: "เสียชีวิตทั่วไป", amount: "300,000" },
-      { label: "ตรวจพบมะเร็งระยะลุกลาม แล้วเสียชีวิต", amount: "1,050,000", mark: true },
+      { label: "ตรวจพบมะเร็งระยะลุกลาม แล้วเสียชีวิต", amount: "1,050,000" },
     ]);
   });
 
@@ -99,7 +105,7 @@ describe("quoteCard, for the cancer set", () => {
     const older = quoteCard({ ...input, age: 62 }, TODAY)!;
     expect(older.sections.find((s) => s.title === "รวมทุกสัญญา กรณีเสียชีวิต")?.rows).toEqual([
       { label: "เสียชีวิตทั่วไป", amount: "150,000" },
-      { label: "ตรวจพบมะเร็งระยะลุกลาม แล้วเสียชีวิต", amount: "900,000", mark: true },
+      { label: "ตรวจพบมะเร็งระยะลุกลาม แล้วเสียชีวิต", amount: "900,000" },
     ]);
   });
 });

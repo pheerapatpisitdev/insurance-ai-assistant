@@ -147,14 +147,19 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
                 <span className="ml-2 text-base text-[var(--lg-mute)]">บาท {PER_LABEL[headline.mode]}</span>
               </div>
               <div className="mt-2.5 space-y-1 text-sm text-[var(--lg-mute)]">
+                {/* highlighted, as on the card: the owner's pick of what to read after the headline */}
                 <div>
-                  ตกวันละ{" "}
-                  <span className="lg-figure tabular-nums text-[var(--lg-white)]">{perDayText(annual.total)}</span> บาท
+                  <Highlighted>
+                    ตกวันละ{" "}
+                    <span className="lg-figure tabular-nums">{perDayText(annual.total)}</span> บาท
+                  </Highlighted>
                 </div>
                 {others.map((m) => (
                   <div key={m.mode}>
-                    {PAY_MODE_LABEL[m.mode]}{" "}
-                    <span className="lg-figure tabular-nums text-[var(--lg-white)]">{formatBaht(m.total)}</span> บาท
+                    <Highlighted>
+                      {PAY_MODE_LABEL[m.mode]}{" "}
+                      <span className="lg-figure tabular-nums">{formatBaht(m.total)}</span> บาท
+                    </Highlighted>
                   </div>
                 ))}
               </div>
@@ -236,11 +241,7 @@ export function CancerCalculator({ table, sticky = false }: { table: CancerTable
                   {totals.rows.map((r) => (
                     <div key={r.label} className="flex items-baseline justify-between gap-3">
                       <dt className="text-sm text-[var(--lg-mute)]">{r.label}</dt>
-                      <dd className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">
-                        {r.mark
-                          ? <Highlighted>{r.amount.toLocaleString("en-US")} บาท</Highlighted>
-                          : <>{r.amount.toLocaleString("en-US")} บาท</>}
-                      </dd>
+                      <dd className="lg-figure text-lg tabular-nums text-[var(--lg-gold)]">{r.amount.toLocaleString("en-US")} บาท</dd>
                     </div>
                   ))}
                 </dl>

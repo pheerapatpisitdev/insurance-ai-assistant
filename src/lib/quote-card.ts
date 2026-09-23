@@ -39,8 +39,6 @@ export interface CardRow {
   label: string;
   /** already grouped, e.g. "2,000,000" */
   amount: string;
-  /** drawn with a highlighter stroke behind it: the figure the card most wants read */
-  mark?: boolean;
 }
 
 /**
@@ -98,6 +96,8 @@ export interface QuoteCard {
   perDay: string | null;
   /** the instalments the headline did not take, smallest first, one to a line */
   others: string[];
+  /** the day rate and the other instalments drawn with a highlighter stroke behind them */
+  markPrice?: boolean;
   /** the titled blocks of figures, in the order they are read */
   sections: CardSection[];
   /** drawn under the figures, for the plans whose cover rule has been read off their sheet */
@@ -695,7 +695,7 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
     const totals = cancerDeathTotals(cancer.amount, result.deathBenefit, input.age);
     sections.push({
       title: deathTotalsTitle(totals),
-      rows: totals.rows.map((r) => ({ label: r.label, amount: money(r.amount), ...(r.mark ? { mark: true } : {}) })),
+      rows: totals.rows.map((r) => ({ label: r.label, amount: money(r.amount) })),
     });
   }
   if (ci) {
@@ -728,6 +728,8 @@ function bundleCard(input: BundleCardInput, today: Date): QuoteCard | undefined 
     premium,
     perDay: perDayLine,
     others,
+    // the owner's pick for the cancer set: what it costs by the day, the half-year and the year
+    ...(cancer ? { markPrice: true } : {}),
     sections,
   };
 }
