@@ -172,8 +172,9 @@ function Half(
         ))}
       </div>
       {rows.map((r, n) => {
-        // the year the value first covers what has gone in is the one the customer looks for
-        const ground = r.breakEven ? p.glow : n % 2 ? p.stripe : undefined;
+        // the break-even year is marked by the highlighter on its cells, not by a tinted row —
+        // the owner asked for the old tint to go, so the stripe runs through it like any year
+        const ground = n % 2 ? p.stripe : undefined;
         /**
          * One ink for the whole table.
          *
@@ -183,7 +184,7 @@ function Half(
          * their own column, with a nought and a note underneath; they do not also need to be
          * hard to read.
          */
-        const ink = r.breakEven ? p.figure : p.ink;
+        const ink = p.ink;
         /**
          * Built from the columns the row actually carries, so the three shapes of this table
          * — with a payout, with a surrender value, with neither — all draw from one path.

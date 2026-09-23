@@ -163,10 +163,8 @@ export function CashValueTable({ projection, caption, cardPath, planName }: Cash
                * for and what the one skin that had thought about it had already done.
                */
               return (
-                <tr
-                  key={r.policyYear}
-                  className={crossover ? "bg-[var(--lg-gold-glow)] text-[var(--lg-gold-lit)]" : ""}
-                >
+                // no tint on the break-even row any more: its highlighted cells say it, as the owner asked
+                <tr key={r.policyYear}>
                   <td className={`${CELL} text-left text-[var(--lg-mute)]`}>{r.policyYear}</td>
                   {/* the break-even year's age and surrender value, marked as the value-table picture marks them */}
                   <td className={`${CELL} ${RULE} text-left text-[var(--lg-mute)]`}>
