@@ -396,9 +396,15 @@ const CHECK_TIMEOUT_MS = 15_000;
  * thinking before it writes anything, so GPT-5 hit the ceiling before its first character
  * and returned 400 — "max_tokens or model output limit was reached". The check then reported
  * a perfectly good key as a dead provider, which is the one mistake a health check must not
- * make. Sixteen is enough for every provider here to finish, and still costs nothing.
+ * make.
+ *
+ * Sixteen was the next answer, and on 2026-09-23 it was wrong too: OpenAI now refuses a cap
+ * that small outright, before the model writes anything. Probed with the stored key: gpt-5 and
+ * gpt-5-mini at 16 → 400 with that same message; at 64 → "pong" in 10 and 19 tokens, none of
+ * them reasoning. So the key was fine and the check said "หยุดทำงาน". Sixty-four finishes on
+ * every provider here and still costs a fraction of a satang.
  */
-const CHECK_MAX_TOKENS = 16;
+const CHECK_MAX_TOKENS = 64;
 
 /**
  * Anything in an error that looks like a credential, taken out before it reaches a screen.
