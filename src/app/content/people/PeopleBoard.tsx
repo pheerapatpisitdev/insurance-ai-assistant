@@ -3,6 +3,7 @@ import { useState } from "react";
 import { MAX_PHOTOS } from "@/lib/content/people";
 import type { Person } from "@/lib/content/people-store";
 import { ask } from "../ask";
+import { PhotoDrop } from "./PhotoDrop";
 
 /** the long side a reference photo is sent at: plenty for a face, and four fit one request */
 const LONG_SIDE = 1024;
@@ -128,13 +129,13 @@ export function PeopleBoard({ initial }: { initial: Person[] }) {
                 })}
               </div>
             </div>
-            <label className="block">
+            <div>
               <span className="mb-1 block text-sm font-medium">เพิ่มรูป (รวมแล้วไม่เกิน {MAX_PHOTOS} รูป)</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setAdding([...(e.target.files ?? [])])} className="block text-sm" />
+              <PhotoDrop files={adding} onChange={setAdding} limit={MAX_PHOTOS - (p.photos.length - dropping.length)} />
               <span className="mt-1 block text-xs text-[var(--ct-mute)]">
                 หลังบันทึกจะมี {p.photos.length - dropping.length + adding.length} รูป
               </span>
-            </label>
+            </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => saveEdit(p)} disabled={busy} className="rounded-lg bg-[var(--ct-solid)] px-4 py-2 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
                 {busy ? "กำลังบันทึก…" : "บันทึก"}
@@ -168,11 +169,10 @@ export function PeopleBoard({ initial }: { initial: Person[] }) {
           <span className="mb-1 block text-sm font-medium">ชื่อ</span>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="ตัวผม" className={field} />
         </label>
-        <label className="block">
+        <div>
           <span className="mb-1 block text-sm font-medium">รูปต้นแบบ (1–{MAX_PHOTOS} รูป)</span>
-          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setFiles([...(e.target.files ?? [])].slice(0, MAX_PHOTOS))} className="block text-sm" />
-          {files.length > 0 && <span className="mt-1 block text-xs text-[var(--ct-mute)]">เลือกแล้ว {files.length} รูป</span>}
-        </label>
+          <PhotoDrop files={files} onChange={setFiles} limit={MAX_PHOTOS} />
+        </div>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
           <span>ได้รับความยินยอมจากเจ้าของรูป ให้ใช้ในโฆษณาและให้ AI ดัดแปลงได้</span>
