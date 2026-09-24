@@ -322,3 +322,16 @@ export async function listPublished(from: Date, to: Date): Promise<ContentItem[]
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, unknown>[]).map(toItem);
 }
+
+/**
+ * Posts that could go on the calendar: never sent, taken back, or refused — newest first.
+ * รอตรวจ and ใช้จริง both, since posting is itself the decision to use a piece.
+ */
+export async function listWaiting(limit = 50): Promise<ContentItem[]> {
+  const { data, error } = await supabaseAdmin().from("ins_content").select(COLUMNS)
+    .eq("format", "post").in("status", ["draft", "used"])
+    .or("publish_state.is.null,publish_state.eq.cancelled,publish_state.eq.failed")
+    .order("created_at", { ascending: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map(toItem);
+}

@@ -2,7 +2,7 @@ import "./theme.css";
 import { AppShell } from "@/components/shell/AppShell";
 import { CONTENT_PRODUCTS } from "@/lib/content/products";
 import { ANGLES, LENGTHS } from "@/lib/content/prompt";
-import { listContent, listHookTemplates } from "@/lib/content/store";
+import { getContent, listContent, listHookTemplates } from "@/lib/content/store";
 import { contentSpend, contentWorkbench } from "./actions";
 import { ContentStudio } from "./ContentStudio";
 
@@ -15,14 +15,16 @@ export const metadata = {
   description: "สร้างโพสต์เฟซบุ๊กและสคริปต์วิดีโอจากข้อมูลจริงของแบบประกัน",
 };
 
-export default async function ContentPage({ searchParams }: { searchParams: Promise<{ hook?: string }> }) {
-  const { hook } = await searchParams;
+export default async function ContentPage({ searchParams }: { searchParams: Promise<{ hook?: string; open?: string }> }) {
+  const { hook, open } = await searchParams;
   const [initial, used, hooks, spend] = await Promise.all([
     contentWorkbench({ status: "draft" }),
     listContent({ status: "used" }, 20).catch(() => []),
     listHookTemplates().catch(() => []),
     contentSpend(),
   ]);
+  // the calendar's เปิดแก้ไข: the piece opens in the editor on arrival
+  const opened = open && /^[0-9a-f-]{36}$/.test(open) ? await getContent(open).catch(() => null) : null;
   return (
     <div className="content-page">
       <AppShell>
@@ -36,6 +38,7 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
             initial={initial}
             initialUsed={used}
             spend={spend}
+            initialOpen={opened}
           />
         </div>
       </AppShell>

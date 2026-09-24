@@ -1,0 +1,137 @@
+import "../theme.css";
+import Link from "next/link";
+import { AppShell } from "@/components/shell/AppShell";
+import {
+  dayKey, dayStart, monthGridDays, nextDayKey, parseMonth, shiftMonth, thaiMonthYear, timeOfDay, todayKey,
+  countByPage, DROP_TIME, type BoardItem,
+} from "@/lib/content/calendar";
+import { defaultPoster, posterUrl } from "@/lib/content/poster";
+import { contentProduct } from "@/lib/content/products";
+import { publishView } from "@/lib/content/publish-label";
+import { listPublished, listWaiting, type ContentItem } from "@/lib/content/store";
+import { publishSetup } from "../publish";
+import { CalendarBoard, MonthList } from "./CalendarBoard";
+
+export const dynamic = "force-dynamic";
+
+export const metadata = {
+  title: "ปฏิทินโพสต์ | advisortool",
+  description: "โพสต์ที่ลงเพจแล้วและที่ตั้งเวลาไว้ รายเดือน ลากชิ้นงานลงวันเพื่อตั้งเวลา",
+};
+
+/**
+ * The post calendar, laid out as the owner's Maryjane project lays out its /calendar: a month
+ * Monday to Sunday, a list view, a chip per Page, and a rail of pieces waiting for a day that
+ * can be dragged onto one. Facebook holds every schedule, so a drop is a real schedule sent
+ * through the same checks as the editor's ลงเพจ box.
+ */
+
+function toBoard(item: ContentItem, pageName: (id: string | null) => string): BoardItem {
+  const planName = contentProduct(item.planHref)?.name ?? item.planHref;
+  const view = publishView(item.publish);
+  const at = item.publish?.at ? new Date(item.publish.at) : null;
+  const placed = (view.kind === "scheduled" || view.kind === "published") && at;
+  const status: BoardItem["status"] = placed ? view.kind as "scheduled" | "published" : view.kind === "posting" ? "posting" : view.kind === "failed" ? "failed" : "waiting";
+  const blocked = (item.flags.policy ?? []).find((f) => f.severity === "block");
+  return {
+    id: item.id,
+    pageId: item.publish?.pageId ?? null,
+    pageName: pageName(item.publish?.pageId ?? null),
+    planHref: item.planHref,
+    planName,
+    hook: item.output.hooks[0] ?? "",
+    body: item.output.body,
+    imageUrl: posterUrl(item.output.poster ?? defaultPoster(item.output.hooks[0] ?? "", planName)),
+    status,
+    day: placed ? dayKey(at) : null,
+    time: placed ? timeOfDay(at) : DROP_TIME,
+    postId: item.publish?.postId ?? null,
+    unreviewed: item.status === "draft",
+    blocked: blocked?.message ?? null,
+  };
+}
+
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ y?: string; m?: string; page?: string; view?: string }> }) {
+  const params = await searchParams;
+  const today = todayKey();
+  const [ty, tm] = today.split("-").map(Number);
+  const { year, month } = parseMonth(params.y, params.m, { year: ty, month: tm });
+  const listView = params.view === "list";
+
+  const cells = monthGridDays(year, month);
+  // only the days the grid shows, borrowed edges included
+  const from = dayStart(cells[0].day);
+  const to = dayStart(nextDayKey(cells[cells.length - 1].day));
+
+  const [setup, placed, waiting] = await Promise.all([
+    publishSetup(),
+    listPublished(from, to).catch(() => []),
+    listWaiting().catch(() => []),
+  ]);
+  const pageFilter = setup.pages.some((p) => p.pageId === params.page) ? params.page! : "";
+  const pageName = (id: string | null) => setup.pages.find((p) => p.pageId === id)?.pageName ?? "";
+
+  const all = [...placed, ...waiting].map((i) => toBoard(i, pageName));
+  const counts = countByPage(all);
+  // the filter hides other Pages' posts; the waiting rail belongs to no Page yet and stays
+  const items = pageFilter ? all.filter((i) => !i.day || i.pageId === pageFilter) : all;
+
+  const query = (over: Record<string, string | undefined> = {}) => {
+    const q = new URLSearchParams({ y: String(year), m: String(month) });
+    if (pageFilter) q.set("page", pageFilter);
+    if (listView) q.set("view", "list");
+    for (const [k, v] of Object.entries(over)) {
+      if (v === undefined) q.delete(k);
+      else q.set(k, v);
+    }
+    return `/content/calendar?${q.toString()}`;
+  };
+  const prev = shiftMonth(year, month, -1);
+  const next = shiftMonth(year, month, 1);
+  const chip = (on: boolean) =>
+    `inline-flex min-h-10 items-center rounded-full border px-4 text-sm ${on ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]" : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-mute)]"}`;
+  const toggle = (on: boolean) => `inline-flex min-h-9 items-center rounded-full px-4 text-sm ${on ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)]"}`;
+  const navBtn = "inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 text-sm";
+
+  return (
+    <div className="content-page">
+      <AppShell>
+        <div className="mx-auto max-w-[1400px] space-y-4 px-4 pb-10 pt-16 lg:pt-8">
+          <Link href="/content" className="text-sm text-[var(--ct-mute)] hover:text-[var(--ct-accent)]">← กลับไปสร้างคอนเทนต์</Link>
+          <h1 className="text-xl font-semibold">ปฏิทินโพสต์</h1>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Link href={query({ y: String(ty), m: String(tm) })} className={navBtn}>วันนี้</Link>
+              <Link href={query({ y: String(prev.year), m: String(prev.month) })} aria-label="เดือนก่อนหน้า" className={navBtn}>‹</Link>
+              <h2 className="min-w-40 text-center text-lg font-semibold">{thaiMonthYear(year, month)}</h2>
+              <Link href={query({ y: String(next.year), m: String(next.month) })} aria-label="เดือนถัดไป" className={navBtn}>›</Link>
+            </div>
+            <div className="flex items-center gap-1 rounded-full border border-[var(--ct-line)] bg-[var(--ct-panel)] p-1">
+              <Link href={query({ view: undefined })} className={toggle(!listView)}>เดือน</Link>
+              <Link href={query({ view: "list" })} className={toggle(listView)}>รายการ</Link>
+            </div>
+          </div>
+
+          {setup.pages.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-[var(--ct-mute)]">เพจ</span>
+              <Link href={query({ page: undefined })} className={chip(!pageFilter)}>ทุกเพจ · {all.filter((i) => i.day).length}</Link>
+              {setup.pages.map((p) => (
+                <Link key={p.pageId} href={query({ page: p.pageId })} className={chip(pageFilter === p.pageId)}>
+                  {p.pageName} · {counts.get(p.pageId) ?? 0}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {listView ? (
+            <MonthList items={items.filter((i) => i.day && cells.some((c) => c.day === i.day && c.inMonth))} />
+          ) : (
+            <CalendarBoard cells={cells} items={items} today={today} setup={setup} defaultPage={pageFilter} />
+          )}
+        </div>
+      </AppShell>
+    </div>
+  );
+}

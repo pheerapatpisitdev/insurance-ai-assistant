@@ -1,74 +1,201 @@
 /**
- * The content calendar's week, worked out in Thailand's time.
+ * The content calendar, worked out in Thailand's time — ported from the owner's Maryjane
+ * project (src/lib/month-grid.ts, thai-date.ts, schedule-time.ts, calendar-board.ts).
  *
- * Thailand keeps UTC+7 all year, so a day there is a fixed seven hours off UTC and a week can
- * be cut without a time-zone library. The week runs Monday to Sunday, the way a Thai wall
- * calendar and Meta Business Suite's planner both lay it out.
+ * Thailand keeps UTC+7 all year, so a day there is a fixed seven hours off UTC and nothing
+ * here needs a time-zone library. Day keys are built from UTC arithmetic and never from
+ * toISOString() of a local date, which in a +7 browser lands on the day before.
+ *
+ * Everything is pure, so the board's rules are tested without a browser or a database.
  */
 
 const BKK_MS = 7 * 60 * 60_000;
-const DAY_MS = 24 * 60 * 60_000;
+const DAY_MS = 86_400_000;
+const BUDDHIST_OFFSET = 543;
 
-const DAY_NAME = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
-const MONTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const pad = (n: number) => String(n).padStart(2, "0");
+const keyOfUtcMs = (ms: number) => {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+};
 
-export interface Day {
-  /** "2026-09-25", Thailand's date */
-  key: string;
-  /** "พฤ. 25 ก.ย." */
-  label: string;
-  from: Date;
-  to: Date;
-}
+/* -------------------------------- time -------------------------------- */
 
-/** Midnight in Thailand at the Monday on or before `d`. */
-export function weekStart(d: Date): Date {
-  const local = new Date(d.getTime() + BKK_MS);
-  const back = (local.getUTCDay() + 6) % 7; // Monday → 0
-  const midnight = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() - back);
-  return new Date(midnight - BKK_MS);
-}
-
-export function weekDays(start: Date): Day[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const from = new Date(start.getTime() + i * DAY_MS);
-    const local = new Date(from.getTime() + BKK_MS);
-    return {
-      key: local.toISOString().slice(0, 10),
-      label: `${DAY_NAME[local.getUTCDay()]} ${local.getUTCDate()} ${MONTH[local.getUTCMonth()]}`,
-      from,
-      to: new Date(from.getTime() + DAY_MS),
-    };
-  });
-}
-
-/** "25 ก.ย. – 1 ต.ค." for the heading */
-export function weekLabel(start: Date): string {
-  const days = weekDays(start);
-  const cut = (d: Day) => d.label.split(" ").slice(1).join(" ");
-  return `${cut(days[0])} – ${cut(days[6])}`;
-}
-
-/** Thailand's date of a moment, as a Day key. */
+/** Thailand's date of a moment, "2026-09-25". */
 export function dayKey(d: Date): string {
-  return new Date(d.getTime() + BKK_MS).toISOString().slice(0, 10);
+  return keyOfUtcMs(d.getTime() + BKK_MS);
 }
 
-interface Dated {
-  id: string;
-  planHref: string;
-  at: Date;
+export function todayKey(now: Date = new Date()): string {
+  return dayKey(now);
+}
+
+/** Thailand's clock time of a moment, "19:30". */
+export function timeOfDay(d: Date): string {
+  const t = new Date(d.getTime() + BKK_MS);
+  return `${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}`;
+}
+
+/** The moment a Thai day and clock time name: ("2026-09-25", "12:00") → 05:00Z. */
+export function bangkokAt(day: string, time: string): Date {
+  const [y, m, d] = day.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, h, min) - BKK_MS);
+}
+
+/** Midnight of a Thai day, as a moment. */
+export function dayStart(day: string): Date {
+  return bangkokAt(day, "00:00");
+}
+
+export function nextDayKey(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return keyOfUtcMs(Date.UTC(y, m - 1, d) + DAY_MS);
+}
+
+/* -------------------------------- month -------------------------------- */
+
+export interface MonthCell {
+  day: string;
+  /** false: a day borrowed from the month either side, drawn faintly but still droppable */
+  inMonth: boolean;
 }
 
 /**
- * The pieces that follow one about the same plan, in time order — the same product twice in a
- * row reads to a follower as the Page having nothing else to say.
+ * Every cell of a month's grid, Monday first. The lead and tail borrow real days from the
+ * neighbouring months instead of blanks, so a post can be dragged across a month's edge.
  */
-export function repeats(list: Dated[]): Set<string> {
-  const sorted = [...list].sort((a, b) => a.at.getTime() - b.at.getTime());
+export function monthGridDays(year: number, month: number): MonthCell[] {
+  const firstMs = Date.UTC(year, month - 1, 1);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const lead = (new Date(firstMs).getUTCDay() + 6) % 7;
+  const cells: MonthCell[] = [];
+  for (let i = lead; i > 0; i--) cells.push({ day: keyOfUtcMs(firstMs - i * DAY_MS), inMonth: false });
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: `${year}-${pad(month)}-${pad(d)}`, inMonth: true });
+  const lastMs = Date.UTC(year, month - 1, daysInMonth);
+  for (let i = 1; cells.length % 7 !== 0; i++) cells.push({ day: keyOfUtcMs(lastMs + i * DAY_MS), inMonth: false });
+  return cells;
+}
+
+export function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
+  const index = year * 12 + (month - 1) + delta;
+  return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+}
+
+/** A month from the URL, or the fallback when it is not a sensible one — the URL can say anything. */
+export function parseMonth(rawYear: string | undefined, rawMonth: string | undefined, fallback: { year: number; month: number }) {
+  const year = Number(rawYear);
+  const month = Number(rawMonth);
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) return fallback;
+  if (!Number.isInteger(month) || month < 1 || month > 12) return fallback;
+  return { year, month };
+}
+
+const THAI_MONTHS = ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+const THAI_MONTHS_SHORT = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const THAI_WEEKDAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+/** (2026, 9) → "กันยายน 2569" — Thai calendars count Buddhist years */
+export function thaiMonthYear(year: number, month: number): string {
+  return `${THAI_MONTHS[month] ?? ""} ${year + BUDDHIST_OFFSET}`;
+}
+
+/** "2026-09-25" → "ศุกร์ที่ 25 ก.ย. 2569" */
+export function thaiDayLabel(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return `${THAI_WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}ที่ ${d} ${THAI_MONTHS_SHORT[m]} ${y + BUDDHIST_OFFSET}`;
+}
+
+/* -------------------------------- board -------------------------------- */
+
+/** a piece's place on the board, as the calendar sees it */
+export type BoardStatus = "waiting" | "posting" | "scheduled" | "published" | "failed";
+
+export interface BoardItem {
+  id: string;
+  pageId: string | null;
+  pageName: string;
+  planHref: string;
+  planName: string;
+  hook: string;
+  body: string;
+  /** the poster, drawn by the poster route */
+  imageUrl: string;
+  status: BoardStatus;
+  /** Thai day key; null while it waits in the รอตั้งเวลา rail */
+  day: string | null;
+  /** "HH:MM"; for a waiting piece, the time a drop will give it */
+  time: string;
+  postId: string | null;
+  /** the piece is still รอตรวจ — nobody has looked it over */
+  unreviewed: boolean;
+  /** why it may not go up at all: a Facebook-rule finding marked block */
+  blocked: string | null;
+}
+
+/** where a dropped waiting piece lands on its day — the owner's pick, 2026-09-25 */
+export const DROP_TIME = "12:00";
+
+/** Posted or on its way is fixed; waiting, held and refused can still be moved. */
+export function canDrag(item: BoardItem): boolean {
+  return item.status === "waiting" || item.status === "scheduled" || item.status === "failed";
+}
+
+/** What the browser can decide alone; whether the time is still ahead is the server's to say. */
+export function canDropOnDay(item: BoardItem, day: string, today: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  if (!canDrag(item) || item.blocked) return false;
+  if (day < today) return false;
+  return day !== item.day;
+}
+
+/** Why a drop is refused, in the owner's words; null when it is not. */
+export function dropRejection(item: BoardItem, day: string, today: string): string | null {
+  if (!canDrag(item)) return "ชิ้นนี้โพสต์ไปแล้ว ย้ายวันไม่ได้";
+  if (item.blocked) return `ชิ้นนี้ผิดกฎโฆษณาของ Facebook (${item.blocked}) — แก้ก่อนแล้วค่อยตั้งเวลา`;
+  if (day < today) return "ย้ายไปวันที่ผ่านมาแล้วไม่ได้";
+  return null;
+}
+
+/** Posts into their days, by time within a day. */
+export function groupByDay(items: BoardItem[]): Map<string, BoardItem[]> {
+  const byDay = new Map<string, BoardItem[]>();
+  for (const item of items) {
+    if (!item.day) continue;
+    const list = byDay.get(item.day);
+    if (list) list.push(item);
+    else byDay.set(item.day, [item]);
+  }
+  for (const list of byDay.values()) list.sort((a, b) => a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
+  return byDay;
+}
+
+export function unscheduled(items: BoardItem[]): BoardItem[] {
+  return items.filter((i) => i.day === null);
+}
+
+/** posts on the board per Page, for the filter chips */
+export function countByPage(items: BoardItem[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    if (!item.day || !item.pageId) continue;
+    counts.set(item.pageId, (counts.get(item.pageId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * Posts that follow one about the same plan on the same Page — a follower reads the same
+ * product twice running as the Page having nothing else to say.
+ */
+export function repeats(items: BoardItem[]): Set<string> {
+  const placed = items.filter((i) => i.day).sort((a, b) => `${a.day} ${a.time}`.localeCompare(`${b.day} ${b.time}`));
   const out = new Set<string>();
-  for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].planHref === sorted[i - 1].planHref) out.add(sorted[i].id);
+  const last = new Map<string, string>();
+  for (const i of placed) {
+    const page = i.pageId ?? "";
+    if (last.get(page) === i.planHref) out.add(i.id);
+    last.set(page, i.planHref);
   }
   return out;
 }
