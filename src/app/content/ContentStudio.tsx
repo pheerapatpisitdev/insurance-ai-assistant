@@ -127,7 +127,25 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   useEffect(() => { view.current = { tab, plan, editing, items, used }; });
   const pieces = useRef<HTMLElement>(null);
 
+  /**
+   * The editor has the middle column to itself: it opened inline among the cards, and the
+   * owner saw pieces they were not editing above and below it. Opening scrolls to the top of
+   * the column; leaving scrolls back to the card that was open, so the list is where it was.
+   */
+  const returnTo = useRef<string | null>(null);
+  function openEditor(id: string) {
+    returnTo.current = id;
+    setEditing(id);
+  }
+  useEffect(() => {
+    if (editing) { pieces.current?.scrollIntoView({ block: "start" }); return; }
+    if (returnTo.current) document.getElementById(`piece-${returnTo.current}`)?.scrollIntoView({ block: "center" });
+    returnTo.current = null;
+  }, [editing]);
+
   const nameOf = (h: string) => products.find((p) => p.href === h)?.name ?? h;
+  // gone from the list — deleted, moved to the other tab, filtered out — and the list is back
+  const editingItem = editing ? items.find((x) => x.id === editing) : undefined;
   const chosenHook = hooks.find((h) => h.id === hookId) ?? null;
 
   async function reload(nextTab = tab, nextPlan = plan) {
@@ -178,6 +196,8 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
         if (now.tab === "draft" && !now.plan) {
           const fresh = new Set(res.items.map((i) => i.id));
           setItems((list) => [...res.items, ...list.filter((x) => !fresh.has(x.id))]);
+          // the list is out of sight behind the editor
+          setNotice(`สร้างเสร็จ ${res.items.length} ชิ้น รออยู่ในรายการ กด “กลับไปรายการ” เพื่อดู`);
         } else {
           setNotice(`สร้างเสร็จ ${res.items.length} ชิ้น อยู่ในแท็บ “รอตรวจ”`);
         }
@@ -291,8 +311,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
       setPlan("");
       await reload("used", "").catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"));
     }
-    setEditing(item.id);
-    pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    openEditor(item.id);
   }
 
   const pieceCount = format === "ad" ? adAngles * adTones : count;
@@ -482,6 +501,27 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
 
         {/* ---------------------------------- pieces ---------------------------------- */}
         <section ref={pieces} className="@container min-w-0 scroll-mt-4 space-y-3 lg:row-span-2 xl:row-span-1">
+          {editingItem ? (
+            <>
+              {pending && (
+                <p role="status" className="flex items-center gap-2 text-sm font-medium text-[var(--ct-accent)]">
+                  <span className="size-2.5 rounded-full bg-[var(--ct-accent)] motion-safe:animate-pulse" />
+                  กำลังสร้าง {making} {makingFormat === "ad" ? "แบบ" : "ชิ้น"} อยู่เบื้องหลัง — แก้ชิ้นนี้ต่อได้เลย
+                </p>
+              )}
+              <PieceEditor
+                key={editingItem.id}
+                item={editingItem}
+                drawing={drawing.has(editingItem.id)}
+                productName={nameOf(editingItem.planHref)}
+                onSaved={saved}
+                onDraw={(request, paintWith) => drawOne(editingItem.id, request, paintWith)}
+                onStatus={(s) => changeStatus(editingItem, s)}
+                onClose={() => setEditing(null)}
+              />
+            </>
+          ) : (
+          <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div role="tablist" aria-label="สถานะชิ้นงาน" className="inline-flex items-center gap-1 rounded-full border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-1">
               {TABS.map((t) => (
@@ -525,47 +565,37 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             </p>
           ) : (
             <div className="grid gap-4 @xl:grid-cols-2">
-              {items.map((item, i) =>
-                editing === item.id ? (
-                  <div key={item.id} className="@xl:col-span-2">
-                    <PieceEditor
-                      key={item.id}
-                      item={item}
-                      drawing={drawing.has(item.id)}
-                      productName={nameOf(item.planHref)}
-                      onSaved={saved}
-                      onDraw={(request, paintWith) => drawOne(item.id, request, paintWith)}
-                      onStatus={(s) => changeStatus(item, s)}
-                      onClose={() => setEditing(null)}
-                    />
-                  </div>
-                ) : item.format === "script" ? (
+              {items.map((item, i) => (
+                // the id is where leaving the editor scrolls back to; a grid of one so the card still fills its row
+                <div key={item.id} id={`piece-${item.id}`} className="grid scroll-mt-4">
+                {item.format === "script" ? (
                   <ScriptCard
-                    key={item.id}
                     item={item}
                     index={i}
                     busy={busy.has(item.id)}
-                    onEdit={() => setEditing(item.id)}
+                    onEdit={() => openEditor(item.id)}
                     onStatus={(s) => changeStatus(item, s)}
                     onDelete={() => remove(item)}
                     onCopy={() => copy(item)}
                   />
                 ) : (
                   <PieceCard
-                    key={item.id}
                     item={item}
                     index={i}
                     productName={nameOf(item.planHref)}
                     busy={busy.has(item.id)}
                     drawing={drawing.has(item.id)}
-                    onEdit={() => setEditing(item.id)}
+                    onEdit={() => openEditor(item.id)}
                     onStatus={(s) => changeStatus(item, s)}
                     onDelete={() => remove(item)}
                     onCopy={() => copy(item)}
                   />
-                ),
-              )}
+                )}
+                </div>
+              ))}
             </div>
+          )}
+          </>
           )}
           {copied && <p role="status" className="text-sm text-[var(--ct-mute)]">คัดลอกแล้ว ✓</p>}
         </section>

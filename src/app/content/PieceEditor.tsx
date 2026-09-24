@@ -130,6 +130,12 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
     setNote(copied ? label : "คัดลอกไม่ได้ ลองเลือกข้อความแล้วคัดลอกเองนะครับ");
   }
 
+  /** back to the list; unsaved words are asked about, not dropped */
+  function leave() {
+    if (dirty && !window.confirm("ยังไม่ได้บันทึกการแก้ไข ออกโดยไม่บันทึกไหม?")) return;
+    onClose();
+  }
+
   const flags = item.flags;
   const policy = flags.policy ?? [];
   const openFixes = (fixes ?? []).filter((f) => !applied.has(f.find));
@@ -138,12 +144,12 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
 
   return (
     <section className="rounded-xl border-2 border-[var(--ct-accent)] bg-[var(--ct-panel)] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 className="text-base font-semibold">{productName} · {FORMAT_LABEL[item.format]}</h2>
-          {item.output.angle && <p className="mt-0.5 text-xs text-[var(--ct-mute)]">มุม: {item.output.angle}</p>}
-        </div>
-        <button type="button" onClick={onClose} className="rounded-lg border border-[var(--ct-line)] px-3 py-1 text-sm">ปิด</button>
+      <button type="button" onClick={leave} className="-ml-1 rounded-lg px-1 py-1 text-sm font-medium text-[var(--ct-accent)] hover:bg-[var(--ct-soft)]">
+        ← กลับไปรายการ
+      </button>
+      <div className="mt-2">
+        <h2 className="text-base font-semibold">{productName} · {FORMAT_LABEL[item.format]}</h2>
+        {item.output.angle && <p className="mt-0.5 text-xs text-[var(--ct-mute)]">มุม: {item.output.angle}</p>}
       </div>
 
       {item.format !== "script" && <div className="mt-4">
@@ -309,6 +315,7 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
           </button>
         )}
         {note && <span role="status" className="text-sm text-[var(--ct-mute)]">{note}</span>}
+        <button type="button" onClick={leave} className="ml-auto rounded-lg border border-[var(--ct-line)] px-4 py-2 text-sm">กลับไปรายการ</button>
       </div>
 
       <p className="mt-3 text-xs text-[var(--ct-mute)]">{item.model} · ฿{item.costThb.toFixed(2)}</p>
