@@ -45,6 +45,20 @@ interface Turn {
   cards?: string[];
   /** what to offer next, as buttons, when the answer leads somewhere in particular */
   guide?: GuideItem[];
+  /** the question that got no answer, so "ลองอีกครั้ง" can ask it again without retyping */
+  retry?: string;
+}
+
+/**
+ * The conversation as the model should see it: without the questions that got no answer.
+ *
+ * An apology for being busy is not something anybody said about insurance, and a retried
+ * question left in twice reads to the model as the customer asking the same thing again.
+ */
+function historyOf(turns: Turn[]): ChatMessage[] {
+  return turns
+    .filter((t, i) => !t.retry && !(t.role === "user" && turns[i + 1]?.retry))
+    .map((t) => ({ role: t.role, content: t.text }));
 }
 
 /**
@@ -85,7 +99,9 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
   /** whether the guide's other groups are open; closed until asked for */
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  /** the scrolling part of the chat box, and the question the newest answer replies to */
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const askedRef = useRef<HTMLDivElement>(null);
 
   /**
    * Start again, and mean it.
@@ -104,9 +120,28 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
     setMore(false);
   }
 
+  /**
+   * Where the box scrolls to.
+   *
+   * A question just sent goes to the bottom, so it is seen landing with the dots under it. An
+   * answer goes to its own beginning — to the question it answers, then the answer's first
+   * line. Scrolling to the end of an answer used to land a quotation somewhere in its middle:
+   * the price is at the top, the card at the bottom loads after the scroll has been measured,
+   * and the reader arrived between the two with neither on the screen.
+   */
   useEffect(() => {
-    if (turns.length) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns]);
+    const box = scrollRef.current;
+    const last = turns[turns.length - 1];
+    if (!box || !last) return;
+    if (last.role === "user") {
+      box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
+      return;
+    }
+    const asked = askedRef.current;
+    if (!asked) return;
+    const top = box.scrollTop + asked.getBoundingClientRect().top - box.getBoundingClientRect().top - 8;
+    box.scrollTo({ top, behavior: "smooth" });
+  }, [turns, busy]);
 
   async function ask(question: string) {
     const asked = question.trim();
@@ -115,7 +150,7 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
     setBusy(true);
     // the model sees the conversation as it was before this question, which is what the
     // action expects; the screen gets the question straight away so nothing looks dropped
-    const history: ChatMessage[] = turns.map((t) => ({ role: t.role, content: t.text }));
+    const history = historyOf(turns);
     setTurns((t) => [...t, { role: "user", text: asked }]);
     try {
       const reply = await askCopilot(asked, history, slots);
@@ -123,13 +158,20 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
       setTurns((t) => [...t, {
         role: "assistant", text: reply.text, model: reply.model,
         priced: reply.priced, cards: reply.cards, guide: reply.guide,
+        ...(reply.failed ? { retry: asked } : {}),
       }]);
     } catch {
-      setTurns((t) => [...t, { role: "assistant", text: "ขออภัยครับ ระบบขัดข้อง ลองใหม่อีกครั้งนะครับ" }]);
+      setTurns((t) => [...t, {
+        role: "assistant", text: "ขออภัยครับ ระบบขัดข้อง ลองใหม่อีกครั้งนะครับ", retry: asked,
+      }]);
     } finally {
       setBusy(false);
     }
   }
+
+  const talking = turns.length > 0;
+  /** the newest question that has an answer under it, which is where an answer scrolls to */
+  const answered = turns.length >= 2 && turns[turns.length - 1].role === "assistant" ? turns.length - 2 : -1;
 
   return (
     <main className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
@@ -141,12 +183,14 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
             className="mt-0.5 h-10 w-auto shrink-0"
           />
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          {/* Smaller on a phone once there is a conversation: at full size, with the button
+              beside it, it broke into four lines and left the chat half the screen. */}
+          <h1 className={`${talking ? "text-base" : "text-xl"} font-semibold tracking-tight sm:text-2xl`}>
             ถามอะไรก็ได้ที่อยากถาม เกี่ยวกับผลิตภัณฑ์ภายใต้บริษัท{" "}
             {/* the company name kept on one line: Thai wraps anywhere, and it split as กรุงไทยแอก / ซ่า */}
             <span className="whitespace-nowrap">กรุงไทย-แอกซ่า ประกันชีวิต</span>
           </h1>
-          <p className="mt-1 text-sm text-[var(--hm-mute)]">
+          <p className={`mt-1 text-sm text-[var(--hm-mute)] ${talking ? "max-sm:hidden" : ""}`}>
             ถามเงื่อนไขก็ได้ ขอเบี้ยก็ได้ — เบี้ยคิดจากตารางจริง ตัวเดียวกับที่บอทและหน้าขายใช้ ·{" "}
             <Link href="/other-plans" className="underline underline-offset-2">แบบประกันอื่นๆ</Link>
           </p>
@@ -154,10 +198,12 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         </div>
         {/* only once there is something to clear: a button that undoes nothing is a button
             somebody has to think about every time they look at the page */}
-        {turns.length > 0 && (
+        {/* On a phone it sits in the row the menu button already takes, top right, rather
+            than beside the heading, where it squeezed the heading into four lines. */}
+        {talking && (
           <button
             type="button" onClick={startOver} disabled={busy}
-            className="shrink-0 rounded-full border border-[var(--hm-line)] px-3 py-1.5 text-xs text-[var(--hm-mute)] hover:bg-[var(--hm-panel)] disabled:opacity-40"
+            className="z-30 shrink-0 rounded-full border border-[var(--hm-line)] bg-[var(--hm-panel)] px-3.5 py-2 text-sm text-[var(--hm-ink)] hover:border-[var(--hm-line-strong)] disabled:opacity-40 max-lg:fixed max-lg:right-3 max-lg:top-3 lg:bg-transparent lg:px-3 lg:py-1.5 lg:text-xs lg:text-[var(--hm-mute)]"
           >
             เริ่มใหม่
           </button>
@@ -187,7 +233,12 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
           turns.length === 0 ? "my-auto max-h-full" : "min-h-0 flex-1"
         }`}
       >
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain p-3 sm:p-4">
+      <div
+        ref={scrollRef}
+        // read out as it grows, so an answer is heard arriving and not only seen
+        role="log" aria-live="polite" aria-busy={busy}
+        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain p-3 sm:p-4"
+      >
         {turns.length === 0 && (
           /**
            * The open groups only, and the rest behind a press.
@@ -218,7 +269,10 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         )}
 
         {turns.map((t, i) => (
-          <div key={i} className={t.role === "user" ? "flex justify-end" : "flex items-start gap-2.5"}>
+          <div
+            key={i} ref={i === answered ? askedRef : undefined}
+            className={t.role === "user" ? "flex justify-end" : "flex items-start gap-2.5"}
+          >
             {/* The mark beside what the assistant says, and nothing beside what the reader
                 says — an avatar on both sides is two faces in a conversation with one.
                 Decorative, so it carries no alt text for a screen reader to read out on
@@ -247,7 +301,7 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
                     src={card} alt="การ์ดสรุปเบี้ยประกัน" loading="lazy"
                     className="w-full rounded-lg border border-[var(--hm-line)]"
                   />
-                  <span className="mt-1 block text-[0.65rem] text-[var(--hm-mute)]">แตะเพื่อเปิดรูปเต็ม แล้วบันทึกไปส่งลูกค้าได้</span>
+                  <span className="mt-1.5 block text-xs text-[var(--hm-mute)]">แตะเพื่อเปิดรูปเต็ม แล้วบันทึกไปส่งลูกค้าได้</span>
                 </a>
               ))}
               {/* offered under the last answer only: older rows are history, and a page of
@@ -271,19 +325,50 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
                 * there, because the point of the line is the opposite — that no model touched
                 * the number.
                 */}
+              {/* the line that earns the figure its trust, so it is read and not squinted at */}
               {t.role === "assistant" && t.priced && (
-                <p className="mt-2 text-[0.65rem] text-[var(--hm-live)]">
+                <p className="mt-2.5 text-xs font-medium text-[var(--hm-live)]">
                   {"✓ คิดจากตารางเบี้ยจริง"}
                 </p>
+              )}
+              {/* the question that got no answer, one press from being asked again — on the
+                  newest answer only, since an older one has been asked past already */}
+              {t.retry && i === turns.length - 1 && (
+                <button
+                  type="button" onClick={() => ask(t.retry!)} disabled={busy}
+                  className="mt-3 rounded-full bg-[var(--hm-solid)] px-4 py-2 text-sm font-medium text-[var(--hm-solid-ink)] disabled:opacity-40"
+                >
+                  ลองอีกครั้ง
+                </button>
               )}
             </div>
           </div>
         ))}
 
+        {/**
+          * Waiting, drawn as the assistant's turn: the mark, a bubble, and dots that move.
+          *
+          * An answer takes five to ten seconds, and a line of grey text that does not change
+          * for that long reads as a page that has stopped. Still for anybody who has asked
+          * their device for less motion.
+          */}
         {busy && (
-          <p className="text-sm text-[var(--hm-mute)]" aria-live="polite">กำลังค้นในระบบ…</p>
+          <div className="flex items-start gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mark.png" alt="" width={22} height={28} className="mt-1 h-7 w-auto shrink-0" />
+            <div className="flex items-center gap-2.5 rounded-2xl rounded-bl-sm border border-[var(--hm-line)] bg-[var(--hm-panel)] px-4 py-3">
+              <span className="flex gap-1" aria-hidden>
+                {[0, 150, 300].map((delay) => (
+                  <span
+                    key={delay} style={{ animationDelay: `${delay}ms` }}
+                    className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--hm-accent)] motion-reduce:animate-none"
+                  />
+                ))}
+              </span>
+              <span className="text-sm text-[var(--hm-mute)]">กำลังค้นในระบบ…</span>
+            </div>
+          </div>
         )}
-        <div ref={endRef} />
       </div>
 
       <form
@@ -291,8 +376,11 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
         className="flex shrink-0 gap-2 border-t border-[var(--hm-hair)] bg-[var(--hm-panel)] p-3"
       >
         <input
+          /* not disabled while an answer is on its way: a disabled field loses its focus, and
+             on a phone that folds the keyboard away after every question sent. Only the
+             button waits — `ask` ignores a second question until the first is answered. */
           value={draft} onChange={(e) => setDraft(e.target.value)}
-          disabled={busy} maxLength={500} autoComplete="off"
+          maxLength={500} autoComplete="off" enterKeyHint="send"
           placeholder="พิมพ์คำถามเรื่องแบบประกัน…"
           aria-label="คำถามของคุณ"
           /* the ground, because the strip it sits on is the panel — a field the colour of

@@ -1,6 +1,5 @@
 "use server";
 import { headers } from "next/headers";
-import { supabaseAdmin } from "@/lib/supabase/admin";
 import { answerFromKnowledge, type CopilotAnswer } from "@/lib/copilot/answer";
 import { allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
@@ -38,27 +37,13 @@ export async function askCopilot(
   const asked = question.trim().slice(0, MAX_QUESTION);
   if (!asked) return { text: "", model: "—" };
 
-  if (!allow(`copilot:${await caller()}`)) return { text: BUSY, model: "—" };
+  if (!allow(`copilot:${await caller()}`)) return { text: BUSY, model: "—", failed: true };
 
   try {
     return await answerFromKnowledge(asked, history, slots);
   } catch (e) {
     if (e instanceof BudgetExceeded) return { text: OUT_OF_BUDGET, model: "—" };
     console.error("copilot failed:", e);
-    return { text: BROKEN, model: "—" };
+    return { text: BROKEN, model: "—", failed: true };
   }
 }
-
-/* ------------------------------------------------------------------ *
- * The knowledge anyone may add
- *
- * Open to every visitor, which the owner chose after being told what it
- * means: a note written here is read back by the assistant to whoever
- * asks next. No gate was asked for and none is smuggled in. What is here
- * instead is the pair of things that make a bad note survivable — every
- * note is listed with the time it arrived, and any of them can be
- * removed in one click.
- * ------------------------------------------------------------------ */
-
-const MAX_Q = 200;
-const MAX_A = 2000;

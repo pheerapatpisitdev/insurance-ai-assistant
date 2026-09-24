@@ -97,6 +97,12 @@ export interface CopilotAnswer {
    * page's authority behind it.
    */
   guide?: GuideItem[];
+  /**
+   * Nothing was answered — the system was busy or broken — and the same question asked again
+   * may well get through. The page offers "ลองอีกครั้ง" on it, and leaves the apology out of
+   * what the model is shown next time: it is not something anybody said about insurance.
+   */
+  failed?: true;
 }
 
 /** The name shown under an answer the engine produced, where a model name would go. */
@@ -201,7 +207,7 @@ export async function answerFromKnowledge(
   }
 
   const reply = await askLibrary(history, question);
-  if (!reply) return { text: BROKEN, model: "—", slots };
+  if (!reply) return { text: BROKEN, model: "—", slots, failed: true };
   // the library wrote this one too, and by the same argument it is worth knowing about
   noteAfterAnswer({ question, route: "library" });
   return { text: reply.text, model: reply.model, slots };
