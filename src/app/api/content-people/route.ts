@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { addPerson, deletePerson, MAX_PHOTO_BYTES, PHOTO_TYPES } from "@/lib/content/people-store";
+import { addPerson, deletePerson, MAX_PHOTO_BYTES, PersonError, PHOTO_TYPES, updatePerson } from "@/lib/content/people-store";
 import { MAX_PHOTOS } from "@/lib/content/people";
 
 /**
@@ -41,5 +41,28 @@ export async function DELETE(req: NextRequest) {
   } catch (e) {
     console.error("person delete failed:", e);
     return Response.json({ ok: false, error: "ลบไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" }, { status: 500 });
+  }
+}
+
+/** A rename, photos removed by path, photos added — the same checks as adding a person. */
+export async function PATCH(req: NextRequest) {
+  const form = await req.formData().catch(() => null);
+  const id = String(form?.get("id") ?? "");
+  if (!form || !/^[0-9a-f-]{36}$/.test(id)) return Response.json({ ok: false, error: "ไม่พบบุคคลนี้" }, { status: 400 });
+  const name = String(form.get("name") ?? "").trim();
+  if (!name || name.length > 40) return Response.json({ ok: false, error: "ตั้งชื่อ 1–40 ตัวอักษรนะครับ" }, { status: 400 });
+  const files = form.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
+  for (const f of files) {
+    if (!PHOTO_TYPES[f.type]) return Response.json({ ok: false, error: "รับเฉพาะรูป JPG, PNG หรือ WebP" }, { status: 400 });
+    if (f.size > MAX_PHOTO_BYTES) return Response.json({ ok: false, error: "รูปใหญ่เกิน 5 MB" }, { status: 400 });
+  }
+  try {
+    const add = await Promise.all(files.map(async (f) => ({ bytes: Buffer.from(await f.arrayBuffer()), mimeType: f.type })));
+    const person = await updatePerson(id, { name, remove: form.getAll("remove").map(String), add });
+    return Response.json({ ok: true, person });
+  } catch (e) {
+    if (e instanceof PersonError) return Response.json({ ok: false, error: e.message }, { status: 400 });
+    console.error("person update failed:", e);
+    return Response.json({ ok: false, error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" }, { status: 500 });
   }
 }

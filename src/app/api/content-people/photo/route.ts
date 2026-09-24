@@ -6,6 +6,6 @@ export async function GET(req: NextRequest) {
   const photo = await photoBytes(req.nextUrl.searchParams.get("path") ?? "");
   if (!photo) return new Response("not found", { status: 404 });
   return new Response(new Uint8Array(photo.bytes), {
-    headers: { "content-type": photo.mimeType, "cache-control": "private, max-age=300" },
+    headers: { "content-type": photo.mimeType, "cache-control": "private, no-store" },
   });
 }

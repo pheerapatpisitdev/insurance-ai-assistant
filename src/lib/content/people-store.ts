@@ -9,6 +9,11 @@ import { MAX_PHOTOS } from "./people";
  */
 
 const BUCKET = "content-people";
+/**
+ * The file names a person's photos may take. More than MAX_PHOTOS, so an edit can add new
+ * photos beside the ones it removes before those are gone; the path pattern allows 0–9.
+ */
+const SLOTS = [0, 1, 2, 3, 4, 5, 6, 7];
 const PHOTO_PATH = /^[0-9a-f-]{36}\/\d\.(jpg|png|webp)$/;
 export const isPhotoPath = (v: unknown): v is string => typeof v === "string" && PHOTO_PATH.test(v);
 
@@ -72,6 +77,52 @@ export async function addPerson(name: string, photos: { bytes: Buffer; mimeType:
     throw e;
   }
 }
+
+/**
+ * A person renamed, photos taken away and photos added, in that order, keeping one to four.
+ * New photos take the free slots 0–3, so a path never collides with one still in use. The
+ * consent stands: it was given for this person, and editing does not widen it.
+ */
+export async function updatePerson(id: string, change: {
+  name?: string; remove?: string[]; add?: { bytes: Buffer; mimeType: string }[];
+}): Promise<Person> {
+  const person = await getPerson(id);
+  if (!person) throw new PersonError("ไม่พบบุคคลนี้");
+  const remove = (change.remove ?? []).filter((p) => person.photos.includes(p));
+  const kept = person.photos.filter((p) => !remove.includes(p));
+  const add = change.add ?? [];
+  if (kept.length + add.length === 0) throw new PersonError("ต้องเหลือรูปอย่างน้อย 1 รูป");
+  if (kept.length + add.length > MAX_PHOTOS) throw new PersonError(`มีรูปได้ไม่เกิน ${MAX_PHOTOS} รูป`);
+  const db = supabaseAdmin();
+  // a slot is taken while a kept photo or one being removed sits in it: the removed ones are
+  // deleted last, and a new photo written over one of them would be deleted with it
+  const slot = (p: string) => Number(p.split("/")[1].split(".")[0]);
+  const taken = new Set([...kept, ...remove].map(slot));
+  const free = SLOTS.filter((n) => !taken.has(n));
+  if (free.length < add.length) throw new PersonError("เอารูปเดิมออกก่อน บันทึก แล้วค่อยเพิ่มรูปใหม่อีกครั้งนะครับ");
+  const added: string[] = [];
+  try {
+    for (const [i, a] of add.entries()) {
+      const path = `${id}/${free[i]}.${PHOTO_TYPES[a.mimeType]}`;
+      const { error } = await db.storage.from(BUCKET).upload(path, a.bytes, { contentType: a.mimeType, upsert: true });
+      if (error) throw new Error(error.message);
+      added.push(path);
+    }
+  } catch (e) {
+    if (added.length) await db.storage.from(BUCKET).remove(added);
+    throw e;
+  }
+  const { data, error } = await db.from("ins_people")
+    .update({ name: change.name ?? person.name, photos: [...kept, ...added] }).eq("id", id)
+    .select("id, name, photos, consented_at").single();
+  if (error) throw new Error(error.message);
+  // the row no longer names them, so the files go last: a failure here leaves strays, not holes
+  if (remove.length) await db.storage.from(BUCKET).remove(remove);
+  return toPerson(data);
+}
+
+/** a refusal the owner can act on, shown as written */
+export class PersonError extends Error {}
 
 /** The photos first, then the row: a row without photos is harmless, photos without a row are not. */
 export async function deletePerson(id: string): Promise<void> {

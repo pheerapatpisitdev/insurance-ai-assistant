@@ -28,6 +28,9 @@ export function PersonPicker({ people, value, onChange }: {
   }
   return (
     <div className="space-y-2">
+      <div className="flex justify-end">
+        <Link href="/content/people" className="text-xs text-[var(--ct-accent)] underline">จัดการคลังบุคคล (เพิ่ม/แก้ไข/ลบ) →</Link>
+      </div>
       <select
         value={value?.id ?? ""}
         onChange={(e) => onChange(e.target.value ? { id: e.target.value, pose: value?.pose ?? "auto" } : null)}

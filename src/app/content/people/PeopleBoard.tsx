@@ -29,6 +29,40 @@ export function PeopleBoard({ initial }: { initial: Person[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0);
+  // the person being edited, and what is changing on them
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [dropping, setDropping] = useState<string[]>([]);
+  const [adding, setAdding] = useState<File[]>([]);
+
+  function startEdit(p: Person) {
+    setError(null);
+    setEditing(p.id); setEditName(p.name); setDropping([]); setAdding([]);
+  }
+
+  async function saveEdit(p: Person) {
+    setError(null);
+    const left = p.photos.length - dropping.length + adding.length;
+    if (!editName.trim()) return setError("ตั้งชื่อก่อนนะครับ");
+    if (left < 1) return setError("ต้องเหลือรูปอย่างน้อย 1 รูปนะครับ");
+    if (left > MAX_PHOTOS) return setError(`มีรูปได้ไม่เกิน ${MAX_PHOTOS} รูปนะครับ`);
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.set("id", p.id);
+      form.set("name", editName.trim());
+      for (const path of dropping) form.append("remove", path);
+      for (const [i, f] of adding.entries()) form.append("photos", await shrink(f), `photo-${i}.jpg`);
+      const res = await fetch("/api/content-people", { method: "PATCH", body: form }).then((r) => r.json());
+      if (!res.ok) return setError(res.error);
+      setPeople((list) => list.map((x) => (x.id === p.id ? res.person as Person : x)));
+      setEditing(null);
+    } catch {
+      setError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ (รูป HEIC จากไอโฟน ให้แปลงเป็น JPG ก่อน)");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function save() {
     setError(null);
@@ -69,7 +103,46 @@ export function PeopleBoard({ initial }: { initial: Person[] }) {
       <section className="space-y-3">
         {people.length === 0 ? (
           <p className="rounded-lg border border-dashed border-[var(--ct-line)] p-6 text-center text-sm text-[var(--ct-mute)]">ยังไม่มีใครในคลัง — เพิ่มคนแรกด้านล่าง</p>
-        ) : people.map((p) => (
+        ) : people.map((p) => editing === p.id ? (
+          <article key={p.id} className="space-y-3 rounded-lg border border-[var(--ct-solid)] bg-[var(--ct-panel)] p-3">
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">ชื่อ</span>
+              <input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={40} className={field} />
+            </label>
+            <div>
+              <span className="mb-1 block text-sm font-medium">รูป — กดที่รูปเพื่อเอาออก</span>
+              <div className="flex flex-wrap gap-2">
+                {p.photos.map((path) => {
+                  const out = dropping.includes(path);
+                  return (
+                    <button
+                      key={path} type="button" aria-pressed={out} title={out ? "กดอีกครั้งเพื่อเก็บไว้" : "เอารูปนี้ออก"}
+                      onClick={() => setDropping((d) => (out ? d.filter((x) => x !== path) : [...d, path]))}
+                      className={`relative size-20 overflow-hidden rounded-md ${out ? "opacity-30 ring-2 ring-[var(--ct-alert)]" : ""}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- a private photo through our own route */}
+                      <img src={photoUrl(path)} alt="" className="size-full object-cover" />
+                      {out && <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-[var(--ct-alert)]">เอาออก</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">เพิ่มรูป (รวมแล้วไม่เกิน {MAX_PHOTOS} รูป)</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setAdding([...(e.target.files ?? [])])} className="block text-sm" />
+              <span className="mt-1 block text-xs text-[var(--ct-mute)]">
+                หลังบันทึกจะมี {p.photos.length - dropping.length + adding.length} รูป
+              </span>
+            </label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => saveEdit(p)} disabled={busy} className="rounded-lg bg-[var(--ct-solid)] px-4 py-2 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
+                {busy ? "กำลังบันทึก…" : "บันทึก"}
+              </button>
+              <button type="button" onClick={() => setEditing(null)} disabled={busy} className="rounded-lg border border-[var(--ct-line)] px-4 py-2 text-sm">ยกเลิก</button>
+            </div>
+          </article>
+        ) : (
           <article key={p.id} className="flex flex-wrap items-center gap-4 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-3">
             <div className="flex gap-2">
               {p.photos.map((path) => (
@@ -81,7 +154,10 @@ export function PeopleBoard({ initial }: { initial: Person[] }) {
               <p className="font-medium">{p.name}</p>
               <p className="text-xs text-[var(--ct-mute)]">{p.photos.length} รูป · ยืนยันความยินยอม {new Date(p.consentedAt).toLocaleDateString("th-TH")}</p>
             </div>
-            <button type="button" onClick={() => remove(p)} className="rounded-lg border border-[var(--ct-line)] px-3 py-1.5 text-sm text-[var(--ct-alert)]">ลบ</button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => startEdit(p)} className="rounded-lg border border-[var(--ct-line)] px-3 py-1.5 text-sm">แก้ไข</button>
+              <button type="button" onClick={() => remove(p)} className="rounded-lg border border-[var(--ct-line)] px-3 py-1.5 text-sm text-[var(--ct-alert)]">ลบ</button>
+            </div>
           </article>
         ))}
       </section>
