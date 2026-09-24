@@ -17,7 +17,7 @@ interface Person { sex: Sex; age: number; sum: number; term: string }
 interface NumbersPlan {
   product: string;
   cases: Person[];
-  /** fixed wording; a {double} is filled from the engine */
+  /** fixed wording, used as written */
   claims: string[];
   price: (p: Person, claims: string[], today: Date) => NumberSheet | null;
 }
@@ -41,7 +41,7 @@ export const NUMBERS_PLANS: Record<string, NumbersPlan> = {
     claims: [
       "เบี้ยไม่เพิ่ม",
       "เบี้ยไม่ทิ้ง คุ้มครองถึงอายุ 99",
-      "เสียชีวิตก่อน 60 รับ {double} บาท",
+      // the doubled sum leads the post itself now (owner, 2026-09-24), so no claim repeats it
       "จ่ายจบได้ใน 9 หรือ 19 ปี",
     ],
     price: (p, claims, today) => {
@@ -54,20 +54,22 @@ export const NUMBERS_PLANS: Record<string, NumbersPlan> = {
       if (!shown || !annual) return null;
       const per = shown.mode === "monthly" ? "ต่อเดือน" : "ต่อปี";
       const perShort = shown.mode === "monthly" ? "/เดือน" : "/ปี";
-      const double = money(deathBenefitOf(table, p.age, p.sum).sumBefore);
       const day = money(perDay(annual.total));
-      // the doubled sum is only true while the insured is under the booster age
-      const usable = claims.filter((c) => !c.includes("{double}") || p.age < table.boosterBeforeAge);
+      // the owner wants the doubled sum up front; it is only true before the booster age, so
+      // it carries that condition, and someone already past it is shown the plain sum
+      const doubled = p.age < table.boosterBeforeAge;
+      const cover = doubled ? deathBenefitOf(table, p.age, p.sum).sumBefore : p.sum;
       return {
         product: "Life Protect x 2",
-        sumLine: `ประกันชีวิตทุน ${money(p.sum)} บาท`,
+        sumLine: doubled ? `ประกันชีวิตคุ้มครอง ${money(cover)} บาท` : `ประกันชีวิตทุน ${money(p.sum)} บาท`,
+        ...(doubled ? { sumNote: `ทุน ${money(p.sum)} บาท × 2 เมื่อเสียชีวิตก่อนอายุ ${table.boosterBeforeAge}` } : {}),
         premiumLine: `เบี้ย ${formatBaht(shown.total)} บาท ${per}`,
         perDayLine: `ตกวันละ ${day} บาท`,
-        claims: usable.map((c) => c.replace("{double}", double)),
+        claims,
         who: `${sexWord(p.sex)} ${p.age} ปี ${term.label}`,
         poster: {
           big: `เบี้ย ${formatBaht(shown.total)} บาท${perShort}`,
-          small: `ทุน ${money(p.sum)} บาท · ตกวันละ ${day} บาท`,
+          small: `${doubled ? "คุ้มครอง" : "ทุน"} ${money(cover)} บาท · ตกวันละ ${day} บาท`,
         },
       };
     },

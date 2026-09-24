@@ -13,8 +13,10 @@ import type { PosterSpec } from "./poster";
 
 export interface NumberSheet {
   product: string;
-  /** "ประกันชีวิตทุน 1,000,000 บาท" */
+  /** "ประกันชีวิตทุน 1,000,000 บาท", or what it covers when that is the bigger figure */
   sumLine: string;
+  /** when the sum line is not the plain sum, how it is reached, shown in brackets under it */
+  sumNote?: string;
   /** "เบี้ย 1,548 บาท ต่อเดือน", or ต่อปี under the monthly floor, or เบี้ยปีแรก … for a rising premium */
   premiumLine: string;
   /** "ตกวันละ 48 บาท": the yearly premium ÷ 365, rounded up, as the sales pages say it */
@@ -28,7 +30,7 @@ export interface NumberSheet {
 export const NUMBERS_CLOSING = "ทักแชทเช็กเบี้ยตามอายุคุณ";
 
 export function numbersBody(s: NumberSheet): string {
-  return [s.sumLine, s.premiumLine, s.perDayLine, ...s.claims, `(${s.who})`].join("\n");
+  return [s.sumLine, ...(s.sumNote ? [`(${s.sumNote})`] : []), s.premiumLine, s.perDayLine, ...s.claims, `(${s.who})`].join("\n");
 }
 
 /** Everything the code wrote, as the number check's yardstick: it wrote them, so they are allowed. */

@@ -63,7 +63,8 @@ describe("Life Protect's number sheets", () => {
   const today = new Date("2026-09-24T12:00:00+07:00");
   it("prices the owner's example exactly", () => {
     const [first] = numberSheets("/lifeprotect", 1, today);
-    expect(first.sumLine).toBe("ประกันชีวิตทุน 1,000,000 บาท");
+    expect(first.sumLine).toBe("ประกันชีวิตคุ้มครอง 2,000,000 บาท");
+    expect(first.sumNote).toBe("ทุน 1,000,000 บาท × 2 เมื่อเสียชีวิตก่อนอายุ 60");
     expect(first.premiumLine).toBe("เบี้ย 1,548 บาท ต่อเดือน");
     expect(first.perDayLine).toBe("ตกวันละ 48 บาท");
     expect(first.who).toBe("ชาย 35 ปี จ่ายถึงอายุ 99");
@@ -81,9 +82,18 @@ describe("Life Protect's number sheets", () => {
       for (const c of s.claims) expect(approved.some((a) => a.startsWith(c.slice(0, 8)))).toBe(true);
     }
   });
-  it("says the doubled sum from the engine", () => {
-    const all = numberSheets("/lifeprotect", 3, today).flatMap((s) => s.claims).join("\n");
-    expect(all).toMatch(/เสียชีวิตก่อน 60 รับ \d{1,3}(,\d{3})+ บาท/);
+  it("leads with the doubled sum, and says when it is doubled (owner, 2026-09-24)", () => {
+    const [, second] = numberSheets("/lifeprotect", 2, today);
+    expect(second.sumLine).toBe("ประกันชีวิตคุ้มครอง 1,000,000 บาท");
+    expect(second.sumNote).toBe("ทุน 500,000 บาท × 2 เมื่อเสียชีวิตก่อนอายุ 60");
+    expect(second.poster.small).toContain("คุ้มครอง 1,000,000 บาท");
+  });
+  it("puts the note under the sum line in the body", () => {
+    const [first] = numberSheets("/lifeprotect", 1, today);
+    expect(numbersBody(first).split("\n").slice(0, 2)).toEqual([
+      "ประกันชีวิตคุ้มครอง 2,000,000 บาท", "(ทุน 1,000,000 บาท × 2 เมื่อเสียชีวิตก่อนอายุ 60)",
+    ]);
+    expect(strayNumbers(numbersBody(first), numbersYardstick([first]))).toEqual([]);
   });
   it("writes nothing once the rate table has lapsed", () => {
     expect(numberSheets("/lifeprotect", 3, new Date("2100-01-01"))).toEqual([]);
