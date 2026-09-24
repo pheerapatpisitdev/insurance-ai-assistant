@@ -14,7 +14,7 @@ import { siteOrigin } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "โฆษณา · advisortool" };
+export const metadata: Metadata = { title: "โฆษณา | advisortool" };
 
 /**
  * The advertising account, read-only.

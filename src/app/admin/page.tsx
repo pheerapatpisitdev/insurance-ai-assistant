@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { loadOverview } from "./overview";
 import { Card, Empty } from "./ui";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "ภาพรวม | advisortool" };
 
 /**
  * The first thing the back office says when it is opened.

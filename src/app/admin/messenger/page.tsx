@@ -11,7 +11,7 @@ import { siteOrigin } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Messenger · advisortool" };
+export const metadata: Metadata = { title: "Messenger | advisortool" };
 
 /**
  * A moment as the owner's own clock reads it.

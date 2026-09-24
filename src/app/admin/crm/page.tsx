@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { loadCrm } from "./actions";
 import { share } from "@/lib/crm/summary";
@@ -8,6 +9,7 @@ import { Charts } from "./Charts";
 import { Leads } from "./Leads";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "ลูกค้า | advisortool" };
 
 const RANGES: { key: Range; label: string }[] = [
   { key: "today", label: "วันนี้" },

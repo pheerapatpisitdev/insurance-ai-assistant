@@ -6,7 +6,7 @@ import { siteUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "MCP / API · advisortool" };
+export const metadata: Metadata = { title: "MCP / API | advisortool" };
 
 /**
  * The system's own API: who may call it, and how.
