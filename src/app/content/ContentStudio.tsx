@@ -396,6 +396,9 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           <Link href="/content/hooks" className="rounded-full border border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-1.5 text-sm hover:bg-[var(--ct-soft)]">
             คลังสูตรประโยคเปิด →
           </Link>
+          <Link href="/content/people" className="rounded-full border border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-1.5 text-sm hover:bg-[var(--ct-soft)]">
+            คลังบุคคล →
+          </Link>
         </div>
       </div>
 
