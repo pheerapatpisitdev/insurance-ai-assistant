@@ -43,6 +43,10 @@ export const ANGLES = [
     id: "costs", label: "ค่ารักษาแพงขึ้นทุกปี",
     say: "ค่ารักษาแพงขึ้นทุกปี — เล่าว่าค่ารักษาเป็นภาระที่โตขึ้นเรื่อยๆ โดยไม่ยกตัวเลขค่ารักษาหรืออัตราเพิ่มที่ไม่มีในข้อมูล แล้วพาไปที่ความคุ้มครองของแบบนี้",
   },
+  {
+    id: "numbers", label: "ตัวเลขชัดๆ (เบี้ยต่อเดือน/ต่อวัน)",
+    say: "ตัวเลขชัดๆ — ระบบวางตัวเลขจากตารางเบี้ยให้เอง",
+  },
 ] as const;
 
 export type AngleId = (typeof ANGLES)[number]["id"] | "custom" | "";
@@ -51,6 +55,18 @@ export type AngleId = (typeof ANGLES)[number]["id"] | "custom" | "";
 export function angleText(angle: AngleId, custom: string): string {
   if (angle === "custom") return custom.trim();
   return ANGLES.find((a) => a.id === angle)?.say ?? "";
+}
+
+/**
+ * The plans the ตัวเลขชัดๆ angle can price, kept here rather than read off numbers-plans.ts
+ * because this file reaches the browser and the rate tables must not. A test holds the two
+ * lists together.
+ */
+export const NUMBERS_HREFS = ["/lifeprotect"] as const;
+
+/** The angles the form may offer: ตัวเลขชัดๆ is a post's, and only for a plan it can price. */
+export function anglesFor(format: Format, href: string): (typeof ANGLES)[number][] {
+  return ANGLES.filter((a) => a.id !== "numbers" || (format === "post" && (NUMBERS_HREFS as readonly string[]).includes(href)));
 }
 
 export const LENGTHS: { id: Length; label: string }[] = [
