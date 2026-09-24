@@ -7,6 +7,7 @@ import { Kpis } from "./Kpis";
 import { Funnel } from "./Funnel";
 import { Charts } from "./Charts";
 import { Leads } from "./Leads";
+import { PlanRuns } from "./PlanRuns";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "ลูกค้า | advisortool" };
@@ -95,6 +96,8 @@ export default async function CrmPage(
           <Charts byDay={summary.byDay} byHour={summary.byHour} byAd={summary.byAd} />
         </>
       )}
+
+      <PlanRuns />
 
       <div>
         {/* its own scroller: three Thai labels with their counts are wider than a phone, and a

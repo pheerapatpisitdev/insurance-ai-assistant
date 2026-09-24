@@ -118,6 +118,13 @@ export interface MenuGroup {
  */
 export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
   {
+    // the customer's own planner: which of the plans below, and how much, from their own figures
+    title: "วางแผนประกัน",
+    links: [
+      { href: "/plan", label: "Insurance Planner", icon: "calc", hue: "#3a2b73" },
+    ],
+  },
+  {
     title: "ประกันชีวิต",
     links: [
       { href: "/lifeprotect", label: "Life Protect x 2", icon: "shield", hue: "#412b73" },
