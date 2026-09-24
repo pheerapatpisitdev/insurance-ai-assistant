@@ -47,8 +47,11 @@ month, and 17,200 ÷ 365 = 47.12 rounded up to 48, which is how the sales pages 
 
 ## Plans
 
-All content plans except **iHealthy Ultra**, whose own caution already says a post must not
-state its premium. Group insurance is not a content plan.
+All ten content plans. **iHealthy Ultra is priced as the Health Ultra Package** (WLF99HX base
+at its fixed sum + the IHU plan + the standard daily-cash rider, as `ihealthy-table.ts` sells
+it): the owner lifted "โพสต์นี้ห้ามระบุเบี้ย" for this angle on 2026-09-24. Its premium rises
+with age, so it always reads เบี้ยปีแรก, for the package as a whole. Group insurance is not a
+content plan.
 
 ## For the owner to review — cases and claim lines
 
@@ -66,6 +69,7 @@ The claim lines are drawn only from each sales page's points and cautions alread
 | iShield | ชาย 35 ทุน 1 ล้าน จ่าย 10 ปี · หญิง 30 ทุน 5 แสน จ่าย 20 ปี · ชาย 45 ทุน 1 ล้าน จ่าย 15 ปี | เบี้ยไม่เพิ่ม · คุ้มครอง 70 โรค เจอระยะเริ่มต้นก็ได้เงิน · ไม่ป่วยก็ไม่เสียเปล่า ครบสัญญารับคืนเต็มทุน |
 | CI 123 | หญิง 30 ทุน 5 แสน · ชาย 35 ทุน 1 ล้าน · หญิง 45 ทุน 1 ล้าน | คุ้มครอง 122 โรค · เจอระยะแรกก็ได้เงิน · เคลมระยะแรกแล้ว ยังเคลมระยะถัดไปได้ · *เบี้ยปีแรก* |
 | ชุดประกันมะเร็ง | หญิง 30 ทุน 3 แสน · ชาย 35 ทุน 1 ล้าน · หญิง 45 ทุน 1 ล้าน | เจอมะเร็งระยะแรกก็ได้เงินก้อน · นอนโรงพยาบาลรับชดเชยรายวัน · เงินก้อนเอาไปใช้อะไรก็ได้ · *เบี้ยปีแรก* |
+| iHealthy Ultra (แพ็กเกจสุขภาพ) | หญิง 30 แผน 3 ล้าน (SMART) · ชาย 35 แผน 10 ล้าน (BRONZE) · หญิง 45 แผน 15 ล้าน (SILVER) | วงเงินค่ารักษาปีละ {annualMax} บาท · เหมาจ่ายค่ารักษาต่อปี · ต่ออายุได้ถึงอายุ 98 · ไม่เคลม 3 ปีติดต่อกัน ลดเบี้ย 10% · *เบี้ยปีแรก รวมทั้งแพ็กเกจ* |
 | บำนาญ สมาร์ท 95 | ชาย 40 บำนาญเดือนละ 10,000 ตั้งแต่ 60 · หญิง 35 เดือนละ 5,000 ตั้งแต่ 60 · ชาย 45 เดือนละ 10,000 ตั้งแต่ 60 | รับบำนาญถึงอายุ 95 · รับประกันจ่าย 15 ปีแรก · บำนาญเพิ่มเป็นขั้นตามอายุ · ลดหย่อนภาษีได้ตามเงื่อนไขสรรพากร |
 
 A case the engine cannot price (age outside the table, a lapsed rate table) is skipped for the
