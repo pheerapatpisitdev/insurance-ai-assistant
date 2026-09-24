@@ -27,6 +27,34 @@ export interface NumberSheet {
   poster: { big: string; small: string };
 }
 
+/**
+ * One plan the angle can price, as numberSheets() uses it: cases by index, so each plan keeps
+ * its own shape of case (a sum, a pension a month, a health plan code) to itself.
+ */
+export interface PricedPlan {
+  product: string;
+  claims: string[];
+  caseCount: number;
+  /** case i priced today with these claim lines, or null when the engine cannot price it */
+  price: (i: number, claims: string[], today: Date) => NumberSheet | null;
+}
+
+/** A plan's cases and pricing, typed in its own file and erased to a PricedPlan here. */
+export function definePlan<C>(p: {
+  product: string;
+  cases: C[];
+  /** fixed wording the owner approved, used as written */
+  claims: string[];
+  price: (c: C, claims: string[], today: Date) => NumberSheet | null;
+}): PricedPlan {
+  return { product: p.product, claims: p.claims, caseCount: p.cases.length, price: (i, claims, today) => p.price(p.cases[i], claims, today) };
+}
+
+/** Thai words for a case's sex, as the bracket line says them */
+export const sexWord = (s: "M" | "F") => (s === "F" ? "หญิง" : "ชาย");
+/** whole baht grouped for reading: 1,000,000 */
+export const money = (baht: number) => baht.toLocaleString("en-US");
+
 export const NUMBERS_CLOSING = "ทักแชทเช็กเบี้ยตามอายุคุณ";
 
 export function numbersBody(s: NumberSheet): string {
