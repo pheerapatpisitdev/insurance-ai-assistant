@@ -1,0 +1,104 @@
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import type { ReferenceImage } from "@/lib/ai/images";
+import { MAX_PHOTOS } from "./people";
+
+/**
+ * The people library: consenting people and their reference photos, in a private bucket the
+ * server alone reads. A photo's path is "<person id>/<n>.<ext>" and is checked against that
+ * shape before any storage call, so a request cannot point the server at another file.
+ */
+
+const BUCKET = "content-people";
+const PHOTO_PATH = /^[0-9a-f-]{36}\/\d\.(jpg|png|webp)$/;
+export const isPhotoPath = (v: unknown): v is string => typeof v === "string" && PHOTO_PATH.test(v);
+
+export const PHOTO_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+/** what the bucket itself accepts */
+export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+export interface Person {
+  id: string;
+  name: string;
+  photos: string[];
+  consentedAt: string;
+}
+
+const toPerson = (r: Record<string, unknown>): Person => ({
+  id: String(r.id),
+  name: String(r.name),
+  photos: (r.photos as string[] | null ?? []).filter(isPhotoPath),
+  consentedAt: String(r.consented_at),
+});
+
+export async function listPeople(): Promise<Person[]> {
+  const { data, error } = await supabaseAdmin().from("ins_people").select("id, name, photos, consented_at").order("created_at");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(toPerson);
+}
+
+export async function getPerson(id: string): Promise<Person | null> {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return null;
+  const { data, error } = await supabaseAdmin().from("ins_people").select("id, name, photos, consented_at").eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? toPerson(data) : null;
+}
+
+/**
+ * A person and their photos, stored only after the owner's consent tick. The row goes in
+ * first so the photos have an id to live under; if an upload fails, the row and whatever
+ * made it up are taken back, so no half-saved person is left behind.
+ */
+export async function addPerson(name: string, photos: { bytes: Buffer; mimeType: string }[]): Promise<Person> {
+  const db = supabaseAdmin();
+  const { data, error } = await db.from("ins_people")
+    .insert({ name, photos: [], consented_at: new Date().toISOString() }).select("id").single();
+  if (error) throw new Error(error.message);
+  const id = String(data.id);
+  const paths: string[] = [];
+  try {
+    for (const [n, p] of photos.slice(0, MAX_PHOTOS).entries()) {
+      const path = `${id}/${n}.${PHOTO_TYPES[p.mimeType]}`;
+      const { error: up } = await db.storage.from(BUCKET).upload(path, p.bytes, { contentType: p.mimeType, upsert: true });
+      if (up) throw new Error(up.message);
+      paths.push(path);
+    }
+    const { data: saved, error: set } = await db.from("ins_people").update({ photos: paths }).eq("id", id)
+      .select("id, name, photos, consented_at").single();
+    if (set) throw new Error(set.message);
+    return toPerson(saved);
+  } catch (e) {
+    if (paths.length) await db.storage.from(BUCKET).remove(paths);
+    await db.from("ins_people").delete().eq("id", id);
+    throw e;
+  }
+}
+
+/** The photos first, then the row: a row without photos is harmless, photos without a row are not. */
+export async function deletePerson(id: string): Promise<void> {
+  const person = await getPerson(id);
+  if (!person) return;
+  const db = supabaseAdmin();
+  const { data: files } = await db.storage.from(BUCKET).list(id);
+  const all = [...new Set([...person.photos, ...(files ?? []).map((f) => `${id}/${f.name}`)])];
+  if (all.length) {
+    const { error } = await db.storage.from(BUCKET).remove(all);
+    if (error) throw new Error(`ลบรูปไม่สำเร็จ: ${error.message}`);
+  }
+  const { error } = await db.from("ins_people").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function photoBytes(path: string): Promise<ReferenceImage | null> {
+  if (!isPhotoPath(path)) return null;
+  const { data, error } = await supabaseAdmin().storage.from(BUCKET).download(path);
+  if (error || !data) return null;
+  return { bytes: Buffer.from(await data.arrayBuffer()), mimeType: data.type || "image/jpeg" };
+}
+
+/** A person's photos as the image model wants them; null when the person is gone. */
+export async function personPhotos(id: string): Promise<{ person: Person; photos: ReferenceImage[] } | null> {
+  const person = await getPerson(id);
+  if (!person) return null;
+  const photos = (await Promise.all(person.photos.slice(0, MAX_PHOTOS).map(photoBytes))).filter((p): p is ReferenceImage => p !== null);
+  return photos.length ? { person, photos } : null;
+}
