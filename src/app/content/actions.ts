@@ -18,7 +18,9 @@ import {
   getHookTemplate, isContentStatus, listContent, listWords, saveBackground, saveContent, saveOutput, setFixes, setStatus,
   usedHooks, type ContentItem, type ContentStatus, type Flags,
 } from "@/lib/content/store";
-import { UnreadableReply, plan, write, writeAds } from "@/lib/content/write";
+import { DISCLAIMER, UnreadableReply, headlines, plan, write, writeAds } from "@/lib/content/write";
+import { NUMBERS_CLOSING, numbersBody, numbersPoster, numbersYardstick } from "@/lib/content/numbers";
+import { numberSheets } from "@/lib/content/numbers-plans";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import { PAINTERS, painterOf, writerOf } from "@/lib/content/models";
 
@@ -110,6 +112,34 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
       listWords(),
     ]);
     const told = angleText(angle, custom);
+
+    // ตัวเลขชัดๆ: every figure from the engine, only the headline from a model (spec 2026-09-24)
+    if (angle === "numbers") {
+      if (input.format !== "post") return { ok: false, error: "มุมตัวเลขชัดๆ ใช้ได้กับโพสต์เฟซบุ๊กเท่านั้น" };
+      const sheets = numberSheets(brief.product.href, count);
+      if (sheets.length === 0) return { ok: false, error: "แบบนี้ยังคำนวณตัวเลขไม่ได้ในตอนนี้ (ตารางเบี้ยอาจหมดอายุ) ลองมุมอื่นก่อนนะครับ" };
+      const heads = await headlines(sheets);
+      const yard = `${brief.text}\n${numbersYardstick(sheets)}`;
+      const items: ContentItem[] = [];
+      for (const [i, s] of sheets.entries()) {
+        const output: ContentOutput = {
+          hooks: [heads.lines[i].headline],
+          angle: `ตัวเลขชัดๆ · ${s.who}`,
+          body: numbersBody(s),
+          closing: NUMBERS_CLOSING,
+          hashtags: [],
+          imagePrompt: heads.lines[i].imagePrompt,
+          disclaimer: DISCLAIMER,
+          poster: numbersPoster(s),
+        };
+        items.push(await saveContent({
+          planHref: brief.product.href, format: "post", angle, length: null, output,
+          flags: flagsFor(output, yard, words, null),
+          rateVersion: brief.rateVersion, model: heads.model, costThb: heads.costThb / sheets.length, hookTemplateId: null,
+        }));
+      }
+      return { ok: true, items, costThb: heads.costThb, missing: count - items.length };
+    }
 
     if (input.format === "ad") {
       const angles = Math.min(MAX_ANGLES, Math.max(1, Math.round(Number(input.adAngles) || 2)));
