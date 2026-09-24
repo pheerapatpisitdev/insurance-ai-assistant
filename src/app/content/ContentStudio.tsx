@@ -331,14 +331,12 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             </select>
           </label>
 
-          <div>
-            <span className="mb-1.5 block text-sm font-medium">ทำอะไร</span>
-            <div className="flex flex-wrap gap-2">
-              {FORMATS.map((f) => (
-                <button key={f} type="button" aria-pressed={format === f} onClick={() => setFormat(f)} className={chip(format === f)}>{FORMAT_LABEL[f]}</button>
-              ))}
-            </div>
-          </div>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">ทำอะไร</span>
+            <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className={field}>
+              {FORMATS.map((f) => <option key={f} value={f}>{FORMAT_LABEL[f]}</option>)}
+            </select>
+          </label>
 
           {format === "script" && (
             <div>
