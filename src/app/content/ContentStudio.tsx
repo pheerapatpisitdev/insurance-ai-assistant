@@ -53,6 +53,10 @@ const TABS: { id: ContentStatus; label: string }[] = [
 const PICK_KEY = "content-models";
 /** the reader last named: a page usually speaks to one niche, so it is kept for the next visit */
 const READER_KEY = "content-reader";
+/** the owner's own direction for the round's pictures, kept per device like the reader */
+const BRIEF_KEY = "content-picture-brief";
+/** what drawBackground translates and keeps of a request */
+const MAX_BRIEF = 300;
 
 const chip = (on: boolean) =>
   `rounded-full border px-3 py-1.5 text-sm ${on
@@ -90,6 +94,14 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   const setReader = (next: string) => {
     setReaderState(next);
     try { localStorage.setItem(READER_KEY, next); } catch { /* not kept */ }
+  };
+  const [brief, setBriefState] = useState("");
+  useEffect(() => {
+    try { setBriefState(localStorage.getItem(BRIEF_KEY) ?? ""); } catch { /* storage unavailable */ }
+  }, []);
+  const setBrief = (next: string) => {
+    setBriefState(next);
+    try { localStorage.setItem(BRIEF_KEY, next); } catch { /* not kept */ }
   };
   const [goal, setGoal] = useState<GoalId>("");
   const [fact, setFact] = useState("");
@@ -169,6 +181,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     const asked = pieceCount;
     // อัตโนมัติ is settled at the press, on the money left then
     const paintWith = painterOf(painter, Math.max(0, spend.cap - spend.spent)).id;
+    const pictureBrief = brief.trim();
     setMaking(asked);
     setMakingFormat(format);
     setNotice(undefined);
@@ -220,7 +233,8 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
         pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
       // the painter as it was at the press, even if the owner changes it while waiting
-      if (paintWith !== "none") void drawPictures(res.items.filter((i) => i.format !== "script"), paintWith);
+      // the brief too: what the box said at the press, not after
+      if (paintWith !== "none") void drawPictures(res.items.filter((i) => i.format !== "script"), paintWith, pictureBrief);
       setSpend(await contentSpend().catch(() => spend));
     } finally {
       setMaking(0);
@@ -232,9 +246,9 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
    * asked not to press วาดภาพ piece by piece. The cards show their words first and the
    * pictures arrive on their own; one that fails keeps its plain poster and the button.
    */
-  async function drawPictures(list: ContentItem[], paintWith: string) {
+  async function drawPictures(list: ContentItem[], paintWith: string, request: string) {
     if (list.length === 0) return;
-    const results = await Promise.all(list.map((item) => drawOne(item.id, "", paintWith, false)));
+    const results = await Promise.all(list.map((item) => drawOne(item.id, request, paintWith, false)));
     const failed = results.flatMap((r) => (r.ok ? [] : [r.error]));
     if (failed.length > 0) setError(`วาดภาพไม่สำเร็จ ${failed.length} ชิ้น (${failed[0]}) — กด “แก้ไข” แล้ววาดใหม่ได้`);
     setSpend(await contentSpend().catch(() => spend));
@@ -520,6 +534,19 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
                   ? `ตอนนี้${paints.modelId ? `วาดด้วย ${paints.short}` : "ไม่วาดภาพ"} — งบเหลือต่ำกว่า ฿${AUTO_FLOOR_THB} จะหยุดวาดเอง`
                   : painter === "none" ? "ใช้โปสเตอร์สีพื้น วาดทีหลังได้ในหน้าแก้ไข" : `${paints.short} · ราคาต่อภาพ วาดให้ทุกชิ้นหลังเขียนเสร็จ`}
               </span>
+            </label>
+          )}
+
+          {/* the owner's free direction for every picture of the round, on top of the fixed rules */}
+          {format !== "script" && painter !== "none" && (
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">บรีฟภาพเพิ่มเติม <span className="font-normal text-[var(--ct-mute)]">(ไม่ใส่ก็ได้ · ระบบจำไว้ให้)</span></span>
+              <textarea
+                value={brief} onChange={(e) => setBrief(e.target.value)} maxLength={MAX_BRIEF} rows={3}
+                placeholder="เช่น โทนอบอุ่นแบบภาพยนตร์ ครอบครัวในสวนตอนเย็น มุมกว้าง ไม่เอาภาพในโรงพยาบาล"
+                className={field}
+              />
+              <span className="mt-1 block text-xs text-[var(--ct-mute)]">ใช้กับภาพทุกชิ้นในรอบนี้ ภาพจะยังไม่มีตัวหนังสือและเว้นที่ให้ข้อความเสมอ · {brief.length}/{MAX_BRIEF}</span>
             </label>
           )}
 
