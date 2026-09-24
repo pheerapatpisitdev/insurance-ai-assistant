@@ -6,12 +6,52 @@
  * per picture rather than per token, they answer in base64, and they take far longer.
  */
 
+/** a photo the picture must draw from — a person's face, for people in posters */
+export interface ReferenceImage {
+  bytes: Buffer;
+  mimeType: string;
+}
+
 export interface ImageArgs {
   apiKey: string;
   model: string;
   prompt: string;
   params: Record<string, unknown>;
   signal?: AbortSignal;
+  references?: ReferenceImage[];
+}
+
+/** the providers whose callers below send reference photos; drawImage asks no other with them */
+export const TAKES_REFERENCES = new Set(["google", "openai"]);
+
+/** Gemini's interactions body: the text, then each photo as an image item after it. */
+export function googleImageBody(model: string, prompt: string, params: Record<string, unknown>, references: ReferenceImage[] = []): unknown {
+  return {
+    model,
+    input: [
+      { type: "text", text: prompt },
+      ...references.map((r) => ({ type: "image", mime_type: r.mimeType, data: r.bytes.toString("base64") })),
+    ],
+    response_format: {
+      type: "image",
+      // JPEG only: Maryjane found image/png refused with a 400 every time (2026-08-26)
+      mime_type: "image/jpeg",
+      aspect_ratio: params.aspect_ratio ?? "1:1",
+      image_size: params.image_size ?? "1K",
+    },
+  };
+}
+
+/** OpenAI's edit endpoint, which takes the photos as image[]; generations takes none. */
+export function openAiEditForm(model: string, prompt: string, params: Record<string, unknown>, references: ReferenceImage[]): FormData {
+  const form = new FormData();
+  form.set("model", model);
+  form.set("prompt", prompt);
+  form.set("n", "1");
+  form.set("size", String(params.size ?? "1024x1024"));
+  form.set("quality", String(params.quality ?? "medium"));
+  references.forEach((r, i) => form.append("image[]", new Blob([new Uint8Array(r.bytes)], { type: r.mimeType }), `ref-${i}.${r.mimeType.split("/")[1] ?? "jpg"}`));
+  return form;
 }
 
 export interface DrawnImage {
@@ -63,29 +103,26 @@ async function send(url: string, init: RequestInit): Promise<DrawnImage> {
 }
 
 export const IMAGE_CALLERS: Record<string, (a: ImageArgs) => Promise<DrawnImage>> = {
-  openai: ({ apiKey, model, prompt, params, signal }) =>
-    send("https://api.openai.com/v1/images/generations", {
+  openai: ({ apiKey, model, prompt, params, signal, references }) => references?.length
+    ? send("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      // no content-type: fetch writes the multipart boundary itself
+      headers: { authorization: `Bearer ${apiKey}` },
+      body: openAiEditForm(model, prompt, params, references),
+      signal,
+    })
+    : send("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ model, prompt, n: 1, size: params.size ?? "1024x1024", quality: params.quality ?? "medium" }),
       signal,
     }),
 
-  google: ({ apiKey, model, prompt, params, signal }) =>
+  google: ({ apiKey, model, prompt, params, signal, references }) =>
     send("https://generativelanguage.googleapis.com/v1beta/interactions", {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        model,
-        input: [{ type: "text", text: prompt }],
-        response_format: {
-          type: "image",
-          // JPEG only: Maryjane found image/png refused with a 400 every time (2026-08-26)
-          mime_type: "image/jpeg",
-          aspect_ratio: params.aspect_ratio ?? "1:1",
-          image_size: params.image_size ?? "1K",
-        },
-      }),
+      body: JSON.stringify(googleImageBody(model, prompt, params, references)),
       signal,
     }),
 };

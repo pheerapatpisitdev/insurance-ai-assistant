@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { monthSpend, monthStart } from "./ledger";
-import { IMAGE_CALLERS, type DrawnImage } from "./images";
+import { IMAGE_CALLERS, TAKES_REFERENCES, type DrawnImage, type ReferenceImage } from "./images";
 import { CALLERS, EMBEDDERS, JUDGE, type JudgeAnswer, type JudgeQuestion } from "./providers";
 import type { ChatMessage, ChatResult, ModelRow, Tier } from "./types";
 
@@ -266,6 +266,8 @@ export async function chat({ tier, task, messages, maxTokens = 700, json, timeou
  * picture nobody asked to be expensive should not become so because a provider was busy.
  */
 const IMAGE_PREFERENCE = ["gpt-image-medium", "gemini-image-lite"];
+/** with a person's photos: Gemini keeps a face best, OpenAI's edit endpoint behind it */
+const REFERENCE_PREFERENCE = ["gemini-image", "gpt-image-medium", "gemini-image-lite"];
 
 /** an image takes far longer than a reply; 90 seconds each, two tries, inside the route's 300 */
 const IMAGE_TIMEOUT_MS = 90_000;
@@ -278,14 +280,21 @@ export interface DrawResult extends DrawnImage {
 }
 
 /** Draws one picture, checking the month's budget first and recording what it cost. `prefer` is a model_configs id. */
-export async function drawImage({ task, prompt, prefer }: { task: string; prompt: string; prefer?: string }): Promise<DrawResult> {
+export async function drawImage({ task, prompt, prefer, references }: {
+  task: string; prompt: string; prefer?: string; references?: ReferenceImage[];
+}): Promise<DrawResult> {
   const config = await loadConfig();
   await assertWithinBudget(config);
   const keys = liveKeys(config);
   // a picked model goes first; the cheap list stays behind it for when it is down
-  const models = [...new Set(prefer ? [prefer, ...IMAGE_PREFERENCE] : IMAGE_PREFERENCE)]
+  const withPeople = Boolean(references?.length);
+  // a person's photos go first to the model best at keeping them, whatever the painter picked
+  const order = withPeople ? REFERENCE_PREFERENCE : prefer ? [prefer, ...IMAGE_PREFERENCE] : IMAGE_PREFERENCE;
+  const models = [...new Set(order)]
     .map((id) => config.models.find((m) => m.id === id && m.kind === "image" && m.enabled))
-    .filter((m): m is ModelRow => Boolean(m && keys[m.provider] && IMAGE_CALLERS[m.provider]));
+    .filter((m): m is ModelRow => Boolean(m && keys[m.provider] && IMAGE_CALLERS[m.provider]))
+    // a caller that cannot send the photos would draw a stranger
+    .filter((m) => !withPeople || TAKES_REFERENCES.has(m.provider));
   const tried: string[] = [];
   // a provider that has just run out the clock is not asked again for its other quality
   const stalled = new Set<string>();
@@ -294,7 +303,7 @@ export async function drawImage({ task, prompt, prefer }: { task: string; prompt
     try {
       const img = await IMAGE_CALLERS[model.provider]({
         apiKey: keys[model.provider], model: model.model_name, prompt, params: model.params ?? {},
-        signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
+        signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS), references,
       });
       const costThb = Number(model.price.perImageUsd ?? 0) * USD_TO_THB;
       await record(model.model_name, task, 0, 0, costThb);
