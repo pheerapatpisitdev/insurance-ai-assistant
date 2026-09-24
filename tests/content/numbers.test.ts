@@ -56,3 +56,39 @@ describe("safeHeadline", () => {
     expect(safeHeadline("  ", "สำรอง")).toBe("สำรอง");
   });
 });
+
+import { NUMBERS_PLANS, numberSheets } from "@/lib/content/numbers-plans";
+
+describe("Life Protect's number sheets", () => {
+  const today = new Date("2026-09-24T12:00:00+07:00");
+  it("prices the owner's example exactly", () => {
+    const [first] = numberSheets("/lifeprotect", 1, today);
+    expect(first.sumLine).toBe("ประกันชีวิตทุน 1,000,000 บาท");
+    expect(first.premiumLine).toBe("เบี้ย 1,548 บาท ต่อเดือน");
+    expect(first.perDayLine).toBe("ตกวันละ 48 บาท");
+    expect(first.who).toBe("ชาย 35 ปี จ่ายถึงอายุ 99");
+  });
+  it("gives each piece of a round a different person, wrapping past three", () => {
+    const sheets = numberSheets("/lifeprotect", 4, today);
+    expect(sheets.map((s) => s.who)).toEqual([
+      "ชาย 35 ปี จ่ายถึงอายุ 99", "หญิง 30 ปี จ่าย 19 ปี", "ชาย 45 ปี จ่าย 19 ปี", "ชาย 35 ปี จ่ายถึงอายุ 99",
+    ]);
+  });
+  it("takes two claim lines a piece, only from the approved list", () => {
+    const approved = NUMBERS_PLANS["/lifeprotect"].claims;
+    for (const s of numberSheets("/lifeprotect", 3, today)) {
+      expect(s.claims).toHaveLength(2);
+      for (const c of s.claims) expect(approved.some((a) => a.startsWith(c.slice(0, 8)))).toBe(true);
+    }
+  });
+  it("says the doubled sum from the engine", () => {
+    const all = numberSheets("/lifeprotect", 3, today).flatMap((s) => s.claims).join("\n");
+    expect(all).toMatch(/เสียชีวิตก่อน 60 รับ \d{1,3}(,\d{3})+ บาท/);
+  });
+  it("writes nothing once the rate table has lapsed", () => {
+    expect(numberSheets("/lifeprotect", 3, new Date("2100-01-01"))).toEqual([]);
+  });
+  it("has a registry the form's list agrees with", () => {
+    expect(Object.keys(NUMBERS_PLANS).sort()).toEqual([...NUMBERS_HREFS].sort());
+  });
+});
