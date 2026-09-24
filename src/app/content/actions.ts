@@ -14,7 +14,7 @@ import { checkPolicy } from "@/lib/content/policy";
 import { proofread, type Fix } from "@/lib/content/proofread";
 import { ANGLES, GOALS, LENGTHS, angleText, MAX_FACT, MAX_READER, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
 import {
-  CONTENT_MONTH_CAP_THB, addHookTemplate, contentSpentThisMonth, countByStatus, countHookUse, deleteContent, getContent,
+  DEFAULT_CONTENT_CAP_THB, addHookTemplate, contentCap, contentSpentThisMonth, countByStatus, countHookUse, deleteContent, getContent,
   getHookTemplate, isContentStatus, listContent, listWords, saveBackground, saveContent, saveOutput, setFixes, setStatus,
   usedHooks, type ContentItem, type ContentStatus, type Flags,
 } from "@/lib/content/store";
@@ -100,12 +100,12 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
   }
 
   try {
-    const spent = await contentSpentThisMonth();
-    if (spent >= CONTENT_MONTH_CAP_THB) {
-      return { ok: false, error: `เดือนนี้ใช้งบสร้างคอนเทนต์ครบ ${CONTENT_MONTH_CAP_THB} บาทแล้ว (กันไว้ให้บอทตอบลูกค้า)` };
+    const [spent, cap] = await Promise.all([contentSpentThisMonth(), contentCap()]);
+    if (spent >= cap) {
+      return { ok: false, error: `เดือนนี้ใช้งบสร้างคอนเทนต์ครบ ${cap} บาทแล้ว (กันไว้ให้บอทตอบลูกค้า) — เพิ่มงบได้ที่หน้า /admin/ai` };
     }
     // อัตโนมัติ decides on the money actually left, not on what the page last saw
-    const writeWith = writerOf(input.writer, CONTENT_MONTH_CAP_THB - spent).model;
+    const writeWith = writerOf(input.writer, cap - spent).model;
     const [avoid, template, words] = await Promise.all([
       usedHooks(),
       input.hookTemplateId ? getHookTemplate(input.hookTemplateId) : Promise.resolve(null),
@@ -298,9 +298,10 @@ export async function contentWorkbench(filter: { status: ContentStatus; planHref
 
 export async function contentSpend(): Promise<{ spent: number; cap: number }> {
   try {
-    return { spent: await contentSpentThisMonth(), cap: CONTENT_MONTH_CAP_THB };
+    const [spent, cap] = await Promise.all([contentSpentThisMonth(), contentCap()]);
+    return { spent, cap };
   } catch {
-    return { spent: 0, cap: CONTENT_MONTH_CAP_THB };
+    return { spent: 0, cap: DEFAULT_CONTENT_CAP_THB };
   }
 }
 
@@ -335,12 +336,12 @@ export async function drawBackground(id: string, request = "", painter?: string)
     return { ok: false, error: "วาดรูปครบ 40 รูปในชั่วโมงนี้แล้ว รอสักพักนะครับ" };
   }
   try {
-    const spent = await contentSpentThisMonth();
-    if (spent >= CONTENT_MONTH_CAP_THB) {
-      return { ok: false, error: `เดือนนี้ใช้งบสร้างคอนเทนต์ครบ ${CONTENT_MONTH_CAP_THB} บาทแล้ว` };
+    const [spent, cap] = await Promise.all([contentSpentThisMonth(), contentCap()]);
+    if (spent >= cap) {
+      return { ok: false, error: `เดือนนี้ใช้งบสร้างคอนเทนต์ครบ ${cap} บาทแล้ว — เพิ่มงบได้ที่หน้า /admin/ai` };
     }
     // only an id from the list, อัตโนมัติ settled on the money left; "none" draws nothing
-    const chosen = painterOf(painter, CONTENT_MONTH_CAP_THB - spent);
+    const chosen = painterOf(painter, cap - spent);
     if (!chosen.modelId) return { ok: false, error: "งบคอนเทนต์เหลือน้อย อัตโนมัติจึงไม่วาดภาพ เลือกโมเดลวาดเองได้ครับ" };
     const item = await getContent(id);
     if (!item) return { ok: false, error: "ไม่พบชิ้นงานนี้" };

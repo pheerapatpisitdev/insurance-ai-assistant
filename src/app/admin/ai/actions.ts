@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { clearAiConfigCache, testProviders, type ProviderCheck } from "@/lib/ai/client";
 import { monthSpend, monthStart, type SpendLine } from "@/lib/ai/ledger";
+import { contentBaht, DEFAULT_CONTENT_CAP_THB } from "@/lib/content/store";
 import { EMBEDDERS, JUDGE } from "@/lib/ai/providers";
 
 export type { ProviderCheck } from "@/lib/ai/client";
@@ -25,7 +26,7 @@ export interface ModelRow { id: string; provider: string; kind: string; model_na
  * it yet and the key itself is the switch.
  */
 const JUDGE_ROW: ModelRow = { id: `${JUDGE.provider}-${JUDGE.model}`, provider: JUDGE.provider, kind: "judge", model_name: JUDGE.model, enabled: true };
-export interface Settings { small_model: string | null; large_model: string | null; monthly_budget_thb: number | null }
+export interface Settings { small_model: string | null; large_model: string | null; monthly_budget_thb: number | null; content_budget_thb: number | null }
 
 /** What one provider has cost since the first of the month, and what it was asked to do. */
 export interface ProviderSpend {
@@ -46,13 +47,15 @@ function passphrase(): string {
 export async function loadAiPage(): Promise<{
   keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[];
   spentThisMonth: number; spend: ProviderSpend[];
+  /** what the content workbench has spent of its own ceiling, and the ceiling in force */
+  content: { spent: number; cap: number };
 }> {
   const supabase = supabaseAdmin();
   const [keys, models, prefs, settings, spend] = await Promise.all([
     supabase.from("ins_api_keys").select("provider, tail, enabled"),
     supabase.from("model_configs").select("id, provider, kind, model_name, enabled").order("provider").order("model_name"),
     supabase.from("ins_model_prefs").select("model_id, enabled"),
-    supabase.from("ins_ai_settings").select("small_model, large_model, monthly_budget_thb").maybeSingle(),
+    supabase.from("ins_ai_settings").select("small_model, large_model, monthly_budget_thb, content_budget_thb").maybeSingle(),
     // the model rather than the provider is what the ledger records, so the lines are joined
     // back to the model table below; the ledger has no column saying which company was paid
     monthSpend(monthStart()),
@@ -76,6 +79,10 @@ export async function loadAiPage(): Promise<{
     providers: [...PROVIDERS],
     spentThisMonth: spend.baht,
     spend: byProvider(spend.lines, (models.data ?? []) as { provider: string; model_name: string }[]),
+    content: {
+      spent: contentBaht(spend.lines),
+      cap: settings.data?.content_budget_thb == null ? DEFAULT_CONTENT_CAP_THB : Number(settings.data.content_budget_thb),
+    },
   };
 }
 
@@ -164,10 +171,14 @@ export async function setModelEnabled(id: string, enabled: boolean) {
   revalidatePath("/admin/ai");
 }
 
-export async function saveSettings(smallModel: string, largeModel: string, monthlyBudget: number | null) {
+export async function saveSettings(smallModel: string, largeModel: string, monthlyBudget: number | null, contentBudget: number | null) {
+  if (contentBudget !== null && (!Number.isFinite(contentBudget) || contentBudget < 0)) throw new Error("งบคอนเทนต์ต้องเป็นตัวเลขตั้งแต่ 0");
+  if (contentBudget !== null && monthlyBudget !== null && contentBudget > monthlyBudget) {
+    throw new Error("งบคอนเทนต์ต้องไม่เกินงบรวมต่อเดือน");
+  }
   const { error } = await supabaseAdmin().from("ins_ai_settings").upsert({
     id: true, small_model: smallModel || null, large_model: largeModel || null,
-    monthly_budget_thb: monthlyBudget, updated_at: new Date().toISOString(),
+    monthly_budget_thb: monthlyBudget, content_budget_thb: contentBudget, updated_at: new Date().toISOString(),
   }, { onConflict: "id" });
   if (error) throw new Error(error.message);
   clearAiConfigCache();

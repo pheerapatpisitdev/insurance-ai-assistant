@@ -71,9 +71,9 @@ const PROVIDER_LABEL: Record<string, string> = {
 /** How a model's kind reads on the page. A judge answers in probabilities, never in words. */
 const KIND_LABEL: Record<string, string> = { text: "ข้อความ", image: "รูปภาพ", judge: "ตัดสิน (ไม่สร้างข้อความ)" };
 
-export function AiClient({ keys, models, settings, providers, spentThisMonth, spend }: {
+export function AiClient({ keys, models, settings, providers, spentThisMonth, spend, content }: {
   keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[];
-  spentThisMonth: number; spend: ProviderSpend[];
+  spentThisMonth: number; spend: ProviderSpend[]; content: { spent: number; cap: number };
 }) {
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -211,7 +211,9 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
             e.preventDefault();
             const f = new FormData(e.currentTarget);
             const budget = String(f.get("budget") ?? "").trim();
-            run(() => saveSettings(String(f.get("small")), String(f.get("large")), budget === "" ? null : Number(budget)),
+            const contentBudget = String(f.get("contentBudget") ?? "").trim();
+            run(() => saveSettings(String(f.get("small")), String(f.get("large")), budget === "" ? null : Number(budget),
+                contentBudget === "" ? null : Number(contentBudget)),
                 "บันทึกค่าเริ่มต้นแล้ว");
           }}
         >
@@ -233,6 +235,15 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
             <span className="block text-xs text-[var(--bot-ink-mute)]">งบต่อเดือน (บาท)</span>
             <input name="budget" type="number" min={0} step={50} defaultValue={settings?.monthly_budget_thb ?? ""}
                    className="mt-1 w-32 rounded border px-2 py-1" placeholder="ไม่จำกัด" />
+          </label>
+          {/* a slice of the budget above: the bot answering leads draws on the rest */}
+          <label className="text-sm">
+            <span className="block text-xs text-[var(--bot-ink-mute)]">งบสร้างคอนเทนต์ต่อเดือน (บาท)</span>
+            <input name="contentBudget" type="number" min={0} step={10} defaultValue={settings?.content_budget_thb ?? ""}
+                   className="mt-1 w-32 rounded border px-2 py-1" placeholder={`${content.cap} (ค่าเดิม)`} />
+            <span className="mt-1 block text-xs text-[var(--bot-ink-mute)]">
+              ใช้ไป {content.spent.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} จาก {content.cap.toLocaleString("th-TH")} บาท
+            </span>
           </label>
           <button disabled={pending} className="rounded bg-[var(--bot-navy)] px-3 py-1.5 text-sm text-white disabled:opacity-40">บันทึก</button>
           <span className="text-xs text-[var(--bot-ink-mute)]">

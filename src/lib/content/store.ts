@@ -72,8 +72,15 @@ export const isContentStatus = (v: unknown): v is ContentStatus =>
  * The monthly budget is one pot, and the Messenger bot answering paid advertisements draws on
  * it too. When the pot runs dry the bot goes quiet — so this page stops well before that, at
  * a ceiling of its own, and a busy afternoon of writing posts cannot cost a lead their answer.
+ * The owner sets the ceiling on /admin/ai (since 2026-09-24); this is it until they do.
  */
-export const CONTENT_MONTH_CAP_THB = 30;
+export const DEFAULT_CONTENT_CAP_THB = 30;
+
+export async function contentCap(): Promise<number> {
+  const { data } = await supabaseAdmin().from("ins_ai_settings").select("content_budget_thb").maybeSingle();
+  const set = data?.content_budget_thb;
+  return set === null || set === undefined ? DEFAULT_CONTENT_CAP_THB : Number(set);
+}
 
 /** what the content tasks have cost in these ledger lines */
 export function contentBaht(lines: SpendLine[]): number {
