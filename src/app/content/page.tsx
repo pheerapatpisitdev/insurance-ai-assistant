@@ -1,7 +1,7 @@
 import "./theme.css";
 import { AppShell } from "@/components/shell/AppShell";
 import { CONTENT_PRODUCTS } from "@/lib/content/products";
-import { ANGLES, LENGTHS } from "@/lib/content/prompt";
+import { LENGTHS } from "@/lib/content/prompt";
 import { getContent, listContent, listHookTemplates } from "@/lib/content/store";
 import { contentSpend, contentWorkbench } from "./actions";
 import { ContentStudio } from "./ContentStudio";
@@ -31,7 +31,6 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
         <div className="mx-auto max-w-[1400px] px-4 pb-10 pt-16 lg:pt-8">
           <ContentStudio
             products={CONTENT_PRODUCTS.map((p) => ({ href: p.href, name: p.name }))}
-            angles={ANGLES.map((a) => ({ id: a.id, label: a.label }))}
             lengths={LENGTHS}
             hooks={hooks}
             initialHook={hooks.some((h) => h.id === hook) ? hook! : null}

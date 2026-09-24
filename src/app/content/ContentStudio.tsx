@@ -6,7 +6,7 @@ import { footer, fullText } from "@/lib/content/output";
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { onPage } from "@/lib/content/publish-label";
-import { FORMAT_LABEL, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
+import { anglesFor, FORMAT_LABEL, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
@@ -32,7 +32,6 @@ import { ScriptCard } from "./ScriptCard";
 
 interface Props {
   products: { href: string; name: string }[];
-  angles: { id: string; label: string }[];
   lengths: { id: Length; label: string }[];
   hooks: HookTemplate[];
   initialHook: string | null;
@@ -62,7 +61,7 @@ const chip = (on: boolean) =>
 
 const field = "w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
 
-export function ContentStudio({ products, angles, lengths, hooks, initialHook, initial, initialUsed, spend: initialSpend, initialOpen }: Props) {
+export function ContentStudio({ products, lengths, hooks, initialHook, initial, initialUsed, spend: initialSpend, initialOpen }: Props) {
   const [href, setHref] = useState(products[0]?.href ?? "");
   const [format, setFormat] = useState<Format>("post");
   const [writer, setWriter] = useState(DEFAULT_WRITER);
@@ -80,6 +79,10 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     try { localStorage.setItem(PICK_KEY, JSON.stringify({ writer, painter, ...next })); } catch { /* not kept */ }
   };
   const [angle, setAngle] = useState<AngleId>("");
+  // a pick the form no longer offers (the plan or the format changed) goes back to ให้ AI เลือก
+  useEffect(() => {
+    if (angle && angle !== "custom" && !anglesFor(format, href).some((a) => a.id === angle)) setAngle("");
+  }, [angle, format, href]);
   const [reader, setReaderState] = useState("");
   useEffect(() => {
     try { setReaderState(localStorage.getItem(READER_KEY) ?? ""); } catch { /* storage unavailable */ }
@@ -405,7 +408,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             <span className="mb-1 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
             <select value={angle} onChange={(e) => setAngle(e.target.value as AngleId)} className={field}>
               <option value="">ให้ AI เลือก</option>
-              {angles.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+              {anglesFor(format, href).map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
               <option value="custom">พิมพ์เอง…</option>
             </select>
             {angle === "custom" && (
