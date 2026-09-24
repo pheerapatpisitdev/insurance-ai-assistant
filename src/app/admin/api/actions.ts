@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { mintKey } from "@/lib/api/key";
+import { usedThisMonth } from "./period";
 
 /**
  * The keys that may call this system's API, and the one moment a key is readable.
@@ -36,7 +37,8 @@ export async function listKeys(): Promise<KeyRow[]> {
   return rows.map((r) => ({
     id: r.id, name: r.name, prefix: r.prefix,
     quotaMonth: r.quota_month ?? null,
-    usedMonth: r.used_month ?? 0,
+    // a counter left over from a month nobody called in is not this month's use
+    usedMonth: usedThisMonth(r.used_month, r.period),
     period: r.period,
     lastUsedAt: r.last_used_at ?? null,
     disabled: Boolean(r.disabled),

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, Empty, Stat } from "../ui";
 import { loadAds } from "./actions";
@@ -7,9 +8,13 @@ import { DisconnectAdAccountButton } from "./DisconnectAdAccountButton";
 import { ADS_SCOPES, adsOauthIsConfigured } from "@/lib/facebook/oauth";
 import { OTHER_CAMPAIGN } from "@/lib/ads/summary";
 import type { AdsRange, Tally } from "@/lib/ads/types";
+import type { AdAccount, AdSyncStatus } from "@/lib/facebook/ads-connection";
+import type { TokenExpiry } from "@/lib/facebook/oauth";
 import { siteOrigin } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "โฆษณา · advisortool" };
 
 /**
  * The advertising account, read-only.
@@ -44,11 +49,19 @@ const TONES = {
 
 /** Two days with nothing fetched is one missed cron plus a day of grace. */
 const STALE_MS = 2 * 86_400_000;
+/** A login this close to running out gets said in amber, early enough to reconnect calmly. */
+const EXPIRY_WARN_MS = 7 * 86_400_000;
 
 const baht = (v: number) => `฿${Math.round(v).toLocaleString("en-US")}`;
 const n = (v: number) => v.toLocaleString("en-US");
 const per = (v: number | null) => (v === null ? "—" : baht(v));
-const when = (iso: string) => new Date(iso).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+/**
+ * In Bangkok time, said explicitly: the page renders on a UTC server, and without the zone the
+ * 10:52 sync the owner watched happen was printed as 03:52.
+ */
+const when = (iso: string) =>
+  new Date(iso).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
+const dayOnly = (iso: string) => new Date(iso).toLocaleDateString("th-TH", { dateStyle: "medium", timeZone: "Asia/Bangkok" });
 
 function Setup() {
   return (
@@ -71,11 +84,79 @@ function ConnectButton() {
       เชื่อมบัญชีโฆษณา
     </a>
   ) : (
-    <div className="rounded-md border border-dashed px-3 py-5 text-center">
+    <div className="rounded-md border border-dashed border-[var(--bot-line)] px-3 py-5 text-center">
       <p className="text-sm text-[var(--bot-ink-foot)]">ต่อจากเครื่องนี้ไม่ได้ — Facebook ยอมให้ต่อจากเว็บจริงเท่านั้น</p>
       <a href={`${siteOrigin()}/admin/ads`} className="mt-3 inline-block rounded-md bg-[#0866FF] px-4 py-2 text-sm font-medium text-white no-underline hover:bg-[#0653cc]">
         ไปเชื่อมที่เว็บจริง →
       </a>
+    </div>
+  );
+}
+
+/**
+ * One account's own fetch, said on its own card.
+ *
+ * Judged on the account's last successful fetch, not on the newest figure in the table: an
+ * account that spent nothing writes no figures and was called stale for it, and one account
+ * failing every night was hidden by the next account's fresh rows.
+ */
+function SyncLine({ status }: { status: AdSyncStatus | undefined }) {
+  if (!status?.lastSyncAt) {
+    return <p className="mt-0.5 text-xs text-[var(--bot-ink-mute)]">ยังไม่เคยดึงตัวเลขของบัญชีนี้ กด “ดึงตอนนี้” ข้างล่าง</p>;
+  }
+  const stale = !status.lastOkAt || Date.now() - new Date(status.lastOkAt).getTime() > STALE_MS;
+  return (
+    <>
+      <p className="mt-0.5 text-xs text-[var(--bot-ink-mute)]">
+        ดึงล่าสุด {when(status.lastSyncAt)}
+        {status.lastError ? " — ไม่สำเร็จ" : " — สำเร็จ"}
+        {status.lastError && status.lastOkAt && ` (สำเร็จครั้งล่าสุด ${when(status.lastOkAt)})`}
+        {stale && <span className="ml-2 rounded bg-[var(--bot-sand-soft)] px-2 py-0.5 text-[var(--bot-sand-ink)]">ข้อมูลค้าง</span>}
+      </p>
+      {status.lastError && (
+        <p className="mt-2 rounded-md bg-[var(--bot-red-soft)] px-3 py-2 text-xs text-[var(--bot-red-ink)]">
+          ดึงตัวเลขของบัญชีนี้ไม่สำเร็จ: <span className="break-all">{status.lastError}</span>
+        </p>
+      )}
+    </>
+  );
+}
+
+/**
+ * When the ads login stops working. Meta gives the owner no warning of its own — the figures
+ * simply stop — so the date is on the card, amber in its last week.
+ */
+function ExpiryLine({ expiry }: { expiry: TokenExpiry | undefined }) {
+  if (!expiry) {
+    return <p className="mt-0.5 text-xs text-[var(--bot-ink-faint)]">ตรวจวันหมดอายุของสิทธิ์เชื่อมต่อไม่ได้ในตอนนี้</p>;
+  }
+  if (!expiry.valid) {
+    return (
+      <p className="mt-2 rounded-md bg-[var(--bot-red-soft)] px-3 py-2 text-xs text-[var(--bot-red-ink)]">
+        สิทธิ์เชื่อมต่อใช้ไม่ได้แล้ว — กด “เชื่อมบัญชีเพิ่ม / เชื่อมใหม่” ข้างล่าง แล้วติ๊กบัญชีนี้อีกครั้ง
+      </p>
+    );
+  }
+  const ends = [expiry.expiresAt, expiry.dataAccessExpiresAt].filter((d): d is string => Boolean(d)).sort()[0];
+  if (!ends) return <p className="mt-0.5 text-xs text-[var(--bot-ink-mute)]">สิทธิ์เชื่อมต่อไม่มีวันหมดอายุ</p>;
+  const soon = new Date(ends).getTime() - Date.now() < EXPIRY_WARN_MS;
+  return (
+    <p className={`mt-0.5 text-xs ${soon ? "text-[var(--bot-sand-ink)]" : "text-[var(--bot-ink-mute)]"}`}>
+      สิทธิ์เชื่อมต่อหมดอายุ {dayOnly(ends)}
+      {soon && " — ใกล้หมดแล้ว กดเชื่อมใหม่ก่อนวันนั้น ตัวเลขจะได้ไม่ขาด"}
+    </p>
+  );
+}
+
+function AccountCard({ a, status, expiry }: { a: AdAccount; status: AdSyncStatus | undefined | null; expiry: TokenExpiry | undefined }) {
+  return (
+    <div className="rounded-lg border border-[var(--bot-line)] p-3 text-sm">
+      <p className="font-medium">{a.name} <span className="font-normal text-[var(--bot-ink-mute)]">{a.id}{a.currency ? ` · ${a.currency}` : ""}</span></p>
+      <p className="mt-0.5 text-xs text-[var(--bot-ink-mute)]">เชื่อมเมื่อ {when(a.connectedAt)}</p>
+      {/* null: the database has no per-account columns yet, and the shared line below speaks */}
+      {status !== null && <SyncLine status={status} />}
+      <ExpiryLine expiry={expiry} />
+      <div className="mt-3"><DisconnectAdAccountButton actId={a.id} /></div>
     </div>
   );
 }
@@ -98,7 +179,7 @@ export default async function AdsPage({ searchParams }: { searchParams: Promise<
   const params = await searchParams;
   const range: AdsRange = params.range === "30d" ? "30d" : "7d";
   const outcome = OUTCOMES[params.fb ?? ""];
-  const { accounts, choices, summary: figures, lastFetchedAt } = await loadAds(range);
+  const { accounts, choices, summary: figures, lastFetchedAt, syncStatus, expiry } = await loadAds(range);
   /**
    * Campaign names repeat across ad accounts — the agency has "มรดก" and "Life Protect x 2"
    * in more than one — so the account is what tells two identical-looking rows apart.
@@ -111,7 +192,12 @@ export default async function AdsPage({ searchParams }: { searchParams: Promise<
     <div className="space-y-5">
       {outcome && (
         <p className={`rounded-md px-3 py-2 text-sm ${TONES[outcome.tone]}`}>
-          {outcome.text}{params.detail ? ` — ${params.detail}` : ""}
+          {outcome.text}
+          {params.detail && (
+            <span className="mt-1 block text-xs">
+              ข้อความจาก Facebook (ภาษาอังกฤษ ส่งให้คนดูแลระบบได้เลย): <span className="break-all">{params.detail}</span>
+            </span>
+          )}
         </p>
       )}
 
@@ -121,18 +207,22 @@ export default async function AdsPage({ searchParams }: { searchParams: Promise<
         ) : connected ? (
           <div className="space-y-4">
             {accounts.map((a) => (
-              <div key={a.id} className="rounded-lg border border-[var(--bot-line)] p-3 text-sm">
-                <p className="font-medium">{a.name} <span className="font-normal text-[var(--bot-ink-mute)]">{a.id}{a.currency ? ` · ${a.currency}` : ""}</span></p>
-                <p className="mt-0.5 text-xs text-[var(--bot-ink-mute)]">เชื่อมเมื่อ {when(a.connectedAt)}</p>
-                <div className="mt-3"><DisconnectAdAccountButton actId={a.id} /></div>
-              </div>
+              <AccountCard
+                key={a.id}
+                a={a}
+                status={syncStatus === null ? null : syncStatus[a.id]}
+                expiry={expiry[a.id]}
+              />
             ))}
             <div className="flex flex-wrap items-center gap-4 border-t border-[var(--bot-line)] pt-4">
               <SyncButton />
-              <p className="text-sm text-[var(--bot-ink-mute)]">
-                {lastFetchedAt ? `ดึงล่าสุด ${when(lastFetchedAt)}` : "ยังไม่เคยดึง"}
-                {stale && <span className="ml-2 rounded bg-[var(--bot-sand-soft)] px-2 py-0.5 text-xs text-[var(--bot-sand-ink)]">ข้อมูลค้าง</span>}
-              </p>
+              {/* the old shared line, kept only for a database without the per-account columns */}
+              {syncStatus === null && (
+                <p className="text-sm text-[var(--bot-ink-mute)]">
+                  {lastFetchedAt ? `ดึงล่าสุด ${when(lastFetchedAt)}` : "ยังไม่เคยดึง"}
+                  {stale && <span className="ml-2 rounded bg-[var(--bot-sand-soft)] px-2 py-0.5 text-xs text-[var(--bot-sand-ink)]">ข้อมูลค้าง</span>}
+                </p>
+              )}
               <a href="/api/facebook/connect?for=ads" className="text-sm underline">เชื่อมบัญชีเพิ่ม / เชื่อมใหม่</a>
             </div>
           </div>

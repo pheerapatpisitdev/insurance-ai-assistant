@@ -1,11 +1,6 @@
 import { share } from "@/lib/crm/summary";
+import { planName } from "@/lib/crm/plans";
 import type { Counts, Summary } from "@/lib/crm/types";
-
-const PLAN_NAMES: Record<string, string> = {
-  lifeprotect: "Life Protect",
-  ihealthy: "iHealthy",
-  undecided: "ยังไม่เลือกแผน",
-};
 
 /**
  * The five steps, deepening toward the end of the funnel.
@@ -85,7 +80,7 @@ export function Funnel({ counts, byProduct }: { counts: Counts; byProduct: Summa
               <tbody>
                 {byProduct.map(({ product, counts: c }) => (
                   <tr key={product} className="border-t border-[var(--bot-line)]">
-                    <td className="py-2">{PLAN_NAMES[product] ?? product}</td>
+                    <td className="py-2">{planName(product)}</td>
                     <td className="py-2 text-right tabular-nums">{c.arrived}</td>
                     <td className="py-2 text-right tabular-nums">{c.priced}</td>
                     <td className="py-2 text-right tabular-nums">{c.interested}</td>

@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { adAccountToken, adAccounts } from "@/lib/facebook/ads-connection";
+import { adAccountToken, adAccounts, recordAdSync } from "@/lib/facebook/ads-connection";
 import { INSIGHT_FIELDS, dailyRowFromInsight, isExpiredToken, type Insight } from "./insights";
 import type { DailyRow } from "./types";
 
@@ -13,10 +13,15 @@ import type { DailyRow } from "./types";
  *
  * One account's failure is reported and the next account is still fetched. The likeliest
  * failure is the token expiring — Meta's error 190 — and the message for it says what to do.
+ *
+ * Every attempt is also written onto the account's own row (recordAdSync), success or not,
+ * rows or none. The page used to infer "last fetched" from the newest figure in the table,
+ * which let one account's success hide another's nightly failure, and made an account that
+ * simply spent nothing look as if it had never been fetched.
  */
 
 const GRAPH = "https://graph.facebook.com/v23.0";
-const EXPIRED = "token หมดอายุ กดเชื่อมบัญชีโฆษณาใหม่";
+export const EXPIRED = "สิทธิ์เชื่อมต่อหมดอายุ กดเชื่อมบัญชีโฆษณาใหม่";
 
 export interface SyncResult {
   accounts: number;
@@ -43,7 +48,8 @@ async function* insights(actId: string, token: string, since: string, until: str
     const body = (await res.json()) as { data?: Insight[]; paging?: { next?: string }; error?: { code?: number; message?: string } };
     if (!res.ok || body.error) {
       if (isExpiredToken(body.error)) throw new Error(EXPIRED);
-      throw new Error(body.error?.message ?? `insights ${res.status}`);
+      // Meta's words are kept — they are the diagnosis — under a Thai line saying whose they are
+      throw new Error(`Facebook ไม่ยอมส่งตัวเลขให้ — ${body.error?.message ?? `insights ${res.status}`}`);
     }
     for (const i of body.data ?? []) yield i;
     url = body.paging?.next;
@@ -74,8 +80,11 @@ export async function syncAds(opts: { days?: number; now?: Date; fetchFn?: typeo
         if (error) throw new Error(error.message);
       }
       result.rows += rows.length;
+      await recordAdSync(account.id, fetchedAt, null);
     } catch (e) {
-      result.errors.push({ actId: account.id, name: account.name, message: e instanceof Error ? e.message : String(e) });
+      const message = e instanceof Error ? e.message : String(e);
+      result.errors.push({ actId: account.id, name: account.name, message });
+      await recordAdSync(account.id, fetchedAt, message);
     }
   }
   return result;

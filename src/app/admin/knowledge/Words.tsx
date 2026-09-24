@@ -2,13 +2,15 @@
 import { useState, useTransition } from "react";
 import type { ContentWord, WordKind } from "@/lib/content/check";
 import { addContentWord, listContentWords, removeContentWord } from "./actions";
+import { ConfirmDelete } from "./ConfirmDelete";
 
 /**
  * The words /content warns about, and the box to add to them.
  *
  * Written in the same shape as the notes above it on purpose: one list, one box, a delete on
  * every line. A word here only ever produces a warning beside a generated post — it never
- * changes the post — so a wrong entry costs a false alarm and one click to take back.
+ * changes the post — so a wrong entry costs a false alarm and two taps to take back: the
+ * × asks first, since a word deleted is gone for good.
  */
 export function Words({ initial }: { initial: ContentWord[] }) {
   const [words, setWords] = useState(initial);
@@ -64,16 +66,13 @@ export function Words({ initial }: { initial: ContentWord[] }) {
           {words.map((w) => (
             <li key={w.word} className="flex items-center gap-1.5 rounded-full border border-[var(--bot-line)] py-1 pl-3 pr-1 text-sm">
               <span>{w.kind === "misspelling" ? `${w.word} → ${w.fix}` : w.word}</span>
-              <button
-                type="button" disabled={pending} aria-label={`ลบคำ ${w.word}`}
-                onClick={() => start(async () => {
-                  await removeContentWord(w.word);
-                  setWords((list) => list.filter((x) => x.word !== w.word));
-                })}
-                className="rounded-full px-2 text-[var(--bot-ink-mute)] hover:bg-[var(--bot-red-soft)] hover:text-[var(--bot-red-ink)]"
-              >
-                ×
-              </button>
+              <ConfirmDelete
+                what={`คำ ${w.word}`}
+                onConfirm={() => removeContentWord(w.word)}
+                onDone={() => setWords((list) => list.filter((x) => x.word !== w.word))}
+                trigger="×"
+                triggerClass="rounded-full px-2 text-[var(--bot-ink-mute)] hover:bg-[var(--bot-red-soft)] hover:text-[var(--bot-red-ink)]"
+              />
             </li>
           ))}
         </ul>

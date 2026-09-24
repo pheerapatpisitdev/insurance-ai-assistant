@@ -37,6 +37,8 @@ export interface LeadRow {
   product: string | null;
   last_quote: Record<string, unknown> | null;
   ad_id: string | null;
+  /** the Page they wrote to; their id means nothing on any other */
+  page_id: string | null;
   created_at: string;
   updated_at: string;
   has_psid: boolean;
@@ -82,6 +84,9 @@ export interface Summary {
   byDay: { date: string; arrived: number; priced: number; interested: number }[];
   /** twenty-four entries, midnight to midnight */
   byHour: { hour: number; arrived: number }[];
-  /** the advertisements that brought anyone, busiest first */
-  byAd: { adId: string; arrived: number; interested: number }[];
+  /**
+   * The advertisements that brought anyone, busiest first. `name` is filled in by the page
+   * from the ads pull, where it knows one; the figures never depend on it.
+   */
+  byAd: { adId: string; name?: string; arrived: number; interested: number }[];
 }

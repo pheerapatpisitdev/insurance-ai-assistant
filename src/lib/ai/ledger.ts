@@ -27,9 +27,19 @@ export interface MonthSpend {
   lines: SpendLine[];
 }
 
-/** the first instant of the current calendar month, in the server's clock */
+/** Thailand keeps UTC+7 all year; the same constant as src/lib/content/calendar.ts */
+const BKK_MS = 7 * 60 * 60_000;
+
+/**
+ * The first instant of the current calendar month in Thailand.
+ *
+ * It was the server's clock, and the server runs in UTC: from 00:00 to 07:00 on the 1st the
+ * owner's new month was still the old one here, and the ceilings they set by the Thai month
+ * reset seven hours late.
+ */
 export function monthStart(now = new Date()): Date {
-  return new Date(now.getFullYear(), now.getMonth(), 1);
+  const bkk = new Date(now.getTime() + BKK_MS);
+  return new Date(Date.UTC(bkk.getUTCFullYear(), bkk.getUTCMonth(), 1) - BKK_MS);
 }
 
 /** PostgREST's code for a function it cannot find; the one error worth reading past */

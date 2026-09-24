@@ -1,3 +1,4 @@
+import { businessDate } from "@/calc/calendar";
 import { UNDECIDED, type ConversationRow, type Counts, type Range, type Summary } from "./types";
 
 /**
@@ -11,9 +12,27 @@ import { UNDECIDED, type ConversationRow, type Counts, type Range, type Summary 
 /** Days a range looks back over, and how many bars its daily chart therefore has. */
 const DAYS: Record<Range, number> = { today: 1, "7d": 7, "30d": 30 };
 
-/** Midnight at the start of the day `d` falls in, in the machine's own timezone. */
+/**
+ * Every day and every hour on this page is Bangkok's, whatever clock the server keeps.
+ *
+ * These used the machine's own timezone, and the machine is Vercel's, which is UTC. So the
+ * hour chart put a customer who wrote at eight in the evening under one in the afternoon,
+ * "วันนี้" began at seven in the morning, and anyone who wrote between midnight and seven was
+ * counted on the day before. Thailand keeps UTC+7 all year — no summer time — so a fixed
+ * offset is the whole of the rule, and the calendar day itself comes from the same Bangkok
+ * formatter the rate tables use to decide whether they have expired.
+ */
+const BANGKOK_OFFSET_MS = 7 * 3_600_000;
+const DAY_MS = 86_400_000;
+
+/** Midnight in Bangkok at the start of the Bangkok day `d` falls in. */
 function midnight(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return new Date(Date.parse(`${businessDate(d)}T00:00:00Z`) - BANGKOK_OFFSET_MS);
+}
+
+/** The hour of the Bangkok clock at `d`, 0 to 23. */
+export function bangkokHour(d: Date): number {
+  return new Date(d.getTime() + BANGKOK_OFFSET_MS).getUTCHours();
 }
 
 /**
@@ -23,14 +42,12 @@ function midnight(d: Date): Date {
  * the page at nine wants to know about today, not about yesterday afternoon.
  */
 export function rangeStart(range: Range, now: Date = new Date()): Date {
-  const start = midnight(now);
-  start.setDate(start.getDate() - (DAYS[range] - 1));
-  return start;
+  return new Date(midnight(now).getTime() - (DAYS[range] - 1) * DAY_MS);
 }
 
-/** A local calendar day as `YYYY-MM-DD`, which `toISOString` would shift by the offset. */
+/** The Bangkok calendar day `d` falls in, as `YYYY-MM-DD`. */
 function dayKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return businessDate(d);
 }
 
 function empty(): Counts {
@@ -70,8 +87,8 @@ export function summarise(
   // quiet Tuesday is a gap in the chart rather than a day the chart forgets to draw
   const days = new Map<string, { date: string; arrived: number; priced: number; interested: number }>();
   for (let i = 0; i < DAYS[range]; i++) {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
+    // no summer time in Thailand, so every Bangkok day is exactly this long
+    const d = new Date(start.getTime() + i * DAY_MS);
     days.set(dayKey(d), { date: dayKey(d), arrived: 0, priced: 0, interested: 0 });
   }
   const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, arrived: 0 }));
@@ -90,7 +107,7 @@ export function summarise(
       if (row.priced_at) day.priced += 1;
       if (row.handover_at) day.interested += 1;
     }
-    hours[at.getHours()].arrived += 1;
+    hours[bangkokHour(at)].arrived += 1;
 
     if (row.ad_id) {
       const ad = ads.get(row.ad_id) ?? { arrived: 0, interested: 0 };

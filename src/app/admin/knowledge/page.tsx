@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { listContentWords, listNotes } from "./actions";
 import { Notes } from "./Notes";
 import { Words } from "./Words";
 
 export const dynamic = "force-dynamic";
+
+/** Named for the tab in the owner's words; the root layout's title is the calculator's. */
+export const metadata: Metadata = {
+  title: "สอน AI | advisortool",
+};
 
 /**
  * What the agent has taught the assistant, on top of the plan rules.

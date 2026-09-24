@@ -184,9 +184,39 @@ export async function savePending(userToken: string, scopes: string[]): Promise<
   if (error) throw new Error(error.message);
 }
 
-export async function readPending(): Promise<{ token: string; scopes: string[] } | null> {
+/**
+ * How long a half-finished login stays usable.
+ *
+ * The row has no expiry of its own — it sits there until a Page is picked or somebody presses
+ * ยกเลิก. Left alone, a login abandoned yesterday took over the whole Messenger screen the next
+ * morning: the list of connected Pages vanished behind a picker nobody had asked for, with
+ * every Page on it offered for one tap. An hour is far longer than anyone spends on Meta's
+ * screen and the picker after it, and short enough that a login from another day never
+ * comes back.
+ *
+ * The age is read from the row's own `updated_at`, which ins_set_channel_auth sets to now()
+ * on every write — so a fresh login over an old one starts its hour again, and nothing about
+ * the table had to change.
+ */
+export const PENDING_TTL_MS = 60 * 60 * 1000;
+
+/** Whether a pending login saved at `savedAt` is still one to offer. */
+export function pendingIsFresh(savedAt: string | null | undefined, now: Date = new Date()): boolean {
+  if (!savedAt) return false;
+  const at = new Date(savedAt).getTime();
+  if (Number.isNaN(at)) return false;
+  return now.getTime() - at < PENDING_TTL_MS;
+}
+
+/**
+ * The login waiting for a Page to be picked, or nothing — nothing too when it is older than
+ * an hour. The expired row is not deleted here: reading a page should not write, and the
+ * next login overwrites it anyway.
+ */
+export async function readPending(now: Date = new Date()): Promise<{ token: string; scopes: string[]; savedAt: string } | null> {
   const row = await read(PENDING_KEY);
-  return row ? { token: row.token, scopes: row.scopes ?? [] } : null;
+  if (!row || !pendingIsFresh(row.updated_at, now)) return null;
+  return { token: row.token, scopes: row.scopes ?? [], savedAt: row.updated_at };
 }
 
 export async function clearPending(): Promise<void> {

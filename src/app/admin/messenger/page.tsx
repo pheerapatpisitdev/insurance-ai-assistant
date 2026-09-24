@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import { Card } from "../ui";
 import { facebookStatuses } from "@/lib/facebook/status";
 import { pageConnections, readPending } from "@/lib/facebook/connection";
+import { inboxIsQuiet, lastCustomerMessageAt } from "@/lib/facebook/inbound";
 import { listPages, oauthIsConfigured, SCOPES, SUBSCRIBED_FIELDS } from "@/lib/facebook/oauth";
 import { DisconnectButton } from "./DisconnectButton";
 import { PagePicker, type Choice } from "./PagePicker";
@@ -9,9 +11,29 @@ import { siteOrigin } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
+export const metadata: Metadata = { title: "Messenger · advisortool" };
+
+/**
+ * A moment as the owner's own clock reads it.
+ *
+ * The page renders on Vercel, whose clock is UTC, and toLocaleString without a zone formats
+ * in the server's zone — so a Page connected at 13:39 in Bangkok used to say 06:39.
+ */
+const when = (iso: string) =>
+  new Date(iso).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
+
+/** "3 ชม. ที่แล้ว", "2 วันที่แล้ว" — how old, which is what the amber is about. */
+function ago(iso: string, now: Date = new Date()): string {
+  const minutes = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 60_000));
+  if (minutes < 60) return `${minutes} นาทีที่แล้ว`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} ชม. ที่แล้ว`;
+  return `${Math.round(hours / 24)} วันที่แล้ว`;
+}
+
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap gap-x-3 gap-y-0.5 border-b py-2 text-sm last:border-0">
+    <div className="flex flex-wrap gap-x-3 gap-y-0.5 border-b border-[var(--bot-line)] py-2 text-sm last:border-0">
       <span className="w-40 shrink-0 text-[var(--bot-ink-mute)]">{label}</span>
       <span className="min-w-0 break-all">{children}</span>
     </div>
@@ -49,7 +71,7 @@ const TONES = {
  */
 function ConnectOnTheLiveSite() {
   return (
-    <div className="rounded-md border border-dashed px-3 py-5 text-center">
+    <div className="rounded-md border border-dashed border-[var(--bot-line)] px-3 py-5 text-center">
       <p className="text-sm text-[var(--bot-ink-foot)]">
         ต่อเพจจากเครื่องนี้ไม่ได้ — Facebook ยอมให้ต่อจากเว็บจริงเท่านั้น
       </p>
@@ -64,7 +86,10 @@ function ConnectOnTheLiveSite() {
   );
 }
 
-/** The Pages a half-finished login is waiting to choose between. */
+/**
+ * The Pages a half-finished login is waiting to choose between — none once that login is an
+ * hour old, which readPending decides.
+ */
 async function pendingChoices(): Promise<Choice[]> {
   const pending = await readPending();
   if (!pending) return [];
@@ -73,6 +98,37 @@ async function pendingChoices(): Promise<Choice[]> {
   } catch {
     return [];
   }
+}
+
+/**
+ * The one line on this screen that cannot be green by mistake: when a customer's message
+ * last landed in the database.
+ *
+ * Said once for all Pages, and says so, because the table it reads keeps the message id and
+ * the time but not the Page — a per-Page line would have to invent which Page it was.
+ */
+function Inbound({ at }: { at: string | null }) {
+  const quiet = inboxIsQuiet(at);
+  return (
+    <div
+      className={`mb-4 rounded-md px-3 py-2 text-sm ${quiet ? "bg-[var(--bot-sand-soft)] text-[var(--bot-sand-ink)]" : "bg-[var(--bot-ok-soft)] text-[var(--bot-ok)]"}`}
+    >
+      <p>
+        {at ? (
+          <>ข้อความลูกค้าล่าสุดเข้าเมื่อ <strong>{when(at)}</strong> ({ago(at)})</>
+        ) : (
+          <>ยังไม่เคยมีข้อความลูกค้าเข้าระบบเลย</>
+        )}
+      </p>
+      <p className="mt-0.5 text-xs">นับรวมทุกเพจ — ระบบยังไม่ได้จดว่าข้อความเข้ามาทางเพจไหน</p>
+      {quiet && (
+        <p className="mt-1 text-xs">
+          ไม่มีข้อความเข้ามาเกิน 24 ชั่วโมงแล้ว ถ้าเพจมีคนทักแต่ตรงนี้ไม่ขยับ แปลว่าข้อความไม่เข้าระบบ —
+          ลองทักเพจเองสักข้อความ แล้วเปิดหน้านี้ใหม่ ถ้าเวลาไม่เปลี่ยน บอทไม่ได้รับข้อความ
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default async function MessengerAdminPage({
@@ -84,7 +140,12 @@ export default async function MessengerAdminPage({
   const outcome = OUTCOMES[String(params.fb ?? "")];
   const detail = typeof params.detail === "string" ? params.detail : undefined;
 
-  const [connections, choices] = await Promise.all([pageConnections(), pendingChoices()]);
+  const [connections, choices, lastInbound] = await Promise.all([
+    pageConnections(),
+    pendingChoices(),
+    /** undefined when the table could not be read — then the line is left off, not guessed */
+    lastCustomerMessageAt().catch(() => undefined),
+  ]);
   /**
    * Asked after the list, and asked per Page. Checking one token and calling it "the status"
    * is what let a revoked Page sit behind a green tick while it answered nobody.
@@ -95,9 +156,16 @@ export default async function MessengerAdminPage({
   return (
     <>
       {outcome && (
-        <p className={`mb-4 rounded-md px-3 py-2 text-sm ${TONES[outcome.tone]}`}>
-          {outcome.text}{detail ? ` — ${detail}` : ""}
-        </p>
+        <div className={`mb-4 rounded-md px-3 py-2 text-sm ${TONES[outcome.tone]}`}>
+          <p>{outcome.text}</p>
+          {/* Meta's own words, kept because they are the diagnosis — but under a Thai line that
+              says what they are, because on their own they read like the page itself broke. */}
+          {detail && (
+            <p className="mt-1 text-xs">
+              ข้อความจาก Facebook (ภาษาอังกฤษ ส่งให้คนดูแลระบบได้เลย): <span className="break-all">{detail}</span>
+            </p>
+          )}
+        </div>
       )}
 
       {/* Said once at the top as well: the per-Page red is below the fold on a phone, and the
@@ -108,10 +176,18 @@ export default async function MessengerAdminPage({
         </p>
       )}
 
+      {/* The picker is its own card, above the list, and never instead of it. It used to take
+          the list's place whenever a login was waiting, so a login abandoned the day before hid
+          every connected Page's health — including a revoked one — behind a list of checkboxes. */}
+      {choices.length > 0 && (
+        <Card title="เลือกเพจจากการเข้าสู่ระบบเมื่อสักครู่" hint="ถ้าไม่ได้เพิ่งกดเชื่อมต่อ กด “ยกเลิก” ได้เลย รายการนี้หายเองใน 1 ชั่วโมง">
+          <PagePicker pages={choices} connectedIds={connections.map((c) => c.pageId)} />
+        </Card>
+      )}
+
       <Card title="เพจที่บอทตอบให้" hint="สถานะอ่านสดจาก Meta ทุกครั้งที่เปิดหน้านี้">
-        {choices.length > 0 ? (
-          <PagePicker pages={choices} />
-        ) : statuses.length > 0 ? (
+        {statuses.length > 0 && lastInbound !== undefined && <Inbound at={lastInbound} />}
+        {statuses.length > 0 ? (
           /* One block per Page, each carrying what Meta says about that Page right now. It was
              written for exactly one because there could only be one — connecting a second
              overwrote the first without a word. */
@@ -133,9 +209,9 @@ export default async function MessengerAdminPage({
                     {status.messagingOk === undefined ? (
                       <span className="text-[var(--bot-sand-ink)]">ตรวจไม่ได้ชั่วคราว</span>
                     ) : status.messagingOk ? (
-                      <span className="text-[var(--bot-ok)]">✓ โทเค็นใช้งานได้ บอทส่งและรับข้อความได้</span>
+                      <span className="text-[var(--bot-ok)]">✓ สิทธิ์เชื่อมต่อใช้งานได้ บอทส่งและรับข้อความได้</span>
                     ) : (
-                      <span className="text-[var(--bot-red-ink)]">✗ โทเค็นใช้งานไม่ได้ เพจนี้ตอบใครไม่ได้เลย</span>
+                      <span className="text-[var(--bot-red-ink)]">✗ สิทธิ์เชื่อมต่อใช้งานไม่ได้ เพจนี้ตอบใครไม่ได้เลย</span>
                     )}
                   </Row>
                   <Row label="การรับข้อมูล">
@@ -149,7 +225,7 @@ export default async function MessengerAdminPage({
                   {connection && (
                     <>
                       <Row label="เชื่อมต่อเมื่อ">
-                        {new Date(connection.connectedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+                        {when(connection.connectedAt)}
                       </Row>
                       <Row label="สิทธิ์ที่ได้รับ">{connection.scopes.join(", ") || "—"}</Row>
                     </>
@@ -204,11 +280,13 @@ export default async function MessengerAdminPage({
               )}
             </div>
           </div>
+        ) : choices.length > 0 ? (
+          <p className="text-sm text-[var(--bot-ink-foot)]">ยังไม่มีเพจที่เชื่อมไว้ — ติ๊กเพจในกล่องข้างบนแล้วกดเชื่อมต่อ</p>
         ) : (
           <div>
             <p className="mb-3 text-sm text-[var(--bot-ink-foot)]">
               กดปุ่มแล้วเข้าสู่ระบบ Facebook ด้วยบัญชีที่เป็นแอดมินเพจ ระบบจะขอสิทธิ์เท่าที่จำเป็น
-              เก็บโทเค็นให้เอง และสมัครรับข้อความจากเพจให้เสร็จในขั้นตอนเดียว ติ๊กได้หลายเพจพร้อมกัน
+              เก็บสิทธิ์เชื่อมต่อไว้ให้เอง และสมัครรับข้อความจากเพจให้เสร็จในขั้นตอนเดียว ติ๊กได้หลายเพจพร้อมกัน
             </p>
             {oauthIsConfigured() ? (
               <a

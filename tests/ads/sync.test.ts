@@ -11,10 +11,12 @@ const accounts = [
   { id: "act_2", name: "สอง", currency: "THB", connectedAt: "2026-09-22T00:00:00Z" },
 ];
 const tokens: Record<string, string | null> = { act_1: "tok1", act_2: "tok2" };
+const recorded: { actId: string; at: string; error: string | null }[] = [];
 
 vi.mock("@/lib/facebook/ads-connection", () => ({
   adAccounts: async () => accounts,
   adAccountToken: async (id: string) => tokens[id] ?? null,
+  recordAdSync: async (actId: string, at: string, error: string | null) => { recorded.push({ actId, at, error }); },
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -48,7 +50,7 @@ const insight = (ad: string, date: string) => ({
 const { syncAds } = await import("@/lib/ads/sync");
 const NOW = new Date("2026-09-22T03:00:00.000Z");
 
-beforeEach(() => { upserts.length = 0; });
+beforeEach(() => { upserts.length = 0; recorded.length = 0; });
 
 describe("syncing the ad figures", () => {
   it("asks for the last three days at ad level, follows the pages, and writes every row", async () => {
@@ -89,7 +91,32 @@ describe("syncing the ad figures", () => {
     });
     const result = await syncAds({ days: 3, now: NOW, fetchFn });
     expect(result.rows).toBe(1);
-    expect(result.errors).toEqual([{ actId: "act_1", name: "หนึ่ง", message: "token หมดอายุ กดเชื่อมบัญชีโฆษณาใหม่" }]);
+    expect(result.errors).toEqual([{ actId: "act_1", name: "หนึ่ง", message: "สิทธิ์เชื่อมต่อหมดอายุ กดเชื่อมบัญชีโฆษณาใหม่" }]);
+    // each account's own outcome is written down, so the page can say which one failed
+    expect(recorded).toEqual([
+      { actId: "act_1", at: NOW.toISOString(), error: "สิทธิ์เชื่อมต่อหมดอายุ กดเชื่อมบัญชีโฆษณาใหม่" },
+      { actId: "act_2", at: NOW.toISOString(), error: null },
+    ]);
+  });
+
+  it("records a fetch that worked even when the account spent nothing", async () => {
+    const fetchFn = fetchOf({
+      "act_1/insights": { status: 200, body: { data: [] } },
+      "act_2/insights": { status: 200, body: { data: [] } },
+    });
+    const result = await syncAds({ days: 3, now: NOW, fetchFn });
+    expect(result).toEqual({ accounts: 2, rows: 0, errors: [] });
+    expect(upserts).toHaveLength(0);
+    expect(recorded.map((r) => [r.actId, r.error])).toEqual([["act_1", null], ["act_2", null]]);
+  });
+
+  it("puts a Thai line in front of Meta's own words for any other failure", async () => {
+    const fetchFn = fetchOf({
+      "act_1/insights": { status: 400, body: { error: { code: 100, message: "Unsupported get request" } } },
+      "act_2/insights": { status: 200, body: { data: [] } },
+    });
+    const result = await syncAds({ days: 3, now: NOW, fetchFn });
+    expect(result.errors[0].message).toBe("Facebook ไม่ยอมส่งตัวเลขให้ — Unsupported get request");
   });
 
   it("reports an account with no token instead of asking Meta with nothing", async () => {

@@ -10,12 +10,21 @@ export interface Choice { id: string; name: string }
  *
  * Ticked, not pressed one at a time: connecting used to end the login, so a person with two
  * Pages had to go round through Facebook twice — and the second trip is what revoked the
- * first Page. Everything Facebook handed over starts ticked, because a Page the person did
- * not want is one they would not have ticked on Meta's own screen a moment ago.
+ * first Page.
+ *
+ * Only the Pages already connected start ticked. Everything Facebook handed over used to,
+ * on the theory that a Page nobody wanted would not have been ticked on Meta's screen — but
+ * Meta's screen lists every Page the account admins, and a login left half-finished came back
+ * the next day with all four of the owner's Pages ticked and one tap away from the bot
+ * answering on Pages it was never meant for. A connected Page is ticked because its fresh
+ * permission from this login is what keeps it answering (the login replaced the old one);
+ * a new Page is ticked by the person, on purpose.
  */
-export function PagePicker({ pages }: { pages: Choice[] }) {
+export function PagePicker({ pages, connectedIds = [] }: { pages: Choice[]; connectedIds?: string[] }) {
   const { pending, error, run } = useAction();
-  const [chosen, setChosen] = useState<string[]>(() => pages.map((p) => p.id));
+  const [chosen, setChosen] = useState<string[]>(() =>
+    pages.filter((p) => connectedIds.includes(p.id)).map((p) => p.id),
+  );
 
   const toggle = (id: string) =>
     setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
@@ -29,9 +38,10 @@ export function PagePicker({ pages }: { pages: Choice[] }) {
   return (
     <div>
       <p className="mb-3 text-sm text-[var(--bot-ink-foot)]">
-        เข้าสู่ระบบแล้ว เลือกเพจที่จะให้บอทตอบ ติ๊กได้หลายเพจและเชื่อมพร้อมกันในครั้งเดียว
+        ติ๊กเพจที่จะให้บอทตอบ ติ๊กได้หลายเพจและเชื่อมพร้อมกันในครั้งเดียว
+        เพจที่ต่อไว้แล้วติ๊กไว้ให้ก่อน เพราะต้องรับสิทธิ์ชุดใหม่จากการเข้าสู่ระบบครั้งนี้
       </p>
-      <ul className="mb-3 divide-y rounded-md border">
+      <ul className="mb-3 divide-y divide-[var(--bot-line)] rounded-md border border-[var(--bot-line)]">
         {pages.map((p) => (
           <li key={p.id}>
             <label className="flex cursor-pointer items-center gap-3 px-3 py-2">
@@ -43,7 +53,12 @@ export function PagePicker({ pages }: { pages: Choice[] }) {
                 className="size-4 shrink-0"
               />
               <span className="min-w-0">
-                <span className="block truncate text-sm font-medium">{p.name}</span>
+                <span className="block truncate text-sm font-medium">
+                  {p.name}
+                  {connectedIds.includes(p.id) && (
+                    <span className="ml-2 text-xs font-normal text-[var(--bot-ok)]">ต่ออยู่แล้ว</span>
+                  )}
+                </span>
                 <span className="block text-xs text-[var(--bot-ink-mute)]">{p.id}</span>
               </span>
             </label>

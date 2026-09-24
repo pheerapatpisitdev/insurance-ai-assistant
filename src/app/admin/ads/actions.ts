@@ -6,9 +6,10 @@ import { summariseAds } from "@/lib/ads/summary";
 import { syncAds, type SyncResult } from "@/lib/ads/sync";
 import type { AdConversation, AdLead, AdsRange, AdsSummary, DailyRow } from "@/lib/ads/types";
 import {
-  adAccounts, clearAdAccount, clearPendingAds, readPendingAds, saveAdAccount, type AdAccount,
+  adAccountToken, adAccounts, adSyncStatuses, clearAdAccount, clearPendingAds, readPendingAds, saveAdAccount,
+  type AdAccount, type AdSyncStatus,
 } from "@/lib/facebook/ads-connection";
-import { listAdAccounts } from "@/lib/facebook/oauth";
+import { listAdAccounts, tokenExpiry, type TokenExpiry } from "@/lib/facebook/oauth";
 
 /** Everything the page draws. No token in it. */
 export interface AdsPage {
@@ -19,11 +20,38 @@ export interface AdsPage {
   summary: AdsSummary;
   /** when the newest row was fetched; nothing before the first sync */
   lastFetchedAt: string | null;
+  /**
+   * Each account's own last fetch, by account id. Null while the columns that hold it are not
+   * in the database yet — the page then falls back to `lastFetchedAt`.
+   */
+  syncStatus: Record<string, AdSyncStatus> | null;
+  /** when each account's login stops working, by account id; missing where Meta would not say */
+  expiry: Record<string, TokenExpiry>;
 }
 
 /** A local calendar day as `YYYY-MM-DD`, for a `date` column. */
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * When each account's login runs out, asked of Meta's token inspector.
+ *
+ * Every account connected in one login carries the same token, so each distinct token is
+ * asked once. Anything that fails is simply left out: the date is a courtesy, and a page that
+ * could not draw because Meta was slow to answer about a date would be a worse page.
+ */
+async function expiries(accounts: AdAccount[]): Promise<Record<string, TokenExpiry>> {
+  const out: Record<string, TokenExpiry> = {};
+  const byToken = new Map<string, Promise<TokenExpiry | null>>();
+  await Promise.all(accounts.map(async (a) => {
+    const token = await adAccountToken(a.id).catch(() => null);
+    if (!token) return;
+    if (!byToken.has(token)) byToken.set(token, tokenExpiry(token).catch(() => null));
+    const e = await byToken.get(token)!;
+    if (e) out[a.id] = e;
+  }));
+  return out;
 }
 
 async function pendingChoices(): Promise<{ id: string; name: string }[]> {
@@ -41,14 +69,16 @@ export async function loadAds(range: AdsRange = "7d"): Promise<AdsPage> {
   const start = rangeStart(range);
   const since = start.toISOString();
 
-  const [accounts, choices, rows, leads, conversations, newest] = await Promise.all([
-    adAccounts().catch(() => []),
+  const [accounts, choices, rows, leads, conversations, newest, statuses] = await Promise.all([
+    adAccounts().catch(() => [] as AdAccount[]),
     pendingChoices(),
     supabase.from("ins_ad_daily").select("*").gte("date", dayKey(start)),
     supabase.from("ins_leads").select("ad_id").gte("created_at", since),
     supabase.from("ins_conversations").select("ad_id, priced_at, form_sent_at").gte("started_at", since),
     supabase.from("ins_ad_daily").select("fetched_at").order("fetched_at", { ascending: false }).limit(1).maybeSingle(),
+    adSyncStatuses().catch(() => null),
   ]);
+  const expiry = await expiries(accounts);
 
   /**
    * A conversation that did not come from an advertisement has no ad_id, and keying the
@@ -69,6 +99,8 @@ export async function loadAds(range: AdsRange = "7d"): Promise<AdsPage> {
     choices,
     summary,
     lastFetchedAt: (newest.data as { fetched_at: string } | null)?.fetched_at ?? null,
+    syncStatus: statuses ? Object.fromEntries(statuses) : null,
+    expiry,
   };
 }
 

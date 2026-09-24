@@ -61,24 +61,38 @@ export default async function OverviewPage() {
         )}
       </Card>
 
-      <Card title="เจ็ดวันที่ผ่านมา" hint="นับจากบทสนทนาในเพจ — ตัวเลขเต็มอยู่ที่หน้าลูกค้า">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Figure label="ลูกค้าทักเข้ามา" value={n(week.arrived)} />
-          <Figure label="ได้รับใบเสนอเบี้ย" value={n(week.priced)} />
-          <Figure label="ขอสมัคร" value={n(week.interested)} />
-          <Figure
-            label="ถามแล้วตอบไม่ได้"
-            value={n(week.unanswered)}
-            note={week.unanswered > 0 ? "เขียนคำตอบไว้ได้" : undefined}
-          />
-        </div>
+      {/* the customer page's own "7 วัน", under its own names: the two pages read the same
+          rows through the same function, so a figure here is the figure there */}
+      <Card title="7 วัน" hint="ตัวเลขชุดเดียวกับหน้าลูกค้า ช่วง 7 วัน นับตามวันไทย">
+        {week.counts ? (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Figure label="คนทักเข้ามา" value={n(week.counts.arrived)} />
+            <Figure label="ได้เบี้ยไป" value={n(week.counts.priced)} />
+            <Figure label="สนใจสมัคร" value={n(week.counts.interested)} />
+            <Figure
+              label="คำถามค้างตอบ"
+              value={week.unanswered === null ? "—" : n(week.unanswered)}
+              note={week.unanswered === null ? "อ่านไม่สำเร็จ" : week.unanswered > 0 ? "เขียนคำตอบไว้ได้" : undefined}
+            />
+          </div>
+        ) : (
+          <Empty>อ่านข้อมูลไม่สำเร็จ — ลองเปิดหน้านี้ใหม่อีกครั้ง</Empty>
+        )}
         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Figure
             label="ค่า AI เดือนนี้"
-            value={`${week.aiCostThisMonth.toFixed(2)} บาท`}
-            note={week.budgetThb === null ? "ยังไม่ได้ตั้งงบ" : `จากงบ ${n(week.budgetThb)} บาท`}
+            value={week.aiCostThisMonth === null ? "—" : `${week.aiCostThisMonth.toFixed(2)} บาท`}
+            note={
+              week.aiCostThisMonth === null ? "อ่านไม่สำเร็จ"
+                : week.budgetThb === null ? "ยังไม่ได้ตั้งงบ" : `จากงบ ${n(week.budgetThb)} บาท`
+            }
           />
         </div>
+        <p className="mt-2 text-xs">
+          <Link href="/admin/crm?range=7d" className="text-[var(--bot-ink-mute)] hover:text-[var(--bot-ink-foot)]">
+            ดูตัวเลขเต็มที่หน้าลูกค้า →
+          </Link>
+        </p>
       </Card>
     </>
   );

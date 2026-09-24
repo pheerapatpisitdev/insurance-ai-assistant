@@ -1,12 +1,27 @@
+import Link from "next/link";
+import { Answered } from "./Answered";
 import { BotResume } from "./BotResume";
-import type { LeadView } from "./actions";
-import type { UnansweredRow } from "@/lib/crm/types";
+import type { LeadView, Listed } from "./actions";
+import type { OpenQuestions } from "@/lib/crm/load";
+import { intentName, planName } from "@/lib/crm/plans";
+import { UNDECIDED } from "@/lib/crm/types";
 
-const PLAN_TAG: Record<string, { label: string; className: string }> = {
-  lifeprotect: { label: "Life Protect", className: "bg-[var(--bot-navy-soft)] text-[var(--bot-navy)]" },
-  ihealthy: { label: "iHealthy", className: "bg-[var(--bot-ok-soft)] text-[var(--bot-ok)]" },
-  undecided: { label: "ยังไม่เลือก", className: "bg-[var(--bot-panel)] text-[var(--bot-ink-foot)]" },
+/**
+ * The chip colour for a plan. The name comes from the shared list in src/lib/crm/plans.ts;
+ * only the two plans the page has always tinted keep a tint, and every other plan — iShield,
+ * มรดกเพื่อครอบครัว and whatever is added next — is named on a neutral chip rather than
+ * mislabelled "ยังไม่เลือก" as they were.
+ */
+const PLAN_TINT: Record<string, string> = {
+  lifeprotect: "bg-[var(--bot-navy-soft)] text-[var(--bot-navy)]",
+  ihealthy: "bg-[var(--bot-ok-soft)] text-[var(--bot-ok)]",
 };
+const NEUTRAL_TINT = "bg-[var(--bot-panel)] text-[var(--bot-ink-foot)]";
+
+function planTag(product: string | null): { label: string; className: string } {
+  const key = product ?? UNDECIDED;
+  return { label: planName(key), className: PLAN_TINT[key] ?? NEUTRAL_TINT };
+}
 
 /**
  * The three stages, as one ramp rather than three unrelated colours.
@@ -71,23 +86,53 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 export function Leads(
-  { tab, leads, unanswered }: { tab: string; leads: LeadView[]; unanswered: UnansweredRow[] },
+  { tab, leads, unanswered }: { tab: string; leads: Listed<LeadView> | null; unanswered: OpenQuestions | null },
 ) {
   const box = "rounded-b-xl border border-t-0 border-[var(--bot-line)] bg-white overflow-x-auto";
 
   if (tab === "unanswered") {
+    if (!unanswered) {
+      return <div className={box}><Empty>อ่านข้อมูลไม่สำเร็จ — ลองเปิดหน้านี้ใหม่อีกครั้ง</Empty></div>;
+    }
+    const { rows, total, canMark } = unanswered;
     return (
       <div className={box}>
-        {unanswered.length === 0 ? (
-          <Empty>ยังไม่มีคำถามที่บอทตอบไม่ได้ — หรือยังไม่มีใครถาม</Empty>
+        {/* the way to the notes page: it is kept out of the menu on purpose, so this is the door */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--bot-line)] px-4 py-2.5 text-xs text-[var(--bot-ink-mute)]">
+          <span>
+            {rows.length < total
+              ? `แสดง ${rows.length} จาก ${total.toLocaleString("en-US")} ข้อ (ใหม่สุดก่อน)`
+              : `ยังค้างตอบ ${total.toLocaleString("en-US")} ข้อ`}
+          </span>
+          <span className="hidden sm:inline">· เขียนคำตอบไว้แล้วกด “ตอบแล้ว” ข้อนั้นจะหายจากรายการ</span>
+          <Link
+            href="/admin/knowledge"
+            className="ml-auto whitespace-nowrap rounded-lg border border-[var(--bot-line)] px-2.5 py-1.5 text-xs text-[var(--bot-ink-foot)] no-underline hover:bg-[var(--bot-band)]"
+          >
+            เขียนคำตอบ →
+          </Link>
+        </div>
+        {rows.length === 0 ? (
+          <Empty>ไม่มีคำถามค้างตอบ</Empty>
         ) : (
           <ul className="divide-y divide-[var(--bot-line)]">
-            {unanswered.map((u) => (
-              <li key={u.id} className="px-4 py-3">
-                <p className="text-sm text-[var(--bot-ink)]">{u.question}</p>
-                <p className="mt-1 text-xs text-[var(--bot-ink-faint)]">
-                  {PLAN_TAG[u.product ?? "undecided"]?.label ?? u.product} · {u.intent ?? "ไม่ระบุ"} · {ago(u.at)}
-                </p>
+            {rows.map((u) => (
+              <li key={u.id} className="flex flex-wrap items-start gap-x-3 gap-y-2 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-[var(--bot-ink)]">{u.question}</p>
+                  <p className="mt-1 text-xs text-[var(--bot-ink-faint)]">
+                    {planName(u.product)} · {intentName(u.intent)} · {ago(u.at)}
+                  </p>
+                </div>
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <Link
+                    href="/admin/knowledge"
+                    className="whitespace-nowrap px-1.5 py-1.5 text-xs text-[var(--bot-ink-mute)] hover:text-[var(--bot-ink-foot)]"
+                  >
+                    เขียนคำตอบ
+                  </Link>
+                  {canMark && <Answered id={u.id} />}
+                </span>
               </li>
             ))}
           </ul>
@@ -96,7 +141,11 @@ export function Leads(
     );
   }
 
-  if (leads.length === 0) {
+  if (!leads) {
+    return <div className={box}><Empty>อ่านข้อมูลไม่สำเร็จ — ลองเปิดหน้านี้ใหม่อีกครั้ง</Empty></div>;
+  }
+
+  if (leads.rows.length === 0) {
     return (
       <div className={box}>
         <Empty>
@@ -108,6 +157,11 @@ export function Leads(
 
   return (
     <div className={box}>
+      {leads.rows.length < leads.total && (
+        <p className="border-b border-[var(--bot-line)] px-4 py-2.5 text-xs text-[var(--bot-ink-mute)]">
+          แสดง {leads.rows.length} จาก {leads.total.toLocaleString("en-US")} คน (เคลื่อนไหวล่าสุดก่อน)
+        </p>
+      )}
       <table className="w-full min-w-[46rem] border-collapse text-sm">
         <thead>
           <tr className="text-xs font-normal text-[var(--bot-ink-mute)]">
@@ -119,8 +173,8 @@ export function Leads(
           </tr>
         </thead>
         <tbody>
-          {leads.map((lead) => {
-            const plan = PLAN_TAG[lead.product ?? "undecided"] ?? PLAN_TAG.undecided;
+          {leads.rows.map((lead) => {
+            const plan = planTag(lead.product);
             const stage = STAGE_TAG[lead.stage] ?? { label: lead.stage, className: "bg-[var(--bot-panel)] text-[var(--bot-ink-foot)]" };
             const { who, money } = quoteOf(lead.last_quote);
             return (
@@ -147,8 +201,11 @@ export function Leads(
                 </td>
                 <td className="whitespace-nowrap px-3.5 py-3 text-xs text-[var(--bot-ink-mute)]">{who}</td>
                 <td className="whitespace-nowrap px-3.5 py-3 tabular-nums">{money}</td>
-                <td className="max-w-[9rem] truncate px-3.5 py-3 font-mono text-xs text-[var(--bot-ink-faint)]">
-                  {lead.ad_id ?? "ทักตรง"}
+                <td
+                  className={`max-w-[9rem] truncate px-3.5 py-3 text-xs text-[var(--bot-ink-faint)] ${lead.ad_id && !lead.adName ? "font-mono" : ""}`}
+                  title={lead.ad_id ? `รหัสโฆษณา ${lead.ad_id}` : undefined}
+                >
+                  {lead.ad_id ? (lead.adName ?? lead.ad_id) : "ทักตรง"}
                 </td>
                 <td className="px-3.5 py-3">
                   <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${stage.className}`}>
@@ -164,7 +221,7 @@ export function Leads(
                   <div className="flex items-center gap-1.5">
                     {lead.reachable ? (
                       <a
-                        href="https://business.facebook.com/latest/inbox/all"
+                        href={lead.chatUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="whitespace-nowrap rounded-lg border border-[var(--bot-line)] px-2.5 py-1.5 text-xs text-[var(--bot-ink-foot)] hover:bg-[var(--bot-band)]"

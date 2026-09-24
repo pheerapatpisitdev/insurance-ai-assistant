@@ -1,8 +1,17 @@
 import { share } from "@/lib/crm/summary";
 import type { Counts } from "@/lib/crm/types";
 
-/** The six figures the owner reads first, and nothing that needs explaining under them. */
-export function Kpis({ counts, aiCostThisMonth }: { counts: Counts; aiCostThisMonth: number }) {
+/**
+ * The six figures the owner reads first, and nothing that needs explaining under them.
+ *
+ * The AI cost is over the same range as the rest. It was the whole month's, divided by the
+ * arrivals of whatever range was chosen, so "วันนี้" showed a month of spending shared among a
+ * morning's customers — a cost per person thirty times too high on the first of each view.
+ * `aiCost` is null when the ledger could not be read, and says so rather than showing ฿0.
+ */
+export function Kpis(
+  { counts, aiCost, rangeLabel }: { counts: Counts; aiCost: number | null; rangeLabel: string },
+) {
   const cards = [
     { label: "คนทักเข้ามา", value: counts.arrived, sub: `${counts.told} คนคุยต่อ` },
     { label: "ได้เบี้ยไป", value: counts.priced, sub: `${share(counts.priced, counts.arrived)}% ของคนที่ทัก` },
@@ -10,11 +19,13 @@ export function Kpis({ counts, aiCostThisMonth }: { counts: Counts; aiCostThisMo
     { label: "กรอกฟอร์มแล้ว", value: counts.formDone, sub: `${share(counts.formDone, counts.interested)}% ของคนที่สนใจ` },
     { label: "เงียบหาย", value: counts.stalled, sub: `ตัวแทนตอบเอง ${counts.agentReplied}` },
     {
-      label: "ค่า AI เดือนนี้",
-      value: `฿${aiCostThisMonth.toLocaleString("en-US", { maximumFractionDigits: 0 })}`,
-      sub: counts.arrived
-        ? `฿${(aiCostThisMonth / counts.arrived).toFixed(2)} ต่อคนที่ทัก`
-        : "ยังไม่มีคนทัก",
+      label: `ค่า AI ${rangeLabel}`,
+      value: aiCost === null ? "—" : `฿${aiCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`,
+      sub: aiCost === null
+        ? "อ่านข้อมูลไม่สำเร็จ"
+        : counts.arrived
+          ? `฿${(aiCost / counts.arrived).toFixed(2)} ต่อคนที่ทัก`
+          : "ยังไม่มีคนทัก",
     },
   ];
 

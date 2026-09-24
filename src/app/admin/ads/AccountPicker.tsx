@@ -24,7 +24,7 @@ export function AccountPicker({ accounts }: { accounts: Choice[] }) {
       <p className="mb-3 text-sm text-[var(--bot-ink-foot)]">
         เข้าสู่ระบบแล้ว เลือกบัญชีโฆษณาที่จะให้หน้านี้อ่านตัวเลข ติ๊กได้หลายบัญชี
       </p>
-      <ul className="mb-3 divide-y rounded-md border">
+      <ul className="mb-3 divide-y divide-[var(--bot-line)] rounded-md border border-[var(--bot-line)]">
         {accounts.map((a) => (
           <li key={a.id}>
             <label className="flex cursor-pointer items-center gap-3 px-3 py-2">

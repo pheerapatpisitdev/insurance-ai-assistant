@@ -229,6 +229,36 @@ export async function listAdAccounts(userToken: string): Promise<FacebookAdAccou
   return (res.data ?? []).map((a) => ({ id: a.id, name: a.name ?? a.id, currency: a.currency ?? null }));
 }
 
+/** When a user token stops working, as Meta's own inspector reports it. */
+export interface TokenExpiry {
+  /** false once Meta has already stopped honouring it */
+  valid: boolean;
+  /** when the token itself runs out; null for a token that does not expire */
+  expiresAt: string | null;
+  /** when the person's grant of data access runs out (90 days after they last logged in) */
+  dataAccessExpiresAt: string | null;
+}
+
+/**
+ * Asks Meta when a user token expires.
+ *
+ * The ads login keeps no expiry of its own — tokenFromCode throws the `expires_in` away — so
+ * the date is read back from /debug_token, which answers for any token issued to this app
+ * when asked with the app's own credentials. No permission beyond what the login already has
+ * is needed, and nothing is stored: the ADS page asks each time it opens.
+ */
+export async function tokenExpiry(userToken: string): Promise<TokenExpiry> {
+  const res = await graph<{ data?: { is_valid?: boolean; expires_at?: number; data_access_expires_at?: number } }>(
+    "/debug_token",
+    { input_token: userToken },
+    // the app token rides in the header, like every other token here, not in a URL a log keeps
+    `${appId()}|${appSecret()}`,
+  );
+  const d = res.data ?? {};
+  const at = (unix?: number) => (unix && unix > 0 ? new Date(unix * 1000).toISOString() : null);
+  return { valid: Boolean(d.is_valid), expiresAt: at(d.expires_at), dataAccessExpiresAt: at(d.data_access_expires_at) };
+}
+
 /** Without this the Page never sends its messages to the webhook, whatever the token says. */
 export async function subscribePage(page: FacebookPage): Promise<string[]> {
   const url = `${GRAPH}/${page.id}/subscribed_apps`;

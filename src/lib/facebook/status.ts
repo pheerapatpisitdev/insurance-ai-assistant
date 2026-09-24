@@ -128,7 +128,7 @@ async function statusOf(page: PageRef): Promise<PageStatus> {
   const [messaging, profile, subs] = await Promise.allSettled([
     get<unknown>("/me/messenger_profile?fields=greeting", token),
     get<{ id: string; name: string }>("/me?fields=id,name", token),
-    get<{ data: { name: string; subscribed_fields?: string[] }[] }>("/me/subscribed_apps", token),
+    get<{ data: SubscribedApp[] }>("/me/subscribed_apps", token),
   ]);
 
   if (messaging.status === "fulfilled") {
@@ -144,7 +144,7 @@ async function statusOf(page: PageRef): Promise<PageStatus> {
         status.revoked = true;
         status.errors.push("Meta ถอนสิทธิ์ของเพจนี้แล้ว บอทตอบข้อความในเพจนี้ไม่ได้เลย");
       } else {
-        status.errors.push(`โทเค็นเพจส่งข้อความไม่ได้: ${e.detail}`);
+        status.errors.push(`สิทธิ์เชื่อมต่อของเพจนี้ส่งข้อความไม่ได้ — Facebook แจ้งว่า: ${e.detail}`);
       }
     }
   }
@@ -155,12 +155,47 @@ async function statusOf(page: PageRef): Promise<PageStatus> {
   } else note(status, profile.reason as GraphError, "ชื่อและรหัสเพจ", "pages_show_list");
 
   if (subs.status === "fulfilled") {
-    const apps = subs.value.data ?? [];
-    status.subscribed = apps.length > 0;
-    status.fields = apps.flatMap((a) => a.subscribed_fields ?? []);
+    const ours = ourSubscription(subs.value.data ?? [], process.env.FB_APP_ID);
+    if (ours) {
+      status.subscribed = ours.subscribed;
+      status.fields = ours.fields;
+    } else {
+      addNote(status, "บอกไม่ได้ว่าเพจส่งข้อมูลมาที่แอปนี้หรือไม่ เพราะเครื่องนี้ยังไม่ได้ตั้ง FB_APP_ID");
+    }
   } else note(status, subs.reason as GraphError, "การรับข้อมูล", "pages_manage_metadata");
 
   return status;
+}
+
+/** One entry of a Page's `subscribed_apps` — every app the Page sends its events to, not only ours. */
+export interface SubscribedApp {
+  id?: string;
+  name?: string;
+  subscribed_fields?: string[];
+}
+
+/**
+ * Whether the Page sends its events to this app, and which ones.
+ *
+ * The list Meta returns is every app the Page is subscribed to. A Page that also feeds a
+ * chat-inbox tool, a CRM or an old test app has entries in it that have nothing to do with
+ * this bot, and counting the list — or pooling everyone's fields — drew a green "เพจส่งข้อมูล
+ * มาที่แอปนี้แล้ว" for a Page that sends this app nothing at all. Only the entry carrying our
+ * own app id counts.
+ *
+ * Nothing (rather than a guess) when the app id is not set, because then no entry can be told
+ * to be ours and either answer would be made up.
+ */
+export function ourSubscription(
+  apps: SubscribedApp[],
+  appId: string | undefined,
+): { subscribed: boolean; fields: string[] } | undefined {
+  if (!appId) return undefined;
+  const mine = apps.filter((a) => a.id === appId);
+  return {
+    subscribed: mine.length > 0,
+    fields: mine.flatMap((a) => a.subscribed_fields ?? []),
+  };
 }
 
 function addNote(status: PageStatus, text: string) {
@@ -176,8 +211,8 @@ function note(status: PageStatus, e: GraphError, what: string, scope: string) {
       status.revoked = true;
       return;
     case "permission":
-      return addNote(status, `ดู${what}ไม่ได้ เพราะโทเค็นไม่มีสิทธิ์ ${scope} — ไม่กระทบการตอบข้อความ`);
+      return addNote(status, `ดู${what}ไม่ได้ เพราะสิทธิ์เชื่อมต่อไม่รวม ${scope} — ไม่กระทบการตอบข้อความ`);
     default:
-      status.errors.push(`อ่าน${what}ไม่ได้: ${e.detail}`);
+      status.errors.push(`อ่าน${what}ไม่ได้ — Facebook แจ้งว่า: ${e.detail}`);
   }
 }

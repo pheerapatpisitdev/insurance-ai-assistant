@@ -89,9 +89,24 @@ async function spentThisMonth(): Promise<number> {
   return (await monthSpend(monthStart())).baht;
 }
 
+/**
+ * Stops every call once the month's spend reaches the owner's budget.
+ *
+ * Empty means no limit. A number means that number, 0 included: a ฿0 budget is a ceiling
+ * already reached, and the bot stops. That reading is deliberate, and it is why the admin
+ * page refuses 0 rather than storing it — the page once showed a 0 as "ยังไม่ได้ตั้งงบ" while
+ * this line switched off every customer's answers. Only a value that is not a number at all
+ * (a hand edit in the table) is taken as no limit, and said so in the log, because a
+ * NaN compared with anything is false and would have meant the same thing silently.
+ */
 async function assertWithinBudget(config: Config) {
-  if (config.budgetThb === null) return;
-  if ((await spentThisMonth()) >= Number(config.budgetThb)) throw new BudgetExceeded();
+  if (config.budgetThb === null || config.budgetThb === undefined) return;
+  const budget = Number(config.budgetThb);
+  if (!Number.isFinite(budget)) {
+    console.error(`monthly_budget_thb is not a number (${String(config.budgetThb)}); treating it as no limit`);
+    return;
+  }
+  if ((await spentThisMonth()) >= budget) throw new BudgetExceeded();
 }
 
 /** Records what a call cost. Never records the customer's words, only counts and money. */

@@ -26,6 +26,47 @@ function Copy({ text }: { text: string }) {
   );
 }
 
+/**
+ * ลบ, asked twice in the row itself.
+ *
+ * It sat one tap away, right beside ปิด, and a delete takes the key's name and its whole
+ * usage history with it — the thing ปิด exists to keep. confirm() is not an option: in the
+ * owner's browser it answers "no" without showing anything (see DisconnectButton).
+ */
+function DeleteKey({ id, busy, run }: { id: string; busy: boolean; run: (fn: () => Promise<void>) => void }) {
+  const [armed, setArmed] = useState(false);
+  if (!armed) {
+    return (
+      <button
+        type="button" disabled={busy}
+        onClick={() => setArmed(true)}
+        className="rounded border border-[var(--bot-red)] px-2 py-1 text-xs text-[var(--bot-red-ink)] hover:bg-[var(--bot-red-soft)]"
+      >
+        ลบ
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
+      <span className="text-xs text-[var(--bot-red-ink)]">ลบถาวร?</span>
+      <button
+        type="button" disabled={busy}
+        onClick={() => run(() => deleteKey(id))}
+        className="rounded bg-[var(--bot-red-ink)] px-2 py-1 text-xs text-white disabled:opacity-50"
+      >
+        ยืนยัน
+      </button>
+      <button
+        type="button" disabled={busy}
+        onClick={() => setArmed(false)}
+        className="text-xs text-[var(--bot-ink-mute)] underline disabled:opacity-50"
+      >
+        ยกเลิก
+      </button>
+    </span>
+  );
+}
+
 export function Keys({ rows, mcpBase }: { rows: KeyRow[]; mcpBase: string }) {
   const [name, setName] = useState("");
   const [quota, setQuota] = useState("");
@@ -55,7 +96,7 @@ export function Keys({ rows, mcpBase }: { rows: KeyRow[]; mcpBase: string }) {
           <input
             value={name} onChange={(e) => setName(e.target.value)}
             placeholder="เช่น Claude ของบอส"
-            className="mt-1 block w-56 rounded border px-2 py-1.5 text-sm text-[var(--bot-ink)]"
+            className="mt-1 block w-56 max-w-full rounded border border-[var(--bot-line)] px-2 py-1.5 text-sm text-[var(--bot-ink)]"
           />
         </label>
         <label className="text-xs text-[var(--bot-ink-mute)]">
@@ -63,7 +104,7 @@ export function Keys({ rows, mcpBase }: { rows: KeyRow[]; mcpBase: string }) {
           <input
             value={quota} onChange={(e) => setQuota(e.target.value.replace(/[^\d]/g, ""))}
             placeholder="5000" inputMode="numeric"
-            className="mt-1 block w-44 rounded border px-2 py-1.5 text-sm text-[var(--bot-ink)]"
+            className="mt-1 block w-44 max-w-full rounded border border-[var(--bot-line)] px-2 py-1.5 text-sm text-[var(--bot-ink)]"
           />
         </label>
         <button
@@ -147,9 +188,10 @@ export function Keys({ rows, mcpBase }: { rows: KeyRow[]; mcpBase: string }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-xs text-[var(--bot-ink-mute)]">
+              <tr className="border-b border-[var(--bot-line)] text-left text-xs text-[var(--bot-ink-mute)]">
                 <th className="py-2 pr-3">ชื่อ</th>
-                <th className="py-2 pr-3">กุญแจ</th>
+                {/* the prefix is the column a phone can spare: at 375px it pushed ปิด/ลบ off the screen */}
+                <th className="hidden py-2 pr-3 sm:table-cell">กุญแจ</th>
                 <th className="py-2 pr-3 text-right">ใช้เดือนนี้</th>
                 <th className="py-2 pr-3">ใช้ล่าสุด</th>
                 <th className="py-2" />
@@ -157,33 +199,33 @@ export function Keys({ rows, mcpBase }: { rows: KeyRow[]; mcpBase: string }) {
             </thead>
             <tbody>
               {rows.map((k) => (
-                <tr key={k.id} className={`border-b ${k.disabled ? "opacity-50" : ""}`}>
-                  <td className="py-2 pr-3 font-medium text-[var(--bot-ink)]">
+                <tr key={k.id} className={`border-b border-[var(--bot-line)] ${k.disabled ? "opacity-50" : ""}`}>
+                  <td className="py-2 pr-3 font-medium break-words text-[var(--bot-ink)]">
                     {k.name}{k.disabled && <span className="ml-2 text-xs font-normal text-[var(--bot-ink-mute)]">ปิดอยู่</span>}
                   </td>
-                  <td className="py-2 pr-3 font-mono text-xs text-[var(--bot-ink-faint)]">{k.prefix}…</td>
+                  <td className="hidden py-2 pr-3 font-mono text-xs text-[var(--bot-ink-faint)] sm:table-cell">{k.prefix}…</td>
                   <td className="py-2 pr-3 text-right tabular-nums">
                     {k.usedMonth.toLocaleString("en-US")}
                     <span className="text-[var(--bot-ink-faint)]">{k.quotaMonth ? ` / ${k.quotaMonth.toLocaleString("en-US")}` : " / ไม่จำกัด"}</span>
                   </td>
                   <td className="py-2 pr-3 text-xs text-[var(--bot-ink-mute)]">
-                    {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "ยังไม่เคยใช้"}
+                    {/* Bangkok, said explicitly: this renders on a UTC server first */}
+                    {k.lastUsedAt
+                      ? new Date(k.lastUsedAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" })
+                      : "ยังไม่เคยใช้"}
                   </td>
+                  {/* stacked on a phone, side by side from sm up */}
                   <td className="py-2 text-right">
-                    <button
-                      type="button" disabled={pending}
-                      onClick={() => run(() => setKeyDisabled(k.id, !k.disabled))}
-                      className="rounded border px-2 py-1 text-xs text-[var(--bot-ink-foot)] hover:bg-[var(--bot-band)]"
-                    >
-                      {k.disabled ? "เปิดใช้" : "ปิด"}
-                    </button>
-                    <button
-                      type="button" disabled={pending}
-                      onClick={() => run(() => deleteKey(k.id))}
-                      className="ml-1.5 rounded border border-[var(--bot-red)] px-2 py-1 text-xs text-[var(--bot-red-ink)] hover:bg-[var(--bot-red-soft)]"
-                    >
-                      ลบ
-                    </button>
+                    <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:justify-end">
+                      <button
+                        type="button" disabled={pending}
+                        onClick={() => run(() => setKeyDisabled(k.id, !k.disabled))}
+                        className="rounded border border-[var(--bot-line)] px-2 py-1 text-xs whitespace-nowrap text-[var(--bot-ink-foot)] hover:bg-[var(--bot-band)]"
+                      >
+                        {k.disabled ? "เปิดใช้" : "ปิด"}
+                      </button>
+                      <DeleteKey id={k.id} busy={pending} run={run} />
+                    </div>
                   </td>
                 </tr>
               ))}

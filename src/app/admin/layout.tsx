@@ -1,4 +1,14 @@
 import { AppShell } from "@/components/shell/AppShell";
+import type { Metadata } from "next";
+
+/**
+ * The tab's name for every back-office page that does not name itself.
+ *
+ * Without it the tab said "คำนวณเบี้ยประกัน" — the calculator's title, inherited from the root —
+ * on every screen here, so six open tabs looked like six copies of the calculator. Each page
+ * that has a name of its own sets it; this is what the rest fall back to.
+ */
+export const metadata: Metadata = { title: "หลังบ้าน | advisortool" };
 
 /**
  * The back office, open at its address.

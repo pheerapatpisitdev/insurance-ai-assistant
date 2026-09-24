@@ -23,7 +23,9 @@ export function Charts({ byDay, byHour, byAd }: Pick<Summary, "byDay" | "byHour"
         <h2 className="mb-3.5 text-sm font-semibold">รายวัน</h2>
         <div className="flex h-32 items-end gap-1.5 overflow-x-auto">
           {byDay.map((d) => {
-            const date = new Date(`${d.date}T00:00:00`);
+            // the key is already a Bangkok calendar day; read it back as that day, in UTC, so
+            // the weekday does not depend on which timezone the server happens to keep
+            const date = new Date(`${d.date}T00:00:00Z`);
             return (
               <div
                 key={d.date}
@@ -38,7 +40,7 @@ export function Charts({ byDay, byHour, byAd }: Pick<Summary, "byDay" | "byHour"
                 <div className="bg-[var(--bot-sand)]" style={{ height: `${(d.priced / dayPeak) * 100}%` }} />
                 <div className="rounded-b-sm bg-[var(--bot-blue)]" style={{ height: `${(d.arrived / dayPeak) * 100}%` }} />
                 <div className="pt-1 text-center text-[10px] text-[var(--bot-ink-faint)]">
-                  {byDay.length <= 10 ? DAY_NAMES[date.getDay()] : date.getDate()}
+                  {byDay.length <= 10 ? DAY_NAMES[date.getUTCDay()] : date.getUTCDate()}
                 </div>
               </div>
             );
@@ -71,13 +73,20 @@ export function Charts({ byDay, byHour, byAd }: Pick<Summary, "byDay" | "byHour"
         <h2 className="mb-2 mt-5 text-sm font-semibold">มาจากแอดไหน</h2>
         {byAd.length === 0 ? (
           <p className="text-xs text-[var(--bot-ink-faint)]">
-            ยังไม่มีข้อมูลโฆษณา — ต้องให้เพจรับ <code>messaging_referrals</code> ก่อน
+            ช่วงนี้ยังไม่มีใครทักมาจากโฆษณา — ถ้ายิงแอดอยู่แต่ไม่ขึ้นที่นี่ ให้ไปกดสมัครรับข้อความที่หน้าเชื่อมเพจอีกครั้ง
           </p>
         ) : (
           <ul className="space-y-1.5 text-sm">
             {byAd.slice(0, 5).map((a) => (
               <li key={a.adId} className="flex items-baseline justify-between gap-3">
-                <span className="truncate font-mono text-xs text-[var(--bot-ink-foot)]">{a.adId}</span>
+                {/* the advertisement's name from the daily ads pull; its id only where the pull has
+                    never seen it, which is an advertisement from an account not connected here */}
+                <span
+                  className={`truncate text-xs text-[var(--bot-ink-foot)] ${a.name ? "" : "font-mono"}`}
+                  title={a.name ? `รหัสโฆษณา ${a.adId}` : undefined}
+                >
+                  {a.name ?? a.adId}
+                </span>
                 <span className="shrink-0 tabular-nums text-[var(--bot-ink-mute)]">
                   {a.arrived} ทัก · <b className="text-[var(--bot-ink)]">{a.interested}</b> สนใจ
                 </span>

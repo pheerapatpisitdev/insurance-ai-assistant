@@ -3,8 +3,26 @@ import { useState, useTransition } from "react";
 import { Card, Empty } from "../ui";
 import {
   checkKeys, saveApiKey, setModelEnabled, setProviderEnabled, saveSettings,
-  type KeyRow, type ModelRow, type ProviderCheck, type ProviderSpend, type Settings,
+  type KeyRow, type ModelRow, type ProviderCheck, type ProviderSpend, type Result, type Settings,
 } from "./actions";
+
+/**
+ * What the last save said, and where on the page it belongs.
+ *
+ * There was one banner, at the top of the page. The budget form is at the bottom, so on a
+ * phone the owner pressed บันทึก, saw nothing move, and could not tell a saved budget from a
+ * refused one. Each message now sits beside the button that caused it.
+ */
+type Note = { where: string; ok: boolean; text: string };
+
+function Said({ note, where, className = "" }: { note?: Note; where: string; className?: string }) {
+  if (!note || note.where !== where) return null;
+  return (
+    <span role="status" className={`text-xs ${note.ok ? "text-[var(--bot-ok)]" : "text-[var(--bot-red-ink)]"} ${className}`}>
+      {note.ok ? "✓ " : ""}{note.text}
+    </span>
+  );
+}
 
 /**
  * What this provider has cost since the first of the month.
@@ -71,13 +89,18 @@ const PROVIDER_LABEL: Record<string, string> = {
 /** How a model's kind reads on the page. A judge answers in probabilities, never in words. */
 const KIND_LABEL: Record<string, string> = { text: "ข้อความ", image: "รูปภาพ", judge: "ตัดสิน (ไม่สร้างข้อความ)" };
 
+/** The quality an image row is asked for, so one model at two prices reads as two choices. */
+const QUALITY_LABEL: Record<string, string> = { low: "คุณภาพต่ำ", medium: "คุณภาพมาตรฐาน", high: "คุณภาพสูง (คมชัด)" };
+
 export function AiClient({ keys, models, settings, providers, spentThisMonth, spend, content }: {
   keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[];
-  spentThisMonth: number; spend: ProviderSpend[]; content: { spent: number; cap: number };
+  spentThisMonth: number | null; spend: ProviderSpend[]; content: { spent: number | null; cap: number; fallback: number };
 }) {
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState<string>();
+  const [note, setNote] = useState<Note>();
+  /** which button is saving, so that one says กำลังบันทึก… and the rest merely wait */
+  const [busy, setBusy] = useState<string>();
   const keyOf = (p: string) => keys.find((k) => k.provider === p);
   const tailOf = (p: string) => keyOf(p)?.tail;
   /**
@@ -94,32 +117,49 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
   const baht = (n: number) => n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const textModels = models.filter((m) => m.kind === "text");
 
-  const run = (fn: () => Promise<void>, ok: string) =>
+  const budget = settings?.monthly_budget_thb != null ? Number(settings.monthly_budget_thb) : null;
+
+  /**
+   * Runs one save and says how it went beside `where`. The action answers {ok, error} rather
+   * than throwing, so the error is the Thai sentence it wrote; a throw here means the request
+   * itself never came back.
+   */
+  const run = (where: string, fn: () => Promise<Result>, ok: string, after?: () => void) => {
+    setNote(undefined);
+    setBusy(where);
     start(async () => {
       try {
-        await fn();
-        setMessage(ok);
-      } catch (e) {
-        setMessage(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
+        const res = await fn();
+        if (res.ok) {
+          setNote({ where, ok: true, text: ok });
+          after?.();
+        } else {
+          setNote({ where, ok: false, text: res.error });
+        }
+      } catch {
+        setNote({ where, ok: false, text: "บันทึกไม่สำเร็จ — เน็ตหลุดหรือเซิร์ฟเวอร์ไม่ตอบ ลองใหม่อีกครั้ง" });
+      } finally {
+        setBusy(undefined);
       }
     });
+  };
+
+  const input = "rounded border border-[var(--bot-line-strong)] bg-[var(--bot-surface)] px-2 py-1";
 
   return (
     <>
-      {message && <p className="mb-4 rounded-md border border-[var(--bot-line-strong)] bg-[var(--bot-navy-soft)] px-3 py-2 text-sm text-[var(--bot-navy)]">{message}</p>}
-
-      <Card title="กุญแจ API" hint="เก็บแยกจากระบบอื่น เข้ารหัสไว้ในฐานข้อมูล แสดงเฉพาะ 4 ตัวท้าย">
+      <Card title="กุญแจของค่าย AI" hint="เก็บแยกจากระบบอื่น เข้ารหัสไว้ในฐานข้อมูล แสดงเฉพาะ 4 ตัวท้าย">
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <button
             type="button" disabled={testing}
             className="rounded border border-[var(--bot-line-strong)] px-3 py-1.5 text-xs font-medium text-[var(--bot-ink-foot)] hover:bg-[var(--bot-band)] disabled:opacity-40"
             onClick={async () => {
               setTesting(true);
-              setMessage(undefined);
+              setNote(undefined);
               try {
                 setChecks(await checkKeys());
-              } catch (err) {
-                setMessage(err instanceof Error ? err.message : "ทดสอบไม่สำเร็จ");
+              } catch {
+                setNote({ where: "test", ok: false, text: "ทดสอบไม่สำเร็จ — ลองใหม่อีกครั้ง" });
               } finally {
                 setTesting(false);
               }
@@ -132,11 +172,17 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
               ? `ตอบได้ ${checks.filter((c) => c.state === "ok").length} จาก ${checks.length} ค่าย`
               : "ส่งคำถามสั้นๆ ไปทุกค่ายเพื่อดูว่ากุญแจไหนยังใช้ได้ — ราคาไม่ถึงหนึ่งสตางค์"}
           </span>
+          <Said note={note} where="test" />
           <span className="ml-auto text-xs text-[var(--bot-ink-mute)]">
-            เดือนนี้ใช้ไป <b className="text-sm tabular-nums text-[var(--bot-ink)]">฿{baht(spentThisMonth)}</b>
-            {settings?.monthly_budget_thb
-              ? <> จากงบ ฿{baht(Number(settings.monthly_budget_thb))} ({Math.round((spentThisMonth / Number(settings.monthly_budget_thb)) * 100)}%)</>
-              : " (ยังไม่ได้ตั้งงบ)"}
+            {spentThisMonth === null
+              ? <span className="text-[var(--bot-red-ink)]">อ่านยอดใช้ไม่สำเร็จ</span>
+              : <>เดือนนี้ใช้ไป <b className="text-sm tabular-nums text-[var(--bot-ink)]">฿{baht(spentThisMonth)}</b></>}
+            {/* `!= null`, not truthiness: a stored 0 is a ฿0 ceiling that stops the bot, not "no budget" */}
+            {budget == null
+              ? " (ไม่จำกัดงบ)"
+              : budget <= 0
+                ? <span className="text-[var(--bot-red-ink)]"> · งบ ฿{baht(budget)} — ระบบหยุดเรียก AI ทั้งหมด</span>
+                : <> จากงบ ฿{baht(budget)}{spentThisMonth !== null && <> ({Math.round((spentThisMonth / budget) * 100)}%)</>}</>}
           </span>
         </div>
         <div className="space-y-2">
@@ -144,17 +190,17 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
             const key = keyOf(p);
             const on = key?.enabled ?? true;
             return (
-              <div key={p} className={`flex flex-wrap items-center gap-2 rounded-md border p-2 ${on ? "" : "opacity-60"}`}>
+              <div key={p} className={`flex flex-wrap items-center gap-2 rounded-md border border-[var(--bot-line)] p-2 ${on ? "" : "opacity-60"}`}>
                 <span className="w-44 text-sm">{PROVIDER_LABEL[p] ?? p}</span>
                 <span className="w-24 text-xs text-[var(--bot-ink-mute)]">{key ? `••••${key.tail}` : "ยังไม่ได้ตั้ง"}</span>
                 {/* the switch: off keeps the key and stops every call to this company */}
                 <label className={`flex w-20 items-center gap-1.5 text-xs ${key ? "cursor-pointer" : "invisible"}`} title={on ? "ปิดเพื่อหยุดเรียกค่ายนี้ โดยไม่ต้องลบกุญแจ" : "เปิดเพื่อให้ระบบเรียกค่ายนี้ได้อีก"}>
                   <input
                     type="checkbox" role="switch" className="sr-only" checked={on} disabled={pending || !key}
-                    onChange={(e) => run(() => setProviderEnabled(p, e.target.checked), `${e.target.checked ? "เปิด" : "ปิด"} ${PROVIDER_LABEL[p] ?? p} แล้ว`)}
+                    onChange={(e) => run(`key:${p}`, () => setProviderEnabled(p, e.target.checked), `${e.target.checked ? "เปิด" : "ปิด"} ${PROVIDER_LABEL[p] ?? p} แล้ว`)}
                   />
                   <span aria-hidden className={`relative inline-block h-4 w-7 rounded-full transition-colors ${on ? "bg-[var(--bot-ok)]" : "bg-[var(--bot-line-strong)]"}`}>
-                    <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${on ? "left-3.5" : "left-0.5"}`} />
+                    <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-[var(--bot-surface)] transition-all ${on ? "left-3.5" : "left-0.5"}`} />
                   </span>
                   <span className={on ? "text-[var(--bot-ok)]" : "text-[var(--bot-ink-mute)]"}>{on ? "เปิด" : "ปิด"}</span>
                 </label>
@@ -163,17 +209,19 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
                 <span className="flex min-w-64 flex-1 items-center gap-2">
                   <input
                     type="password" placeholder="วางกุญแจใหม่" autoComplete="off"
-                    className="min-w-0 flex-1 rounded border px-2 py-1 text-sm"
+                    className={`min-w-0 flex-1 text-sm ${input}`}
                     value={draft[p] ?? ""} onChange={(e) => setDraft({ ...draft, [p]: e.target.value })}
                   />
                   <button
                     type="button" disabled={pending || !(draft[p] ?? "").trim()}
-                    className="shrink-0 rounded bg-[var(--bot-navy)] px-3 py-1 text-xs text-white disabled:opacity-40"
-                    onClick={() => run(async () => { await saveApiKey(p, draft[p]); setDraft({ ...draft, [p]: "" }); }, `บันทึกกุญแจ ${PROVIDER_LABEL[p] ?? p} แล้ว`)}
+                    className="shrink-0 rounded bg-[var(--bot-navy)] px-3 py-1 text-xs text-[var(--bot-surface)] disabled:opacity-40"
+                    onClick={() => run(`key:${p}`, () => saveApiKey(p, draft[p] ?? ""), `บันทึกกุญแจ ${PROVIDER_LABEL[p] ?? p} แล้ว`,
+                      () => setDraft((d) => ({ ...d, [p]: "" })))}
                   >
-                    บันทึก
+                    {busy === `key:${p}` ? "กำลังบันทึก…" : "บันทึก"}
                   </button>
                 </span>
+                <Said note={note} where={`key:${p}`} className="basis-full" />
               </div>
             );
           })}
@@ -184,17 +232,22 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
         {models.length === 0 ? <Empty>ยังไม่มีโมเดลในระบบ</Empty> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b text-left text-[var(--bot-ink-mute)]"><th className="py-2">ค่าย</th><th className="py-2 pl-3">ประเภท</th><th className="py-2 pl-3">โมเดล</th><th className="py-2 pl-3">ใช้งาน</th></tr></thead>
+              <thead><tr className="border-b border-[var(--bot-line)] text-left text-[var(--bot-ink-mute)]"><th className="py-2">ค่าย</th><th className="py-2 pl-3">ประเภท</th><th className="py-2 pl-3">โมเดล</th><th className="py-2 pl-3">ใช้งาน</th></tr></thead>
               <tbody>
                 {models.map((m) => (
-                  <tr key={m.id} className="border-b">
-                    <td className="py-1.5">{m.provider}</td>
+                  <tr key={m.id} className="border-b border-[var(--bot-line)]">
+                    <td className="py-1.5">{PROVIDER_LABEL[m.provider] ?? m.provider}</td>
                     <td className="py-1.5 pl-3">{KIND_LABEL[m.kind] ?? m.kind}</td>
-                    <td className="py-1.5 pl-3 font-mono text-xs">{m.model_name}</td>
+                    <td className="py-1.5 pl-3">
+                      <span className="font-mono text-xs">{m.model_name}</span>
+                      {m.quality && <span className="ml-1.5 text-xs text-[var(--bot-ink-mute)]">· {QUALITY_LABEL[m.quality] ?? m.quality}</span>}
+                    </td>
                     <td className="py-1.5 pl-3">
                       <input type="checkbox" checked={m.enabled} disabled={pending || m.kind === "judge"}
                              title={m.kind === "judge" ? "ยังไม่มีงานไหนเรียกใช้ เปิดปิดด้วยการใส่หรือลบกุญแจ" : undefined}
-                             onChange={(e) => run(() => setModelEnabled(m.id, e.target.checked), "อัปเดตโมเดลแล้ว")} />
+                             onChange={(e) => run(`model:${m.id}`, () => setModelEnabled(m.id, e.target.checked), `${e.target.checked ? "เปิด" : "ปิด"}แล้ว`)} />
+                      {busy === `model:${m.id}` && <span className="ml-1.5 text-xs text-[var(--bot-ink-mute)]">กำลังบันทึก…</span>}
+                      <Said note={note} where={`model:${m.id}`} className="ml-1.5" />
                     </td>
                   </tr>
                 ))}
@@ -210,45 +263,52 @@ export function AiClient({ keys, models, settings, providers, spentThisMonth, sp
           onSubmit={(e) => {
             e.preventDefault();
             const f = new FormData(e.currentTarget);
-            const budget = String(f.get("budget") ?? "").trim();
-            const contentBudget = String(f.get("contentBudget") ?? "").trim();
-            run(() => saveSettings(String(f.get("small")), String(f.get("large")), budget === "" ? null : Number(budget),
-                contentBudget === "" ? null : Number(contentBudget)),
-                "บันทึกค่าเริ่มต้นแล้ว");
+            // sent as typed: the server reads the numbers, and says in Thai what it refused
+            run("settings", () => saveSettings(String(f.get("small") ?? ""), String(f.get("large") ?? ""),
+                String(f.get("budget") ?? ""), String(f.get("contentBudget") ?? "")),
+                "บันทึกค่าเริ่มต้นและงบแล้ว");
           }}
         >
           <label className="text-sm">
             <span className="block text-xs text-[var(--bot-ink-mute)]">โมเดลเล็ก</span>
-            <select name="small" defaultValue={settings?.small_model ?? ""} className="mt-1 rounded border px-2 py-1">
+            <select name="small" defaultValue={settings?.small_model ?? ""} className={`mt-1 ${input}`}>
               <option value="">เลือกอัตโนมัติ</option>
               {textModels.map((m) => <option key={m.id} value={m.model_name}>{m.model_name}</option>)}
             </select>
           </label>
           <label className="text-sm">
             <span className="block text-xs text-[var(--bot-ink-mute)]">โมเดลใหญ่</span>
-            <select name="large" defaultValue={settings?.large_model ?? ""} className="mt-1 rounded border px-2 py-1">
+            <select name="large" defaultValue={settings?.large_model ?? ""} className={`mt-1 ${input}`}>
               <option value="">เลือกอัตโนมัติ</option>
               {textModels.map((m) => <option key={m.id} value={m.model_name}>{m.model_name}</option>)}
             </select>
           </label>
           <label className="text-sm">
             <span className="block text-xs text-[var(--bot-ink-mute)]">งบต่อเดือน (บาท)</span>
-            <input name="budget" type="number" min={0} step={50} defaultValue={settings?.monthly_budget_thb ?? ""}
-                   className="mt-1 w-32 rounded border px-2 py-1" placeholder="ไม่จำกัด" />
+            {/* step "any": a step of 50 made the browser refuse ฿120 and block the whole form */}
+            <input name="budget" type="number" inputMode="decimal" min={0} step="any" defaultValue={settings?.monthly_budget_thb ?? ""}
+                   className={`mt-1 w-32 ${input}`} placeholder="ไม่จำกัด" />
+            <span className="mt-1 block text-xs text-[var(--bot-ink-mute)]">เว้นว่าง = ไม่จำกัด</span>
           </label>
           {/* a slice of the budget above: the bot answering leads draws on the rest */}
           <label className="text-sm">
             <span className="block text-xs text-[var(--bot-ink-mute)]">งบสร้างคอนเทนต์ต่อเดือน (บาท)</span>
-            <input name="contentBudget" type="number" min={0} step={10} defaultValue={settings?.content_budget_thb ?? ""}
-                   className="mt-1 w-32 rounded border px-2 py-1" placeholder={`${content.cap} (ค่าเดิม)`} />
+            <input name="contentBudget" type="number" inputMode="decimal" min={0} step="any" defaultValue={settings?.content_budget_thb ?? ""}
+                   className={`mt-1 w-32 ${input}`} placeholder={`${content.fallback}`} />
             <span className="mt-1 block text-xs text-[var(--bot-ink-mute)]">
-              ใช้ไป {content.spent.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} จาก {content.cap.toLocaleString("th-TH")} บาท
+              เว้นว่าง = ฿{content.fallback.toLocaleString("th-TH")} ·{" "}
+              {content.spent === null
+                ? "อ่านยอดใช้ไม่สำเร็จ"
+                : <>ใช้ไป {baht(content.spent)} จาก {content.cap.toLocaleString("th-TH")} บาท</>}
             </span>
           </label>
-          <button disabled={pending} className="rounded bg-[var(--bot-navy)] px-3 py-1.5 text-sm text-white disabled:opacity-40">บันทึก</button>
+          <button disabled={pending} className="rounded bg-[var(--bot-navy)] px-3 py-1.5 text-sm text-[var(--bot-surface)] disabled:opacity-40">
+            {busy === "settings" ? "กำลังบันทึก…" : "บันทึก"}
+          </button>
           <span className="text-xs text-[var(--bot-ink-mute)]">
-            ใช้ไปเดือนนี้ {spentThisMonth.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท
+            {spentThisMonth === null ? "อ่านยอดใช้ไม่สำเร็จ" : `ใช้ไปเดือนนี้ ${baht(spentThisMonth)} บาท`}
           </span>
+          <Said note={note} where="settings" className="basis-full text-sm" />
         </form>
       </Card>
     </>

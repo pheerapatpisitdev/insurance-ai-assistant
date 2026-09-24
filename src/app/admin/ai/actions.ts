@@ -5,6 +5,7 @@ import { clearAiConfigCache, testProviders, type ProviderCheck } from "@/lib/ai/
 import { monthSpend, monthStart, type SpendLine } from "@/lib/ai/ledger";
 import { contentBaht, DEFAULT_CONTENT_CAP_THB } from "@/lib/content/store";
 import { EMBEDDERS, JUDGE } from "@/lib/ai/providers";
+import { checkBudgets } from "./budget";
 
 export type { ProviderCheck } from "@/lib/ai/client";
 
@@ -17,7 +18,32 @@ const PROVIDERS = ["anthropic", "openai", "google", "zai", "typesafe"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
 export interface KeyRow { provider: string; tail: string; enabled: boolean }
-export interface ModelRow { id: string; provider: string; kind: string; model_name: string; enabled: boolean }
+export interface ModelRow {
+  id: string; provider: string; kind: string; model_name: string; enabled: boolean;
+  /**
+   * The quality an image model is asked for, when its row says. OpenAI's picture model sits in
+   * the table twice — `gpt-image-medium` and `gpt-image-high`, one model at two prices (฿0.43
+   * and ฿0.86 a picture, both offered on /content) — and without this the table showed two
+   * identical "gpt-image-2" lines, which read as a mistake rather than as a choice.
+   */
+  quality?: string | null;
+}
+
+/**
+ * What every action that changes something answers with.
+ *
+ * Returned rather than thrown: Next hides a thrown message in production and puts "An error
+ * occurred in the Server Components render" in its place, so every Thai sentence written
+ * here to tell the owner what was wrong reached them as English that said nothing.
+ */
+export type Result = { ok: true } | { ok: false; error: string };
+
+/** A database refusal, said in Thai, with the database's own words kept for whoever reads it next. */
+function failed(what: string, e: unknown): Result {
+  console.error(`${what}:`, e);
+  const detail = e instanceof Error ? e.message : typeof e === "object" && e && "message" in e ? String((e as { message: unknown }).message) : "";
+  return { ok: false, error: detail ? `${what} (${detail})` : `${what} ลองใหม่อีกครั้ง` };
+}
 
 /**
  * The one model that is not in the reference table, because that table is shared with
@@ -25,7 +51,7 @@ export interface ModelRow { id: string; provider: string; kind: string; model_na
  * shows it beside the others; it cannot be switched off from the page, since nothing calls
  * it yet and the key itself is the switch.
  */
-const JUDGE_ROW: ModelRow = { id: `${JUDGE.provider}-${JUDGE.model}`, provider: JUDGE.provider, kind: "judge", model_name: JUDGE.model, enabled: true };
+const JUDGE_ROW: ModelRow = { id: `${JUDGE.provider}-${JUDGE.model}`, provider: JUDGE.provider, kind: "judge", model_name: JUDGE.model, enabled: true, quality: null };
 export interface Settings { small_model: string | null; large_model: string | null; monthly_budget_thb: number | null; content_budget_thb: number | null }
 
 /** What one provider has cost since the first of the month, and what it was asked to do. */
@@ -46,19 +72,30 @@ function passphrase(): string {
 /** Never returns a whole key: the page only ever sees the last four characters. */
 export async function loadAiPage(): Promise<{
   keys: KeyRow[]; models: ModelRow[]; settings: Settings | null; providers: string[];
-  spentThisMonth: number; spend: ProviderSpend[];
-  /** what the content workbench has spent of its own ceiling, and the ceiling in force */
-  content: { spent: number; cap: number };
+  /** null when the ledger could not be read — the page still opens, so the keys stay reachable */
+  spentThisMonth: number | null; spend: ProviderSpend[];
+  /**
+   * What the content workbench has spent of its own ceiling, the ceiling in force, and what
+   * that ceiling is when the box is left empty — the page says so beside the box.
+   */
+  content: { spent: number | null; cap: number; fallback: number };
 }> {
   const supabase = supabaseAdmin();
   const [keys, models, prefs, settings, spend] = await Promise.all([
     supabase.from("ins_api_keys").select("provider, tail, enabled"),
-    supabase.from("model_configs").select("id, provider, kind, model_name, enabled").order("provider").order("model_name"),
+    supabase.from("model_configs").select("id, provider, kind, model_name, enabled, params").order("provider").order("model_name"),
     supabase.from("ins_model_prefs").select("model_id, enabled"),
     supabase.from("ins_ai_settings").select("small_model, large_model, monthly_budget_thb, content_budget_thb").maybeSingle(),
     // the model rather than the provider is what the ledger records, so the lines are joined
     // back to the model table below; the ledger has no column saying which company was paid
-    monthSpend(monthStart()),
+    //
+    // It is allowed to fail. It used to take the whole page down with it — Promise.all rejects
+    // on the first refusal — and this page is where the keys are, which is the first place
+    // anybody goes when the AI is misbehaving. A missing figure is said on the page instead.
+    monthSpend(monthStart()).catch((e) => {
+      console.error("อ่านยอดใช้ AI ไม่สำเร็จ:", e);
+      return null;
+    }),
   ]);
   const disabled = new Set((prefs.data ?? []).filter((p) => !p.enabled).map((p) => p.model_id));
   return {
@@ -72,16 +109,21 @@ export async function loadAiPage(): Promise<{
     models: [
       ...(models.data ?? [])
         .filter((m) => (PROVIDERS as readonly string[]).includes(m.provider))
-        .map((m) => ({ ...m, enabled: m.enabled && !disabled.has(m.id) })),
+        .map(({ params, ...m }) => ({
+          ...m,
+          enabled: m.enabled && !disabled.has(m.id),
+          quality: typeof (params as { quality?: unknown } | null)?.quality === "string" ? String((params as { quality: string }).quality) : null,
+        })),
       JUDGE_ROW,
     ],
     settings: settings.data ?? null,
     providers: [...PROVIDERS],
-    spentThisMonth: spend.baht,
-    spend: byProvider(spend.lines, (models.data ?? []) as { provider: string; model_name: string }[]),
+    spentThisMonth: spend ? spend.baht : null,
+    spend: spend ? byProvider(spend.lines, (models.data ?? []) as { provider: string; model_name: string }[]) : [],
     content: {
-      spent: contentBaht(spend.lines),
+      spent: spend ? contentBaht(spend.lines) : null,
       cap: settings.data?.content_budget_thb == null ? DEFAULT_CONTENT_CAP_THB : Number(settings.data.content_budget_thb),
+      fallback: DEFAULT_CONTENT_CAP_THB,
     },
   };
 }
@@ -128,8 +170,8 @@ function byProvider(lines: SpendLine[], models: { provider: string; model_name: 
     .sort((a, b) => b.baht - a.baht);
 }
 
-export async function saveApiKey(provider: string, key: string) {
-  if (!PROVIDERS.includes(provider as Provider)) throw new Error("ค่ายไม่ถูกต้อง");
+export async function saveApiKey(provider: string, key: string): Promise<Result> {
+  if (!PROVIDERS.includes(provider as Provider)) return { ok: false, error: "ค่ายไม่ถูกต้อง" };
   /**
    * Everything a key is not.
    *
@@ -140,14 +182,19 @@ export async function saveApiKey(provider: string, key: string) {
    * being down, which it was not, and no amount of re-reading the provider's status would
    * ever have said so.
    */
-  const value = key.replace(/[^\x21-\x7e]/g, "");
-  if (value.length < 8) throw new Error("กุญแจสั้นเกินไป");
-  const { error } = await supabaseAdmin().rpc("ins_set_api_key", {
-    p_provider: provider, p_key: value, p_passphrase: passphrase(),
-  });
-  if (error) throw new Error(error.message);
+  const value = String(key ?? "").replace(/[^\x21-\x7e]/g, "");
+  if (value.length < 8) return { ok: false, error: "กุญแจสั้นเกินไป — วางกุญแจทั้งเส้นอีกครั้ง" };
+  try {
+    const { error } = await supabaseAdmin().rpc("ins_set_api_key", {
+      p_provider: provider, p_key: value, p_passphrase: passphrase(),
+    });
+    if (error) return failed("บันทึกกุญแจไม่สำเร็จ", error);
+  } catch (e) {
+    return failed("บันทึกกุญแจไม่สำเร็จ", e);
+  }
   clearAiConfigCache();
   revalidatePath("/admin/ai");
+  return { ok: true };
 }
 
 /**
@@ -155,34 +202,52 @@ export async function saveApiKey(provider: string, key: string) {
  * the fallback chain, the judge refuses — and the key stays where it is for when it is
  * wanted again. For TypeSafe it is also the shadow's off switch.
  */
-export async function setProviderEnabled(provider: string, enabled: boolean) {
-  if (!PROVIDERS.includes(provider as Provider)) throw new Error("ค่ายไม่ถูกต้อง");
-  const { error } = await supabaseAdmin().from("ins_api_keys").update({ enabled }).eq("provider", provider);
-  if (error) throw new Error(error.message);
-  clearAiConfigCache();
-  revalidatePath("/admin/ai");
-}
-
-export async function setModelEnabled(id: string, enabled: boolean) {
-  const { error } = await supabaseAdmin().from("ins_model_prefs")
-    .upsert({ model_id: id, enabled, updated_at: new Date().toISOString() }, { onConflict: "model_id" });
-  if (error) throw new Error(error.message);
-  clearAiConfigCache();
-  revalidatePath("/admin/ai");
-}
-
-export async function saveSettings(smallModel: string, largeModel: string, monthlyBudget: number | null, contentBudget: number | null) {
-  if (contentBudget !== null && (!Number.isFinite(contentBudget) || contentBudget < 0)) throw new Error("งบคอนเทนต์ต้องเป็นตัวเลขตั้งแต่ 0");
-  if (contentBudget !== null && monthlyBudget !== null && contentBudget > monthlyBudget) {
-    throw new Error("งบคอนเทนต์ต้องไม่เกินงบรวมต่อเดือน");
+export async function setProviderEnabled(provider: string, enabled: boolean): Promise<Result> {
+  if (!PROVIDERS.includes(provider as Provider)) return { ok: false, error: "ค่ายไม่ถูกต้อง" };
+  try {
+    const { error } = await supabaseAdmin().from("ins_api_keys").update({ enabled: Boolean(enabled) }).eq("provider", provider);
+    if (error) return failed("เปิด/ปิดค่ายไม่สำเร็จ", error);
+  } catch (e) {
+    return failed("เปิด/ปิดค่ายไม่สำเร็จ", e);
   }
-  const { error } = await supabaseAdmin().from("ins_ai_settings").upsert({
-    id: true, small_model: smallModel || null, large_model: largeModel || null,
-    monthly_budget_thb: monthlyBudget, content_budget_thb: contentBudget, updated_at: new Date().toISOString(),
-  }, { onConflict: "id" });
-  if (error) throw new Error(error.message);
   clearAiConfigCache();
   revalidatePath("/admin/ai");
+  return { ok: true };
+}
+
+export async function setModelEnabled(id: string, enabled: boolean): Promise<Result> {
+  if (!id || typeof id !== "string") return { ok: false, error: "ไม่รู้จักโมเดลนี้" };
+  try {
+    const { error } = await supabaseAdmin().from("ins_model_prefs")
+      .upsert({ model_id: id, enabled: Boolean(enabled), updated_at: new Date().toISOString() }, { onConflict: "model_id" });
+    if (error) return failed("เปิด/ปิดโมเดลไม่สำเร็จ", error);
+  } catch (e) {
+    return failed("เปิด/ปิดโมเดลไม่สำเร็จ", e);
+  }
+  clearAiConfigCache();
+  revalidatePath("/admin/ai");
+  return { ok: true };
+}
+
+/**
+ * The defaults and the two budgets. The budgets come as the strings typed into the boxes and
+ * are read here, by the rules in ./budget.ts — the browser is not the guard.
+ */
+export async function saveSettings(smallModel: string, largeModel: string, monthlyBudget: string, contentBudget: string): Promise<Result> {
+  const budgets = checkBudgets(monthlyBudget, contentBudget, DEFAULT_CONTENT_CAP_THB);
+  if (!budgets.ok) return budgets;
+  try {
+    const { error } = await supabaseAdmin().from("ins_ai_settings").upsert({
+      id: true, small_model: smallModel || null, large_model: largeModel || null,
+      monthly_budget_thb: budgets.monthly, content_budget_thb: budgets.content, updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+    if (error) return failed("บันทึกค่าเริ่มต้นไม่สำเร็จ", error);
+  } catch (e) {
+    return failed("บันทึกค่าเริ่มต้นไม่สำเร็จ", e);
+  }
+  clearAiConfigCache();
+  revalidatePath("/admin/ai");
+  return { ok: true };
 }
 
 /**

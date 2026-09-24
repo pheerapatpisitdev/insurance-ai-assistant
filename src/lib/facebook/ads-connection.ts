@@ -59,6 +59,54 @@ export async function adAccounts(): Promise<AdAccount[]> {
   });
 }
 
+/** How the last fetch of one ad account went. */
+export interface AdSyncStatus {
+  /** the last attempt, whether it worked or not */
+  lastSyncAt: string | null;
+  /** the last attempt that worked — what "is this stale" is judged on */
+  lastOkAt: string | null;
+  /** why the last attempt failed; null when it worked */
+  lastError: string | null;
+}
+
+/**
+ * Every ad account's last fetch, by account id — or null when the columns are not there yet.
+ *
+ * Asked separately from adAccounts() rather than added to its select, because the columns
+ * come from 20260925_ad_sync_status.sql and a deploy can land before that file is applied.
+ * Folded into the listing, a missing column would have emptied the whole ADS page; asked on
+ * its own, it costs only these lines, and the page falls back to what it showed before.
+ */
+export async function adSyncStatuses(): Promise<Map<string, AdSyncStatus> | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("ins_channel_auth")
+    .select("key, last_sync_at, last_sync_ok_at, last_sync_error");
+  if (error) return null;
+  const out = new Map<string, AdSyncStatus>();
+  for (const r of (data ?? []) as { key: string; last_sync_at: string | null; last_sync_ok_at: string | null; last_sync_error: string | null }[]) {
+    const id = adAccountIdInKey(r.key);
+    if (id) out.set(id, { lastSyncAt: r.last_sync_at, lastOkAt: r.last_sync_ok_at, lastError: r.last_sync_error });
+  }
+  return out;
+}
+
+/**
+ * Writes down how one account's fetch went, straight onto its row.
+ *
+ * A plain update, not the RPC: nothing secret is touched, and the RPC would re-encrypt the
+ * token and move `updated_at`, which is the "เชื่อมเมื่อ" date on screen. Best-effort — a
+ * failure to record a fetch must not turn a fetch that worked into one that failed.
+ */
+export async function recordAdSync(actId: string, at: string, error: string | null): Promise<void> {
+  const patch: Record<string, string | null> = { last_sync_at: at, last_sync_error: error };
+  if (!error) patch.last_sync_ok_at = at;
+  try {
+    await supabaseAdmin().from("ins_channel_auth").update(patch).eq("key", adsKeyFor(actId));
+  } catch {
+    // the columns may not exist yet on this database; the sync's own result still says it
+  }
+}
+
 export async function adAccountToken(actId: string): Promise<string | null> {
   return (await read(adsKeyFor(actId)))?.token ?? null;
 }

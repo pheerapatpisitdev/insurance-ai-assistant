@@ -18,6 +18,16 @@ import { addWord, deleteWord, listWords } from "@/lib/content/store";
 const MAX_Q = 200;
 const MAX_A = 2000;
 
+/**
+ * What every action that changes something answers with.
+ *
+ * The toggle and the two deletes used to catch their own failure and return nothing, and
+ * the page updated itself regardless — so a delete the database had refused looked done,
+ * and the note came back on the next visit, still reaching the bot. Now the page moves only
+ * on `ok`, and says the error otherwise.
+ */
+export type Result = { ok: true } | { ok: false; error: string };
+
 export interface Note {
   id: string;
   question: string;
@@ -42,7 +52,7 @@ export async function listNotes(): Promise<Note[]> {
   }
 }
 
-export async function addNote(question: string, answer: string): Promise<{ ok: boolean; error?: string }> {
+export async function addNote(question: string, answer: string): Promise<Result> {
   const q = question.trim().slice(0, MAX_Q);
   const a = answer.trim().slice(0, MAX_A);
   if (q.length < 4 || a.length < 4) return { ok: false, error: "พิมพ์คำถามและคำตอบให้ยาวกว่านี้หน่อยครับ" };
@@ -57,23 +67,27 @@ export async function addNote(question: string, answer: string): Promise<{ ok: b
   }
 }
 
-export async function setNoteEnabled(id: string, enabled: boolean): Promise<void> {
+export async function setNoteEnabled(id: string, enabled: boolean): Promise<Result> {
   try {
-    const { error } = await supabaseAdmin().from("ins_faq").update({ enabled }).eq("id", id);
+    const { error } = await supabaseAdmin().from("ins_faq").update({ enabled: Boolean(enabled) }).eq("id", id);
     if (error) throw new Error(error.message);
     revalidatePath("/admin/knowledge");
+    return { ok: true };
   } catch (e) {
     console.error("เปิด/ปิดบันทึกไม่สำเร็จ:", e);
+    return { ok: false, error: "เปิด/ปิดไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
   }
 }
 
-export async function deleteNote(id: string): Promise<void> {
+export async function deleteNote(id: string): Promise<Result> {
   try {
     const { error } = await supabaseAdmin().from("ins_faq").delete().eq("id", id);
     if (error) throw new Error(error.message);
     revalidatePath("/admin/knowledge");
+    return { ok: true };
   } catch (e) {
     console.error("ลบบันทึกไม่สำเร็จ:", e);
+    return { ok: false, error: "ลบไม่สำเร็จ บันทึกยังอยู่ ลองใหม่อีกครั้งนะครับ" };
   }
 }
 
@@ -91,7 +105,7 @@ export async function listContentWords(): Promise<ContentWord[]> {
   return listWords();
 }
 
-export async function addContentWord(word: string, kind: WordKind, fix: string): Promise<{ ok: boolean; error?: string }> {
+export async function addContentWord(word: string, kind: WordKind, fix: string): Promise<Result> {
   const w = word.trim().slice(0, MAX_WORD);
   const f = fix.trim().slice(0, MAX_WORD);
   if (!w) return { ok: false, error: "พิมพ์คำก่อนนะครับ" };
@@ -106,11 +120,13 @@ export async function addContentWord(word: string, kind: WordKind, fix: string):
   }
 }
 
-export async function removeContentWord(word: string): Promise<void> {
+export async function removeContentWord(word: string): Promise<Result> {
   try {
     await deleteWord(word);
     revalidatePath("/admin/knowledge");
+    return { ok: true };
   } catch (e) {
     console.error("ลบคำไม่สำเร็จ:", e);
+    return { ok: false, error: "ลบคำไม่สำเร็จ คำนี้ยังอยู่ ลองใหม่อีกครั้งนะครับ" };
   }
 }

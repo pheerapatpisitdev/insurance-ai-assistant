@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { letBotResume } from "./actions";
 
 /**
@@ -12,11 +13,16 @@ import { letBotResume } from "./actions";
  *
  * It asks first. This is a customer's thread, and a mis-tap would put the bot back into a
  * conversation an agent is in the middle of.
+ *
+ * Once it has worked the page is refreshed, so the row stops saying "บอทหยุดตอบแล้ว". It used
+ * to keep saying it, beside this button's own "บอทดูแลต่อแล้ว", until reloaded by hand — two
+ * opposite statements about one thread on one line.
  */
 export function BotResume({ leadId }: { leadId: string }) {
   const [state, setState] = useState<"idle" | "asking" | "done">("idle");
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
+  const router = useRouter();
 
   if (state === "done") return <span className="whitespace-nowrap text-xs text-[var(--bot-ink-faint)]">บอทดูแลต่อแล้ว</span>;
 
@@ -30,7 +36,7 @@ export function BotResume({ leadId }: { leadId: string }) {
             setError(undefined);
             start(async () => {
               const res = await letBotResume(leadId);
-              if (res.ok) setState("done");
+              if (res.ok) { setState("done"); router.refresh(); }
               else { setError(res.error); setState("idle"); }
             });
           }}

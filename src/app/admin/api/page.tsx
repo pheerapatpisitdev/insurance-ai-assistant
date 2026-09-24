@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { listKeys } from "./actions";
 import { Keys } from "./Keys";
 import { Card } from "../ui";
 import { siteUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "MCP / API · advisortool" };
 
 /**
  * The system's own API: who may call it, and how.
@@ -19,7 +22,9 @@ export default async function ApiPage() {
   return (
     <>
       <Card
-        title="กุญแจ API"
+        /* not "กุญแจ API": that is /admin/ai's card for the model providers' keys, and two
+           cards of the same name on two screens is how the wrong key gets pasted */
+        title="กุญแจให้ระบบอื่นเรียกใช้ (MCP / API)"
         hint="ให้ระบบอื่นเรียกเครื่องคิดเบี้ยของเราได้ — หนึ่งกุญแจต่อหนึ่งผู้ใช้ จะได้ปิดทีละอันและดูได้ว่าใครใช้เท่าไหร่"
       >
         <Keys rows={rows} mcpBase={siteUrl("/api/v1/mcp")} />
