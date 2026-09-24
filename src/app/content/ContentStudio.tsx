@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { footer, fullText } from "@/lib/content/output";
 import type { PiecePerson } from "@/lib/content/people";
-import { defaultPoster, posterUrl, THEMES, type Theme } from "@/lib/content/poster";
+import { defaultPoster, posterUrl, THEMES } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { onPage } from "@/lib/content/publish-label";
 import { anglesFor, FORMAT_LABEL, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
@@ -14,7 +14,7 @@ import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, removeContent, setContentStatus, type DrawBackgroundResult, type GenerateResult } from "./actions";
 import { drawPicture, generateRound } from "./draw";
 import { PersonPicker, type PersonOption } from "./PersonPicker";
-import { ThemeSwatches } from "./ThemeSwatches";
+import { AUTO_THEME, ThemeSwatches, type ThemeChoice } from "./ThemeSwatches";
 import { ask } from "./ask";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
@@ -104,14 +104,14 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     setReaderState(next);
     try { localStorage.setItem(READER_KEY, next); } catch { /* not kept */ }
   };
-  const [theme, setThemeState] = useState<Theme>("navy");
+  const [theme, setThemeState] = useState<ThemeChoice>("navy");
   useEffect(() => {
     try {
       const kept = localStorage.getItem(THEME_KEY) ?? "";
-      if ((THEMES as readonly string[]).includes(kept)) setThemeState(kept as Theme);
+      if (kept === AUTO_THEME || (THEMES as readonly string[]).includes(kept)) setThemeState(kept as ThemeChoice);
     } catch { /* storage unavailable */ }
   }, []);
-  const setTheme = (next: Theme) => {
+  const setTheme = (next: ThemeChoice) => {
     setThemeState(next);
     try { localStorage.setItem(THEME_KEY, next); } catch { /* not kept */ }
   };
@@ -580,8 +580,10 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           {format !== "script" && (
             <div>
               <span className="mb-1.5 block text-sm font-medium">โทนสีโปสเตอร์ <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
-              <ThemeSwatches value={theme} onChange={setTheme} />
-              <span className="mt-1 block text-xs text-[var(--ct-mute)]">ใช้กับทุกชิ้นในรอบนี้ และภาพ AI จะวาดในโทนเดียวกัน · เปลี่ยนทีละชิ้นได้ในหน้าแก้ไข</span>
+              <ThemeSwatches value={theme} onChange={setTheme} allowAuto />
+              <span className="mt-1 block text-xs text-[var(--ct-mute)]">
+                {theme === AUTO_THEME ? "แต่ละชิ้นอาจได้คนละโทน ภาพ AI วาดตามโทนของชิ้นนั้น" : "ใช้กับทุกชิ้นในรอบนี้ และภาพ AI จะวาดในโทนเดียวกัน"} · เปลี่ยนทีละชิ้นได้ในหน้าแก้ไข
+              </span>
             </div>
           )}
 

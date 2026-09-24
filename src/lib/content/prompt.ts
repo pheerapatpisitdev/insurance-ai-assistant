@@ -1,6 +1,7 @@
 import type { ChatMessage } from "@/lib/ai/types";
 import type { PiecePlan } from "./plan";
 import { POLICY_RULES_TH } from "./policy";
+import { THEME_MOOD, THEMES } from "./poster";
 
 /**
  * What the content generator asks of the model.
@@ -186,10 +187,12 @@ export const POSTER_RULES = [
   "  · headline (บังคับ) ไม่เกิน 60 ตัวอักษร คือใจความเดียวที่อยากให้จำ ไม่ต้องซ้ำประโยคเปิดคำต่อคำ",
   "  · badge (ไม่บังคับ) ป้ายเล็กไม่เกิน 20 ตัวอักษร เช่น ชื่อประเภทประกัน · sub (ไม่บังคับ) ไม่เกิน 90 ตัวอักษร · footer (ไม่บังคับ) ไม่เกิน 40 ตัวอักษร เช่น ชวนทักแชท",
   "  · ตัวเลขบนภาพต้องคัดลอกจากข้อมูลผลิตภัณฑ์ตรงตัว และกฎทุกข้อด้านบนใช้กับภาพด้วย",
-  "  · layout เลือก top, center หรือ bottom ตามจังหวะของข้อความ — ห้ามกำหนดสี ระบบเลือกให้",
+  "  · layout เลือก top, center หรือ bottom ตามจังหวะของข้อความ",
+  "  · theme เลือกโทนสีหนึ่งจากรายการนี้ให้เข้ากับอารมณ์ของชิ้น ห้ามกำหนดรหัสสีเอง (ถ้าเจ้าของเพจเลือกสีไว้เอง ระบบจะใช้สีนั้นแทน):",
+  ...THEMES.map((t) => `    ${t} — ${THEME_MOOD[t]}`),
 ].join("\n");
 
-export const POSTER_JSON = '"imagePrompt":"…","poster":{"layout":"bottom","blocks":[{"kind":"badge","text":"…"},{"kind":"headline","text":"…"},{"kind":"sub","text":"…"},{"kind":"footer","text":"…"}]}';
+export const POSTER_JSON = '"imagePrompt":"…","poster":{"layout":"bottom","theme":"navy","blocks":[{"kind":"badge","text":"…"},{"kind":"headline","text":"…"},{"kind":"sub","text":"…"},{"kind":"footer","text":"…"}]}';
 
 const SYSTEM = [
   "คุณคือนักเขียนคอนเทนต์ให้ตัวแทนประกันชีวิตในประเทศไทย เขียนภาษาไทยแบบที่คนทั่วไปพูดกัน อ่านง่ายบนมือถือ อบอุ่น จริงใจ ไม่ขายแรง",

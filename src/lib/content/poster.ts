@@ -52,6 +52,20 @@ export const BLOCK_LABEL: Record<BlockKind, string> = {
   footer: "ท้ายภาพ",
 };
 export const LAYOUT_LABEL: Record<Layout, string> = { top: "บน", center: "กลาง", bottom: "ล่าง" };
+/**
+ * What each theme suits, as the writers are told it when the owner leaves the colour to them
+ * (ให้ AI เลือก, 2026-09-25). Short, and about the story rather than the colour.
+ */
+export const THEME_MOOD: Record<Theme, string> = {
+  navy: "น่าเชื่อถือ มั่นคง ใช้ได้ทุกเรื่อง", sand: "อบอุ่น สุภาพ", white: "สะอาด เรียบง่าย",
+  noir: "หรูหรา พรีเมียม มรดก ทุนสูง", champagne: "หรู นุ่มนวล ของขวัญ", emerald: "สุขภาพ การเติบโต ความมั่นคง",
+  mint: "สดชื่น สุขภาพดี", sky: "ไว้ใจได้ สบายใจ", royal: "มั่นใจ ทันสมัย", violet: "พรีเมียม ลึกซึ้ง",
+  lavender: "อ่อนโยน ผู้หญิง", blush: "ครอบครัว ลูก ความรัก", red: "เร่งด่วน เตือนให้ระวัง กระตุ้นให้ลงมือ",
+  orange: "พลังงาน ชวนลงมือ", peach: "อบอุ่น ครอบครัว", sunny: "สดใส ดึงสายตา ตัวเลขเด่น",
+  teal: "สุขภาพ การรักษา สงบ", terracotta: "ธรรมชาติ อบอุ่น วัยเกษียณ", charcoal: "ทันสมัย จริงจัง คนทำงาน",
+  cream: "มินิมอล เรียบหรู",
+};
+
 export const THEME_LABEL: Record<Theme, string> = {
   navy: "น้ำเงินกรมท่า", sand: "ทราย", white: "ขาว",
   noir: "ดำหรู + ทอง", champagne: "แชมเปญทอง", emerald: "เขียวมรกต", mint: "เขียวมิ้นต์",

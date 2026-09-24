@@ -148,9 +148,10 @@ describe("posters from the writer", () => {
     expect(two.poster).toBeUndefined();
   });
 
-  it("asks for a poster without letting the model pick colours", () => {
+  it("asks for a poster whose colour is one of the named themes, never a colour of the model's own", () => {
     const [system] = buildMessages({ brief: "b", format: "post", angle: "", custom: "", length: null, plans });
     expect(system.content).toContain('"poster"');
-    expect(system.content).toContain("ห้ามกำหนดสี");
+    expect(system.content).toContain("ห้ามกำหนดรหัสสีเอง");
+    expect(system.content).toContain('"theme":"navy"');
   });
 });

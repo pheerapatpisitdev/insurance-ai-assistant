@@ -76,7 +76,7 @@ export interface GenerateInput {
   reader?: string;
   goal?: GoalId;
   fact?: string;
-  /** the poster colour the owner picked for the round; unknown or absent keeps each poster's own */
+  /** the poster colour the owner picked for the round; "auto", unknown or absent keeps the writer's own */
   theme?: string;
 }
 
@@ -138,7 +138,7 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
           hashtags: [],
           imagePrompt: heads.lines[i].imagePrompt,
           disclaimer: DISCLAIMER,
-          poster: numbersPoster(s, theme ?? "navy"),
+          poster: numbersPoster(s, theme ?? heads.lines[i].theme ?? "navy"),
         };
         items.push(await saveContent({
           planHref: brief.product.href, format: "post", angle, length: null, output,

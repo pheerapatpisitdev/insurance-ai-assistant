@@ -1,6 +1,6 @@
 import { parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
-import type { PosterSpec, Theme } from "./poster";
+import { THEME_MOOD, THEMES, type PosterSpec, type Theme } from "./poster";
 
 /**
  * The ตัวเลขชัดๆ angle (owner, 2026-09-24): a post that sells on figures alone.
@@ -106,7 +106,9 @@ export function headlineMessages(sheets: NumberSheet[]): ChatMessage[] {
         "ใต้พาดหัว ระบบจะวางตัวเลขเบี้ยและทุนให้เอง พาดหัวมีหน้าที่ทำให้คนหยุดอ่านตัวเลข",
         "กติกา: ห้ามมีตัวเลขใดๆ ทั้งเลขอารบิกและเลขไทย · ยาวไม่เกิน 60 ตัวอักษร · ห้ามสัญญาเกินข้อมูลที่ให้ · ห้ามใช้คำว่าถูกที่สุด ดีที่สุด การันตี · ห้ามอ้างว่าคุ้มครองครบ ครบจบ หรือทุกอย่าง — ทุกแบบมีข้อยกเว้น",
         "imagePrompt: คำบรรยายภาพประกอบเป็นภาษาอังกฤษ 1–2 ประโยค คนไทย แสงธรรมชาติ ห้ามมีตัวหนังสือในภาพ",
-        'ตอบเป็น JSON เท่านั้น: {"pieces":[{"headline":"…","imagePrompt":"…"}]}',
+        "theme: โทนสีโปสเตอร์หนึ่งจากรายการนี้ ให้เข้ากับแบบประกันและคนในชิ้นนั้น:",
+        ...THEMES.map((t) => `  ${t} — ${THEME_MOOD[t]}`),
+        'ตอบเป็น JSON เท่านั้น: {"pieces":[{"headline":"…","imagePrompt":"…","theme":"navy"}]}',
       ].join("\n"),
     },
     { role: "user", content: `เขียน ${sheets.length} ชิ้น ชิ้นละหนึ่งพาดหัว ไม่ซ้ำกัน\n${list}` },
@@ -114,13 +116,15 @@ export function headlineMessages(sheets: NumberSheet[]): ChatMessage[] {
 }
 
 /** Always `count` lines: a headline the guard lets through, or a fallback in its place. */
-export function parseHeadlines(reply: string, count: number): { headline: string; imagePrompt: string }[] {
+export function parseHeadlines(reply: string, count: number): { headline: string; imagePrompt: string; theme?: Theme }[] {
   const raw = parseJsonReply<{ pieces?: unknown }>(reply);
-  const list = Array.isArray(raw?.pieces) ? (raw.pieces as { headline?: unknown; imagePrompt?: unknown }[]) : [];
+  const list = Array.isArray(raw?.pieces) ? (raw.pieces as { headline?: unknown; imagePrompt?: unknown; theme?: unknown }[]) : [];
   return Array.from({ length: count }, (_, i) => {
     const p = list[i] ?? {};
     const fallback = FALLBACK_HEADLINES[i % FALLBACK_HEADLINES.length];
     const picture = typeof p.imagePrompt === "string" && p.imagePrompt.trim() ? p.imagePrompt.trim() : FALLBACK_PICTURE;
-    return { headline: safeHeadline(typeof p.headline === "string" ? p.headline : "", fallback), imagePrompt: picture };
+    // a theme the model made up is no theme; the caller falls back to its own
+    const theme = (THEMES as readonly unknown[]).includes(p.theme) ? (p.theme as Theme) : undefined;
+    return { headline: safeHeadline(typeof p.headline === "string" ? p.headline : "", fallback), imagePrompt: picture, ...(theme ? { theme } : {}) };
   });
 }

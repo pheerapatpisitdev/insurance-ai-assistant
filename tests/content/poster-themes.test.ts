@@ -43,3 +43,25 @@ describe("the poster's colour themes (owner, 2026-09-24)", () => {
     });
   }
 });
+
+import { POSTER_RULES } from "@/lib/content/prompt";
+import { THEME_MOOD } from "@/lib/content/poster";
+import { parseHeadlines } from "@/lib/content/numbers";
+
+describe("ให้ AI เลือก — the writer picks the theme (owner, 2026-09-25)", () => {
+  it("tells the writers every theme and what it suits", () => {
+    for (const t of THEMES) {
+      expect(THEME_MOOD[t]).toBeTruthy();
+      expect(POSTER_RULES).toContain(t);
+    }
+  });
+  it("takes the headline model's theme for a numbers post, and only a real one", () => {
+    const reply = JSON.stringify({ pieces: [
+      { headline: "ก", imagePrompt: "x", theme: "emerald" },
+      { headline: "ข", imagePrompt: "x", theme: "purple-ish" },
+    ] });
+    const [a, b] = parseHeadlines(reply, 2);
+    expect(a.theme).toBe("emerald");
+    expect(b.theme).toBeUndefined();
+  });
+});
