@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { footer, fullText } from "@/lib/content/output";
+import type { PiecePerson } from "@/lib/content/people";
 import { defaultPoster, posterUrl, THEMES, type Theme } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { onPage } from "@/lib/content/publish-label";
@@ -12,6 +13,7 @@ import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PA
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, removeContent, setContentStatus, type DrawBackgroundResult, type GenerateResult } from "./actions";
 import { drawPicture, generateRound } from "./draw";
+import { PersonPicker, type PersonOption } from "./PersonPicker";
 import { ThemeSwatches } from "./ThemeSwatches";
 import { ask } from "./ask";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
@@ -41,6 +43,8 @@ interface Props {
   spend: { spent: number; cap: number };
   /** a piece to open in the editor on arrival, from the calendar's เปิดแก้ไข */
   initialOpen?: ContentItem | null;
+  /** the people library, for ใส่บุคคลในภาพ */
+  people: PersonOption[];
 }
 
 const FORMATS: Format[] = ["post", "script", "ad"];
@@ -54,6 +58,8 @@ const TABS: { id: ContentStatus; label: string }[] = [
 const PICK_KEY = "content-models";
 /** the reader last named: a page usually speaks to one niche, so it is kept for the next visit */
 const READER_KEY = "content-reader";
+/** the round's person and pose, kept per device like the reader */
+const PERSON_KEY = "content-person";
 /** the round's poster colour, kept per device like the reader */
 const THEME_KEY = "content-poster-theme";
 /** the owner's own direction for the round's pictures, kept per device like the reader */
@@ -68,7 +74,7 @@ const chip = (on: boolean) =>
 
 const field = "w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
 
-export function ContentStudio({ products, lengths, hooks, initialHook, initial, initialUsed, spend: initialSpend, initialOpen }: Props) {
+export function ContentStudio({ products, lengths, hooks, initialHook, initial, initialUsed, spend: initialSpend, initialOpen, people }: Props) {
   const [href, setHref] = useState(products[0]?.href ?? "");
   const [format, setFormat] = useState<Format>("post");
   const [writer, setWriter] = useState(DEFAULT_WRITER);
@@ -108,6 +114,20 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   const setTheme = (next: Theme) => {
     setThemeState(next);
     try { localStorage.setItem(THEME_KEY, next); } catch { /* not kept */ }
+  };
+  const [person, setPersonState] = useState<PiecePerson | null>(null);
+  useEffect(() => {
+    try {
+      const kept = JSON.parse(localStorage.getItem(PERSON_KEY) ?? "null") as PiecePerson | null;
+      // someone since removed from the library is not offered back
+      if (kept && people.some((p) => p.id === kept.id)) setPersonState(kept);
+    } catch { /* storage unavailable */ }
+    // the library does not change while the page is open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const setPerson = (next: PiecePerson | null) => {
+    setPersonState(next);
+    try { localStorage.setItem(PERSON_KEY, JSON.stringify(next)); } catch { /* not kept */ }
   };
   const [brief, setBriefState] = useState("");
   useEffect(() => {
@@ -196,6 +216,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     // อัตโนมัติ is settled at the press, on the money left then
     const paintWith = painterOf(painter, Math.max(0, spend.cap - spend.spent)).id;
     const pictureBrief = brief.trim();
+    const pictureOf = person;
     setMaking(asked);
     setMakingFormat(format);
     setNotice(undefined);
@@ -248,7 +269,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
       }
       // the painter as it was at the press, even if the owner changes it while waiting
       // the brief too: what the box said at the press, not after
-      if (paintWith !== "none") void drawPictures(res.items.filter((i) => i.format !== "script"), paintWith, pictureBrief);
+      if (paintWith !== "none") void drawPictures(res.items.filter((i) => i.format !== "script"), paintWith, pictureBrief, pictureOf);
       setSpend(await contentSpend().catch(() => spend));
     } finally {
       setMaking(0);
@@ -260,9 +281,10 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
    * asked not to press วาดภาพ piece by piece. The cards show their words first and the
    * pictures arrive on their own; one that fails keeps its plain poster and the button.
    */
-  async function drawPictures(list: ContentItem[], paintWith: string, request: string) {
+  async function drawPictures(list: ContentItem[], paintWith: string, request: string, who: PiecePerson | null) {
     if (list.length === 0) return;
-    const results = await Promise.all(list.map((item) => drawOne(item.id, request, paintWith, false)));
+    // null rather than left out: a round without a person draws none, whatever a piece held
+    const results = await Promise.all(list.map((item) => drawOne(item.id, request, paintWith, false, who)));
     const failed = results.flatMap((r) => (r.ok ? [] : [r.error]));
     if (failed.length > 0) setError(`วาดภาพไม่สำเร็จ ${failed.length} ชิ้น (${failed[0]}) — กด “แก้ไข” แล้ววาดใหม่ได้`);
     setSpend(await contentSpend().catch(() => spend));
@@ -273,9 +295,10 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
    * editor's button waits even after the editor is closed and opened again — it was live
    * again then, and a second paid picture could be ordered — and the budget line follows.
    */
-  async function drawOne(id: string, request: string, paintWith: string, refresh = true): Promise<DrawBackgroundResult> {
+  async function drawOne(id: string, request: string, paintWith: string, refresh = true, who?: PiecePerson | null): Promise<DrawBackgroundResult> {
     setDrawing((d) => new Set(d).add(id));
-    const res = await drawPicture(id, request, paintWith);
+    const res = await drawPicture(id, request, paintWith, who);
+    if (res.ok && res.note) setError(res.note);
     setDrawing((d) => { const n = new Set(d); n.delete(id); return n; });
     if (res.ok) saved(res.item);
     if (refresh) setSpend(await contentSpend().catch(() => spend));
@@ -562,6 +585,14 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
             </div>
           )}
 
+          {format !== "script" && painter !== "none" && (
+            <div>
+              <span className="mb-1.5 block text-sm font-medium">ใส่บุคคลในภาพ <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+              <PersonPicker people={people} value={person} onChange={setPerson} />
+              {person && <span className="mt-1 block text-xs text-[var(--ct-mute)]">วาดด้วย Gemini Image ซึ่งรักษาหน้าคนได้ดีที่สุด ราวภาพละ ฿2.4 · ชุดและสถานที่พิมพ์ในบรีฟภาพด้านล่าง</span>}
+            </div>
+          )}
+
           {/* the owner's free direction for every picture of the round, on top of the fixed rules */}
           {format !== "script" && painter !== "none" && (
             <label className="block">
@@ -603,7 +634,8 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
                 drawing={drawing.has(editingItem.id)}
                 productName={nameOf(editingItem.planHref)}
                 onSaved={saved}
-                onDraw={(request, paintWith) => drawOne(editingItem.id, request, paintWith)}
+                onDraw={(request, paintWith, who) => drawOne(editingItem.id, request, paintWith, true, who)}
+                people={people}
                 onStatus={(s) => changeStatus(editingItem, s)}
                 onPublished={published}
                 onClose={() => {

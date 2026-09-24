@@ -5,7 +5,9 @@ import {
   posterUrl, type BlockKind, type PosterSpec, type SizeId,
 } from "@/lib/content/poster";
 import { PAINTERS, painterOf } from "@/lib/content/models";
+import type { PiecePerson } from "@/lib/content/people";
 import { SAVE_LABEL, usePictureSaver } from "./savePicture";
+import { PersonPicker, type PersonOption } from "./PersonPicker";
 import { ThemeSwatches } from "./ThemeSwatches";
 
 /**
@@ -35,22 +37,29 @@ interface Props {
   value: PosterSpec;
   onChange: (p: PosterSpec) => void;
   /** orders a photograph behind the words; resolves to an error to show, or null when done */
-  onDraw: (request: string, painter: string) => Promise<string | null>;
+  onDraw: (request: string, painter: string, person: PiecePerson | null) => Promise<string | null>;
+  people: PersonOption[];
+  /** who the piece's picture was last drawn with; the redraw starts from them */
+  person: PiecePerson | null;
   /** a photograph is already being drawn for this piece, ordered by the page */
   busy?: boolean;
 }
 
-export function PosterPanel({ value, onChange, onDraw, busy }: Props) {
+/** a person's picture is drawn by Gemini Image whatever the painter, so it is priced as that */
+const GEMINI_THB = PAINTERS.find((p) => p.id === "gemini")?.thb ?? 2.41;
+
+export function PosterPanel({ value, onChange, onDraw, busy, people, person: drawnWith }: Props) {
   const [request, setRequest] = useState("");
+  const [person, setPerson] = useState<PiecePerson | null>(drawnWith && people.some((p) => p.id === drawnWith.id) ? drawnWith : null);
   const [painter, setPainter] = useState("standard");
-  const price = `~฿${painterOf(painter).thb.toFixed(2)}`;
+  const price = `~฿${(person ? GEMINI_THB : painterOf(painter).thb).toFixed(2)}`;
   const [drawing, setDrawing] = useState(false);
   const [drawError, setDrawError] = useState<string | null>(null);
 
   async function draw() {
     setDrawing(true);
     setDrawError(null);
-    setDrawError(await onDraw(request, painter).catch(() => "วาดรูปไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"));
+    setDrawError(await onDraw(request, painter, person).catch(() => "วาดรูปไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"));
     setDrawing(false);
   }
 
@@ -139,14 +148,18 @@ export function PosterPanel({ value, onChange, onDraw, busy }: Props) {
             placeholder="อยากได้ภาพแบบไหน (ไม่ใส่ก็ได้) เช่น พ่อกับลูกสาวอ่านนิทานก่อนนอน"
             className="w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-1.5 text-xs outline-none focus:border-[var(--ct-accent)]"
           />
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <div className="text-xs">
+            <span className="mb-1 block font-medium">ใส่บุคคลในภาพ</span>
+            <PersonPicker people={people} value={person} onChange={setPerson} />
+          </div>
+          {!person && <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="mr-1 font-medium">วาดด้วย</span>
             {PAINTERS.filter((p) => p.modelId).map((p) => (
               <button key={p.id} type="button" aria-pressed={painter === p.id} onClick={() => setPainter(p.id)} className={chip(painter === p.id)}>
                 {p.label} ฿{p.thb.toFixed(2)}
               </button>
             ))}
-          </div>
+          </div>}
           <div className="flex flex-wrap gap-1.5">
             <button type="button" onClick={draw} disabled={drawing || busy} className="rounded-lg bg-[var(--ct-solid)] px-3 py-1.5 text-xs font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
               {drawing || busy ? "กำลังวาด… ราว 20–40 วินาที" : value.background ? `วาดภาพใหม่ (${price})` : `วาดภาพพื้นหลังด้วย AI (${price})`}

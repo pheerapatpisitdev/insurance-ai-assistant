@@ -7,6 +7,8 @@ import { FORMAT_LABEL } from "@/lib/content/prompt";
 import { AD_LIMITS } from "@/lib/content/ads";
 import type { ContentItem } from "@/lib/content/store";
 import { proofreadContent, saveContentEdits, type DrawBackgroundResult } from "./actions";
+import type { PiecePerson } from "@/lib/content/people";
+import type { PersonOption } from "./PersonPicker";
 import { PosterPanel } from "./PosterPanel";
 import { PublishPanel } from "./PublishPanel";
 import { ask } from "./ask";
@@ -55,14 +57,15 @@ interface Props {
   drawing?: boolean;
   onSaved: (item: ContentItem) => void;
   /** orders a picture through the page, which shows it drawing on the card and in here */
-  onDraw: (request: string, painter: string) => Promise<DrawBackgroundResult>;
+  onDraw: (request: string, painter: string, person: PiecePerson | null) => Promise<DrawBackgroundResult>;
+  people: PersonOption[];
   onStatus: (status: ContentItem["status"]) => void;
   /** posted, scheduled or taken back: the piece as it now stands */
   onPublished: (item: ContentItem) => void;
   onClose: () => void;
 }
 
-export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onStatus, onPublished, onClose }: Props) {
+export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onStatus, onPublished, onClose, people }: Props) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(item, productName));
   const [hook, setHook] = useState(0);
   const [fixes, setFixes] = useState<Fix[] | null>(item.flags.fixes);
@@ -166,8 +169,10 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
             edit({ ...draft, poster });
           }}
           busy={drawing}
-          onDraw={async (request, painter) => {
-            const res = await onDraw(request, painter);
+          people={people}
+          person={item.output.person ?? null}
+          onDraw={async (request, painter, person) => {
+            const res = await onDraw(request, painter, person);
             if (!res.ok) return res.error;
             // the picture is saved already; only the background joins the draft, so poster
             // words the owner has typed but not yet saved are kept
