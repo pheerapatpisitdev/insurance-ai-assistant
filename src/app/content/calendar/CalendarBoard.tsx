@@ -7,7 +7,7 @@ import {
   DROP_TIME, type BoardItem, type MonthCell,
 } from "@/lib/content/calendar";
 import { postLink } from "@/lib/facebook/publish";
-import { cancelScheduled, scheduleAt, scheduleOnDay, unlockPublishing, type PublishResult, type PublishSetup } from "../publish";
+import { cancelScheduled, scheduleAt, scheduleOnDay, type PublishResult, type PublishSetup } from "../publish";
 
 /**
  * The month board, ported from the owner's Maryjane project (calendar-board.tsx, post-card.tsx,
@@ -16,7 +16,7 @@ import { cancelScheduled, scheduleAt, scheduleOnDay, unlockPublishing, type Publ
  * click a browser fires after a drop swallowed so the sheet does not open by itself.
  *
  * What differs is what a drop does. Maryjane queues the post for its own cron; here Facebook
- * holds the schedule, so a drop sends the post, through the PIN and the piece's checks, and
+ * holds the schedule, so a drop sends the post, through the piece's checks, and
  * waits for Facebook's answer before the card stays where it was put.
  */
 
@@ -50,7 +50,7 @@ interface DragSession {
   detach: () => void;
 }
 
-/** runs an action, and asks for the PIN or the confirmation it needs before trying again */
+/** runs an action, and asks for the confirmation it needs before trying again */
 type Run = (act: (confirmNumbers: boolean) => Promise<PublishResult>) => Promise<boolean>;
 
 export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
@@ -65,7 +65,6 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [, startTransition] = useTransition();
   const [pageId, setPageId] = useState(defaultPage);
-  const [pin, setPin] = useState<{ retry: () => void } | null>(null);
   const usable = setup.pages.filter((p) => p.canPost);
 
   useEffect(() => {
@@ -103,7 +102,6 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
       res = await act(true).catch(() => ({ ok: false, error: "การเชื่อมต่อหลุด" }) as PublishResult);
     }
     if (res.ok) { setError(null); router.refresh(); return true; }
-    if (res.needPin) { setPin({ retry: () => void run(act) }); return false; }
     setError(res.error);
     return false;
   };
@@ -234,10 +232,7 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
       {error && (
         <p role="alert" className="rounded-lg border border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] p-3 text-sm text-[var(--ct-alert)]">{error}</p>
       )}
-      {!setup.pinSet && (
-        <p className="rounded-lg border border-[var(--ct-warn-line)] bg-[var(--ct-warn-bg)] p-3 text-sm text-[var(--ct-warn-ink)]">ยังไม่ได้ตั้ง PIN สำหรับโพสต์ — ดูปฏิทินได้ แต่ยังตั้งเวลาไม่ได้</p>
-      )}
-      {setup.pinSet && usable.length === 0 && (
+      {usable.length === 0 && (
         <p className="rounded-lg border border-[var(--ct-warn-line)] bg-[var(--ct-warn-bg)] p-3 text-sm text-[var(--ct-warn-ink)]">
           ยังไม่มีเพจที่เปิดสิทธิ์โพสต์ — เพิ่ม pages_manage_posts ในแอป Facebook แล้วเชื่อมเพจใหม่ที่ <a href="/admin/messenger" className="underline">/admin/messenger</a>
         </p>
@@ -327,7 +322,6 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
         />
       )}
 
-      {pin && <PinDialog onClose={() => setPin(null)} onUnlocked={() => { const r = pin.retry; setPin(null); r(); }} />}
     </div>
   );
 }
@@ -494,37 +488,6 @@ function SheetItem({ item, today, pages, pageId, onPage, run, onDone }: {
         <p className="mt-2 text-xs text-[var(--ct-warn-ink)]">ครั้งก่อนส่งไม่สำเร็จ — เปิดเพจเช็กก่อนว่าโพสต์ขึ้นไปแล้วหรือยัง ก่อนตั้งเวลาใหม่</p>
       )}
     </li>
-  );
-}
-
-function PinDialog({ onClose, onUnlocked }: { onClose: () => void; onUnlocked: () => void }) {
-  const [pin, setPin] = useState("");
-  const [note, setNote] = useState<string>();
-  const [busy, setBusy] = useState(false);
-  async function unlock() {
-    setBusy(true);
-    const res = await unlockPublishing(pin).catch(() => ({ ok: false, error: "การเชื่อมต่อหลุด" }));
-    setBusy(false);
-    if (res.ok) onUnlocked();
-    else setNote(res.error);
-  }
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ct-ink)]/60 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="ใส่ PIN" onClick={(e) => e.stopPropagation()} className="w-full max-w-xs rounded-xl bg-[var(--ct-panel)] p-4">
-        <p className="font-semibold">ใส่ PIN สำหรับโพสต์</p>
-        <p className="mt-1 text-xs text-[var(--ct-mute)]">ใส่ครั้งเดียว เบราว์เซอร์นี้จำไว้ 30 วัน</p>
-        <input
-          autoFocus value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} inputMode="numeric" maxLength={8}
-          onKeyDown={(e) => { if (e.key === "Enter" && pin.length >= 4) void unlock(); }}
-          className="mt-3 w-full rounded-lg border border-[var(--ct-line)] px-3 py-2 text-sm" aria-label="PIN"
-        />
-        {note && <p className="mt-2 text-sm text-[var(--ct-alert)]">{note}</p>}
-        <div className="mt-3 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-[var(--ct-line)] px-3 py-2 text-sm">ยกเลิก</button>
-          <button type="button" disabled={busy || pin.length < 4} onClick={unlock} className="rounded-lg bg-[var(--ct-solid)] px-3 py-2 text-sm text-[var(--ct-solid-ink)] disabled:opacity-50">ปลดล็อก</button>
-        </div>
-      </div>
-    </div>
   );
 }
 

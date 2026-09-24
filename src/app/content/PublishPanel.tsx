@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { postLink } from "@/lib/facebook/publish";
 import { publishView, quickTimes, thaiWhen } from "@/lib/content/publish-label";
 import type { ContentItem } from "@/lib/content/store";
-import { cancelScheduled, publishPiece, publishSetup, unlockPublishing, type PublishResult, type PublishSetup } from "./publish";
+import { cancelScheduled, publishPiece, publishSetup, type PublishResult, type PublishSetup } from "./publish";
 
 /**
  * The editor's ลงเพจ box: pick the Page and the time, and send — or see where it went.
@@ -34,8 +34,6 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
   const [pageId, setPageId] = useState("");
   const [when, setWhen] = useState("now");
   const [custom, setCustom] = useState("");
-  const [pin, setPin] = useState("");
-  const [askPin, setAskPin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string>();
 
@@ -44,12 +42,11 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
     publishSetup().then((s) => {
       if (!live) return;
       setSetup(s);
-      if (s.pinSet && !s.unlocked) setAskPin(true);
       let kept = "";
       try { kept = localStorage.getItem(PAGE_KEY) ?? ""; } catch { /* storage unavailable */ }
       const usable = s.pages.filter((p) => p.canPost);
       setPageId(usable.find((p) => p.pageId === kept)?.pageId ?? usable[0]?.pageId ?? s.pages[0]?.pageId ?? "");
-    }).catch(() => { if (live) setSetup({ pinSet: false, unlocked: false, pages: [] }); });
+    }).catch(() => { if (live) setSetup({ pages: [] }); });
     return () => { live = false; };
   }, []);
 
@@ -75,7 +72,6 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
       try { localStorage.setItem(PAGE_KEY, pageId); } catch { /* not kept */ }
       const res: PublishResult = await publishPiece({ id: item.id, pageId, at, hook, confirmNumbers });
       if (res.ok) { onPublished(res.item); return; }
-      if (res.needPin) { setAskPin(true); setNote(res.error); return; }
       if (res.confirmNumbers) {
         const go = window.confirm(`มีตัวเลขที่ไม่ตรงกับตารางเบี้ย: ${res.confirmNumbers.join(", ")}\n\nตรวจแล้วว่าถูกต้อง และยังจะโพสต์ไหม?`);
         if (go) { setBusy(false); await send(true); }
@@ -89,17 +85,6 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
     }
   }
 
-  async function unlock() {
-    setBusy(true);
-    const res = await unlockPublishing(pin).catch(() => ({ ok: false, error: "การเชื่อมต่อหลุด" }));
-    setBusy(false);
-    if (!res.ok) { setNote(res.error); return; }
-    setAskPin(false);
-    setPin("");
-    setSetup((s) => (s ? { ...s, unlocked: true } : s));
-    setNote("ปลดล็อกแล้ว — กดโพสต์อีกครั้งได้เลย");
-  }
-
   async function cancel() {
     if (!window.confirm("ยกเลิกโพสต์ที่ตั้งเวลาไว้?")) return;
     setBusy(true);
@@ -107,20 +92,8 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
     setBusy(false);
     if (!res) { setNote("ยกเลิกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
     if (res.ok) { onPublished(res.item); setNote("ยกเลิกแล้ว ตั้งเวลาใหม่ได้"); return; }
-    if (res.needPin) setAskPin(true);
     setNote(res.error);
   }
-
-  const pinBox = askPin && (
-    <div className="mt-2 flex gap-2">
-      <input
-        value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} inputMode="numeric" maxLength={8}
-        placeholder="PIN สำหรับโพสต์" aria-label="PIN สำหรับโพสต์" className={`${field} max-w-40`}
-        onKeyDown={(e) => { if (e.key === "Enter" && pin) void unlock(); }}
-      />
-      <button type="button" disabled={busy || pin.length < 4} onClick={unlock} className="rounded-lg border border-[var(--ct-line)] px-3 py-2 text-sm disabled:opacity-50">ปลดล็อก</button>
-    </div>
-  );
 
   let body: React.ReactNode;
   if (!setup) {
@@ -141,8 +114,6 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
         {item.publish?.postId && <> · <a href={postLink(item.publish.postId)} target="_blank" rel="noreferrer" className="text-[var(--ct-accent)] underline">ดูโพสต์</a></>}
       </p>
     );
-  } else if (!setup.pinSet) {
-    body = <p className="text-sm text-[var(--ct-mute)]">ยังไม่ได้ตั้ง PIN สำหรับโพสต์ — ตั้ง CONTENT_PUBLISH_PIN ในระบบก่อน</p>;
   } else if (!setup.pages.some((p) => p.canPost)) {
     body = (
       <p className="text-sm text-[var(--ct-mute)]">
@@ -188,7 +159,6 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
     <section className="mt-4 rounded-lg border border-[var(--ct-line)] p-3">
       <p className="mb-2 text-sm font-medium">ลงเพจ</p>
       {body}
-      {pinBox}
       {note && <p role="status" className="mt-2 text-sm text-[var(--ct-mute)]">{note}</p>}
     </section>
   );

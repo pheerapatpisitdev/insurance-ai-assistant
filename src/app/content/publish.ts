@@ -1,6 +1,4 @@
 "use server";
-import { cookies, headers } from "next/headers";
-import { limiter } from "@/lib/assistant/rate-limit";
 import { pageConnections, pageToken } from "@/lib/facebook/connection";
 import { deletePost, MAX_AHEAD_MS, MIN_AHEAD_MS, postPhoto, PublishError } from "@/lib/facebook/publish";
 import { fullText } from "@/lib/content/output";
@@ -9,29 +7,21 @@ import { drawPoster } from "@/lib/content/poster-draw";
 import { contentProduct } from "@/lib/content/products";
 import { bangkokAt, DROP_TIME, timeOfDay } from "@/lib/content/calendar";
 import { claimPublish, getContent, recordPublish, type ContentItem } from "@/lib/content/store";
-import { cookieOpens, PIN_COOKIE, PIN_DAYS, pinMatches, pinToken, publishPin } from "@/lib/content/pin";
 import { setContentStatus } from "./actions";
 
 /**
  * Posting a piece to a Facebook Page from the workbench, now or at a time Facebook holds.
  *
- * Three gates stand before Facebook is called, in this order: the PIN (the page is public),
- * the piece's own checks (a Facebook-rule finding marked block stops it; amounts not in the
- * rate tables must be confirmed), and the Page's permission to post. Only posts go up — a
- * script is filmed and an ad goes through Ads Manager.
+ * Two gates stand before Facebook is called: the piece's own checks (a Facebook-rule finding
+ * marked block stops it; amounts not in the rate tables must be confirmed) and the Page's
+ * permission to post. Only posts go up — a script is filmed and an ad goes through Ads Manager.
+ *
+ * There is no PIN. One was built and the owner took it out on 2026-09-25, as /admin has no
+ * login by the owner's decision: whoever can open /content can post. Don't put one back
+ * unasked.
  */
 
 const POST_SCOPE = "pages_manage_posts";
-const pinTries = limiter(8, 60 * 60_000);
-
-async function caller(): Promise<string> {
-  const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
-}
-
-async function unlocked(): Promise<boolean> {
-  return cookieOpens((await cookies()).get(PIN_COOKIE)?.value);
-}
 
 export interface PublishPage {
   pageId: string;
@@ -41,35 +31,21 @@ export interface PublishPage {
 }
 
 export interface PublishSetup {
-  /** a PIN is set for this deployment; without one nobody can post */
-  pinSet: boolean;
-  unlocked: boolean;
   pages: PublishPage[];
 }
 
 export async function publishSetup(): Promise<PublishSetup> {
   try {
-    const pages = (await pageConnections()).map((p) => ({ pageId: p.pageId, pageName: p.pageName, canPost: p.scopes.includes(POST_SCOPE) }));
-    return { pinSet: publishPin() !== null, unlocked: await unlocked(), pages };
+    return { pages: (await pageConnections()).map((p) => ({ pageId: p.pageId, pageName: p.pageName, canPost: p.scopes.includes(POST_SCOPE) })) };
   } catch (e) {
     console.error("publish setup failed:", e);
-    return { pinSet: publishPin() !== null, unlocked: false, pages: [] };
+    return { pages: [] };
   }
-}
-
-export async function unlockPublishing(pin: string): Promise<{ ok: boolean; error?: string }> {
-  if (!publishPin()) return { ok: false, error: "ยังไม่ได้ตั้ง PIN สำหรับโพสต์ (CONTENT_PUBLISH_PIN)" };
-  if (!pinTries(`pin:${await caller()}`)) return { ok: false, error: "ใส่ PIN ผิดหลายครั้งเกินไป รอสักชั่วโมงนะครับ" };
-  if (!pinMatches(String(pin ?? ""))) return { ok: false, error: "PIN ไม่ถูกต้อง" };
-  (await cookies()).set(PIN_COOKIE, pinToken(publishPin()!), {
-    httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: PIN_DAYS * 24 * 60 * 60,
-  });
-  return { ok: true };
 }
 
 export type PublishResult =
   | { ok: true; item: ContentItem }
-  | { ok: false; error: string; needPin?: boolean; /** amounts to confirm before it may go */ confirmNumbers?: string[] };
+  | { ok: false; error: string; /** amounts to confirm before it may go */ confirmNumbers?: string[] };
 
 type Refusal = Extract<PublishResult, { ok: false }>;
 
@@ -86,9 +62,6 @@ interface Cleared {
  * a reschedule takes the old post back only after the new one has cleared.
  */
 async function clear(input: { id: string; pageId: string; at: string | null; confirmNumbers?: boolean; moving?: boolean }): Promise<Cleared | Refusal> {
-  if (!publishPin()) return { ok: false, error: "ยังไม่ได้ตั้ง PIN สำหรับโพสต์ (CONTENT_PUBLISH_PIN)" };
-  if (!(await unlocked())) return { ok: false, error: "ใส่ PIN ก่อนโพสต์", needPin: true };
-
   const item = await getContent(input.id).catch(() => null);
   if (!item) return { ok: false, error: "ไม่พบชิ้นงานนี้" };
   if (item.format !== "post") return { ok: false, error: "โพสต์ลงเพจได้เฉพาะงานแบบโพสต์เฟซบุ๊ก" };
@@ -207,7 +180,6 @@ export async function scheduleAt(input: { id: string; local: string; pageId: str
 
 /** Takes back a post Facebook is holding, before its time. It can be scheduled again after. */
 export async function cancelScheduled(id: string): Promise<PublishResult> {
-  if (!(await unlocked())) return { ok: false, error: "ใส่ PIN ก่อน", needPin: true };
   const item = await getContent(id).catch(() => null);
   const p = item?.publish;
   if (!item || !p || p.state !== "scheduled" || !p.postId || !p.pageId) return { ok: false, error: "ชิ้นนี้ไม่ได้ตั้งเวลาไว้" };

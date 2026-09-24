@@ -1,6 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { publishLabel, publishView, quickTimes } from "@/lib/content/publish-label";
-import { cookieOpens, pinMatches, pinToken, publishPin } from "@/lib/content/pin";
 import { explain, postLink } from "@/lib/facebook/publish";
 import type { Publish } from "@/lib/content/store";
 
@@ -45,30 +44,5 @@ describe("Facebook's refusals", () => {
   it("links a post id to the Page's post and a photo id to the photo", () => {
     expect(postLink("105_777")).toBe("https://www.facebook.com/105/posts/777");
     expect(postLink("888")).toBe("https://www.facebook.com/photo/?fbid=888");
-  });
-});
-
-describe("the posting PIN", () => {
-  afterEach(() => vi.unstubAllEnvs());
-
-  it("opens nothing when no PIN is set, or one that is not 4–8 digits", () => {
-    vi.stubEnv("ADMIN_SESSION_SECRET", "s");
-    vi.stubEnv("CONTENT_PUBLISH_PIN", "");
-    expect(publishPin()).toBeNull();
-    expect(pinMatches("")).toBe(false);
-    vi.stubEnv("CONTENT_PUBLISH_PIN", "12ab");
-    expect(publishPin()).toBeNull();
-  });
-
-  it("matches the PIN, and a cookie made from it — until the PIN changes", () => {
-    vi.stubEnv("ADMIN_SESSION_SECRET", "s");
-    vi.stubEnv("CONTENT_PUBLISH_PIN", "2468");
-    expect(pinMatches("2468")).toBe(true);
-    expect(pinMatches("1357")).toBe(false);
-    const cookie = pinToken("2468");
-    expect(cookie).not.toContain("2468");
-    expect(cookieOpens(cookie)).toBe(true);
-    vi.stubEnv("CONTENT_PUBLISH_PIN", "9999");
-    expect(cookieOpens(cookie)).toBe(false);
   });
 });
