@@ -7,7 +7,7 @@ import { briefFor } from "@/lib/content/brief";
 import { findWords, strayNumbers, type ContentWord } from "@/lib/content/check";
 import { parseTemplatize, templatizeMessages } from "@/lib/content/hooks";
 import type { ContentOutput } from "@/lib/content/output";
-import { defaultPoster, parsePoster, posterText } from "@/lib/content/poster";
+import { defaultPoster, parsePoster, posterText, THEMES, type Theme } from "@/lib/content/poster";
 import { contentProduct } from "@/lib/content/products";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { checkPolicy } from "@/lib/content/policy";
@@ -74,6 +74,8 @@ export interface GenerateInput {
   reader?: string;
   goal?: GoalId;
   fact?: string;
+  /** the poster colour the owner picked for the round; unknown or absent keeps each poster's own */
+  theme?: string;
 }
 
 export type GenerateResult =
@@ -94,6 +96,10 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
   const fact = input.format === "ad" ? "" : (input.fact ?? "").trim().slice(0, MAX_FACT);
   // the owner's story is the one other place a number may come from
   const yardstick = fact ? `${brief.text}\n${fact}` : brief.text;
+  const theme = (THEMES as readonly string[]).includes(input.theme ?? "") ? (input.theme as Theme) : null;
+  // the round's colour on every poster, the writer's own poster or the one drawn from its hook
+  const dressed = (o: ContentOutput): ContentOutput =>
+    theme ? { ...o, poster: { ...(o.poster ?? defaultPoster(o.hooks[0], brief.product.name)), theme } } : o;
 
   if (!perHour(`content:${await caller()}`)) {
     return { ok: false, error: "สร้างครบ 10 รอบในชั่วโมงนี้แล้ว รอสักพักแล้วลองใหม่นะครับ" };
@@ -130,7 +136,7 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
           hashtags: [],
           imagePrompt: heads.lines[i].imagePrompt,
           disclaimer: DISCLAIMER,
-          poster: numbersPoster(s),
+          poster: numbersPoster(s, theme ?? "navy"),
         };
         items.push(await saveContent({
           planHref: brief.product.href, format: "post", angle, length: null, output,
@@ -150,7 +156,7 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
       const items: ContentItem[] = [];
       for (const w of round.pieces) {
         items.push(await saveContent({
-          planHref: brief.product.href, format: "ad", angle, length: null, output: w.output,
+          planHref: brief.product.href, format: "ad", angle, length: null, output: dressed(w.output),
           flags: flagsFor(w.output, brief.text, words, null),
           rateVersion: brief.rateVersion, model: w.model, costThb: w.costThb + planShare, hookTemplateId: null,
         }));
@@ -167,7 +173,8 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
     const items: ContentItem[] = [];
     for (const w of written) {
       items.push(await saveContent({
-        planHref: brief.product.href, format: input.format, angle, length, output: fact ? { ...w.output, fact } : w.output,
+        planHref: brief.product.href, format: input.format, angle, length,
+        output: input.format === "script" ? (fact ? { ...w.output, fact } : w.output) : dressed(fact ? { ...w.output, fact } : w.output),
         flags: flagsFor(w.output, yardstick, words, null),
         rateVersion: brief.rateVersion, model: w.model, costThb: w.costThb + planShare,
         hookTemplateId: template?.id ?? null,

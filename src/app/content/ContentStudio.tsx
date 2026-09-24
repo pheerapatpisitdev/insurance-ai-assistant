@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { footer, fullText } from "@/lib/content/output";
-import { defaultPoster, posterUrl } from "@/lib/content/poster";
+import { defaultPoster, posterUrl, THEMES, type Theme } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { onPage } from "@/lib/content/publish-label";
 import { anglesFor, FORMAT_LABEL, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
@@ -12,6 +12,7 @@ import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PA
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, removeContent, setContentStatus, type DrawBackgroundResult, type GenerateResult } from "./actions";
 import { drawPicture, generateRound } from "./draw";
+import { ThemeSwatches } from "./ThemeSwatches";
 import { ask } from "./ask";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
@@ -53,6 +54,8 @@ const TABS: { id: ContentStatus; label: string }[] = [
 const PICK_KEY = "content-models";
 /** the reader last named: a page usually speaks to one niche, so it is kept for the next visit */
 const READER_KEY = "content-reader";
+/** the round's poster colour, kept per device like the reader */
+const THEME_KEY = "content-poster-theme";
 /** the owner's own direction for the round's pictures, kept per device like the reader */
 const BRIEF_KEY = "content-picture-brief";
 /** what drawBackground translates and keeps of a request */
@@ -94,6 +97,17 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   const setReader = (next: string) => {
     setReaderState(next);
     try { localStorage.setItem(READER_KEY, next); } catch { /* not kept */ }
+  };
+  const [theme, setThemeState] = useState<Theme>("navy");
+  useEffect(() => {
+    try {
+      const kept = localStorage.getItem(THEME_KEY) ?? "";
+      if ((THEMES as readonly string[]).includes(kept)) setThemeState(kept as Theme);
+    } catch { /* storage unavailable */ }
+  }, []);
+  const setTheme = (next: Theme) => {
+    setThemeState(next);
+    try { localStorage.setItem(THEME_KEY, next); } catch { /* not kept */ }
   };
   const [brief, setBriefState] = useState("");
   useEffect(() => {
@@ -191,7 +205,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
         res = await generateRound({
           href, format, angle, custom, length: format === "script" ? length : null, count,
           hookTemplateId: format === "ad" ? null : hookId || null, adAngles, adTones, writer,
-          reader, goal: format === "ad" ? "" : goal, fact: format === "ad" ? "" : fact,
+          reader, goal: format === "ad" ? "" : goal, fact: format === "ad" ? "" : fact, theme,
         });
       } catch {
         /**
@@ -535,6 +549,14 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
                   : painter === "none" ? "ใช้โปสเตอร์สีพื้น วาดทีหลังได้ในหน้าแก้ไข" : `${paints.short} · ราคาต่อภาพ วาดให้ทุกชิ้นหลังเขียนเสร็จ`}
               </span>
             </label>
+          )}
+
+          {format !== "script" && (
+            <div>
+              <span className="mb-1.5 block text-sm font-medium">โทนสีโปสเตอร์ <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+              <ThemeSwatches value={theme} onChange={setTheme} />
+              <span className="mt-1 block text-xs text-[var(--ct-mute)]">ใช้กับทุกชิ้นในรอบนี้ และภาพ AI จะวาดในโทนเดียวกัน · เปลี่ยนทีละชิ้นได้ในหน้าแก้ไข</span>
+            </div>
           )}
 
           {/* the owner's free direction for every picture of the round, on top of the fixed rules */}

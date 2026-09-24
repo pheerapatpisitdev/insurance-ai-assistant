@@ -1,6 +1,6 @@
 import { parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
-import type { PosterSpec } from "./poster";
+import type { PosterSpec, Theme } from "./poster";
 
 /**
  * The ตัวเลขชัดๆ angle (owner, 2026-09-24): a post that sells on figures alone.
@@ -66,10 +66,10 @@ export function numbersYardstick(sheets: NumberSheet[]): string {
   return sheets.flatMap((s) => [numbersBody(s), s.poster.big, s.poster.small]).join("\n");
 }
 
-export function numbersPoster(s: NumberSheet): PosterSpec {
+export function numbersPoster(s: NumberSheet, theme: Theme = "navy"): PosterSpec {
   return {
     layout: "bottom",
-    theme: "navy",
+    theme,
     blocks: [
       { kind: "badge", text: s.product },
       { kind: "headline", text: s.poster.big },

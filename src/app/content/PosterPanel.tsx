@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  BLOCK_KINDS, BLOCK_LABEL, LAYOUTS, LAYOUT_LABEL, MAX_CHARS, SIZES, THEMES, THEME_LABEL,
+  BLOCK_KINDS, BLOCK_LABEL, LAYOUTS, LAYOUT_LABEL, MAX_CHARS, SIZES,
   posterUrl, type BlockKind, type PosterSpec, type SizeId,
 } from "@/lib/content/poster";
 import { PAINTERS, painterOf } from "@/lib/content/models";
 import { SAVE_LABEL, usePictureSaver } from "./savePicture";
+import { ThemeSwatches } from "./ThemeSwatches";
 
 /**
  * The poster, editable: its four lines, where they sit, which colours, which size to download.
@@ -125,11 +126,9 @@ export function PosterPanel({ value, onChange, onDraw, busy }: Props) {
             <button key={l} type="button" aria-pressed={value.layout === l} onClick={() => onChange({ ...value, layout: l })} className={chip(value.layout === l)}>{LAYOUT_LABEL[l]}</button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="mr-1 font-medium">สี</span>
-          {THEMES.map((t) => (
-            <button key={t} type="button" aria-pressed={value.theme === t} onClick={() => onChange({ ...value, theme: t })} className={chip(value.theme === t)}>{THEME_LABEL[t]}</button>
-          ))}
+        <div className="text-xs">
+          <span className="mb-1.5 block font-medium">โทนสี</span>
+          <ThemeSwatches value={value.theme} onChange={(theme) => onChange({ ...value, theme })} />
         </div>
         <div className="space-y-2 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-2.5">
           <p className="text-xs font-medium">

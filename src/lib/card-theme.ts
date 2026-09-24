@@ -1,3 +1,4 @@
+import type { Theme } from "@/lib/content/poster";
 
 /**
  * The palette a quote card is drawn in.
@@ -135,9 +136,11 @@ export function cardVersionFor(): string {
 }
 
 /**
- * The content posters' three themes (src/lib/content/poster.ts), drawn by the same library as
- * the quote card and so held here for the same reason: a drawing cannot read a CSS variable.
- * Each value is the hex of a --bot-* token in globals.css; the comment above each says which.
+ * The content posters' themes (src/lib/content/poster.ts), drawn by the same library as the
+ * quote card and so held here for the same reason: a drawing cannot read a CSS variable.
+ * The first three are --bot-* tokens from globals.css; the other seventeen are the ad tones
+ * the owner picked on 2026-09-24, for posters only. tests/content/poster-themes.test.ts
+ * holds every theme's words to a readable contrast on both ends of its ground.
  */
 export interface PosterColors {
   from: string;
@@ -147,30 +150,42 @@ export interface PosterColors {
   footer: string;
   badgeBg: string;
   badgeInk: string;
+  /**
+   * The wash laid over a poster's photograph on the side its words sit, as "r, g, b" —
+   * Maryjane's scrim (poster-render.tsx), tinted to the theme: light words need the photo
+   * darkened, dark words need it lightened.
+   */
+  scrim: string;
 }
-export const POSTER_THEMES: Record<"navy" | "sand" | "white", PosterColors> = {
+
+export const POSTER_THEMES: Record<Theme, PosterColors> = {
   // --bot-navy → --bot-navy-deep, white words, sand accents
-  navy: { from: "#022162", to: "#01143d", headline: "#ffffff", sub: "#dde3f0", footer: "#c6bc99", badgeBg: "#c6bc99", badgeInk: "#01143d" },
+  navy: { from: "#022162", to: "#01143d", headline: "#ffffff", sub: "#dde3f0", footer: "#c6bc99", badgeBg: "#c6bc99", badgeInk: "#01143d", scrim: "1, 20, 61" },
   // --bot-sand-soft → --bot-sand, navy words
-  sand: { from: "#e7e3d4", to: "#c6bc99", headline: "#022162", sub: "#15181d", footer: "#5f5436", badgeBg: "#022162", badgeInk: "#ffffff" },
+  sand: { from: "#e7e3d4", to: "#c6bc99", headline: "#022162", sub: "#15181d", footer: "#5f5436", badgeBg: "#022162", badgeInk: "#ffffff", scrim: "231, 227, 212" },
   // --bot-surface → --bot-band, navy words
-  white: { from: "#ffffff", to: "#f2f2f2", headline: "#022162", sub: "#5b6472", footer: "#5f5436", badgeBg: "#022162", badgeInk: "#ffffff" },
+  white: { from: "#ffffff", to: "#f2f2f2", headline: "#022162", sub: "#5b6472", footer: "#5f5436", badgeBg: "#022162", badgeInk: "#ffffff", scrim: "255, 255, 255" },
+  noir: { from: "#1a1a1a", to: "#050505", headline: "#ffffff", sub: "#e5e5e5", footer: "#d4af37", badgeBg: "#d4af37", badgeInk: "#1a1a1a", scrim: "5, 5, 5" },
+  champagne: { from: "#f7ecd0", to: "#e6c77a", headline: "#3b2a08", sub: "#5c4412", footer: "#5c4412", badgeBg: "#3b2a08", badgeInk: "#f7ecd0", scrim: "247, 236, 208" },
+  emerald: { from: "#0f5132", to: "#0a3622", headline: "#ffffff", sub: "#d1f0e0", footer: "#f2c94c", badgeBg: "#f2c94c", badgeInk: "#0a3622", scrim: "10, 54, 34" },
+  mint: { from: "#e6f7f0", to: "#b8ead6", headline: "#0b4d3b", sub: "#1f5f4c", footer: "#1f5f4c", badgeBg: "#0b4d3b", badgeInk: "#ffffff", scrim: "230, 247, 240" },
+  sky: { from: "#e8f3ff", to: "#bcdcff", headline: "#0b3d91", sub: "#1e3a5f", footer: "#1e3a5f", badgeBg: "#0b3d91", badgeInk: "#ffffff", scrim: "232, 243, 255" },
+  royal: { from: "#1d4ed8", to: "#1e3a8a", headline: "#ffffff", sub: "#dbeafe", footer: "#fbbf24", badgeBg: "#fbbf24", badgeInk: "#1e3a8a", scrim: "30, 58, 138" },
+  violet: { from: "#4c1d95", to: "#2e1065", headline: "#ffffff", sub: "#ede9fe", footer: "#f5d0fe", badgeBg: "#f5d0fe", badgeInk: "#2e1065", scrim: "46, 16, 101" },
+  lavender: { from: "#f3e8ff", to: "#ddd6fe", headline: "#4c1d95", sub: "#5b3a8c", footer: "#5b3a8c", badgeBg: "#4c1d95", badgeInk: "#ffffff", scrim: "243, 232, 255" },
+  blush: { from: "#fde8ef", to: "#f9c5d5", headline: "#831843", sub: "#9d2a57", footer: "#9d2a57", badgeBg: "#831843", badgeInk: "#ffffff", scrim: "253, 232, 239" },
+  red: { from: "#c81e1e", to: "#7f1d1d", headline: "#ffffff", sub: "#fee2e2", footer: "#fde047", badgeBg: "#fde047", badgeInk: "#7f1d1d", scrim: "127, 29, 29" },
+  orange: { from: "#c2410c", to: "#9a3412", headline: "#ffffff", sub: "#ffedd5", footer: "#ffedd5", badgeBg: "#1f2937", badgeInk: "#ffffff", scrim: "154, 52, 18" },
+  peach: { from: "#ffe4d6", to: "#ffc4a8", headline: "#7c2d12", sub: "#8a3b1c", footer: "#8a3b1c", badgeBg: "#7c2d12", badgeInk: "#ffffff", scrim: "255, 228, 214" },
+  sunny: { from: "#fde68a", to: "#facc15", headline: "#1f2937", sub: "#374151", footer: "#374151", badgeBg: "#1f2937", badgeInk: "#fde68a", scrim: "253, 230, 138" },
+  teal: { from: "#0f766e", to: "#134e4a", headline: "#ffffff", sub: "#ccfbf1", footer: "#fde68a", badgeBg: "#fde68a", badgeInk: "#134e4a", scrim: "19, 78, 74" },
+  terracotta: { from: "#a3542f", to: "#6b2f1a", headline: "#ffffff", sub: "#f5e6c8", footer: "#f5e6c8", badgeBg: "#f5e6c8", badgeInk: "#6b2f1a", scrim: "107, 47, 26" },
+  charcoal: { from: "#374151", to: "#111827", headline: "#ffffff", sub: "#e5e7eb", footer: "#93c5fd", badgeBg: "#93c5fd", badgeInk: "#111827", scrim: "17, 24, 39" },
+  cream: { from: "#fffaf0", to: "#f5ecd9", headline: "#3f3f46", sub: "#52525b", footer: "#92400e", badgeBg: "#92400e", badgeInk: "#ffffff", scrim: "255, 250, 240" },
 };
 
-/**
- * The wash laid over a poster's photograph on the side its words sit, so they can be read —
- * Maryjane's scrim (poster-render.tsx), tinted to the theme: the navy theme's white words need
- * the photo darkened, the sand and white themes' navy words need it lightened. Strongest under
- * the words and fading across the frame, so the picture is not drowned whole.
- */
-const SCRIM_RGB: Record<"navy" | "sand" | "white", string> = {
-  navy: "1, 20, 61", // --bot-navy-deep
-  sand: "231, 227, 212", // --bot-sand-soft
-  white: "255, 255, 255", // --bot-surface
-};
-
-export function posterScrim(theme: "navy" | "sand" | "white", layout: "top" | "center" | "bottom"): string {
-  const c = SCRIM_RGB[theme];
+export function posterScrim(theme: Theme, layout: "top" | "center" | "bottom"): string {
+  const c = POSTER_THEMES[theme].scrim;
   const a = (alpha: number) => `rgba(${c}, ${alpha})`;
   if (layout === "center") return `linear-gradient(180deg, ${a(0.25)} 0%, ${a(0.8)} 50%, ${a(0.25)} 100%)`;
   const toward = layout === "top" ? "180deg" : "0deg";

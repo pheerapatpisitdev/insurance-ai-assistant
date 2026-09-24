@@ -24,6 +24,23 @@ const PALETTE: Record<Theme, string> = {
   navy: "deep navy blue shadows with warm sand and cream highlights",
   sand: "warm sand, cream and soft beige tones with small touches of deep navy",
   white: "bright, airy whites and soft greys with small touches of deep navy",
+  noir: "rich blacks and deep charcoal with warm gold accents, low-key luxurious lighting",
+  champagne: "soft champagne, warm ivory and pale gold tones, gentle glowing light",
+  emerald: "deep emerald and forest greens with touches of warm gold",
+  mint: "fresh mint, pale sea-green and clean white tones, light and airy",
+  sky: "clear sky blues, soft white and pale cloud tones, calm daylight",
+  royal: "vivid royal blue and deep cobalt with small touches of warm yellow",
+  violet: "deep violet and plum shadows with soft lilac highlights",
+  lavender: "soft lavender, lilac and pale violet pastels, dreamy light",
+  blush: "blush pink, rose and soft cream pastels, tender warm light",
+  red: "bold crimson and deep red tones with small touches of warm yellow, energetic",
+  orange: "vibrant orange and burnt amber tones, energetic warm light",
+  peach: "warm peach, coral and apricot tones, soft golden-hour light",
+  sunny: "bright sunny yellows and warm golden light with small touches of charcoal",
+  teal: "deep teal and turquoise tones with soft sandy highlights",
+  terracotta: "earthy terracotta, rust and warm clay tones with cream highlights",
+  charcoal: "modern charcoal and cool slate greys with small touches of soft blue",
+  cream: "minimal warm cream, off-white and light beige tones with a touch of amber",
 };
 
 /** what an insurance advertisement must never picture, whatever the scene */

@@ -17,7 +17,15 @@ export type BlockKind = (typeof BLOCK_KINDS)[number];
 export const LAYOUTS = ["top", "center", "bottom"] as const;
 export type Layout = (typeof LAYOUTS)[number];
 
-export const THEMES = ["navy", "sand", "white"] as const;
+/**
+ * The brand's three first, then seventeen tones popular in advertising the owner picked on
+ * 2026-09-24 — for content posters only; the sales pages and quote cards stay on the brand.
+ */
+export const THEMES = [
+  "navy", "sand", "white",
+  "noir", "champagne", "emerald", "mint", "sky", "royal", "violet", "lavender",
+  "blush", "red", "orange", "peach", "sunny", "teal", "terracotta", "charcoal", "cream",
+] as const;
 export type Theme = (typeof THEMES)[number];
 
 export interface PosterBlock {
@@ -44,7 +52,13 @@ export const BLOCK_LABEL: Record<BlockKind, string> = {
   footer: "ท้ายภาพ",
 };
 export const LAYOUT_LABEL: Record<Layout, string> = { top: "บน", center: "กลาง", bottom: "ล่าง" };
-export const THEME_LABEL: Record<Theme, string> = { navy: "น้ำเงิน", sand: "ทราย", white: "ขาว" };
+export const THEME_LABEL: Record<Theme, string> = {
+  navy: "น้ำเงินกรมท่า", sand: "ทราย", white: "ขาว",
+  noir: "ดำหรู + ทอง", champagne: "แชมเปญทอง", emerald: "เขียวมรกต", mint: "เขียวมิ้นต์",
+  sky: "ฟ้าน่าเชื่อถือ", royal: "น้ำเงินรอยัล", violet: "ม่วงพรีเมียม", lavender: "ลาเวนเดอร์",
+  blush: "ชมพูพาสเทล", red: "แดงพลัง", orange: "ส้มพลังงาน", peach: "พีชอบอุ่น",
+  sunny: "เหลืองสดใส", teal: "เทอร์ควอยซ์", terracotta: "เอิร์ธโทน", charcoal: "เทาโมเดิร์น", cream: "ครีมมินิมอล",
+};
 
 /** how long each kind of line may be — a poster is read in a second, not studied */
 export const MAX_CHARS: Record<BlockKind, number> = { badge: 24, headline: 70, sub: 110, footer: 50 };
