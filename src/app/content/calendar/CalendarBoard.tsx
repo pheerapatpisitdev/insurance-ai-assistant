@@ -64,14 +64,16 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [, startTransition] = useTransition();
-  const [pageId, setPageId] = useState(defaultPage);
+  const [pageId, setPageId] = useState("");
   const usable = setup.pages.filter((p) => p.canPost);
 
+  // the Page chip at the top leads, then the last Page posted to — but only a Page that can
+  // post; the chip changes without remounting the board, so this runs again on each one
   useEffect(() => {
-    if (defaultPage) return;
     let kept = "";
     try { kept = localStorage.getItem(PAGE_KEY) ?? ""; } catch { /* storage unavailable */ }
-    setPageId(usable.find((p) => p.pageId === kept)?.pageId ?? usable[0]?.pageId ?? "");
+    const pick = [defaultPage, kept].find((id) => id && usable.some((p) => p.pageId === id));
+    setPageId(pick ?? usable[0]?.pageId ?? "");
     // the Pages do not change while the board is open
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultPage]);
@@ -150,7 +152,8 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
       if (reason) setError(reason);
       return;
     }
-    if (item.status !== "scheduled" && !pageId) { setError("เลือกเพจที่จะลงก่อน (ด้านบนแถบรอตั้งเวลา)"); return; }
+    if (item.status !== "scheduled" && usable.length === 0) { setError("ยังตั้งเวลาไม่ได้ — ยังไม่มีเพจไหนเปิดสิทธิ์โพสต์ (ดูกล่องสีเหลืองด้านบน)"); return; }
+    if (item.status !== "scheduled" && !pageId) { setError("เลือกเพจที่จะลงก่อน (ช่อง ลงเพจ เหนือแถบรอตั้งเวลา)"); return; }
     setError(null);
     startTransition(async () => {
       applyMove({ id: item.id, day });
