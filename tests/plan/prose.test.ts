@@ -12,10 +12,11 @@ import type { PlanResult } from "@/lib/plan/recommend";
 
 const P: PlanInput = {
   age: 35, sex: "M", income: 50_000, expense: 25_000, savings: 0, children: [5], otherDependants: false,
-  debts: 0, lifeCover: 0, ciCover: 0, healthNow: "none", healthRoom: 0, premiumsNow: 0, hospital: "private", lifeWant: "save", budget: 4_000,
+  debts: 0, lifeCover: 0, ciCover: 0, healthNow: "none", healthRoom: 0, premiumsNow: 0, hospital: "private", lifeWant: "save",
+  retireAge: 60, retireMonthly: 17_500, pensionHave: 0, retireLump: 0, budget: 4_000,
 };
 const R: PlanResult = {
-  budget: 4_000, usedAnnual: 0, taxSaved: 0,
+  budget: 4_000, usedAnnual: 0, taxSaved: 0, order: ["life", "health", "ci", "retire"], orderedBy: "fixed", summary: "ก",
   areas: [
     { key: "life", unit: "sum", have: 0, should: 1, status: "fits" },
     { key: "health", unit: "room", have: 0, should: 1, status: "short" },
@@ -50,6 +51,11 @@ describe("explain", () => {
 });
 
 describe("planBrief", () => {
+  it("tells the model the order used and the retirement answers", () => {
+    const b = planBrief(P, { ...R, order: ["health", "life", "ci", "retire"] });
+    expect(b).toContain("ค่ารักษาพยาบาล → ครอบครัวถ้าลูกค้าเสียชีวิต");
+    expect(b).toContain("อยากเกษียณอายุ 60");
+  });
   it("says each area's status in words", () => {
     const b = planBrief(P, R);
     expect(b).toContain("มีพอแล้ว");

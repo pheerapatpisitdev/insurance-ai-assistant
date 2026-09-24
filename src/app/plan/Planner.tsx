@@ -1,8 +1,10 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
 import { MoneyInput } from "@/components/MoneyInput";
-import { HOSPITAL_LABEL, LIFE_WANT_LABEL, PLANNER_AGE, type Hospital, type LifeWant } from "@/lib/plan/assumptions";
-import { defaultBudget, type HealthNow } from "@/lib/plan/needs";
+import {
+  HOSPITAL_LABEL, LIFE_WANT_LABEL, PLANNER_AGE, RETIRE_AGES, type Hospital, type LifeWant,
+} from "@/lib/plan/assumptions";
+import { defaultBudget, defaultRetireMonthly, type HealthNow } from "@/lib/plan/needs";
 import type { Prose } from "@/lib/plan/prose";
 import type { PlanResult } from "@/lib/plan/recommend";
 import { buildPlan, explainPlan } from "./actions";
@@ -72,6 +74,11 @@ export function Planner() {
   const [premiumsNow, setPremiumsNow] = useState<Money>("");
   const [hospital, setHospital] = useState<Hospital>("private");
   const [lifeWant, setLifeWant] = useState<LifeWant>("cover");
+  const [retireAge, setRetireAge] = useState("60");
+  const [retireMonthly, setRetireMonthly] = useState<Money>("");
+  const [retireTouched, setRetireTouched] = useState(false);
+  const [pensionHave, setPensionHave] = useState<Money>("");
+  const [retireLump, setRetireLump] = useState<Money>("");
   const [budget, setBudget] = useState<Money>("");
   const [budgetTouched, setBudgetTouched] = useState(false);
 
@@ -84,12 +91,14 @@ export function Planner() {
 
   const n = (v: Money) => (v === "" ? 0 : v);
   const shownBudget = budgetTouched ? budget : defaultBudget(n(income), n(premiumsNow)) || "";
+  const shownRetire = retireTouched ? retireMonthly : defaultRetireMonthly(n(expense)) || "";
 
   function submit() {
     const form = {
       age: n(age), sex, income: n(income), expense: n(expense), savings: n(savings),
       children: children.filter((c) => c !== ""), otherDependants, debts: n(debts), lifeCover: n(lifeCover),
       ciCover: n(ciCover), healthNow, healthRoom: n(healthRoom), premiumsNow: n(premiumsNow), hospital, lifeWant,
+      retireAge: Number(retireAge), retireMonthly: n(shownRetire), pensionHave: n(pensionHave), retireLump: n(retireLump),
       budget: n(shownBudget),
     };
     setError("");
@@ -102,7 +111,7 @@ export function Planner() {
       setResult(reply.result);
       setEditing(false);
       requestAnimationFrame(() => document.getElementById("plan-result")?.scrollIntoView({ behavior: "smooth" }));
-      const words = await explainPlan(form);
+      const words = await explainPlan(form, reply.result.order);
       if (mine === seq.current) setProse(words);
     });
   }
@@ -207,6 +216,27 @@ export function Planner() {
         </div>
         {healthNow === "private" && <MoneyField label="ค่าห้องที่ประกันสุขภาพจ่าย (บาท/วัน)" value={healthRoom} onChange={setHealthRoom} />}
         <MoneyField label="เบี้ยประกันที่จ่ายอยู่ทุกกรมธรรม์ (บาท/ปี)" value={premiumsNow} onChange={setPremiumsNow} />
+      </section>
+
+      <section className={PANEL}>
+        <h2 className="text-base font-medium text-[var(--lg-white)]">เกษียณและบำนาญ</h2>
+        <div>
+          <span className={LABEL}>อยากเกษียณอายุเท่าไหร่</span>
+          <Choice value={retireAge} onChange={setRetireAge} options={RETIRE_AGES.map((a): [string, string] => [String(a), `${a} ปี`])} />
+        </div>
+        <MoneyField
+          label="หลังเกษียณอยากมีเงินใช้เดือนละ (บาท)" value={shownRetire}
+          onChange={(v) => { setRetireTouched(true); setRetireMonthly(v); }}
+          hint="ตั้งไว้ให้ที่ 70% ของค่าใช้จ่ายตอนนี้ แก้ได้ตามสะดวก"
+        />
+        <MoneyField
+          label="บำนาญที่คาดว่าจะได้แล้ว เดือนละ (บาท)" value={pensionHave} onChange={setPensionHave}
+          hint="เช่น บำนาญข้าราชการ บำนาญประกันสังคม ประกันบำนาญที่มีอยู่"
+        />
+        <MoneyField
+          label="เงินก้อนที่เก็บไว้เพื่อเกษียณ (บาท)" value={retireLump} onChange={setRetireLump}
+          hint="เช่น PVD RMF เงินออมเพื่อเกษียณ ไม่รวมเงินออมที่กรอกข้างบน"
+        />
       </section>
 
       <section className={PANEL}>

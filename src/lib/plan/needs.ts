@@ -1,7 +1,7 @@
 import {
   CHILD_SUPPORTED_UNTIL, CI_YEARS_OF_INCOME, DEFAULT_BUDGET_SHARE, EDUCATION_PER_CHILD, FUNERAL, HEALTH_TIERS,
-  HOSPITAL_TIER, LIFE_DOUBLE_BEFORE_AGE, LIFE_SUMS, PLANNER_AGE, RETIRE_SHARE_OF_EXPENSE,
-  YEARS_FOR_OTHER_DEPENDANTS, type Hospital, type LifeWant,
+  HOSPITAL_TIER, LIFE_DOUBLE_BEFORE_AGE, LIFE_SUMS, LUMP_LASTS_TO_AGE, PENSION_FROM_AGE, PLANNER_AGE,
+  RETIRE_AGES, RETIRE_SHARE_OF_EXPENSE, YEARS_FOR_OTHER_DEPENDANTS, type Hospital, type LifeWant, type RetireAge,
 } from "./assumptions";
 
 /**
@@ -34,6 +34,14 @@ export interface PlanInput {
   hospital: Hospital;
   /** cheap high cover, or cover that saves */
   lifeWant: LifeWant;
+  /** the age the customer wants to stop work; the pension starts then or at the next age the plan issues */
+  retireAge: RetireAge;
+  /** baht a month wanted after retiring */
+  retireMonthly: number;
+  /** baht a month already coming: a civil-service or social-security pension, pension policies */
+  pensionHave: number;
+  /** baht kept for retirement (PVD, RMF, savings for it) — not the savings the life need counts */
+  retireLump: number;
   /** baht a month the customer will add */
   budget: number;
 }
@@ -57,11 +65,12 @@ export function cleanInput(raw: unknown): PlanInput | string {
   const income = money(r.income);
   if (!income) return "กรอกเงินเดือนก่อนนะครับ";
   const kids = Array.isArray(r.children) ? r.children : [];
+  const expense = money(r.expense);
   return {
     age,
     sex: r.sex === "F" ? "F" : "M",
     income,
-    expense: money(r.expense),
+    expense,
     savings: money(r.savings),
     children: kids.slice(0, 4).map((k) => Math.floor(Number(k))).filter((k) => Number.isFinite(k) && k >= 0 && k <= 40),
     otherDependants: r.otherDependants === true,
@@ -73,6 +82,10 @@ export function cleanInput(raw: unknown): PlanInput | string {
     premiumsNow: money(r.premiumsNow),
     hospital: HOSPITALS.find((h) => h === r.hospital) ?? "private",
     lifeWant: r.lifeWant === "save" ? "save" : "cover",
+    retireAge: RETIRE_AGES.find((a) => a === Number(r.retireAge)) ?? PENSION_FROM_AGE,
+    retireMonthly: money(r.retireMonthly) || defaultRetireMonthly(expense),
+    pensionHave: money(r.pensionHave),
+    retireLump: money(r.retireLump),
     budget: money(r.budget),
   };
 }
@@ -136,9 +149,16 @@ export function ciNeed(p: PlanInput): { need: number; have: number; gap: number 
   return { need, have: p.ciCover, gap: Math.max(0, need - p.ciCover) };
 }
 
-/** baht a month to live on after work, rounded to the hundred */
-export function retireNeed(p: PlanInput): number {
-  return Math.round((p.expense * RETIRE_SHARE_OF_EXPENSE) / 100) * 100;
+/** baht a month, the 70% rule to the hundred — the retirement field's starting value */
+export function defaultRetireMonthly(expense: number): number {
+  return Math.round((expense * RETIRE_SHARE_OF_EXPENSE) / 100) * 100;
+}
+
+/** baht a month: what the customer wants after work, what is already coming, and the gap */
+export function retireNeed(p: PlanInput): { should: number; have: number; gap: number } {
+  const months = Math.max(1, LUMP_LASTS_TO_AGE - p.retireAge) * 12;
+  const have = p.pensionHave + Math.round(p.retireLump / months / 100) * 100;
+  return { should: p.retireMonthly, have, gap: Math.max(0, p.retireMonthly - have) };
 }
 
 /** baht a month: ten percent of income less what is already paid, down to the hundred */

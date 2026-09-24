@@ -9,7 +9,6 @@ import { lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { lifeProtectTable } from "@/lib/lifeprotect-table";
 import { plbModes, plbTakes, termAt as plbTermAt } from "@/lib/plb-quote";
 import { plbTable } from "@/lib/plb-table";
-import { PENSION_FROM_AGE } from "./assumptions";
 import type { Sex } from "./needs";
 import type { Pricer } from "./recommend";
 
@@ -55,12 +54,14 @@ export function realPricer(age: number, sex: Sex, today: Date = new Date()): Pri
     },
     ci: (tier) => bundleAnnual("CI123_SET", tier, age, sex, today),
     cancer: (tier) => bundleAnnual("CANCER_SET", tier, age, sex, today),
-    pension(annual) {
-      const ages = availablePensionAges(age, "untilAnnuity");
-      const from = ages.find((a) => a >= PENSION_FROM_AGE) ?? ages[ages.length - 1];
+    pension(start, by) {
+      const from = availablePensionAges(age, "untilAnnuity").find((a) => a >= start);
       if (from === undefined) return undefined;
       const q = quotePension({
-        age, sex, annuityAge: from, pay: "untilAnnuity", mode: "annual", basis: "premium", amount: annual / 100,
+        age, sex, annuityAge: from, pay: "untilAnnuity", mode: "annual",
+        ...("premium" in by
+          ? { basis: "premium" as const, amount: by.premium / 100 }
+          : { basis: "monthlyPension" as const, amount: by.monthly }),
       });
       return q.ok ? { annual: Math.round(q.quote.annualPremium * 100), monthlyPension: q.quote.monthlyPension, from } : undefined;
     },

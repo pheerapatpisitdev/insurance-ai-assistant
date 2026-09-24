@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
-  ciNeed, cleanInput, defaultBudget, healthNeed, lifeNeed, marginalRate, retireNeed, taxSaved, type PlanInput,
+  ciNeed, cleanInput, defaultBudget, defaultRetireMonthly, healthNeed, lifeNeed, marginalRate, retireNeed, taxSaved, type PlanInput,
 } from "@/lib/plan/needs";
 
 /** the owner's own example, 2026-09-25 */
 const OWNER: PlanInput = {
   age: 35, sex: "M", income: 50_000, expense: 25_000, savings: 200_000, children: [5, 8],
   otherDependants: false, debts: 1_500_000, lifeCover: 500_000, ciCover: 0, healthNow: "public",
-  healthRoom: 0, premiumsNow: 12_000, hospital: "private", lifeWant: "save", budget: 4_000,
+  healthRoom: 0, premiumsNow: 12_000, hospital: "private", lifeWant: "save",
+  retireAge: 60, retireMonthly: 17_500, pensionHave: 0, retireLump: 0, budget: 4_000,
 };
 
 describe("lifeNeed", () => {
@@ -66,8 +67,24 @@ describe("ciNeed, retireNeed", () => {
   it("wants three years of income", () => {
     expect(ciNeed({ ...OWNER, ciCover: 500_000 })).toEqual({ need: 1_800_000, have: 500_000, gap: 1_300_000 });
   });
-  it("wants seventy percent of today's spending", () => {
-    expect(retireNeed(OWNER)).toBe(17_500);
+  it("wants what the customer asked for, seventy percent of spending by default", () => {
+    expect(retireNeed(OWNER).should).toBe(17_500);
+    expect(defaultRetireMonthly(25_000)).toBe(17_500);
+  });
+  it("counts the expected pension and the lump sum spread to 85", () => {
+    // 1,500,000 over (85 - 60) × 12 = 5,000 a month
+    const n = retireNeed({ ...OWNER, retireMonthly: 20_000, pensionHave: 3_000, retireLump: 1_500_000 });
+    expect(n).toEqual({ should: 20_000, have: 8_000, gap: 12_000 });
+  });
+  it("has no gap when what is there covers it", () => {
+    expect(retireNeed({ ...OWNER, retireMonthly: 10_000, pensionHave: 12_000 }).gap).toBe(0);
+  });
+  it("cleanInput defaults the four retirement answers", () => {
+    const p = cleanInput({ age: 35, income: 50_000, expense: 25_000 }) as PlanInput;
+    expect([p.retireAge, p.retireMonthly, p.pensionHave, p.retireLump]).toEqual([60, 17_500, 0, 0]);
+    expect((cleanInput({ age: 35, income: 1, retireAge: 57 }) as PlanInput).retireAge).toBe(60);
+    const q = cleanInput({ age: 35, income: 1, retireAge: "55", retireMonthly: 30_000 }) as PlanInput;
+    expect([q.retireAge, q.retireMonthly]).toEqual([55, 30_000]);
   });
 });
 

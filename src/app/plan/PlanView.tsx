@@ -6,7 +6,8 @@ import type { Prose } from "@/lib/plan/prose";
 import type { Area, AreaKey, PlanResult, Status } from "@/lib/plan/recommend";
 
 /**
- * The plan as one card that fits a phone screen: the totals, then one short block per area.
+ * The plan as one card that fits a phone screen: the summary, the totals, then one short block
+ * per area, numbered in the order the budget served them.
  * The model's words sit under the card, folded, so the figures read at a glance.
  */
 
@@ -59,13 +60,13 @@ function coverText(a: Area): string {
   return `ทุน ${baht(o.sum)}`;
 }
 
-function AreaRow({ area }: { area: Area }) {
+function AreaRow({ area, n }: { area: Area; n: number }) {
   const o = area.offer;
   const gives = counted(area) ? o?.cover ?? 0 : 0;
   return (
     <div className="space-y-1.5 py-3">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-medium text-[var(--lg-white)]">{TITLE[area.key]}</h3>
+        <h3 className="text-sm font-medium text-[var(--lg-white)]">{n}. {TITLE[area.key]}</h3>
         <span className={`shrink-0 text-xs ${counted(area) || area.status === "covered" ? "text-[var(--lg-gold)]" : "text-[var(--lg-mute)]"}`}>
           {TAG[area.status]}
         </span>
@@ -99,13 +100,14 @@ export function PlanView({ result, prose }: { result: PlanResult; prose: Prose |
     <div className="space-y-4">
       <section className="rounded-sm border border-[var(--lg-gold)] bg-[var(--lg-panel)] p-4">
         <h2 className="text-lg font-medium text-[var(--lg-white)]">แผนของคุณ</h2>
+        <p className="mt-1.5 text-sm leading-relaxed text-[var(--lg-white)]">{result.summary}</p>
         <dl className="mt-3 grid grid-cols-3 gap-2 border-b border-[var(--lg-hair)] pb-3 text-xs text-[var(--lg-mute)]">
           <div><dt>งบต่อเดือน</dt><dd className="lg-figure text-base tabular-nums text-[var(--lg-white)]">{baht(result.budget)}</dd></div>
           <div><dt>แผนนี้ใช้/เดือน</dt><dd className="lg-figure text-base tabular-nums text-[var(--lg-gold)]">{formatBaht(used)}</dd></div>
           <div><dt>ประหยัดภาษี/ปี</dt><dd className="lg-figure text-base tabular-nums text-[var(--lg-white)]">~{baht(result.taxSaved)}</dd></div>
         </dl>
         <div className="divide-y divide-[var(--lg-hair)]">
-          {result.areas.map((a) => <AreaRow key={a.key} area={a} />)}
+          {result.areas.map((a, i) => <AreaRow key={a.key} area={a} n={i + 1} />)}
         </div>
         <p className="border-t border-[var(--lg-hair)] pt-3 text-[11px] leading-relaxed text-[var(--lg-mute)]">
           ตัวเลขเป็นการประมาณเบื้องต้นจากข้อมูลที่กรอก ไม่ใช่ข้อเสนอขาย เบี้ยจริงขึ้นกับการพิจารณารับประกันของบริษัท

@@ -18,8 +18,15 @@ export const CI_YEARS_OF_INCOME = 3;
 export const DEFAULT_BUDGET_SHARE = 0.1;
 /** เงินที่ควรมีใช้ต่อเดือนหลังเกษียณ = กี่ส่วนของค่าใช้จ่ายวันนี้ */
 export const RETIRE_SHARE_OF_EXPENSE = 0.7;
-/** อายุเริ่มรับบำนาญที่อยากได้ (ถ้าอายุนี้เลือกไม่ได้ ใช้อายุถัดไปที่เลือกได้) */
-export const PENSION_FROM_AGE = 60;
+/** อายุเกษียณที่ให้เลือก = อายุเริ่มรับบำนาญ สมาร์ท 95 ที่มี */
+export const RETIRE_AGES = [55, 60, 65] as const;
+export type RetireAge = (typeof RETIRE_AGES)[number];
+/** อายุเกษียณตั้งต้น (ถ้าอายุที่เลือกรับไม่ได้ ใช้อายุถัดไปที่รับได้) */
+export const PENSION_FROM_AGE: RetireAge = 60;
+/** เงินก้อนเพื่อเกษียณ หารให้พอใช้ถึงอายุนี้ ไม่คิดดอกผล */
+export const LUMP_LASTS_TO_AGE = 85;
+/** บำนาญที่ไม่ได้อยู่ท้ายลำดับ: ลดทีละเท่านี้ (บาท/เดือน) จนเบี้ยพอดีงบ */
+export const PENSION_STEP = 1_000;
 /** Life Protect x 2 จ่ายสองเท่าเมื่อเสียชีวิตก่อนอายุนี้ — the test checks it against the rate table */
 export const LIFE_DOUBLE_BEFORE_AGE = 60;
 /** อายุที่หน้านี้รับ */

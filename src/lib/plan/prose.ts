@@ -40,7 +40,7 @@ const AREA_WORD: Record<AreaKey, string> = {
   retire: "เกษียณและภาษี",
 };
 
-const HEALTH_NOW_WORD: Record<PlanInput["healthNow"], string> = {
+export const HEALTH_NOW_WORD: Record<PlanInput["healthNow"], string> = {
   none: "ไม่มีสิทธิ์ค่ารักษา",
   public: "ใช้ประกันสังคมหรือบัตรทอง",
   employer: "มีสวัสดิการบริษัท (หมดเมื่อออกจากงาน)",
@@ -55,6 +55,8 @@ export function planBrief(p: PlanInput, r: PlanResult): string {
     `${kids}; ${p.otherDependants ? "มีพ่อแม่/คู่สมรสที่ต้องดูแล" : "ไม่มีคนอื่นที่ต้องดูแล"}; หนี้ ${p.debts} บาท; เงินออม ${p.savings} บาท`,
     `ค่ารักษา: ${HEALTH_NOW_WORD[p.healthNow]}; อยากใช้${HOSPITAL_LABEL[p.hospital]}`,
     `ประกันชีวิตที่อยากได้: ${LIFE_WANT_LABEL[p.lifeWant].title} (${LIFE_WANT_LABEL[p.lifeWant].note})`,
+    `เกษียณ: อยากเกษียณอายุ ${p.retireAge} อยากมีใช้เดือนละ ${p.retireMonthly} มีบำนาญแล้ว ${p.pensionHave}/เดือน เงินก้อนเพื่อเกษียณ ${p.retireLump}`,
+    `ลำดับที่แผนนี้ใช้งบ: ${r.order.map((k) => AREA_WORD[k]).join(" → ")}`,
     ...r.areas.map((a) => `ด้าน${AREA_WORD[a.key]}: ${STATUS_WORD[a.status]}${a.offer ? ` (${a.offer.product})` : ""}`),
   ];
   return lines.join("\n");

@@ -27,7 +27,7 @@ export async function PlanRuns() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs text-[var(--bot-ink-mute)]">
-              <tr><th className="py-1.5 pr-3">เวลา</th><th className="pr-3">อายุ</th><th className="pr-3">เงินเดือน</th><th className="pr-3">ที่เสนอ</th><th>เบี้ยรวม/ปี</th></tr>
+              <tr><th className="py-1.5 pr-3">เวลา</th><th className="pr-3">อายุ</th><th className="pr-3">เงินเดือน</th><th className="pr-3">ที่เสนอ</th><th className="pr-3">ลำดับ</th><th>เบี้ยรวม/ปี</th></tr>
             </thead>
             <tbody>
               {rows.slice(0, 20).map((r) => (
@@ -39,6 +39,11 @@ export async function PlanRuns() {
                   <td className="pr-3 tabular-nums">{r.input.income.toLocaleString("en-US")}</td>
                   <td className="pr-3">
                     {r.result.areas.filter((a) => a.status === "fits" || a.status === "reduced").map((a) => AREA[a.key]).join(" · ") || "—"}
+                  </td>
+                  <td className="whitespace-nowrap pr-3">
+                    {r.result.order
+                      ? `${r.result.order.map((k) => AREA[k]).join("→")}${r.result.orderedBy === "ai" ? " (AI)" : ""}`
+                      : "—"}
                   </td>
                   <td className="tabular-nums">{formatBaht(r.result.usedAnnual)}</td>
                 </tr>

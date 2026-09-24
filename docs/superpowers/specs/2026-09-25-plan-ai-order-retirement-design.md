@@ -47,7 +47,8 @@ Placed after "ประกันที่มีอยู่แล้ว", before
 Life, health and CI keep their current rules. Retirement:
 
 - **Last in the order** → as today: whatever budget is left, to the thousand baht, buys the pension.
-  So the default order gives exactly today's plan.
+  So the default order gives today's figures. Its status now says "reduced" when that pension is
+  below the gap (it used to say "fits" whatever it bought).
 - **Not last** → aim for the gap (should − have) as a monthly pension, priced with the engine's
   pension basis; if it does not fit, step down 1,000 baht a month at a time to the largest that
   fits (the same `fit` rule the other areas use). Nothing fits → "short" with the smallest option.

@@ -35,17 +35,24 @@ describe("realPricer", () => {
     expect(pr.health("SILVER")).toBeGreaterThan(0);
     expect(pr.ci(2)).toBeGreaterThan(0);
     expect(pr.cancer(1)).toBeGreaterThan(0);
-    expect(pr.pension(3_000_000)?.from).toBe(60);
+    expect(pr.pension(60, { premium: 3_000_000 })?.from).toBe(60);
+  });
+  it("prices the pension from the wanted start age, by premium or by monthly pension", () => {
+    expect(pr.pension(55, { premium: 3_000_000 })?.from).toBe(55);
+    const m = pr.pension(60, { monthly: 10_000 });
+    expect(m?.monthlyPension).toBeGreaterThanOrEqual(9_900);
+    expect(m?.monthlyPension).toBeLessThanOrEqual(10_100);
   });
   it("refuses ages a plan does not take", () => {
     expect(realPricer(70, "M").cancer(1)).toBeUndefined();
-    expect(realPricer(66, "M").pension(3_000_000)).toBeUndefined();
+    expect(realPricer(66, "M").pension(60, { premium: 3_000_000 })).toBeUndefined();
   });
   it("plans the owner's example with a generous budget", () => {
     const r = recommend({
       age: 35, sex: "M", income: 50_000, expense: 25_000, savings: 200_000, children: [5, 8],
       otherDependants: false, debts: 1_500_000, lifeCover: 500_000, ciCover: 0, healthNow: "public",
-      healthRoom: 0, premiumsNow: 12_000, hospital: "private", lifeWant: "save", budget: 30_000,
+      healthRoom: 0, premiumsNow: 12_000, hospital: "private", lifeWant: "save",
+  retireAge: 60, retireMonthly: 17_500, pensionHave: 0, retireLump: 0, budget: 30_000,
     }, pr);
     expect(r.areas[0].offer?.sum).toBe(4_000_000);
     expect(r.areas[0].status).toBe("fits");
