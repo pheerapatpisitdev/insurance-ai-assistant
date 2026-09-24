@@ -37,7 +37,7 @@ describe("the purpose in the state", () => {
     const { authorizeUrl, makeState } = await import("@/lib/facebook/oauth");
     const pages = new URL(authorizeUrl("https://x.test", makeState()));
     const ads = new URL(authorizeUrl("https://x.test", makeState("ads"), "ads"));
-    expect(pages.searchParams.get("scope")).toBe("pages_show_list,pages_messaging,pages_manage_metadata");
+    expect(pages.searchParams.get("scope")).toBe("pages_show_list,pages_messaging,pages_manage_metadata,pages_manage_posts,pages_read_engagement");
     expect(ads.searchParams.get("scope")).toBe("ads_read");
   });
 });

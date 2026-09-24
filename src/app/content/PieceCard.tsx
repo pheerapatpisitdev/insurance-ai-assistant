@@ -1,4 +1,5 @@
 "use client";
+import { publishLabel } from "@/lib/content/publish-label";
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { FORMAT_SHORT } from "@/lib/content/prompt";
 import type { ContentItem } from "@/lib/content/store";
@@ -66,6 +67,9 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
           <p className="text-[0.7rem] text-[var(--ct-mute)]">
             เขียนโดย {shortModel(item.model)}{item.output.pictureBy ? ` · ภาพ ${item.output.pictureBy}` : ""}
           </p>
+        )}
+        {publishLabel(item.publish) && (
+          <p className={`text-xs font-medium ${item.publish?.state === "failed" ? "text-[var(--ct-alert)]" : "text-[var(--ct-accent)]"}`}>{publishLabel(item.publish)}</p>
         )}
         <p className="line-clamp-4 whitespace-pre-line text-sm leading-relaxed">{item.output.body}</p>
         {item.output.hashtags.length > 0 && (

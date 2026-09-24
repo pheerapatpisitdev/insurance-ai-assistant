@@ -11,11 +11,15 @@ const GRAPH = "https://graph.facebook.com/v23.0";
 const DIALOG = "https://www.facebook.com/v23.0/dialog/oauth";
 
 /**
- * The least the bot can work with: list the Pages this person admins, answer messages as the
- * chosen one, and subscribe that Page to this app's webhook. Nothing broader, so a later App
- * Review stays small.
+ * The least the bot and the content page can work with: list the Pages this person admins,
+ * answer messages as the chosen one, subscribe that Page to this app's webhook, and post to it
+ * from /content (pages_manage_posts, with pages_read_engagement that Meta pairs it with).
+ * Nothing broader, so a later App Review stays small.
+ *
+ * With FB_LOGIN_CONFIG_ID set — as it is in production — this list is not sent: the
+ * permissions are the ones ticked in that login configuration on Meta's dashboard.
  */
-export const SCOPES = ["pages_show_list", "pages_messaging", "pages_manage_metadata"];
+export const SCOPES = ["pages_show_list", "pages_messaging", "pages_manage_metadata", "pages_manage_posts", "pages_read_engagement"];
 
 /**
  * What the ADS page reads with. Kept apart from the Page scopes so that connecting a Page

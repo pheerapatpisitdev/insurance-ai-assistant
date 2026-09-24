@@ -8,6 +8,7 @@ import { AD_LIMITS } from "@/lib/content/ads";
 import type { ContentItem } from "@/lib/content/store";
 import { proofreadContent, saveContentEdits, type DrawBackgroundResult } from "./actions";
 import { PosterPanel } from "./PosterPanel";
+import { PublishPanel } from "./PublishPanel";
 
 /**
  * One piece opened across the workbench: every part editable, the checks beside it.
@@ -55,10 +56,12 @@ interface Props {
   /** orders a picture through the page, which shows it drawing on the card and in here */
   onDraw: (request: string, painter: string) => Promise<DrawBackgroundResult>;
   onStatus: (status: ContentItem["status"]) => void;
+  /** posted, scheduled or taken back: the piece as it now stands */
+  onPublished: (item: ContentItem) => void;
   onClose: () => void;
 }
 
-export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onStatus, onClose }: Props) {
+export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onStatus, onPublished, onClose }: Props) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(item, productName));
   const [hook, setHook] = useState(0);
   const [fixes, setFixes] = useState<Fix[] | null>(item.flags.fixes);
@@ -301,6 +304,8 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
           )}
         </div>
       )}
+
+      {item.format === "post" && <PublishPanel item={item} hook={hook} beforePublish={save} onPublished={onPublished} />}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => copy()} className="rounded-lg bg-[var(--ct-solid)] px-4 py-2 text-sm font-medium text-[var(--ct-solid-ink)]">

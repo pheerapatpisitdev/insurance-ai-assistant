@@ -290,6 +290,17 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     if (item.status === "used") setUsedTotal((n) => Math.max(0, n - 1));
   }
 
+  /** posted, scheduled or taken back from the editor: counted as used the moment it is sent */
+  function published(next: ContentItem) {
+    const before = view.current.items.find((x) => x.id === next.id);
+    saved(next);
+    if (before?.status === "draft" && next.status === "used") {
+      setCounts((c) => ({ ...c, draft: Math.max(0, c.draft - 1), used: c.used + 1 }));
+      setUsedTotal((n) => n + 1);
+      setUsed((list) => [next, ...list.filter((x) => x.id !== next.id)]);
+    }
+  }
+
   function saved(next: ContentItem) {
     setItems((list) => list.map((x) => (x.id === next.id ? next : x)));
     setUsed((list) => list.map((x) => (x.id === next.id ? next : x)));
@@ -517,7 +528,12 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                 onSaved={saved}
                 onDraw={(request, paintWith) => drawOne(editingItem.id, request, paintWith)}
                 onStatus={(s) => changeStatus(editingItem, s)}
-                onClose={() => setEditing(null)}
+                onPublished={published}
+                onClose={() => {
+                  setEditing(null);
+                  // a piece posted from here is ใช้จริง now, and leaves the รอตรวจ list on the way out
+                  setItems((list) => list.filter((x) => x.status === tab));
+                }}
               />
             </>
           ) : (

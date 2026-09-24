@@ -36,6 +36,21 @@ export interface ContentItem {
   costThb: number;
   status: ContentStatus;
   hookTemplateId: string | null;
+  /** posted to a Facebook Page from here, or held there for later; null when never sent */
+  publish: Publish | null;
+}
+
+export const PUBLISH_STATES = ["posting", "scheduled", "published", "failed", "cancelled"] as const;
+export type PublishState = (typeof PUBLISH_STATES)[number];
+
+export interface Publish {
+  state: PublishState;
+  pageId: string | null;
+  /** Facebook's id for it: "<page>_<post>" when it gave one, the photo id otherwise */
+  postId: string | null;
+  /** when it went up, or when Facebook will put it up */
+  at: string | null;
+  error: string | null;
 }
 
 /**
@@ -68,7 +83,20 @@ export async function contentSpentThisMonth(): Promise<number> {
   return contentBaht((await monthSpend(monthStart())).lines);
 }
 
-const COLUMNS = "id, created_at, plan_href, format, angle, length, output, flags, model, cost_thb, status, hook_template_id";
+// one literal: supabase-js reads the column list's type from the string, and a joined one is opaque to it
+const COLUMNS = "id, created_at, plan_href, format, angle, length, output, flags, model, cost_thb, status, hook_template_id, fb_page_id, fb_post_id, publish_state, publish_at, publish_error";
+
+function toPublish(r: Record<string, unknown>): Publish | null {
+  const state = r.publish_state;
+  if (typeof state !== "string" || !(PUBLISH_STATES as readonly string[]).includes(state)) return null;
+  return {
+    state: state as PublishState,
+    pageId: (r.fb_page_id as string | null) ?? null,
+    postId: (r.fb_post_id as string | null) ?? null,
+    at: (r.publish_at as string | null) ?? null,
+    error: (r.publish_error as string | null) ?? null,
+  };
+}
 
 function toItem(r: Record<string, unknown>): ContentItem {
   const flags = (r.flags ?? {}) as Partial<Flags>;
@@ -85,6 +113,7 @@ function toItem(r: Record<string, unknown>): ContentItem {
     costThb: Number(r.cost_thb ?? 0),
     status: isContentStatus(r.status) ? r.status : "draft",
     hookTemplateId: (r.hook_template_id as string | null) ?? null,
+    publish: toPublish(r),
   };
 }
 
@@ -250,4 +279,46 @@ export async function backgroundDataUri(path: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin().storage.from(MEDIA).download(path);
   if (error || !data) return null;
   return `data:${data.type || "image/png"};base64,${Buffer.from(await data.arrayBuffer()).toString("base64")}`;
+}
+
+/* ------------------------------ publishing ------------------------------ */
+
+/**
+ * Takes a piece for one request to post, or says someone has it. A single conditional update,
+ * so two taps a moment apart cannot both reach Facebook and post it twice: the second finds
+ * the row already claimed, scheduled or posted.
+ */
+export async function claimPublish(id: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin().from("ins_content")
+    .update({ publish_state: "posting", publish_error: null })
+    .eq("id", id)
+    .or("publish_state.is.null,publish_state.eq.failed,publish_state.eq.cancelled")
+    .select("id");
+  if (error) throw new Error(error.message);
+  return (data ?? []).length === 1;
+}
+
+/** What Facebook answered, kept: the post and its time, or why it refused. */
+export async function recordPublish(id: string, p: {
+  state: Exclude<PublishState, "posting">; pageId?: string | null; postId?: string | null; at?: string | null; error?: string | null;
+}): Promise<ContentItem> {
+  const { data, error } = await supabaseAdmin().from("ins_content").update({
+    publish_state: p.state,
+    ...(p.pageId !== undefined ? { fb_page_id: p.pageId } : {}),
+    ...(p.postId !== undefined ? { fb_post_id: p.postId } : {}),
+    ...(p.at !== undefined ? { publish_at: p.at } : {}),
+    publish_error: p.error ?? null,
+  }).eq("id", id).select(COLUMNS).single();
+  if (error) throw new Error(error.message);
+  return toItem(data as Record<string, unknown>);
+}
+
+/** Pieces posted or held between two moments, oldest first — the calendar's week. */
+export async function listPublished(from: Date, to: Date): Promise<ContentItem[]> {
+  const { data, error } = await supabaseAdmin().from("ins_content").select(COLUMNS)
+    .in("publish_state", ["scheduled", "published"])
+    .gte("publish_at", from.toISOString()).lt("publish_at", to.toISOString())
+    .order("publish_at", { ascending: true }).limit(200);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map(toItem);
 }
