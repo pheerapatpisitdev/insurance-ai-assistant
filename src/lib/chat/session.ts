@@ -2,8 +2,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ChatMessage } from "@/lib/ai/types";
 import type { AnySlots } from "@/lib/assistant/slots";
 
-/** Which messaging service a person wrote from. Messenger is the only one the bot answers on. */
-export type Channel = "facebook";
+/** Which messaging service a person wrote from: the Facebook Page's inbox, or the LINE account. */
+export type Channel = "facebook" | "line";
 
 /** A conversation older than this has almost certainly moved on to a new customer. */
 const MAX_AGE_HOURS = 24;

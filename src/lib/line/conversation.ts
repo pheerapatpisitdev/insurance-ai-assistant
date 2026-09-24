@@ -1,0 +1,147 @@
+import { siteUrl } from "@/lib/site-url";
+import { hashUserId } from "@/lib/line/verify";
+import { claimEvent, loadSession, saveSession } from "@/lib/chat/session";
+import { push, reply, showLoading, toMessages, type LineMessage, type Said } from "@/lib/line/client";
+import { answerAny } from "@/lib/assistant/dispatch";
+import { allow } from "@/lib/assistant/rate-limit";
+import { BudgetExceeded } from "@/lib/ai/client";
+import type { ChatMessage } from "@/lib/ai/types";
+import { openConversation, openLead, record, type RecordedEvent } from "@/lib/chat/record";
+import { WANTS_IN } from "@/lib/assistant/common";
+
+/**
+ * One event from the LINE official account, answered — the same brains, the same session
+ * store and the same report as the Page's inbox, so a customer who writes to either gets the
+ * same figure and the owner sees both in one place.
+ *
+ * What the Messenger side has and this does not, and why:
+ *
+ * - No follow-up five minutes after a quotation. A follow-up is a push, every push is one of
+ *   the account's 300 a month, and the owner chose not to spend them (2026-09-25).
+ * - No pause when an agent types. LINE does not tell the webhook what an agent writes in the
+ *   OA Manager, so there is no signal to pause on. The form's hand-over still silences the
+ *   bot for good, the same as on Messenger — that is the moment a person takes over.
+ * - No advertisement attribution. A LINE chat carries no referral.
+ */
+
+export interface LineEvent {
+  type: string;
+  replyToken?: string;
+  webhookEventId?: string;
+  source?: { type?: string; userId?: string };
+  message?: { type: string; text?: string };
+}
+
+const MAX_CHARS = 1000;
+const BUSY = "ตอนนี้มีคำถามเข้ามาเยอะครับ รบกวนรอสักครู่แล้วถามใหม่นะครับ";
+/** the agency reads this account, as it reads the Page, so the apology says a person is coming */
+const BROKEN = "ขออภัยครับ ระบบขัดข้องชั่วคราว เดี๋ยวแอดมินมาตอบให้นะครับ 🙏";
+const OUT_OF_BUDGET = "ตอนนี้ระบบผู้ช่วยปิดชั่วคราวครับ รบกวนติดต่อตัวแทนโดยตรงนะครับ";
+
+function handedOver(slots: unknown): boolean {
+  return Boolean((slots as { formSent?: boolean } | null)?.formSent);
+}
+
+function productOf(slots: unknown): string | null {
+  return (slots as { product?: string } | null)?.product ?? null;
+}
+
+/** The answer, with one more attempt before giving up — the same reasoning as Messenger's. */
+async function answered(history: ChatMessage[], slots: Parameters<typeof answerAny>[1]) {
+  try {
+    return await answerAny(history, slots, "line");
+  } catch (e) {
+    if (e instanceof BudgetExceeded) throw e;
+    console.error("answer failed, trying once more:", e);
+    return await answerAny(history, slots, "line");
+  }
+}
+
+/** A reply, or — when its token lapsed while the model was thinking — a push. */
+async function say(replyToken: string, userId: string, messages: LineMessage[]): Promise<void> {
+  if (!messages.length) return;
+  try {
+    await reply(replyToken, messages);
+  } catch (e) {
+    console.error("LINE reply failed, pushing instead:", e);
+    await push(userId, messages);
+  }
+}
+
+/**
+ * `destination` is the account's own id, from the webhook body. It stands where Messenger puts
+ * the Page's id, so the report can tell which account a conversation came in on.
+ */
+export async function handle(event: LineEvent, destination = ""): Promise<void> {
+  // a person, one to one: a group or a room is not a customer asking for a quotation
+  if (event.source?.type && event.source.type !== "user") return;
+  if (event.type !== "message" || event.message?.type !== "text") return;
+  const userId = event.source?.userId;
+  const replyToken = event.replyToken;
+  const text = (event.message.text ?? "").trim().slice(0, MAX_CHARS);
+  if (!userId || !replyToken || !text) return;
+
+  // LINE redelivers an event it believes failed; the second arrival must not be answered again
+  if (event.webhookEventId && !(await claimEvent("line", event.webhookEventId))) return;
+
+  const userHash = hashUserId(userId);
+  const session = await loadSession("line", userHash);
+
+  let conversationId = session.conversationId;
+  if (!conversationId) {
+    conversationId = await openConversation("line", destination, userHash, undefined, undefined);
+  }
+  const ledger: RecordedEvent[] = [{ kind: "message" }];
+
+  // the form has gone out and a person has the thread now; the message is still counted
+  if (session.handedOverAt || handedOver(session.slots)) {
+    await record(conversationId, ledger, productOf(session.slots));
+    return;
+  }
+
+  if (!allow(`line:${userHash}`)) {
+    await say(replyToken, userId, toMessages([{ text: BUSY }]));
+    return;
+  }
+
+  const wantsIn = text === WANTS_IN;
+  const history: ChatMessage[] = [...session.messages, { role: "user", content: text }];
+
+  await showLoading(userId).catch(() => {});
+  try {
+    const answer = await answered(history, session.slots);
+
+    // the words first and each card after the words it belongs to, as on Messenger
+    const said: Said[] = answer.messages.flatMap((m) => [
+      ...(m.text ? [{ text: m.text }] : []),
+      ...(m.card ? [{ image: siteUrl(m.card) }] : []),
+    ]);
+    await say(replyToken, userId, toMessages(said, answer.replies));
+
+    const spoken = answer.messages.map((m) => m.text).join("\n\n");
+    const justSent = handedOver(answer.slots) && !handedOver(session.slots);
+    await saveSession(
+      "line", userHash, [...history, { role: "assistant", content: spoken }],
+      answer.slots, undefined, conversationId, justSent ? new Date() : undefined,
+    );
+
+    const product = productOf(answer.slots);
+    if (answer.priced) ledger.push({ kind: "quoted", data: { ...answer.quote } });
+    if (wantsIn) ledger.push({ kind: "handover" });
+    if (justSent) ledger.push({ kind: "form_sent" });
+    if (answer.formDone) ledger.push({ kind: "form_done" });
+
+    // written last, and its failure is its own: the customer has already been answered
+    await record(conversationId, ledger, product);
+    const formSent = handedOver(answer.slots);
+    if (wantsIn || formSent || answer.formDone) {
+      const stage = answer.formDone ? "form_done" : formSent ? "form_sent" : "interested";
+      await openLead(conversationId, userId, stage, product);
+    }
+  } catch (e) {
+    ledger.push({ kind: "failed" });
+    await record(conversationId, ledger, null);
+    await say(replyToken, userId, toMessages([{ text: e instanceof BudgetExceeded ? OUT_OF_BUDGET : BROKEN }]));
+    throw e;
+  }
+}

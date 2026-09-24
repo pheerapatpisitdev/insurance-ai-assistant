@@ -10,7 +10,7 @@ import { APPLICATION_FORM, FORM_NEXT } from "./common";
  * the wording between the two without saying which is which is how a customer who arrived
  * through an advertisement came to be shown "**iSmart 80/6**" and a link they could not press.
  */
-export type Channel = "web" | "facebook";
+export type Channel = "web" | "facebook" | "line";
 
 /** `[คำ](/path)` and `**คำ**`, the two pieces of markdown this system actually writes. */
 const LINK = /\[([^\]]+)\]\((\/[^)]*)\)/g;
@@ -74,7 +74,8 @@ export function forTheWebsite(text: string): string {
 
 /** The same answer, written for whichever side asked for it. */
 export function writtenFor(channel: Channel, text: string): string {
-  return channel === "facebook" ? forMessenger(text) : text;
+  // LINE draws no markdown either, and resolves no path of ours
+  return channel === "web" ? text : forMessenger(text);
 }
 
 /**
@@ -84,10 +85,11 @@ export function writtenFor(channel: Channel, text: string): string {
  * it there would make the answers plainer for no reason.
  */
 export function formattingRule(channel: Channel): string {
-  return channel === "facebook"
-    ? "\n\nช่องทางนี้เป็นกล่องข้อความของเพจ ซึ่งแสดงข้อความล้วน:"
+  if (channel === "web") return "";
+  return (channel === "line"
+    ? "\n\nช่องทางนี้เป็นแชท LINE ซึ่งแสดงข้อความล้วน:"
+    : "\n\nช่องทางนี้เป็นกล่องข้อความของเพจ ซึ่งแสดงข้อความล้วน:")
       + " ห้ามใช้มาร์กดาวน์ (ห้ามใช้ ** หรือ [ข้อความ](ลิงก์))"
       + " ถ้าจะอ้างถึงหน้าเว็บ ให้เขียนที่อยู่เต็มเท่านั้น"
-      + ` เช่น ${siteUrl("/other-plans")}`
-    : "";
+      + ` เช่น ${siteUrl("/other-plans")}`;
 }
