@@ -9,6 +9,7 @@ import type { ContentItem } from "@/lib/content/store";
 import { proofreadContent, saveContentEdits, type DrawBackgroundResult } from "./actions";
 import { PosterPanel } from "./PosterPanel";
 import { PublishPanel } from "./PublishPanel";
+import { ask } from "./ask";
 
 /**
  * One piece opened across the workbench: every part editable, the checks beside it.
@@ -134,8 +135,8 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
   }
 
   /** back to the list; unsaved words are asked about, not dropped */
-  function leave() {
-    if (dirty && !window.confirm("ยังไม่ได้บันทึกการแก้ไข ออกโดยไม่บันทึกไหม?")) return;
+  async function leave() {
+    if (dirty && !(await ask("ยังไม่ได้บันทึกการแก้ไข ออกโดยไม่บันทึกไหม?", "ออกโดยไม่บันทึก"))) return;
     onClose();
   }
 

@@ -4,6 +4,7 @@ import { postLink } from "@/lib/facebook/publish";
 import { publishView, quickTimes, thaiWhen } from "@/lib/content/publish-label";
 import type { ContentItem } from "@/lib/content/store";
 import { cancelScheduled, publishPiece, publishSetup, type PublishResult, type PublishSetup } from "./publish";
+import { ask } from "./ask";
 
 /**
  * The editor's ลงเพจ box: pick the Page and the time, and send — or see where it went.
@@ -64,7 +65,7 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
   async function send(confirmNumbers = false) {
     const at = chosenTime();
     if (at === undefined) { setNote("เลือกวันเวลาก่อนนะครับ"); return; }
-    if (at === null && !confirmNumbers && !window.confirm(`โพสต์ลงเพจ ${pageName(pageId)} ตอนนี้เลย?`)) return;
+    if (at === null && !confirmNumbers && !(await ask(`โพสต์ลงเพจ ${pageName(pageId)} ตอนนี้เลย?`, "โพสต์เลย"))) return;
     setBusy(true);
     setNote(undefined);
     try {
@@ -73,7 +74,7 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
       const res: PublishResult = await publishPiece({ id: item.id, pageId, at, hook, confirmNumbers });
       if (res.ok) { onPublished(res.item); return; }
       if (res.confirmNumbers) {
-        const go = window.confirm(`มีตัวเลขที่ไม่ตรงกับตารางเบี้ย: ${res.confirmNumbers.join(", ")}\n\nตรวจแล้วว่าถูกต้อง และยังจะโพสต์ไหม?`);
+        const go = await ask(`มีตัวเลขที่ไม่ตรงกับตารางเบี้ย: ${res.confirmNumbers.join(", ")}\n\nตรวจแล้วว่าถูกต้อง และยังจะโพสต์ไหม?`, "โพสต์ต่อ");
         if (go) { setBusy(false); await send(true); }
         return;
       }
@@ -86,7 +87,7 @@ export function PublishPanel({ item, hook, beforePublish, onPublished }: Props) 
   }
 
   async function cancel() {
-    if (!window.confirm("ยกเลิกโพสต์ที่ตั้งเวลาไว้?")) return;
+    if (!(await ask("ยกเลิกโพสต์ที่ตั้งเวลาไว้?", "ยกเลิกโพสต์"))) return;
     setBusy(true);
     const res = await cancelScheduled(item.id).catch(() => null);
     setBusy(false);

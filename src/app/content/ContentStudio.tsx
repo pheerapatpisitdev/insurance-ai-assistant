@@ -12,6 +12,7 @@ import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PA
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, removeContent, setContentStatus, type DrawBackgroundResult, type GenerateResult } from "./actions";
 import { drawPicture, generateRound } from "./draw";
+import { ask } from "./ask";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
 import { ScriptCard } from "./ScriptCard";
@@ -282,7 +283,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   }
 
   async function remove(item: ContentItem) {
-    if (!window.confirm("ลบชิ้นนี้ถาวร? ลบแล้วกู้คืนไม่ได้")) return;
+    if (!(await ask("ลบชิ้นนี้ถาวร? ลบแล้วกู้คืนไม่ได้", "ลบ"))) return;
     mark(item.id, true);
     const res = await removeContent(item.id).catch(() => ({ ok: false }));
     mark(item.id, false);

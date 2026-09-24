@@ -8,6 +8,7 @@ import {
 } from "@/lib/content/calendar";
 import { postLink } from "@/lib/facebook/publish";
 import { cancelScheduled, scheduleAt, scheduleOnDay, type PublishResult, type PublishSetup } from "../publish";
+import { ask } from "../ask";
 
 /**
  * The month board, ported from the owner's Maryjane project (calendar-board.tsx, post-card.tsx,
@@ -100,7 +101,7 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
   const run: Run = async (act) => {
     let res = await act(false).catch(() => ({ ok: false, error: "การเชื่อมต่อหลุด ลองเช็กในเพจก่อนกดใหม่" }) as PublishResult);
     if (!res.ok && res.confirmNumbers) {
-      if (!window.confirm(`มีตัวเลขที่ไม่ตรงกับตารางเบี้ย: ${res.confirmNumbers.join(", ")}\n\nตรวจแล้วว่าถูกต้อง และยังจะตั้งเวลาไหม?`)) return false;
+      if (!(await ask(`มีตัวเลขที่ไม่ตรงกับตารางเบี้ย: ${res.confirmNumbers.join(", ")}\n\nตรวจแล้วว่าถูกต้อง และยังจะตั้งเวลาไหม?`, "ตั้งเวลาต่อ"))) return false;
       res = await act(true).catch(() => ({ ok: false, error: "การเชื่อมต่อหลุด" }) as PublishResult);
     }
     if (res.ok) { setError(null); router.refresh(); return true; }
@@ -477,7 +478,7 @@ function SheetItem({ item, today, pages, pageId, onPage, run, onDone }: {
             {item.status === "scheduled" && (
               <button
                 type="button" disabled={busy}
-                onClick={() => { if (window.confirm("เอาโพสต์นี้ออกจากคิว?")) void act(() => cancelScheduled(item.id)); }}
+                onClick={async () => { if (await ask("เอาโพสต์นี้ออกจากคิว?", "เอาออก")) void act(() => cancelScheduled(item.id)); }}
                 className={`${btn} text-[var(--ct-alert)]`}
               >
                 เอาออกจากคิว
