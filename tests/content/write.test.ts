@@ -112,6 +112,12 @@ describe("buildMessages", () => {
     expect(user.content).not.toContain("เป้าหมาย:");
   });
 
+  it("tells the model what a teaching angle means, not just its button label", () => {
+    const [, user] = buildMessages({ ...ask, angle: "faq" });
+    expect(user.content).toContain("คำถามที่ลูกค้าถามบ่อย —");
+    expect(user.content).toContain("ถ้าข้อมูลไม่มีคำตอบ");
+  });
+
   it("uses the owner's own angle when they typed one", () => {
     const [, user] = buildMessages({ ...ask, angle: "custom", custom: "คนทำงานฟรีแลนซ์" });
     expect(user.content).toContain("คนทำงานฟรีแลนซ์");

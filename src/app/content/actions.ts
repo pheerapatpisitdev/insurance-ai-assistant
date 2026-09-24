@@ -12,7 +12,7 @@ import { contentProduct } from "@/lib/content/products";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { checkPolicy } from "@/lib/content/policy";
 import { proofread, type Fix } from "@/lib/content/proofread";
-import { ANGLES, GOALS, LENGTHS, MAX_FACT, MAX_READER, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
+import { ANGLES, GOALS, LENGTHS, angleText, MAX_FACT, MAX_READER, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
 import {
   CONTENT_MONTH_CAP_THB, addHookTemplate, contentSpentThisMonth, countByStatus, countHookUse, deleteContent, getContent,
   getHookTemplate, isContentStatus, listContent, listWords, saveBackground, saveContent, saveOutput, setFixes, setStatus,
@@ -109,12 +109,12 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
       input.hookTemplateId ? getHookTemplate(input.hookTemplateId) : Promise.resolve(null),
       listWords(),
     ]);
-    const angleText = angle === "custom" ? custom : (ANGLES.find((a) => a.id === angle)?.label ?? "");
+    const told = angleText(angle, custom);
 
     if (input.format === "ad") {
       const angles = Math.min(MAX_ANGLES, Math.max(1, Math.round(Number(input.adAngles) || 2)));
       const tones = Math.min(MAX_TONES, Math.max(1, Math.round(Number(input.adTones) || 2)));
-      const hint = [angleText, reader ? `คนอ่านคือ ${reader}` : ""].filter(Boolean).join(" · ");
+      const hint = [told, reader ? `คนอ่านคือ ${reader}` : ""].filter(Boolean).join(" · ");
       const round = await writeAds({ brief: brief.text, angles, tones, hint, prefer: writeWith });
       const planShare = round.planThb / round.pieces.length;
       const items: ContentItem[] = [];
@@ -129,7 +129,7 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
       return { ok: true, items, costThb, missing: round.planned - items.length };
     }
 
-    const planned = await plan({ brief: brief.text, count, angle: angleText, avoid, template, reader, goal, fact });
+    const planned = await plan({ brief: brief.text, count, angle: told, avoid, template, reader, goal, fact });
     const written = await write({ brief: brief.text, format: input.format, angle, custom, length, plans: planned.plans, reader, goal, fact }, { prefer: writeWith });
 
     // each piece carries its own writing cost and an equal share of the planner's

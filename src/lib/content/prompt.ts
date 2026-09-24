@@ -16,15 +16,42 @@ export const FORMAT_LABEL: Record<Format, string> = { post: "โพสต์เ�
 export const FORMAT_SHORT: Record<Format, string> = { post: "โพสต์", script: "สคริปต์", ad: "โฆษณา" };
 export type Length = "30" | "60" | "180";
 
+/**
+ * The angles offered on the form. `say` is what the planner and writer are told — the label is
+ * a few words for a button, and an angle like "เช็กลิสต์" means little to a model on its own.
+ * The last four teach before they sell: they are the ones people read to the end and pass on.
+ */
 export const ANGLES = [
-  { id: "family", label: "คุ้มครองครอบครัว" },
-  { id: "tax", label: "ลดหย่อนภาษี" },
-  { id: "child", label: "ซื้อให้ลูก" },
-  { id: "retire", label: "เกษียณ" },
-  { id: "story", label: "เล่าเป็นเรื่อง (สถานการณ์สมมติ)" },
+  { id: "family", label: "คุ้มครองครอบครัว", say: "คุ้มครองครอบครัว" },
+  { id: "tax", label: "ลดหย่อนภาษี", say: "ลดหย่อนภาษี" },
+  { id: "child", label: "ซื้อให้ลูก", say: "ซื้อให้ลูก" },
+  { id: "retire", label: "เกษียณ", say: "เกษียณ" },
+  { id: "story", label: "เล่าเป็นเรื่อง (สถานการณ์สมมติ)", say: "เล่าเป็นเรื่อง (สถานการณ์สมมติ)" },
+  {
+    id: "myth", label: "ความเข้าใจผิดที่เจอบ่อย",
+    say: "ความเข้าใจผิดที่เจอบ่อย — หยิบความเชื่อผิดเรื่องประกันที่คนทั่วไปมีจริง เช่น มีประกันกลุ่มของบริษัทแล้วพอ แล้วอธิบายว่าจริงๆ เป็นยังไง โดยใช้ข้อมูลผลิตภัณฑ์เท่านั้น",
+  },
+  {
+    id: "faq", label: "คำถามที่ลูกค้าถามบ่อย",
+    say: "คำถามที่ลูกค้าถามบ่อย — ตอบคำถามที่คนสงสัยก่อนซื้อ เช่น ซื้อได้ถึงอายุเท่าไร จ่ายกี่ปี เคลมยังไง คำตอบต้องมาจากข้อมูลผลิตภัณฑ์ ถ้าข้อมูลไม่มีคำตอบ อย่าเลือกคำถามนั้น",
+  },
+  {
+    id: "checklist", label: "เช็กลิสต์ก่อนซื้อ",
+    say: "เช็กลิสต์ก่อนซื้อ — เรื่องที่ควรดูก่อนตัดสินใจซื้อประกันแบบนี้ เป็นข้อๆ ให้คนอ่านเก็บไว้ใช้เองได้ แล้วค่อยบอกว่าแบบนี้ตอบแต่ละข้อยังไง",
+  },
+  {
+    id: "costs", label: "ค่ารักษาแพงขึ้นทุกปี",
+    say: "ค่ารักษาแพงขึ้นทุกปี — เล่าว่าค่ารักษาเป็นภาระที่โตขึ้นเรื่อยๆ โดยไม่ยกตัวเลขค่ารักษาหรืออัตราเพิ่มที่ไม่มีในข้อมูล แล้วพาไปที่ความคุ้มครองของแบบนี้",
+  },
 ] as const;
 
 export type AngleId = (typeof ANGLES)[number]["id"] | "custom" | "";
+
+/** The angle as the models are told it: the owner's words, the angle's full meaning, or nothing. */
+export function angleText(angle: AngleId, custom: string): string {
+  if (angle === "custom") return custom.trim();
+  return ANGLES.find((a) => a.id === angle)?.say ?? "";
+}
 
 export const LENGTHS: { id: Length; label: string }[] = [
   { id: "30", label: "30 วินาที" },
@@ -184,9 +211,8 @@ function formatBrief(a: Ask): string {
 }
 
 function angleLine(a: Ask): string {
-  if (a.angle === "custom") return a.custom.trim() ? `มุมที่อยากเล่า: ${a.custom.trim()}` : "";
-  const found = ANGLES.find((x) => x.id === a.angle);
-  return found ? `มุมที่อยากเล่า: ${found.label}` : "";
+  const text = angleText(a.angle, a.custom);
+  return text ? `มุมที่อยากเล่า: ${text}` : "";
 }
 
 export function planLines(plans: PiecePlan[]): string {

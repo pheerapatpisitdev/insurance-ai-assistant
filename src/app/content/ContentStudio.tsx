@@ -349,19 +349,17 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             </div>
           )}
 
-          <div>
-            <span className="mb-1.5 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" aria-pressed={angle === ""} onClick={() => setAngle("")} className={chip(angle === "")}>ให้ AI เลือก</button>
-              {angles.map((a) => (
-                <button key={a.id} type="button" aria-pressed={angle === a.id} onClick={() => setAngle(a.id as AngleId)} className={chip(angle === a.id)}>{a.label}</button>
-              ))}
-              <button type="button" aria-pressed={angle === "custom"} onClick={() => setAngle("custom")} className={chip(angle === "custom")}>พิมพ์เอง</button>
-            </div>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
+            <select value={angle} onChange={(e) => setAngle(e.target.value as AngleId)} className={field}>
+              <option value="">ให้ AI เลือก</option>
+              {angles.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+              <option value="custom">พิมพ์เอง…</option>
+            </select>
             {angle === "custom" && (
-              <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={120} placeholder="เช่น ค่ารักษาพยาบาลแพงขึ้นทุกปี" className={`${field} mt-2`} />
+              <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={120} placeholder="เช่น ทำไมยิ่งอายุมากยิ่งซื้อยาก" className={`${field} mt-2`} />
             )}
-          </div>
+          </label>
 
           <div>
             <span className="mb-1.5 block text-sm font-medium">คนอ่านคือใคร <span className="font-normal text-[var(--ct-mute)]">(Niche · ระบบจำไว้ให้)</span></span>
