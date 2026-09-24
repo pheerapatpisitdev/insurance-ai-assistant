@@ -9,6 +9,8 @@ import { parseTemplatize, templatizeMessages } from "@/lib/content/hooks";
 import type { ContentOutput } from "@/lib/content/output";
 import { defaultPoster, parsePoster, posterText, THEMES, type Theme } from "@/lib/content/poster";
 import { contentProduct } from "@/lib/content/products";
+import { POSES, type PiecePerson } from "@/lib/content/people";
+import { personPhotos } from "@/lib/content/people-store";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { checkPolicy } from "@/lib/content/policy";
 import { proofread, type Fix } from "@/lib/content/proofread";
@@ -329,7 +331,8 @@ async function inEnglish(request: string): Promise<string> {
   return stripThai(r.text).slice(0, 300);
 }
 
-export type DrawBackgroundResult = { ok: true; item: ContentItem } | { ok: false; error: string };
+/** `note`: drawn, with something the owner should know — the person asked for was gone */
+export type DrawBackgroundResult = { ok: true; item: ContentItem; note?: string } | { ok: false; error: string };
 
 /**
  * A photograph behind a piece's poster, drawn by an image model and kept with the piece.
@@ -338,7 +341,11 @@ export type DrawBackgroundResult = { ok: true; item: ContentItem } | { ok: false
  * lettering at all, calm on the side the words will sit, and the drawing route sets the Thai
  * over it. Counted against the content ceiling like every other content call.
  */
-export async function drawBackground(id: string, request = "", painter?: string): Promise<DrawBackgroundResult> {
+/**
+ * `person`: undefined keeps the piece's own person, if it has one; null draws without; a
+ * person and pose draws them in. A person since deleted is drawn without, and said so.
+ */
+export async function drawBackground(id: string, request = "", painter?: string, person?: PiecePerson | null): Promise<DrawBackgroundResult> {
   if (!drawPerHour(`draw:${await caller()}`)) {
     return { ok: false, error: "วาดรูปครบ 40 รูปในชั่วโมงนี้แล้ว รอสักพักนะครับ" };
   }
@@ -353,19 +360,28 @@ export async function drawBackground(id: string, request = "", painter?: string)
     const item = await getContent(id);
     if (!item) return { ok: false, error: "ไม่พบชิ้นงานนี้" };
     const poster = item.output.poster ?? defaultPoster(item.output.hooks[0], contentProduct(item.planHref)?.name ?? "");
+    const wanted = person === undefined ? item.output.person : person ?? undefined;
+    const found = wanted ? await personPhotos(wanted.id) : null;
+    const who = found && wanted ? { id: wanted.id, pose: POSES.some((p) => p.id === wanted.pose) ? wanted.pose : "auto" } : undefined;
     const prompt = backgroundPrompt({
       scene: item.output.imagePrompt, layout: poster.layout, theme: poster.theme,
       request: await inEnglish(request),
+      person: who ? { pose: who.pose } : null,
     });
-    const img = await drawImage({ task: "content-image", prompt, prefer: chosen.modelId });
+    const img = await drawImage({ task: "content-image", prompt, prefer: chosen.modelId, references: found?.photos });
     // the fallback may have drawn it; name what actually did
     const by = PAINTERS.find((p) => p.modelId === img.id)?.short ?? (img.id === "gemini-image-lite" ? "Gemini Lite Image" : img.model);
     const background = await saveBackground(item.id, img.bytes, img.mimeType);
     // the drawing takes half a minute; an edit saved meanwhile is read again, not written over
     const latest = (await getContent(id)) ?? item;
     const words = latest.output.poster ?? poster;
-    const saved = await saveOutput(item.id, { ...latest.output, poster: { ...words, background }, pictureBy: by }, latest.flags);
-    return { ok: true, item: saved };
+    // the person as drawn now: set when there is one, gone when the picture has none
+    const output = { ...latest.output, poster: { ...words, background }, pictureBy: by, person: who };
+    if (!who) delete output.person;
+    const saved = await saveOutput(item.id, output, latest.flags);
+    return wanted && !found
+      ? { ok: true, item: saved, note: "ไม่พบบุคคลที่เลือกในคลัง (อาจถูกลบไปแล้ว) เลยวาดภาพโดยไม่มีคน" }
+      : { ok: true, item: saved };
   } catch (e) {
     if (e instanceof BudgetExceeded) return { ok: false, error: "ถึงงบค่า AI ของเดือนนี้แล้ว" };
     console.error("content background failed:", e);

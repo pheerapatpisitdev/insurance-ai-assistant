@@ -1,13 +1,15 @@
 "use client";
+import type { PiecePerson } from "@/lib/content/people";
 import type { DrawBackgroundResult, GenerateInput, GenerateResult } from "./actions";
 
 /** Order a piece's photograph through /api/content-draw, which is not queued behind the page's other actions. */
-export async function drawPicture(id: string, request = "", painter?: string): Promise<DrawBackgroundResult> {
+/** `person` as drawBackground reads it: left out keeps the piece's own, null draws without. */
+export async function drawPicture(id: string, request = "", painter?: string, person?: PiecePerson | null): Promise<DrawBackgroundResult> {
   try {
     const res = await fetch("/api/content-draw", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, request, painter }),
+      body: JSON.stringify({ id, request, painter, ...(person !== undefined ? { person } : {}) }),
     });
     return await res.json() as DrawBackgroundResult;
   } catch {

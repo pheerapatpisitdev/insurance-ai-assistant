@@ -6,6 +6,7 @@
  */
 
 import { INSURER } from "@/lib/insurer";
+import type { PiecePerson } from "./people";
 import type { PosterSpec } from "./poster";
 
 /** The regulator's line, the same words the sales pages end on. Added here, never by the model. */
@@ -46,6 +47,8 @@ export interface ContentOutput {
   ad?: { angle: string; tone: string };
   /** who drew the photograph behind the poster, as the card names it ("GPT Image HD") */
   pictureBy?: string;
+  /** a person from the library drawn into the picture, and their pose; a redraw keeps them */
+  person?: PiecePerson;
   /**
    * The true story the owner gave the round, kept so its numbers stay allowed when the piece
    * is edited and checked again — they are in no brief.
