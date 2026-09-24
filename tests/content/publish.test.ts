@@ -41,9 +41,9 @@ describe("onPage", () => {
 describe("quickTimes", () => {
   it("offers this evening only while it is at least fifteen minutes ahead", () => {
     const morning = new Date(2026, 8, 25, 10, 0);
-    expect(quickTimes(morning).map((t) => t.label)).toEqual(["วันนี้ 19:30", "พรุ่งนี้ 14:10", "พรุ่งนี้ 19:30"]);
+    expect(quickTimes(morning).map((t) => t.label)).toEqual(["วันนี้ 19:30", "พรุ่งนี้ 12:00", "พรุ่งนี้ 19:30"]);
     const late = new Date(2026, 8, 25, 19, 20);
-    expect(quickTimes(late).map((t) => t.label)).toEqual(["พรุ่งนี้ 14:10", "พรุ่งนี้ 19:30"]);
+    expect(quickTimes(late).map((t) => t.label)).toEqual(["พรุ่งนี้ 12:00", "พรุ่งนี้ 19:30"]);
   });
 });
 

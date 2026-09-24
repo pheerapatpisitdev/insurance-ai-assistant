@@ -63,7 +63,7 @@ export function quickTimes(now: Date = new Date(), minAheadMs = 15 * 60_000): { 
   };
   return [
     { label: "วันนี้ 19:30", at: at(0, 19, 30) },
-    { label: "พรุ่งนี้ 14:10", at: at(1, 14, 10) },
+    { label: "พรุ่งนี้ 12:00", at: at(1, 12, 0) },
     { label: "พรุ่งนี้ 19:30", at: at(1, 19, 30) },
   ].filter((t) => t.at.getTime() - now.getTime() >= minAheadMs);
 }

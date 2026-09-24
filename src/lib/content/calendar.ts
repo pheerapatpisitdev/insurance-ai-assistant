@@ -133,8 +133,8 @@ export interface BoardItem {
   blocked: string | null;
 }
 
-/** where a dropped waiting piece lands on its day — the owner's pick: 12:00, then 14:10 on 2026-09-24 */
-export const DROP_TIME = "14:10";
+/** where a dropped waiting piece lands on its day — the owner's pick (14:10 for an hour on 2026-09-24, then back) */
+export const DROP_TIME = "12:00";
 
 /** Posted or on its way is fixed; waiting, held and refused can still be moved. */
 export function canDrag(item: BoardItem): boolean {
