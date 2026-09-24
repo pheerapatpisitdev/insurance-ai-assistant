@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { HOSPITAL_LABEL, PLANNER_AGE, type Hospital } from "@/lib/plan/assumptions";
 import { defaultBudget, type HealthNow } from "@/lib/plan/needs";
@@ -78,6 +78,8 @@ export function Planner() {
   const [prose, setProse] = useState<Prose | null>(null);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
+  const [editing, setEditing] = useState(true);
+  const seq = useRef(0);
 
   const n = (v: Money) => (v === "" ? 0 : v);
   const shownBudget = budgetTouched ? budget : defaultBudget(n(income), n(premiumsNow)) || "";
@@ -91,13 +93,31 @@ export function Planner() {
     };
     setError("");
     setProse(null);
+    const mine = ++seq.current;
     start(async () => {
       const reply = await buildPlan(form);
+      if (mine !== seq.current) return;
       if (!reply.ok) { setError(reply.error); return; }
       setResult(reply.result);
+      setEditing(false);
       requestAnimationFrame(() => document.getElementById("plan-result")?.scrollIntoView({ behavior: "smooth" }));
-      setProse(await explainPlan(form));
+      const words = await explainPlan(form);
+      if (mine === seq.current) setProse(words);
     });
+  }
+
+  if (result && !editing) {
+    return (
+      <div id="plan-result" className="scroll-mt-20 space-y-4">
+        <PlanView result={result} prose={prose} />
+        <button
+          type="button" onClick={() => { setEditing(true); window.scrollTo({ top: 0 }); }}
+          className="w-full rounded-sm border border-[var(--lg-panel-line)] py-3 text-sm text-[var(--lg-mute)]"
+        >
+          แก้ข้อมูลแล้ววางแผนใหม่
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -214,7 +234,6 @@ export function Planner() {
       </button>
       <p className="text-center text-xs text-[var(--lg-mute)]">อายุที่วางแผนได้ {PLANNER_AGE.min}–{PLANNER_AGE.max} ปี</p>
 
-      {result && <div id="plan-result" className="scroll-mt-4"><PlanView result={result} prose={prose} /></div>}
     </div>
   );
 }
