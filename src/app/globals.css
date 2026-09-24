@@ -3,6 +3,10 @@
 /* the desk menu folded to its icons: <html data-shell="rail">, and only inside the desk panel,
    so the phone's drawer always opens full */
 @custom-variant rail (&:where([data-shell="rail"] .shell-desk, [data-shell="rail"] .shell-desk *));
+/* A phone short enough that a page meant to fit on one screen has to give something up — most
+   phones in a browser, once the address bar has taken its share. Width below the desk layout,
+   because a laptop's short window has the width to fit the same things in fewer rows. */
+@custom-variant short (@media (max-width: 63.99rem) and (max-height: 47.5rem));
 
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", "Helvetica Neue", Arial, sans-serif;

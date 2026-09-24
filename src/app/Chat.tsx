@@ -71,7 +71,7 @@ function Chips(
   { items, onPick, disabled }: { items: GuideItem[]; onPick: (ask: string) => void; disabled?: boolean },
 ) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 short:gap-1.5">
       {items.map((g) => (
         <button
           key={g.ask} type="button" disabled={disabled} onClick={() => onPick(g.ask)}
@@ -174,23 +174,34 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
   const answered = turns.length >= 2 && turns[turns.length - 1].role === "assistant" ? turns.length - 2 : -1;
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
-      <header className="flex shrink-0 items-start justify-between gap-3 pt-1">
+    <main className={`flex min-h-0 flex-1 flex-col gap-3 sm:gap-4 ${talking ? "max-lg:pt-11" : ""}`}>
+      {/**
+        * On a phone, before anything is asked, the heading sits beside the menu button rather
+        * than under it. The row that button stands in was kept empty for it, and on a phone
+        * that row was the forty-odd pixels that pushed the last of the opening buttons out of
+        * the chat box. Once there is a conversation the row goes back to the button and to
+        * เริ่มใหม่ opposite it.
+        */}
+      <header className={`flex shrink-0 items-start justify-between gap-3 pt-1 ${talking ? "" : "max-lg:pl-12"}`}>
         <div className="flex items-start gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/mark.png" alt="" width={32} height={40}
-            className="mt-0.5 h-10 w-auto shrink-0"
+            // not on a phone, where every answer already carries it and the heading needs the width
+            className="mt-0.5 h-10 w-auto shrink-0 max-lg:hidden"
           />
         <div>
           {/* Smaller on a phone once there is a conversation: at full size, with the button
               beside it, it broke into four lines and left the chat half the screen. */}
-          <h1 className={`${talking ? "text-base" : "text-xl"} font-semibold tracking-tight sm:text-2xl`}>
+          <h1 className={`${talking ? "text-base" : "text-xl short:text-lg short:leading-snug"} font-semibold tracking-tight sm:text-2xl`}>
             ถามอะไรก็ได้ที่อยากถาม เกี่ยวกับผลิตภัณฑ์ภายใต้บริษัท{" "}
             {/* the company name kept on one line: Thai wraps anywhere, and it split as กรุงไทยแอก / ซ่า */}
             <span className="whitespace-nowrap">กรุงไทย-แอกซ่า ประกันชีวิต</span>
           </h1>
-          <p className={`mt-1 text-sm text-[var(--hm-mute)] ${talking ? "max-sm:hidden" : ""}`}>
+          {/* On a short phone it gives way to the opening buttons, which are what the page is
+              for: the rate-table claim is in the line under the box too, and the other plans
+              are in the menu and behind the box's own last link. */}
+          <p className={`mt-1 text-sm text-[var(--hm-mute)] ${talking ? "max-sm:hidden" : "short:hidden"}`}>
             ถามเงื่อนไขก็ได้ ขอเบี้ยก็ได้ — เบี้ยคิดจากตารางจริง ตัวเดียวกับที่บอทและหน้าขายใช้ ·{" "}
             <Link href="/other-plans" className="underline underline-offset-2">แบบประกันอื่นๆ</Link>
           </p>
@@ -249,8 +260,9 @@ export function Chat({ guide }: { guide: GuideGroup[] }) {
            */
           /* No card around it any more: the box is the container now, and a bordered panel
              inside a bordered panel is a frame drawn twice. */
-          <div className="my-auto space-y-4 px-1 py-2">
-            <p className="text-sm text-[var(--hm-mute)]">ไม่รู้จะเริ่มตรงไหน กดเลือกได้เลยครับ</p>
+          <div className="my-auto space-y-3 px-1 py-1 sm:space-y-4 sm:py-2 short:py-0">
+            {/* the headings under it say the same thing, so a short phone does without it */}
+            <p className="text-sm text-[var(--hm-mute)] short:hidden">ไม่รู้จะเริ่มตรงไหน กดเลือกได้เลยครับ</p>
             {guide.filter((group) => group.open || more).map((group) => (
               <div key={group.title}>
                 <p className="mb-2 text-xs font-medium text-[var(--hm-mute)]">{group.title}</p>

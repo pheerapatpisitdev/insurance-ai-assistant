@@ -17,7 +17,9 @@ export default async function Home() {
       {/* The page is exactly the screen, so the chat box can be the rest of it after the
           heading — a conversation that scrolls inside its own frame rather than a column of
           answers with the box you type in stranded somewhere down the page. */}
-      <div className="mx-auto flex h-[100dvh] max-w-3xl flex-col px-4 pb-4 pt-14 sm:pb-5 lg:pt-5">
+      {/* No row kept free for the phone's menu button: the chat decides for itself whether its
+          heading sits beside that button or under it — see `Chat`. */}
+      <div className="mx-auto flex h-[100dvh] max-w-3xl flex-col px-4 pb-4 pt-3 sm:pb-5 lg:pt-5">
         {/* built on the server from the plan registry, so a new plan brings its own button */}
         <Chat guide={openingGuide()} />
       </div>
