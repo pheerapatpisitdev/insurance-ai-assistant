@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { isCurrent, menuGroups, type MenuIcon } from "@/lib/shell/menu";
+import { isCurrent, menuGroups, RAIL_KEY, type MenuIcon } from "@/lib/shell/menu";
 
 /**
  * The menu, beside the page on a desk and over it on a phone.
@@ -106,6 +106,19 @@ function Icon({ name }: { name: MenuIcon }) {
 export function Sidebar({ signedIn }: { signedIn: boolean }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const [folded, setFolded] = useState(false);
+
+  // the folded menu is decided by <html data-shell>, set before paint by the root layout's
+  // script, so the page does not jump; this state only labels the button
+  useEffect(() => { setFolded(document.documentElement.dataset.shell === "rail"); }, []);
+
+  const toggleFold = () => {
+    const next = !folded;
+    setFolded(next);
+    if (next) document.documentElement.dataset.shell = "rail";
+    else delete document.documentElement.dataset.shell;
+    try { localStorage.setItem(RAIL_KEY, next ? "1" : "0"); } catch { /* not kept */ }
+  };
 
   const groups = menuGroups(signedIn);
 
@@ -128,18 +141,34 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
   const panel = (
     <nav
       aria-label="เมนูหลัก"
-      className="flex h-full w-60 shrink-0 flex-col overflow-y-auto border-r px-3 py-4"
+      className="flex h-full w-60 shrink-0 flex-col overflow-y-auto overflow-x-hidden border-r px-3 py-4 transition-[width] duration-200 rail:w-16 rail:px-2"
       style={{ background: "var(--shell-bg)", borderColor: "var(--shell-line)", color: "var(--shell-ink)" }}
     >
-      <Link href="/" className="mb-4 flex items-center gap-2 px-2 no-underline" style={{ color: "var(--shell-ink)" }}>
-        <Mark />
-        <span className="text-sm font-semibold">advisortool</span>
-      </Link>
+      <div className="mb-4 flex items-center gap-1 rail:flex-col rail:gap-3">
+        <Link href="/" title="advisortool" className="flex min-w-0 flex-1 items-center gap-2 px-2 no-underline rail:flex-none rail:px-0" style={{ color: "var(--shell-ink)" }}>
+          <Mark />
+          <span className="text-sm font-semibold rail:sr-only">advisortool</span>
+        </Link>
+        {/* the desk only: on a phone the menu is a drawer that closes by itself */}
+        <button
+          type="button"
+          onClick={toggleFold}
+          aria-label={folded ? "ขยายเมนู" : "หุบเมนู"}
+          title={folded ? "ขยายเมนู" : "หุบเมนู"}
+          aria-expanded={!folded}
+          className="shell-btn hidden shrink-0 p-1.5 lg:inline-flex"
+          style={{ color: "var(--shell-mute)" }}
+        >
+          <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 rail:rotate-180">
+            <path d="M14.5 6.5 9 12l5.5 5.5M19 5v14" />
+          </svg>
+        </button>
+      </div>
 
       {groups.map((group, i) => (
         <div key={group.title ?? i} className="mb-3">
           {group.title && (
-            <p className="mb-1 px-2 text-[0.7rem] font-medium uppercase tracking-wider" style={{ color: "var(--shell-mute)" }}>
+            <p className="mb-1 px-2 text-[0.7rem] font-medium uppercase tracking-wider rail:sr-only" style={{ color: "var(--shell-mute)" }}>
               {group.title}
             </p>
           )}
@@ -152,7 +181,8 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
                     href={link.href}
                     {...(link.external ? { target: "_blank", rel: "noreferrer" } : {})}
                     aria-current={here ? "page" : undefined}
-                    className="shell-btn flex items-center gap-2.5 px-2 py-1.5 text-sm no-underline"
+                    title={link.label}
+                    className="shell-btn flex items-center gap-2.5 px-2 py-1.5 text-sm no-underline rail:justify-center rail:px-0"
                     style={{
                       // read by .shell-btn and .shell-chip for the tint, the edge and the fill
                       ["--hue" as string]: link.hue,
@@ -161,7 +191,7 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
                     }}
                   >
                     <span className="shell-chip"><Icon name={link.icon} /></span>
-                    <span className="min-w-0 truncate">{link.label}</span>
+                    <span className="min-w-0 truncate rail:sr-only">{link.label}</span>
                   </Link>
                 </li>
               );
@@ -178,7 +208,7 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
   return (
     <>
       {/* the desk: simply there, and out of the way of anything fixed on the page */}
-      <div className="fixed inset-y-0 left-0 z-30 hidden lg:block">{panel}</div>
+      <div className="shell-desk fixed inset-y-0 left-0 z-30 hidden lg:block">{panel}</div>
 
       {/* the phone: a button, and the menu over the page when it is pressed */}
       <button

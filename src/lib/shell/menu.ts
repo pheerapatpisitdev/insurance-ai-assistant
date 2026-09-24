@@ -256,3 +256,10 @@ export function isCurrent(href: string, path: string): boolean {
   if (href === "/admin") return path === "/admin";
   return path === href || path.startsWith(`${href}/`);
 }
+
+/**
+ * The desk menu folded to its icons, kept per device. Here and not in the Sidebar because the
+ * root layout reads it too, before paint, and a constant exported from a client module
+ * reaches a server one as a reference rather than a string.
+ */
+export const RAIL_KEY = "shell-rail";

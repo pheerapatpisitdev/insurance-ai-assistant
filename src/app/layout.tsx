@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RAIL_KEY } from "@/lib/shell/menu";
 import { siteOrigin } from "@/lib/site-url";
 import "./globals.css";
 
@@ -35,7 +36,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="th">
+    // the script sets data-shell before the first paint, which React did not render: hence the hush
+    <html lang="th" suppressHydrationWarning>
+      <head>
+        {/* the folded menu, remembered, applied before paint so the page does not jump sideways */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("${RAIL_KEY}")==="1")document.documentElement.dataset.shell="rail"}catch(e){}` }} />
+      </head>
       {/* The ground under everything, including the back office, which paints no ground of
           its own. Written as the palette rather than as a Tailwind grey so that there is one
           place a colour is decided and this is not a second one. */}

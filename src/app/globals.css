@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* the desk menu folded to its icons: <html data-shell="rail">, and only inside the desk panel,
+   so the phone's drawer always opens full */
+@custom-variant rail (&:where([data-shell="rail"] .shell-desk, [data-shell="rail"] .shell-desk *));
+
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", "Helvetica Neue", Arial, sans-serif;
 }
@@ -611,6 +615,9 @@ body:has(.theme-legacy) {
 @media (min-width: 1024px) {
   /* the menu is laid out beside the page rather than over it, so nothing is covered */
   :root { --shell-gutter: 15rem; }
+  /* folded to its icons (Sidebar's หุบเมนู): the page takes the room back */
+  :root[data-shell="rail"] { --shell-gutter: 4rem; }
+  .shell-inset { transition: padding-left 0.2s ease; }
 }
 
 
@@ -658,6 +665,8 @@ body:has(.theme-legacy) {
     0 1px 3px -1px rgba(0, 0, 0, 0.3);
   padding-left: 0.75rem;
 }
+/* folded to icons there is no label to push along, and the chip keeps to the middle */
+[data-shell="rail"] .shell-desk .shell-btn[aria-current="page"] { padding-left: 0; }
 
 /* pressed: the whole thing sits down into the ground it was standing on */
 .shell-btn:active {
