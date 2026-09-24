@@ -1,9 +1,8 @@
-import { formatBaht } from "@/calc/money";
 import type { Sex } from "@/calc/types";
-import { displayPremium, perDay } from "@/lib/legacy-cta";
 import { deathBenefitOf, lifeProtectModes } from "@/lib/lifeprotect-quote";
 import { lifeProtectTable } from "@/lib/lifeprotect-table";
 import { definePlan, money, sexWord } from "../numbers";
+import { priceLines } from "./price-lines";
 
 /**
  * Life Protect x 2 for the ตัวเลขชัดๆ angle. The owner wants the doubled sum up front
@@ -27,27 +26,19 @@ export const lifeProtectNumbers = definePlan<{ sex: Sex; age: number; sum: numbe
     const table = lifeProtectTable(today);
     const term = table.terms.find((t) => t.variant === p.term);
     if (!term || table.expired) return null;
-    const modes = lifeProtectModes(table, term, { sex: p.sex, age: p.age, sumAssured: p.sum });
-    const shown = displayPremium(modes, table.expired);
-    const annual = modes?.find((m) => m.mode === "annual");
-    if (!shown || !annual) return null;
-    const per = shown.mode === "monthly" ? "ต่อเดือน" : "ต่อปี";
-    const perShort = shown.mode === "monthly" ? "/เดือน" : "/ปี";
-    const day = money(perDay(annual.total));
+    const lines = priceLines(lifeProtectModes(table, term, { sex: p.sex, age: p.age, sumAssured: p.sum }), table.expired);
+    if (!lines) return null;
     const doubled = p.age < table.boosterBeforeAge;
     const cover = doubled ? deathBenefitOf(table, p.age, p.sum).sumBefore : p.sum;
     return {
       product: "Life Protect x 2",
       sumLine: doubled ? `ประกันชีวิตคุ้มครอง ${money(cover)} บาท` : `ประกันชีวิตทุน ${money(p.sum)} บาท`,
       ...(doubled ? { sumNote: `ทุน ${money(p.sum)} บาท × 2 เมื่อเสียชีวิตก่อนอายุ ${table.boosterBeforeAge}` } : {}),
-      premiumLine: `เบี้ย ${formatBaht(shown.total)} บาท ${per}`,
-      perDayLine: `ตกวันละ ${day} บาท`,
+      premiumLine: lines.premiumLine,
+      perDayLine: lines.perDayLine,
       claims,
       who: `${sexWord(p.sex)} ${p.age} ปี ${term.label}`,
-      poster: {
-        big: `เบี้ย ${formatBaht(shown.total)} บาท${perShort}`,
-        small: `${doubled ? "คุ้มครอง" : "ทุน"} ${money(cover)} บาท · ตกวันละ ${day} บาท`,
-      },
+      poster: { big: lines.big, small: `${doubled ? "คุ้มครอง" : "ทุน"} ${money(cover)} บาท · ตกวันละ ${lines.day} บาท` },
     };
   },
 });

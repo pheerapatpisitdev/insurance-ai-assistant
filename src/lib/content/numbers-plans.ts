@@ -1,5 +1,14 @@
 import type { NumberSheet, PricedPlan } from "./numbers";
+import { cancerNumbers } from "./numbers-cases/cancer";
+import { ci123Numbers } from "./numbers-cases/ci123";
+import { easyProtectNumbers } from "./numbers-cases/easyprotect";
+import { iHealthyNumbers } from "./numbers-cases/ihealthy";
+import { legacyNumbers } from "./numbers-cases/legacy";
 import { lifeProtectNumbers } from "./numbers-cases/lifeprotect";
+import { lifeTreasureNumbers } from "./numbers-cases/lifetreasure";
+import { pensionNumbers } from "./numbers-cases/pension";
+import { plbNumbers } from "./numbers-cases/plb";
+import { iShieldNumbers } from "./numbers-cases/ishield";
 
 /**
  * The plans the ตัวเลขชัดๆ angle can price, by sales-page href. Each plan's three people, its
@@ -10,6 +19,15 @@ import { lifeProtectNumbers } from "./numbers-cases/lifeprotect";
  */
 export const NUMBERS_PLANS: Record<string, PricedPlan> = {
   "/lifeprotect": lifeProtectNumbers,
+  "/plb": plbNumbers,
+  "/easyprotect": easyProtectNumbers,
+  "/lifetreasure": lifeTreasureNumbers,
+  "/legacy": legacyNumbers,
+  "/ishield": iShieldNumbers,
+  "/ci123": ci123Numbers,
+  "/cancer": cancerNumbers,
+  "/ihealthy-ultra": iHealthyNumbers,
+  "/bumnan95": pensionNumbers,
 };
 
 /** piece i's two claims: consecutive pairs round the list, so a round of three differs */

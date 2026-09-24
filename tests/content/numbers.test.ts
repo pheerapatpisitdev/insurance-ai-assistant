@@ -6,13 +6,13 @@ describe("anglesFor", () => {
     expect(anglesFor("post", "/lifeprotect").some((a) => a.id === "numbers")).toBe(true);
     expect(anglesFor("ad", "/lifeprotect").some((a) => a.id === "numbers")).toBe(false);
     expect(anglesFor("script", "/lifeprotect").some((a) => a.id === "numbers")).toBe(false);
-    expect(anglesFor("post", "/plb").some((a) => a.id === "numbers")).toBe(false);
+    expect(anglesFor("post", "/group-insurance").some((a) => a.id === "numbers")).toBe(false);
   });
   it("keeps every other angle everywhere", () => {
     expect(anglesFor("ad", "/plb").map((a) => a.id)).toContain("family");
   });
-  it("names Life Protect in phase 1", () => {
-    expect(NUMBERS_HREFS).toEqual(["/lifeprotect"]);
+  it("covers all ten content plans", () => {
+    expect(NUMBERS_HREFS).toHaveLength(10);
   });
 });
 

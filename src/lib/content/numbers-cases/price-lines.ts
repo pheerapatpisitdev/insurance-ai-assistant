@@ -1,0 +1,59 @@
+import type { ModePremium } from "@/calc/mode-premiums";
+import { getBundle } from "@/calc/bundles/registry";
+import { quoteBundle } from "@/calc/bundles/quote";
+import { formatBaht } from "@/calc/money";
+import type { Sex } from "@/calc/types";
+import { displayPremium, perDay } from "@/lib/legacy-cta";
+import { money } from "../numbers";
+
+/**
+ * A premium as the ตัวเลขชัดๆ post says it, from an engine's modes.
+ *
+ * Monthly while the company takes it, yearly under its monthly floor — displayPremium, as the
+ * sales pages decide. The day figure is the yearly premium ÷ 365 rounded up, also as they say
+ * it. A premium that rises with age (the health and critical-illness riders) is said as the
+ * first year's, on every line: the owner's rule, and the only true one.
+ */
+export interface PriceLines {
+  premiumLine: string;
+  perDayLine: string;
+  /** the poster's big line: "เบี้ย 1,548 บาท/เดือน" */
+  big: string;
+  /** "48": the day figure alone, for the poster's small line */
+  day: string;
+  annualSatang: number;
+}
+
+export function priceLines(modes: ModePremium[] | undefined, expired: boolean, firstYear = false): PriceLines | null {
+  const shown = displayPremium(modes, expired);
+  const annual = modes?.find((m) => m.mode === "annual");
+  if (!shown || !annual) return null;
+  const word = firstYear ? "เบี้ยปีแรก" : "เบี้ย";
+  const monthly = shown.mode === "monthly";
+  const day = money(perDay(annual.total));
+  return {
+    premiumLine: `${word} ${formatBaht(shown.total)} บาท ${monthly ? "ต่อเดือน" : "ต่อปี"}`,
+    perDayLine: `${firstYear ? "ปีแรกตกวันละ" : "ตกวันละ"} ${day} บาท`,
+    big: `${word} ${formatBaht(shown.total)} บาท${monthly ? "/เดือน" : "/ปี"}`,
+    day,
+    annualSatang: annual.total,
+  };
+}
+
+/**
+ * A bundle tier's premium as modes, for priceLines: the yearly total, and the monthly one
+ * marked below the floor when the engine says it is (its MIN_MONTHLY warning). Undefined when
+ * the tier cannot be sold to this person — quoteBundle then zeroes its totals.
+ */
+export function bundleModes(bundleId: string, tierNo: number, who: { sex: Sex; age: number }, today: Date): ModePremium[] | undefined {
+  const bundle = getBundle(bundleId);
+  if (!bundle) return undefined;
+  const annual = quoteBundle(bundle, tierNo, { ...who, mode: "annual" }, today);
+  const monthly = quoteBundle(bundle, tierNo, { ...who, mode: "monthly" }, today);
+  if (!annual || !annual.totalAnnual || annual.meta.expired) return undefined;
+  const modes: ModePremium[] = [{ mode: "annual", total: annual.totalAnnual, belowMinimum: false }];
+  if (monthly && monthly.totalModal) {
+    modes.push({ mode: "monthly", total: monthly.totalModal, belowMinimum: monthly.warnings.some((w) => w.code === "MIN_MONTHLY") });
+  }
+  return modes;
+}

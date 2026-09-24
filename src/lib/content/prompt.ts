@@ -62,7 +62,9 @@ export function angleText(angle: AngleId, custom: string): string {
  * because this file reaches the browser and the rate tables must not. A test holds the two
  * lists together.
  */
-export const NUMBERS_HREFS = ["/lifeprotect"] as const;
+export const NUMBERS_HREFS = [
+  "/lifeprotect", "/plb", "/easyprotect", "/lifetreasure", "/legacy", "/ishield", "/ci123", "/cancer", "/ihealthy-ultra", "/bumnan95",
+] as const;
 
 /** The angles the form may offer: ตัวเลขชัดๆ is a post's, and only for a plan it can price. */
 export function anglesFor(format: Format, href: string): (typeof ANGLES)[number][] {
