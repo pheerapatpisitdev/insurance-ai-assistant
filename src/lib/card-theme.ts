@@ -153,9 +153,11 @@ export interface PosterColors {
   /**
    * The wash laid over a poster's photograph on the side its words sit, as "r, g, b" —
    * Maryjane's scrim (poster-render.tsx), tinted to the theme: light words need the photo
-   * darkened, dark words need it lightened.
+   * darkened, dark words need it lightened. Null lays nothing over the photo (ภาพล้วน).
    */
-  scrim: string;
+  scrim: string | null;
+  /** a shadow under the words, for a theme that has no wash to read them against */
+  textShadow?: string;
 }
 
 export const POSTER_THEMES: Record<Theme, PosterColors> = {
@@ -182,10 +184,17 @@ export const POSTER_THEMES: Record<Theme, PosterColors> = {
   terracotta: { from: "#a3542f", to: "#6b2f1a", headline: "#ffffff", sub: "#f5e6c8", footer: "#f5e6c8", badgeBg: "#f5e6c8", badgeInk: "#6b2f1a", scrim: "107, 47, 26" },
   charcoal: { from: "#374151", to: "#111827", headline: "#ffffff", sub: "#e5e7eb", footer: "#93c5fd", badgeBg: "#93c5fd", badgeInk: "#111827", scrim: "17, 24, 39" },
   cream: { from: "#fffaf0", to: "#f5ecd9", headline: "#3f3f46", sub: "#52525b", footer: "#92400e", badgeBg: "#92400e", badgeInk: "#ffffff", scrim: "255, 250, 240" },
+  // ภาพล้วน: white words on the photograph itself, held up by a shadow; a plain dark ground
+  // until a photograph is drawn
+  photo: {
+    from: "#2b2b2b", to: "#111111", headline: "#ffffff", sub: "#f5f5f5", footer: "#ffffff", badgeBg: "#111111", badgeInk: "#ffffff",
+    scrim: null, textShadow: "0 2px 14px rgba(0, 0, 0, 0.75), 0 1px 3px rgba(0, 0, 0, 0.9)",
+  },
 };
 
 export function posterScrim(theme: Theme, layout: "top" | "center" | "bottom"): string {
   const c = POSTER_THEMES[theme].scrim;
+  if (c === null) return "none";
   const a = (alpha: number) => `rgba(${c}, ${alpha})`;
   if (layout === "center") return `linear-gradient(180deg, ${a(0.25)} 0%, ${a(0.8)} 50%, ${a(0.25)} 100%)`;
   const toward = layout === "top" ? "180deg" : "0deg";

@@ -42,6 +42,7 @@ const PALETTE: Record<Theme, string> = {
   terracotta: "earthy terracotta, rust and warm clay tones with cream highlights",
   charcoal: "modern charcoal and cool slate greys with small touches of soft blue",
   cream: "minimal warm cream, off-white and light beige tones with a touch of amber",
+  photo: "the scene's own natural colours, with no colour grading toward any palette; white text will sit on the calm area, so keep it simple and a little darker there",
 };
 
 /** what an insurance advertisement must never picture, whatever the scene */

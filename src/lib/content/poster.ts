@@ -25,6 +25,8 @@ export const THEMES = [
   "navy", "sand", "white",
   "noir", "champagne", "emerald", "mint", "sky", "royal", "violet", "lavender",
   "blush", "red", "orange", "peach", "sunny", "teal", "terracotta", "charcoal", "cream",
+  // ภาพล้วน (owner, 2026-09-25): the photograph and the words, nothing laid between them
+  "photo",
 ] as const;
 export type Theme = (typeof THEMES)[number];
 
@@ -64,6 +66,7 @@ export const THEME_MOOD: Record<Theme, string> = {
   orange: "พลังงาน ชวนลงมือ", peach: "อบอุ่น ครอบครัว", sunny: "สดใส ดึงสายตา ตัวเลขเด่น",
   teal: "สุขภาพ การรักษา สงบ", terracotta: "ธรรมชาติ อบอุ่น วัยเกษียณ", charcoal: "ทันสมัย จริงจัง คนทำงาน",
   cream: "มินิมอล เรียบหรู",
+  photo: "ไม่มีเฉดสีทับภาพ ให้ภาพเล่าเรื่องเอง เหมาะเมื่อฉากสวยและเรียบพอให้ตัวอักษรขาวอ่านออก",
 };
 
 export const THEME_LABEL: Record<Theme, string> = {
@@ -72,6 +75,7 @@ export const THEME_LABEL: Record<Theme, string> = {
   sky: "ฟ้าน่าเชื่อถือ", royal: "น้ำเงินรอยัล", violet: "ม่วงพรีเมียม", lavender: "ลาเวนเดอร์",
   blush: "ชมพูพาสเทล", red: "แดงพลัง", orange: "ส้มพลังงาน", peach: "พีชอบอุ่น",
   sunny: "เหลืองสดใส", teal: "เทอร์ควอยซ์", terracotta: "เอิร์ธโทน", charcoal: "เทาโมเดิร์น", cream: "ครีมมินิมอล",
+  photo: "ภาพล้วน (ไม่มีเฉดสี)",
 };
 
 /** how long each kind of line may be — a poster is read in a second, not studied */

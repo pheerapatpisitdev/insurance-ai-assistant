@@ -41,7 +41,7 @@ function Poster({ spec, canvas, photo }: { spec: PosterSpec; canvas: Canvas; pho
         position: "relative",
       }}
     >
-      {photo && (
+      {photo && c.scrim !== null && (
         <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", backgroundImage: posterScrim(spec.theme, spec.layout) }} />
       )}
       {spec.blocks.map((b, i) => {
@@ -58,6 +58,7 @@ function Poster({ spec, canvas, photo }: { spec: PosterSpec; canvas: Canvas; pho
               lineHeight: LINE_HEIGHT,
               fontWeight: b.kind === "headline" ? 600 : 400,
               color: ink[b.kind],
+              ...(c.textShadow && b.kind !== "badge" ? { textShadow: c.textShadow } : {}),
               ...(b.kind === "badge"
                 ? {
                     alignSelf: "flex-start",
@@ -83,6 +84,7 @@ function Poster({ spec, canvas, photo }: { spec: PosterSpec; canvas: Canvas; pho
           lineHeight: 1.3,
           color: c.footer,
           opacity: 0.85,
+          ...(c.textShadow ? { textShadow: c.textShadow } : {}),
         }}
       >
         {INSURER_LINE}

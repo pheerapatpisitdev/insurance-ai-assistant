@@ -15,8 +15,9 @@ const contrast = (a: string, b: string) => {
 };
 
 describe("the poster's colour themes (owner, 2026-09-24)", () => {
-  it("offers twenty, the three brand ones first", () => {
-    expect(THEMES).toHaveLength(20);
+  it("offers twenty tones and ภาพล้วน, the three brand ones first", () => {
+    expect(THEMES).toHaveLength(21);
+    expect(THEMES).toContain("photo");
     expect(THEMES.slice(0, 3)).toEqual(["navy", "sand", "white"]);
   });
   for (const t of THEMES) {
@@ -25,7 +26,9 @@ describe("the poster's colour themes (owner, 2026-09-24)", () => {
       it("has a Thai name, colours and a scrim", () => {
         expect(THEME_LABEL[t]).toBeTruthy();
         expect(c).toBeDefined();
-        expect(posterScrim(t, "bottom")).toContain("rgba(");
+        // ภาพล้วน lays nothing over the photo; every other theme washes the side the words sit
+        if (t === "photo") expect(posterScrim(t, "bottom")).toBe("none");
+        else expect(posterScrim(t, "bottom")).toContain("rgba(");
       });
       it("keeps its words readable on both ends of its ground", () => {
         for (const ground of [c.from, c.to]) {
@@ -63,5 +66,14 @@ describe("ให้ AI เลือก — the writer picks the theme (owner, 20
     const [a, b] = parseHeadlines(reply, 2);
     expect(a.theme).toBe("emerald");
     expect(b.theme).toBeUndefined();
+  });
+});
+
+describe("ภาพล้วน — the photo and the words, no tint (owner, 2026-09-25)", () => {
+  it("shadows its words, since nothing is laid under them", () => {
+    expect(POSTER_THEMES.photo.textShadow).toMatch(/rgba\(0, 0, 0/);
+  });
+  it("asks the picture model for the scene's own colours", () => {
+    expect(backgroundPrompt({ scene: "x", layout: "bottom", theme: "photo" })).toMatch(/natural colours/i);
   });
 });

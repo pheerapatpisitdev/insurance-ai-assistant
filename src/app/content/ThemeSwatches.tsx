@@ -44,7 +44,12 @@ export function ThemeSwatches<V extends ThemeChoice = Theme>({ value, onChange, 
               className={`flex aspect-square items-center justify-center rounded-md text-sm font-semibold ${on ? "ring-2 ring-[var(--ct-solid)] ring-offset-2" : "ring-1 ring-black/10"}`}
               style={{ background: `linear-gradient(160deg, ${c.from}, ${c.to})`, color: c.headline }}
             >
-              ก
+              {t === "photo" ? (
+                // ภาพล้วน: a picture, not a letter on a colour
+                <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-5">
+                  <path d="M4.5 5.5h15v13h-15zM4.5 15.5l4-4 3.5 3.5 2.5-2.5 5 4.5M15 9.2a.01.01 0 1 0 0 .01" />
+                </svg>
+              ) : "ก"}
             </button>
           );
         })}
