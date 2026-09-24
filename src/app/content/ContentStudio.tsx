@@ -444,40 +444,32 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             </>
           )}
 
-          <div>
-            <span className="mb-1.5 block text-sm font-medium">โมเดลเขียน</span>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" aria-pressed={writer === AUTO} onClick={() => pick({ writer: AUTO })} className={chip(writer === AUTO)}>อัตโนมัติ</button>
-              {WRITERS.map((w) => (
-                <button key={w.id} type="button" aria-pressed={writer === w.id} onClick={() => pick({ writer: w.id })} className={chip(writer === w.id)}>
-                  {w.label} <span className="opacity-70">฿{w.thb.toFixed(2)}</span>
-                </button>
-              ))}
-            </div>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">โมเดลเขียน</span>
+            <select value={writer} onChange={(e) => pick({ writer: e.target.value })} className={field}>
+              <option value={AUTO}>อัตโนมัติ</option>
+              {WRITERS.map((w) => <option key={w.id} value={w.id}>{w.label} · ฿{w.thb.toFixed(2)} ต่อชิ้น</option>)}
+            </select>
             <span className="mt-1 block text-xs text-[var(--ct-mute)]">
               {writer === AUTO
                 ? `ตอนนี้ใช้ ${writes.short} — งบเหลือต่ำกว่า ฿${AUTO_FLOOR_THB} จะสลับเป็นแบบประหยัดเอง`
                 : `${writes.short} · ราคาต่อชิ้น`}
             </span>
-          </div>
+          </label>
 
           {format !== "script" && (
-            <div>
-              <span className="mb-1.5 block text-sm font-medium">ภาพประกอบ</span>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" aria-pressed={painter === AUTO} onClick={() => pick({ painter: AUTO })} className={chip(painter === AUTO)}>อัตโนมัติ</button>
-                {PAINTERS.map((p) => (
-                  <button key={p.id} type="button" aria-pressed={painter === p.id} onClick={() => pick({ painter: p.id })} className={chip(painter === p.id)}>
-                    {p.label}{p.thb > 0 && <span className="opacity-70"> ฿{p.thb.toFixed(2)}</span>}
-                  </button>
-                ))}
-              </div>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">ภาพประกอบ</span>
+              <select value={painter} onChange={(e) => pick({ painter: e.target.value })} className={field}>
+                <option value={AUTO}>อัตโนมัติ</option>
+                {PAINTERS.map((p) => <option key={p.id} value={p.id}>{p.label}{p.thb > 0 ? ` · ฿${p.thb.toFixed(2)} ต่อภาพ` : ""}</option>)}
+              </select>
               <span className="mt-1 block text-xs text-[var(--ct-mute)]">
                 {painter === AUTO
                   ? `ตอนนี้${paints.modelId ? `วาดด้วย ${paints.short}` : "ไม่วาดภาพ"} — งบเหลือต่ำกว่า ฿${AUTO_FLOOR_THB} จะหยุดวาดเอง`
                   : painter === "none" ? "ใช้โปสเตอร์สีพื้น วาดทีหลังได้ในหน้าแก้ไข" : `${paints.short} · ราคาต่อภาพ วาดให้ทุกชิ้นหลังเขียนเสร็จ`}
               </span>
-            </div>
+            </label>
           )}
 
           <div>
