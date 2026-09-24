@@ -25,6 +25,24 @@ export const LIFE_DOUBLE_BEFORE_AGE = 60;
 /** อายุที่หน้านี้รับ */
 export const PLANNER_AGE = { min: 20, max: 70 } as const;
 
+/** คำถาม "อยากได้ประกันชีวิตแบบไหน" */
+export type LifeWant = "cover" | "save";
+export const LIFE_WANT_LABEL: Record<LifeWant, { title: string; note: string }> = {
+  cover: { title: "จ่ายเบี้ยน้อย คุ้มครองสูง", note: "ไม่ห่วงว่าเบี้ยจะจ่ายทิ้ง" },
+  save: { title: "คุ้มครองด้วย ออมไปด้วย", note: "ไม่อยากจ่ายทิ้ง จ่ายเบี้ยสูงขึ้นได้" },
+};
+
+/**
+ * The life plan each answer gets — the owner's pick 2026-09-25. "cover" is PLB paid 15 years,
+ * which only takes ages 20–59; anyone else gets Life Protect x 2 paid to 99 instead.
+ * PLB stops at the PLB page's own ceiling so the link shows the same sum.
+ */
+export const LIFE_PLANS = {
+  term: { variant: "PLB15", product: "Protection Life (PLB) ชำระ 15 ปี", href: "/plb", doubles: false, years: 15, maxSum: 5_000_000 },
+  to99: { variant: "WLF99H", product: "Life Protect x 2", href: "/lifeprotect", doubles: true },
+  pay19: { variant: "WLF19H", product: "Life Protect x 2 ชำระ 19 ปี", href: "/lifeprotect", doubles: true },
+} as const;
+
 export type Hospital = "public" | "private" | "premium";
 export const HOSPITAL_LABEL: Record<Hospital, string> = {
   public: "โรงพยาบาลรัฐ",

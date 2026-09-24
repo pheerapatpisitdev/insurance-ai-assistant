@@ -7,7 +7,7 @@ import {
 const OWNER: PlanInput = {
   age: 35, sex: "M", income: 50_000, expense: 25_000, savings: 200_000, children: [5, 8],
   otherDependants: false, debts: 1_500_000, lifeCover: 500_000, ciCover: 0, healthNow: "public",
-  healthRoom: 0, premiumsNow: 12_000, hospital: "private", budget: 4_000,
+  healthRoom: 0, premiumsNow: 12_000, hospital: "private", lifeWant: "save", budget: 4_000,
 };
 
 describe("lifeNeed", () => {

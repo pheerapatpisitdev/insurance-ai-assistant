@@ -1,7 +1,7 @@
 import {
   CHILD_SUPPORTED_UNTIL, CI_YEARS_OF_INCOME, DEFAULT_BUDGET_SHARE, EDUCATION_PER_CHILD, FUNERAL, HEALTH_TIERS,
   HOSPITAL_TIER, LIFE_DOUBLE_BEFORE_AGE, LIFE_SUMS, PLANNER_AGE, RETIRE_SHARE_OF_EXPENSE,
-  YEARS_FOR_OTHER_DEPENDANTS, type Hospital,
+  YEARS_FOR_OTHER_DEPENDANTS, type Hospital, type LifeWant,
 } from "./assumptions";
 
 /**
@@ -32,6 +32,8 @@ export interface PlanInput {
   healthRoom: number;
   premiumsNow: number;
   hospital: Hospital;
+  /** cheap high cover, or cover that saves */
+  lifeWant: LifeWant;
   /** baht a month the customer will add */
   budget: number;
 }
@@ -70,6 +72,7 @@ export function cleanInput(raw: unknown): PlanInput | string {
     healthRoom: money(r.healthRoom),
     premiumsNow: money(r.premiumsNow),
     hospital: HOSPITALS.find((h) => h === r.hospital) ?? "private",
+    lifeWant: r.lifeWant === "save" ? "save" : "cover",
     budget: money(r.budget),
   };
 }
@@ -89,7 +92,7 @@ export interface LifeNeed {
   /** life cover plus savings */
   have: number;
   gap: number;
-  /** Life Protect's double cover lasts through every year of support */
+  /** Life Protect's double cover lasts through every year of support (PLB never doubles) */
   doubled: boolean;
   /** the Life Protect sum that closes the gap; 0 when there is none */
   sumAssured: number;

@@ -52,6 +52,7 @@ function statusLine(a: Area): string {
 
 function coverText(a: Area): string {
   const o = a.offer!;
+  if (a.key === "life" && o.coverUntil) return `ทุน ${baht(o.sum)} คุ้มครองถึงอายุ ${o.coverUntil} ครบสัญญาไม่มีเงินคืน`;
   if (a.key === "life") return o.cover > o.sum ? `ทุน ${baht(o.sum)} คุ้มครอง ${baht(o.cover)} ก่อนอายุ 60` : `ทุน ${baht(o.sum)}`;
   if (a.key === "health") return `ค่าห้อง ${baht(o.cover)}/วัน`;
   if (a.key === "retire") return `บำนาญเดือนละ ${baht(o.cover)} ตั้งแต่อายุ ${o.fromAge}`;

@@ -24,7 +24,12 @@ describe("assumptions match the rate tables", () => {
 describe("realPricer", () => {
   const pr = realPricer(35, "M");
   it("prices Life Protect in proportion to the sum", () => {
-    expect(pr.life(4_000_000)).toBe(4 * pr.life(1_000_000)!);
+    expect(pr.life("WLF99H", 4_000_000)).toBe(4 * pr.life("WLF99H", 1_000_000)!);
+  });
+  it("prices both life answers off the tables the calculator uses", () => {
+    expect(pr.life("PLB15", 1_000_000)).toBe(580_000);
+    expect(pr.life("WLF19H", 1_000_000)).toBe(2_870_000);
+    expect(realPricer(60, "M").life("PLB15", 1_000_000)).toBeUndefined();
   });
   it("prices every area for a 35-year-old", () => {
     expect(pr.health("SILVER")).toBeGreaterThan(0);
@@ -40,7 +45,7 @@ describe("realPricer", () => {
     const r = recommend({
       age: 35, sex: "M", income: 50_000, expense: 25_000, savings: 200_000, children: [5, 8],
       otherDependants: false, debts: 1_500_000, lifeCover: 500_000, ciCover: 0, healthNow: "public",
-      healthRoom: 0, premiumsNow: 12_000, hospital: "private", budget: 30_000,
+      healthRoom: 0, premiumsNow: 12_000, hospital: "private", lifeWant: "save", budget: 30_000,
     }, pr);
     expect(r.areas[0].offer?.sum).toBe(4_000_000);
     expect(r.areas[0].status).toBe("fits");

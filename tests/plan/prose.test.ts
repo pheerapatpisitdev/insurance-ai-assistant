@@ -12,7 +12,7 @@ import type { PlanResult } from "@/lib/plan/recommend";
 
 const P: PlanInput = {
   age: 35, sex: "M", income: 50_000, expense: 25_000, savings: 0, children: [5], otherDependants: false,
-  debts: 0, lifeCover: 0, ciCover: 0, healthNow: "none", healthRoom: 0, premiumsNow: 0, hospital: "private", budget: 4_000,
+  debts: 0, lifeCover: 0, ciCover: 0, healthNow: "none", healthRoom: 0, premiumsNow: 0, hospital: "private", lifeWant: "save", budget: 4_000,
 };
 const R: PlanResult = {
   budget: 4_000, usedAnnual: 0, taxSaved: 0,

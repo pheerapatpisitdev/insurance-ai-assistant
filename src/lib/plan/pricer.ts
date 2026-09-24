@@ -7,18 +7,19 @@ import { baseAt, iHealthyPricing } from "@/lib/ihealthy-quote";
 import { iHealthyTable } from "@/lib/ihealthy-table";
 import { lifeProtectModes, termAt } from "@/lib/lifeprotect-quote";
 import { lifeProtectTable } from "@/lib/lifeprotect-table";
+import { plbModes, plbTakes, termAt as plbTermAt } from "@/lib/plb-quote";
+import { plbTable } from "@/lib/plb-table";
 import { PENSION_FROM_AGE } from "./assumptions";
 import type { Sex } from "./needs";
 import type { Pricer } from "./recommend";
 
 /**
  * Premiums from the rate tables, the same arrangements the sales pages and the ตัวเลขชัดๆ
- * angle quote: Life Protect x 2 paying to 99; the Health Ultra Package (WLF99HX at its fixed
+ * angle quote: PLB, or Life Protect x 2 paying to 99 or for 19 years; the Health Ultra Package (WLF99HX at its fixed
  * sum, Thailand, full coverage); the CI 123 and cancer sets; บำนาญ สมาร์ท 95 paid until it
  * starts. Satang a year; undefined where the plan will not take this person.
  */
 
-const LIFE_TERM = "WLF99H";
 const HEALTH_BASE = "WLF99HX";
 
 const annualOf = (modes: ModePremium[] | undefined) => modes?.find((m) => m.mode === "annual")?.total;
@@ -32,11 +33,16 @@ function bundleAnnual(code: string, tier: number, age: number, sex: Sex, today: 
 
 export function realPricer(age: number, sex: Sex, today: Date = new Date()): Pricer {
   const lp = lifeProtectTable(today);
+  const plb = plbTable(today);
   const ih = iHealthyTable(today);
   return {
-    life(sum) {
+    life(variant, sum) {
+      if (variant.startsWith("PLB")) {
+        if (plb.expired || !plbTakes(plb, age) || sum < plb.saMin) return undefined;
+        return annualOf(plbModes(plb, plbTermAt(plb, variant), { sex, age, sumAssured: sum }));
+      }
       if (lp.expired || age < lp.ageMin || age > lp.ageMax) return undefined;
-      return annualOf(lifeProtectModes(lp, termAt(lp, LIFE_TERM), { sex, age, sumAssured: sum }));
+      return annualOf(lifeProtectModes(lp, termAt(lp, variant), { sex, age, sumAssured: sum }));
     },
     health(plan) {
       if (ih.expired || age < ih.ageMin || age > ih.ageMax) return undefined;

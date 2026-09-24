@@ -1,6 +1,6 @@
 import { chat, parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
-import { HOSPITAL_LABEL } from "./assumptions";
+import { HOSPITAL_LABEL, LIFE_WANT_LABEL } from "./assumptions";
 import type { PlanInput } from "./needs";
 import type { AreaKey, PlanResult, Status } from "./recommend";
 
@@ -54,6 +54,7 @@ export function planBrief(p: PlanInput, r: PlanResult): string {
     `ลูกค้า: ${p.sex === "F" ? "หญิง" : "ชาย"} อายุ ${p.age} ปี เงินเดือน ${p.income} บาท ค่าใช้จ่ายครอบครัว ${p.expense} บาท/เดือน`,
     `${kids}; ${p.otherDependants ? "มีพ่อแม่/คู่สมรสที่ต้องดูแล" : "ไม่มีคนอื่นที่ต้องดูแล"}; หนี้ ${p.debts} บาท; เงินออม ${p.savings} บาท`,
     `ค่ารักษา: ${HEALTH_NOW_WORD[p.healthNow]}; อยากใช้${HOSPITAL_LABEL[p.hospital]}`,
+    `ประกันชีวิตที่อยากได้: ${LIFE_WANT_LABEL[p.lifeWant].title} (${LIFE_WANT_LABEL[p.lifeWant].note})`,
     ...r.areas.map((a) => `ด้าน${AREA_WORD[a.key]}: ${STATUS_WORD[a.status]}${a.offer ? ` (${a.offer.product})` : ""}`),
   ];
   return lines.join("\n");

@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
 import { MoneyInput } from "@/components/MoneyInput";
-import { HOSPITAL_LABEL, PLANNER_AGE, type Hospital } from "@/lib/plan/assumptions";
+import { HOSPITAL_LABEL, LIFE_WANT_LABEL, PLANNER_AGE, type Hospital, type LifeWant } from "@/lib/plan/assumptions";
 import { defaultBudget, type HealthNow } from "@/lib/plan/needs";
 import type { Prose } from "@/lib/plan/prose";
 import type { PlanResult } from "@/lib/plan/recommend";
@@ -71,6 +71,7 @@ export function Planner() {
   const [healthRoom, setHealthRoom] = useState<Money>("");
   const [premiumsNow, setPremiumsNow] = useState<Money>("");
   const [hospital, setHospital] = useState<Hospital>("private");
+  const [lifeWant, setLifeWant] = useState<LifeWant>("cover");
   const [budget, setBudget] = useState<Money>("");
   const [budgetTouched, setBudgetTouched] = useState(false);
 
@@ -88,7 +89,7 @@ export function Planner() {
     const form = {
       age: n(age), sex, income: n(income), expense: n(expense), savings: n(savings),
       children: children.filter((c) => c !== ""), otherDependants, debts: n(debts), lifeCover: n(lifeCover),
-      ciCover: n(ciCover), healthNow, healthRoom: n(healthRoom), premiumsNow: n(premiumsNow), hospital,
+      ciCover: n(ciCover), healthNow, healthRoom: n(healthRoom), premiumsNow: n(premiumsNow), hospital, lifeWant,
       budget: n(shownBudget),
     };
     setError("");
@@ -214,6 +215,25 @@ export function Planner() {
           value={hospital} onChange={setHospital}
           options={(Object.keys(HOSPITAL_LABEL) as Hospital[]).map((h) => [h, HOSPITAL_LABEL[h]])}
         />
+      </section>
+
+      <section className={PANEL}>
+        <h2 className="text-base font-medium text-[var(--lg-white)]">ประกันชีวิต อยากได้แบบไหนมากกว่ากัน</h2>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(Object.keys(LIFE_WANT_LABEL) as LifeWant[]).map((w, i) => (
+            <button
+              key={w} type="button" aria-pressed={lifeWant === w} onClick={() => setLifeWant(w)}
+              className={`rounded-sm border px-3 py-3 text-left transition-colors ${
+                lifeWant === w ? "lg-metal-face border-[var(--lg-gold)]" : "border-[var(--lg-panel-line)]"
+              }`}
+            >
+              <span className={`block text-sm ${lifeWant === w ? "font-medium" : "text-[var(--lg-white)]"}`}>
+                {i + 1}. {LIFE_WANT_LABEL[w].title}
+              </span>
+              <span className={`mt-0.5 block text-xs ${lifeWant === w ? "opacity-80" : "text-[var(--lg-mute)]"}`}>{LIFE_WANT_LABEL[w].note}</span>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className={PANEL}>

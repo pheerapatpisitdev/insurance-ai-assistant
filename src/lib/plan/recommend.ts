@@ -1,5 +1,5 @@
 import { PENSION_LIMITS } from "@/calc/pension/engine";
-import { CANCER_TIERS, CI_TIERS, HEALTH_TIERS, LIFE_SUMS } from "./assumptions";
+import { CANCER_TIERS, CI_TIERS, HEALTH_TIERS, LIFE_PLANS, LIFE_SUMS } from "./assumptions";
 import { ciNeed, healthNeed, lifeNeed, retireNeed, roundUpTo, taxSaved, type PlanInput, type Sex } from "./needs";
 
 /**
@@ -26,6 +26,8 @@ export interface Offer {
   firstYear: boolean;
   /** the pension's starting age */
   fromAge?: number;
+  /** a term plan's last covered age; it pays nothing back at the end */
+  coverUntil?: number;
 }
 
 export interface Area {
@@ -50,7 +52,8 @@ export interface PlanResult {
 }
 
 export interface Pricer {
-  life(sum: number): number | undefined;
+  /** variant is one of LIFE_PLANS' — PLB15, WLF99H or WLF19H */
+  life(variant: string, sum: number): number | undefined;
   health(plan: string): number | undefined;
   ci(tier: number): number | undefined;
   cancer(tier: number): number | undefined;
@@ -90,14 +93,22 @@ export function recommend(p: PlanInput, pr: Pricer): PlanResult {
   // 1. life
   const life = lifeNeed(p);
   const lifeArea: Area = { key: "life", unit: "sum", have: life.have, should: life.need, status: "covered" };
-  if (life.sumAssured > 0) {
-    const wanted = LIFE_SUMS.filter((s) => s <= life.sumAssured).reverse();
-    const r = fit(wanted, (s) => pr.life(s), left);
-    lifeArea.status = r.status;
+  if (life.gap > 0) {
+    const term = LIFE_PLANS.term;
+    const plan = p.lifeWant === "save" ? LIFE_PLANS.pay19
+      : pr.life(term.variant, LIFE_SUMS[0]) !== undefined ? term : LIFE_PLANS.to99;
+    const doubled = plan.doubles && life.doubled;
+    const target = roundUpTo(LIFE_SUMS, doubled ? life.gap / 2 : life.gap);
+    const cap = "maxSum" in plan ? plan.maxSum : Infinity;
+    const wanted = LIFE_SUMS.filter((s) => s <= Math.min(target, cap)).reverse();
+    const r = fit(wanted, (s) => pr.life(plan.variant, s), left);
+    // a capped plan can fit its ceiling and still fall short of the need
+    lifeArea.status = r.status === "fits" && wanted[0] < target ? "reduced" : r.status;
     if (r.option !== undefined && r.annual !== undefined) {
       lifeArea.offer = {
-        product: "Life Protect x 2", href: "/lifeprotect", sum: r.option,
-        cover: life.doubled ? r.option * 2 : r.option, annual: r.annual, firstYear: false,
+        product: plan.product, href: plan.href, sum: r.option,
+        cover: doubled ? r.option * 2 : r.option, annual: r.annual, firstYear: false,
+        coverUntil: "years" in plan ? p.age + plan.years : undefined,
       };
       if (spends(r.status)) { left -= r.annual; spent.life += r.annual; }
     }
