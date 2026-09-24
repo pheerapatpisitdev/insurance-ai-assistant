@@ -3,12 +3,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import {
-  canDrag, canDropOnDay, dropRejection, groupByDay, repeats, thaiDayLabel, unscheduled,
+  canDrag, canDropOnDay, dropRejection, groupByDay, repeats, thaiDayLabel, todayKey, unscheduled,
   DROP_TIME, type BoardItem, type MonthCell,
 } from "@/lib/content/calendar";
 import { postLink } from "@/lib/facebook/publish";
 import { cancelScheduled, scheduleAt, scheduleOnDay, type PublishResult, type PublishSetup } from "../publish";
 import { ask } from "../ask";
+import { AlertIcon, CheckIcon, ClockIcon, SendIcon, XIcon } from "../ui/icons";
+import { PlainText } from "../ui/editor-fields";
 
 /**
  * The month board, ported from the owner's Maryjane project (calendar-board.tsx, post-card.tsx,
@@ -39,6 +41,18 @@ const STATUS_LABEL: Record<BoardItem["status"], string> = {
   failed: "โพสต์ไม่สำเร็จ",
 };
 
+/** the words on a card's status tag, beside its drawing */
+const STATUS_SHORT: Record<BoardItem["status"], string> = {
+  waiting: "",
+  scheduled: "ตั้งเวลา",
+  posting: "กำลังส่ง",
+  published: "ลงเพจแล้ว",
+  failed: "ไม่สำเร็จ",
+};
+
+/** publish-flow's CONCURRENT, by its opening words: that module is the server's */
+const CONCURRENT_START = "มีการแก้ชิ้นนี้พร้อมกันอยู่";
+
 type Sheet = { kind: "day"; day: string } | { kind: "item"; id: string };
 
 interface DragSession {
@@ -51,12 +65,17 @@ interface DragSession {
   detach: () => void;
 }
 
+/** what an action may be told once the owner has answered its question */
+type Confirmed = { confirmNumbers: boolean; force: boolean };
 /** runs an action, and asks for the confirmation it needs before trying again */
-type Run = (act: (confirmNumbers: boolean) => Promise<PublishResult>) => Promise<boolean>;
+type Run = (act: (ok: Confirmed) => Promise<PublishResult>) => Promise<boolean>;
 
-export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
+export function CalendarBoard({ cells, items, errors, today, setup, defaultPage }: {
   cells: MonthCell[];
   items: BoardItem[];
+  /** why each failed card failed: a send that never answered, or a time Facebook let pass */
+  errors: Record<string, string>;
+  /** Thailand's today when the page was drawn — for drawing only; a drop asks the clock again */
   today: string;
   setup: PublishSetup;
   defaultPage: string;
@@ -99,14 +118,26 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
   const repeated = repeats(board);
 
   const run: Run = async (act) => {
-    let res = await act(false).catch(() => ({ ok: false, error: "การเชื่อมต่อหลุด ลองเช็กในเพจก่อนกดใหม่" }) as PublishResult);
-    if (!res.ok && res.confirmNumbers) {
-      if (!(await ask(`มีตัวเลขที่ไม่ตรงกับตารางเบี้ย: ${res.confirmNumbers.join(", ")}\n\nตรวจแล้วว่าถูกต้อง และยังจะตั้งเวลาไหม?`, "ตั้งเวลาต่อ"))) return false;
-      res = await act(true).catch(() => ({ ok: false, error: "การเชื่อมต่อหลุด" }) as PublishResult);
+    const ok: Confirmed = { confirmNumbers: false, force: false };
+    // at most one question of each kind, then the answer stands
+    for (;;) {
+      const res = await act({ ...ok }).catch(() => ({ ok: false, error: "การเชื่อมต่อหลุด ลองเช็กในเพจก่อนกดใหม่" }) as PublishResult);
+      if (res.ok) { setError(null); router.refresh(); return true; }
+      if (res.confirmNumbers && !ok.confirmNumbers) {
+        if (!(await ask(`มีตัวเลขที่ไม่ตรงกับตารางเบี้ย: ${res.confirmNumbers.join(", ")}\n\nตรวจแล้วว่าถูกต้อง และยังจะตั้งเวลาไหม?`, "ตั้งเวลาต่อ"))) return false;
+        ok.confirmNumbers = true;
+        continue;
+      }
+      if (res.confirmRepost && !ok.force) {
+        if (!(await ask(`${res.error}\n\nเช็กในเพจแล้ว ยังไม่ขึ้น — ส่งอีกครั้ง?`, "ส่งอีกครั้ง"))) return false;
+        ok.force = true;
+        continue;
+      }
+      setError(res.error);
+      // someone else moved it meanwhile: the board is out of date, so it is drawn again
+      if (res.error.startsWith(CONCURRENT_START)) router.refresh();
+      return false;
     }
-    if (res.ok) { setError(null); router.refresh(); return true; }
-    setError(res.error);
-    return false;
   };
 
   function stopEdgeScroll() {
@@ -148,8 +179,10 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
   }
 
   function tryMove(item: BoardItem, day: string) {
-    if (!canDropOnDay(item, day, today)) {
-      const reason = dropRejection(item, day, today);
+    // the clock now, not when the page was drawn: a board left open overnight still thought it yesterday
+    const now = todayKey();
+    if (!canDropOnDay(item, day, now)) {
+      const reason = dropRejection(item, day, now);
       if (reason) setError(reason);
       return;
     }
@@ -158,7 +191,7 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
     setError(null);
     startTransition(async () => {
       applyMove({ id: item.id, day });
-      await run((confirmNumbers) => scheduleOnDay({ id: item.id, day, pageId, confirmNumbers }));
+      await run(({ confirmNumbers, force }) => scheduleOnDay({ id: item.id, day, pageId, confirmNumbers, force }));
     });
   }
 
@@ -234,11 +267,11 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
   return (
     <div className="space-y-4">
       {error && (
-        <p role="alert" className="rounded-lg border border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] p-3 text-sm text-[var(--ct-alert)]">{error}</p>
+        <p role="alert" className="rounded-lg border border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] p-3 text-sm text-[var(--ct-alert)]"><PlainText text={error} /></p>
       )}
       {usable.length === 0 && (
         <p className="rounded-lg border border-[var(--ct-warn-line)] bg-[var(--ct-warn-bg)] p-3 text-sm text-[var(--ct-warn-ink)]">
-          ยังไม่มีเพจที่เปิดสิทธิ์โพสต์ — เพิ่ม pages_manage_posts ในแอป Facebook แล้วเชื่อมเพจใหม่ที่ <a href="/admin/messenger" className="underline">/admin/messenger</a>
+          ยังไม่ได้อนุญาตให้ระบบโพสต์ลงเพจ — ไปเชื่อมเพจใหม่ที่ <Link href="/admin/messenger" className="font-medium underline">หน้าตั้งค่าเพจ</Link>
         </p>
       )}
 
@@ -255,23 +288,43 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
               const isPast = cell.day < today;
               const isTarget = drag?.over === cell.day;
               const accepts = drag ? canDropOnDay(drag.item, cell.day, today) : false;
+              const dayNumber = (
+                <span className={`flex size-6 items-center justify-center rounded-full text-xs ${isToday ? "bg-[var(--ct-solid)] font-medium text-[var(--ct-solid-ink)]" : isPast ? "text-[var(--ct-mute)]" : ""}`}>
+                  {Number(cell.day.slice(-2))}
+                </span>
+              );
               return (
                 <div
                   key={cell.day}
                   data-day={cell.day}
                   onClick={(e) => { if (dayItems.length > 0) openSheet({ kind: "day", day: cell.day }, e.timeStamp); }}
-                  className={`min-h-24 p-1 transition-colors sm:p-2 lg:min-h-36 ${isTarget && accepts ? "bg-[var(--ct-soft)]" : "bg-[var(--ct-panel)]"} ${cell.inMonth ? "" : "opacity-50"} ${drag && !accepts ? "opacity-40" : ""}`}
+                  className={`min-h-12 p-0.5 transition-colors sm:min-h-24 sm:p-2 lg:min-h-36 ${isTarget && accepts ? "bg-[var(--ct-soft)]" : "bg-[var(--ct-panel)]"} ${cell.inMonth ? "" : "opacity-50"} ${drag && !accepts ? "opacity-40" : ""}`}
                 >
-                  <div className="flex items-start justify-between gap-1">
-                    <span className={`flex size-6 items-center justify-center rounded-full text-xs ${isToday ? "bg-[var(--ct-solid)] font-medium text-[var(--ct-solid-ink)]" : isPast ? "text-[var(--ct-mute)]" : ""}`}>
-                      {Number(cell.day.slice(-2))}
-                    </span>
-                    {compact && <span className="hidden text-[10px] text-[var(--ct-mute)] sm:inline">{dayItems.length} โพสต์</span>}
+                  {/* a phone: the chips would be a finger's width, so the day is the button and says how many */}
+                  <div className="sm:hidden">
+                    {dayItems.length > 0 ? (
+                      <button
+                        type="button" aria-label={`${thaiDayLabel(cell.day)} · ${dayItems.length} โพสต์`}
+                        onClick={(e) => { e.stopPropagation(); openSheet({ kind: "day", day: cell.day }, e.timeStamp); }}
+                        className="flex min-h-11 w-full flex-col items-center justify-start gap-0.5 rounded-md hover:bg-[var(--ct-ground)]"
+                      >
+                        {dayNumber}
+                        <span className={`min-w-5 rounded-full px-1 text-center text-xs font-medium leading-5 ${dayItems.some((i) => i.status === "failed") ? "bg-[var(--ct-alert-bg)] text-[var(--ct-alert)]" : "bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]"}`}>
+                          {dayItems.length}
+                        </span>
+                      </button>
+                    ) : (
+                      <div className="flex min-h-11 justify-center">{dayNumber}</div>
+                    )}
                   </div>
-                  <div className={`mt-1 ${compact ? "grid grid-cols-2 gap-1" : "space-y-1"}`}>
+                  <div className="hidden items-start justify-between gap-1 sm:flex">
+                    {dayNumber}
+                    {compact && <span className="truncate text-xs text-[var(--ct-mute)]">{dayItems.length} โพสต์</span>}
+                  </div>
+                  <div className={`mt-1 hidden ${compact ? "grid-cols-2 gap-1 sm:grid" : "space-y-1 sm:block"}`}>
                     {dayItems.map((item) => (
                       <PostCard
-                        key={item.id} item={item} compact={compact} repeated={repeated.has(item.id)}
+                        key={item.id} item={item} error={errors[item.id]} compact={compact} repeated={repeated.has(item.id)}
                         dragging={drag?.item.id === item.id}
                         onPointerDown={(e) => beginPress(e, item)}
                         onOpen={(at) => openSheet({ kind: "day", day: cell.day }, at)}
@@ -284,13 +337,13 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
           </div>
         </div>
 
-        <aside className="shrink-0 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:w-60 xl:overflow-y-auto">
+        <aside className="shrink-0 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-3 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:w-60 xl:overflow-y-auto">
           <p className="text-sm font-medium">รอตั้งเวลา · {waiting.length}</p>
           <p className="mt-1 text-xs text-[var(--ct-mute)]">ลากลงวันที่ต้องการ = ตั้งเวลา {DROP_TIME} (บนมือถือกดค้างแล้วลาก)</p>
           {usable.length > 0 && (
             <label className="mt-2 block">
               <span className="mb-1 block text-xs text-[var(--ct-mute)]">ลงเพจ</span>
-              <select value={pageId} onChange={(e) => choosePage(e.target.value)} className="w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-2 py-1.5 text-sm">
+              <select value={pageId} onChange={(e) => choosePage(e.target.value)} className="min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-2 py-1.5 text-sm">
                 {usable.map((p) => <option key={p.pageId} value={p.pageId}>{p.pageName}</option>)}
               </select>
             </label>
@@ -301,7 +354,7 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
             <div className="mt-3 grid grid-cols-3 gap-2 xl:grid-cols-1">
               {waiting.map((item) => (
                 <PostCard
-                  key={item.id} item={item} compact={false} repeated={false}
+                  key={item.id} item={item} error={errors[item.id]} compact={false} repeated={false}
                   dragging={drag?.item.id === item.id}
                   onPointerDown={(e) => beginPress(e, item)}
                   onOpen={(at) => openSheet({ kind: "item", id: item.id }, at)}
@@ -315,13 +368,13 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
       {/* the card under the finger; pointer-events none so it never hides the day beneath */}
       {drag && (
         <div aria-hidden className="pointer-events-none fixed z-50 w-28 -translate-x-1/2 -translate-y-1/2 rotate-2 opacity-90 shadow-lg" style={{ left: drag.x, top: drag.y }}>
-          <PostCard item={drag.item} compact repeated={false} dragging={false} onPointerDown={() => {}} onOpen={() => {}} />
+          <PostCard item={drag.item} error={errors[drag.item.id]} compact repeated={false} dragging={false} onPointerDown={() => {}} onOpen={() => {}} />
         </div>
       )}
 
       {sheet && (
         <DaySheet
-          title={sheetTitle} items={sheetItems} today={today} pages={usable} pageId={pageId} onPage={choosePage}
+          title={sheetTitle} items={sheetItems} errors={errors} today={today} pages={usable} pageId={pageId} onPage={choosePage}
           run={run} onClose={() => setSheet(null)}
         />
       )}
@@ -330,8 +383,19 @@ export function CalendarBoard({ cells, items, today, setup, defaultPage }: {
   );
 }
 
-function PostCard({ item, compact, repeated, dragging, onPointerDown, onOpen }: {
+function StatusIcon({ status, className }: { status: BoardItem["status"]; className?: string }) {
+  switch (status) {
+    case "published": return <CheckIcon className={className} />;
+    case "failed": return <AlertIcon className={className} />;
+    case "posting": return <SendIcon className={className} />;
+    case "scheduled": return <ClockIcon className={className} />;
+    default: return null;
+  }
+}
+
+function PostCard({ item, error, compact, repeated, dragging, onPointerDown, onOpen }: {
   item: BoardItem;
+  error?: string;
   compact: boolean;
   repeated: boolean;
   dragging: boolean;
@@ -339,43 +403,71 @@ function PostCard({ item, compact, repeated, dragging, onPointerDown, onOpen }: 
   onOpen: (at: number) => void;
 }) {
   const movable = canDrag(item) && !item.blocked;
-  const tag = "rounded bg-[var(--ct-solid)] px-1 py-px text-[9px] text-[var(--ct-solid-ink)]";
+  const tag = "max-w-[calc(100%-0.5rem)] truncate rounded bg-[var(--ct-solid)] px-1 text-xs leading-5 text-[var(--ct-solid-ink)]";
+  const statusTone = item.status === "failed"
+    ? "bg-[var(--ct-alert-bg)] text-[var(--ct-alert)]"
+    : item.status === "posting" ? "bg-[var(--ct-panel)] text-[var(--ct-ink)]" : "bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]";
+  // the failure's own words are the sheet's, where they can be read in full and plainly
+  const label = [STATUS_LABEL[item.status], item.day ? item.time : "", item.pageName, item.hook].filter(Boolean).join(" · ");
   return (
     <div
-      role="button" tabIndex={0} aria-label={`${item.time} ${item.hook}`}
+      role="button" tabIndex={0} aria-label={label}
       onPointerDown={onPointerDown}
       // the day cell has an onClick too; without this the sheet would open twice
       onClick={(e) => { e.stopPropagation(); onOpen(e.timeStamp); }}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(e.timeStamp); } }}
       // iOS and Android's long-press menu would sit on top of a press-and-hold drag
       onContextMenu={(e) => movable && e.preventDefault()}
-      className={`relative select-none overflow-hidden rounded-md border ${repeated ? "border-[var(--ct-warn-line)]" : "border-[var(--ct-hair)]"} bg-[var(--ct-ground)] outline-none ${movable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} ${dragging ? "opacity-30" : ""}`}
+      // the focus ring is theme.css's, for every [role=button] on these pages
+      className={`relative select-none overflow-hidden rounded-md border ${repeated ? "border-[var(--ct-warn-line)]" : "border-[var(--ct-hair)]"} bg-[var(--ct-ground)] ${movable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} ${dragging ? "opacity-30" : ""}`}
       style={{ WebkitTouchCallout: "none" }}
     >
       <div className="relative aspect-square w-full">
         {/* eslint-disable-next-line @next/next/no-img-element -- the piece's own poster, drawn by the poster route */}
         <img src={item.imageUrl} alt="" draggable={false} loading="lazy" className="h-full w-full object-cover" />
-        {item.pageName && <span className={`absolute left-1 top-1 max-w-[calc(100%-0.5rem)] truncate ${tag}`}>{item.pageName}</span>}
-        {item.day && <span className={`absolute bottom-1 left-1 font-medium ${tag}`}>{item.time}</span>}
-        <span className="absolute bottom-1 right-1 text-xs" title={STATUS_LABEL[item.status]}>
-          {item.status === "published" ? "✓" : item.status === "failed" ? "⚠" : item.status === "posting" ? "…" : item.status === "scheduled" ? "⏰" : ""}
+        {item.pageName && !compact && <span className={`absolute left-1 top-1 ${tag}`}>{item.pageName}</span>}
+        {/* the time and the state share the foot of the poster; the state's words give way when it is narrow.
+            A two-up day has no room for words: the time below, the state's drawing alone above */}
+        <span className="absolute inset-x-1 bottom-1 flex items-end justify-between gap-1">
+          {item.day ? <span className={`shrink-0 font-medium ${tag}`}>{item.time}</span> : <span />}
+          {item.status !== "waiting" && !compact && (
+            <span aria-hidden className={`inline-flex min-w-0 items-center gap-0.5 rounded px-1 text-xs leading-5 ${statusTone}`}>
+              <StatusIcon status={item.status} className="size-3.5" />
+              <span className="truncate">{STATUS_SHORT[item.status]}</span>
+            </span>
+          )}
         </span>
+        {item.status !== "waiting" && compact && (
+          <span aria-hidden className={`absolute right-1 top-1 inline-flex rounded p-0.5 ${statusTone}`}>
+            <StatusIcon status={item.status} className="size-3.5" />
+          </span>
+        )}
       </div>
       {!compact && (
         <div className="hidden p-1.5 lg:block">
-          <p className="line-clamp-2 text-[11px] font-medium leading-snug">{item.hook}</p>
-          <p className="line-clamp-1 text-[10px] text-[var(--ct-mute)]">{item.planName}{item.unreviewed ? " · ยังไม่ได้ตรวจ" : ""}</p>
-          {repeated && <p className="text-[10px] text-[var(--ct-warn-ink)]">แบบเดียวกับโพสต์ก่อนหน้า</p>}
+          <p className="line-clamp-2 text-xs font-medium leading-snug">{item.hook}</p>
+          <p className="line-clamp-1 text-xs text-[var(--ct-mute)]">{item.planName}{item.unreviewed ? " · ยังไม่ได้ตรวจ" : ""}</p>
+          {repeated && <p className="text-xs text-[var(--ct-warn-ink)]">แบบเดียวกับโพสต์ก่อนหน้า</p>}
+          {error && <p className="line-clamp-2 text-xs text-[var(--ct-alert)]"><PlainText text={error} /></p>}
         </div>
       )}
     </div>
   );
 }
 
-/** a sheet from the bottom on a phone, a dialog in the middle on a desk — the card is too small to press buttons on */
-function DaySheet({ title, items, today, pages, pageId, onPage, run, onClose }: {
+/** everything in the sheet a Tab can land on */
+const FOCUSABLE = 'a[href], button:not([disabled]), select:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * A sheet from the bottom on a phone, a dialog in the middle on a desk — the card is too small
+ * to press buttons on. It holds the focus while open, as a dialog should: the focus goes in,
+ * Tab goes round inside it, the page behind does not scroll, and the focus goes back to the
+ * card or day it was opened from.
+ */
+function DaySheet({ title, items, errors, today, pages, pageId, onPage, run, onClose }: {
   title: string;
   items: BoardItem[];
+  errors: Record<string, string>;
   today: string;
   pages: PublishSetup["pages"];
   pageId: string;
@@ -383,27 +475,56 @@ function DaySheet({ title, items, today, pages, pageId, onPage, run, onClose }: 
   run: Run;
   onClose: () => void;
 }) {
+  const box = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  useEffect(() => { close.current = onClose; });
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const scroll = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    box.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      // an ask() box on top has the keys: its Esc is its own "no", not this sheet's
+      if (document.querySelector("dialog[open]")) return;
+      if (e.key === "Escape") { close.current(); return; }
+      const root = box.current;
+      if (e.key !== "Tab" || !root) return;
+      const stops = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.getClientRects().length > 0);
+      if (stops.length === 0) { e.preventDefault(); return; }
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      const at = document.activeElement;
+      if (e.shiftKey && (at === first || !root.contains(at))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (at === last || !root.contains(at))) { e.preventDefault(); first.focus(); }
+    };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = scroll;
+      // the day or card it came from, if it is still on the page after a refresh
+      if (back?.isConnected) back.focus();
+    };
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--ct-ink)]/60 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--ct-scrim)] sm:items-center" onClick={onClose}>
       <div
-        role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-t-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-4 sm:rounded-xl"
+        ref={box} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
+        className="max-h-[85dvh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-t-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-4 sm:rounded-xl"
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="ปิด" className="flex size-9 items-center justify-center rounded border border-[var(--ct-line)]">✕</button>
+          <button type="button" data-autofocus onClick={onClose} aria-label="ปิด" className="flex size-11 items-center justify-center rounded-lg border border-[var(--ct-line)]">
+            <XIcon className="size-5" />
+          </button>
         </div>
         {items.length === 0 ? (
           <p className="text-sm text-[var(--ct-mute)]">วันนี้ยังไม่มีโพสต์</p>
         ) : (
           <ul className="space-y-4">
-            {items.map((item) => <SheetItem key={item.id} item={item} today={today} pages={pages} pageId={pageId} onPage={onPage} run={run} onDone={onClose} />)}
+            {items.map((item) => <SheetItem key={item.id} item={item} error={errors[item.id]} today={today} pages={pages} pageId={pageId} onPage={onPage} run={run} onDone={onClose} />)}
           </ul>
         )}
       </div>
@@ -411,8 +532,9 @@ function DaySheet({ title, items, today, pages, pageId, onPage, run, onClose }: 
   );
 }
 
-function SheetItem({ item, today, pages, pageId, onPage, run, onDone }: {
+function SheetItem({ item, error, today, pages, pageId, onPage, run, onDone }: {
   item: BoardItem;
+  error?: string;
   today: string;
   pages: PublishSetup["pages"];
   pageId: string;
@@ -428,14 +550,14 @@ function SheetItem({ item, today, pages, pageId, onPage, run, onDone }: {
     setBusy(false);
     if (ok) onDone();
   };
-  const btn = "rounded-lg border border-[var(--ct-line)] px-3 py-2 text-sm disabled:opacity-50";
+  const btn = "inline-flex min-h-11 items-center rounded-lg border border-[var(--ct-line)] px-3 text-sm disabled:opacity-50";
 
   return (
     <li className="rounded-lg border border-[var(--ct-hair)] p-3">
       {/* the poster carries words, so it is shown whole rather than cropped beside the text */}
-      <a href={item.imageUrl} target="_blank" rel="noopener noreferrer" title="เปิดรูปขนาดเต็ม" className="block overflow-hidden rounded-lg bg-[var(--ct-ground)]">
+      <a href={item.imageUrl} target="_blank" rel="noopener noreferrer" title="เปิดรูปขนาดเต็ม" aria-label="เปิดรูปขนาดเต็ม" className="block overflow-hidden rounded-lg bg-[var(--ct-ground)]">
         {/* eslint-disable-next-line @next/next/no-img-element -- the piece's own poster */}
-        <img src={item.imageUrl} alt="" className="mx-auto max-h-[50vh] w-full object-contain" />
+        <img src={item.imageUrl} alt="" className="mx-auto max-h-[50dvh] w-full object-contain" />
       </a>
       <div className="mt-3 space-y-1">
         <p className="text-xs text-[var(--ct-mute)]">
@@ -459,37 +581,40 @@ function SheetItem({ item, today, pages, pageId, onPage, run, onDone }: {
             {item.status !== "scheduled" && pages.length > 0 && (
               <label className="block">
                 <span className="mb-1 block text-xs text-[var(--ct-mute)]">ลงเพจ</span>
-                <select value={pageId} onChange={(e) => onPage(e.target.value)} className="rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] p-2 text-sm">
+                <select value={pageId} onChange={(e) => onPage(e.target.value)} className="min-h-11 rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] p-2 text-sm">
                   {pages.map((p) => <option key={p.pageId} value={p.pageId}>{p.pageName}</option>)}
                 </select>
               </label>
             )}
             <label className="block">
               <span className="mb-1 block text-xs text-[var(--ct-mute)]">วันและเวลาโพสต์ (เวลาไทย)</span>
-              <input type="datetime-local" value={local} onChange={(e) => setLocal(e.target.value)} className="rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] p-2 text-sm" />
+              <input type="datetime-local" value={local} onChange={(e) => setLocal(e.target.value)} className="min-h-11 rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] p-2 text-sm" />
             </label>
             <button
               type="button" disabled={busy || (item.status !== "scheduled" && !pageId)}
-              onClick={() => act((confirmNumbers) => scheduleAt({ id: item.id, local, pageId, confirmNumbers }))}
-              className="rounded-lg bg-[var(--ct-solid)] px-3 py-2 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50"
+              onClick={() => act(({ confirmNumbers, force }) => scheduleAt({ id: item.id, local, pageId, confirmNumbers, force }))}
+              className="inline-flex min-h-11 items-center rounded-lg bg-[var(--ct-solid)] px-3 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50"
             >
               {busy ? "กำลังส่ง…" : item.status === "scheduled" ? "ย้ายเวลา" : "ตั้งเวลา"}
             </button>
             {item.status === "scheduled" && (
               <button
                 type="button" disabled={busy}
-                onClick={async () => { if (await ask("เอาโพสต์นี้ออกจากคิว?", "เอาออก")) void act(() => cancelScheduled(item.id)); }}
+                onClick={async () => { if (await ask("ยกเลิกการตั้งเวลาโพสต์นี้?", "ยกเลิกการตั้งเวลา")) void act(() => cancelScheduled(item.id)); }}
                 className={`${btn} text-[var(--ct-alert)]`}
               >
-                เอาออกจากคิว
+                ยกเลิกการตั้งเวลา
               </button>
             )}
           </>
         )}
-        <Link href={`/content?open=${item.id}`} className={`${btn} ml-auto`}>เปิดแก้ไข</Link>
+        <Link href={`/content?open=${item.id}`} className={`${btn} ml-auto`}>แก้ไข</Link>
       </div>
       {item.status === "failed" && (
-        <p className="mt-2 text-xs text-[var(--ct-warn-ink)]">ครั้งก่อนส่งไม่สำเร็จ — เปิดเพจเช็กก่อนว่าโพสต์ขึ้นไปแล้วหรือยัง ก่อนตั้งเวลาใหม่</p>
+        <div className="mt-2 space-y-1 rounded-lg border border-[var(--ct-warn-line)] bg-[var(--ct-warn-bg)] p-2 text-xs text-[var(--ct-warn-ink)]">
+          {error && <p className="font-medium">ครั้งก่อน: <PlainText text={error} /></p>}
+          <p>เปิดเพจเช็กก่อนว่าโพสต์ขึ้นไปแล้วหรือยัง ก่อนตั้งเวลาใหม่</p>
+        </div>
       )}
     </li>
   );

@@ -1,15 +1,16 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { footer, fullText } from "@/lib/content/output";
 import type { PiecePerson } from "@/lib/content/people";
 import { defaultPoster, posterUrl, THEMES } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
-import { onPage } from "@/lib/content/publish-label";
+import { onPage, publishView } from "@/lib/content/publish-label";
 import { anglesFor, FORMAT_LABEL, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
-import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
+import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterFor, painterOf, writerOf } from "@/lib/content/models";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, removeContent, setContentStatus, type DrawBackgroundResult, type GenerateResult } from "./actions";
 import { drawPicture, generateRound } from "./draw";
@@ -19,14 +20,17 @@ import { ask } from "./ask";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
 import { ScriptCard } from "./ScriptCard";
+import { CheckIcon, ChevronDownIcon, SearchIcon, XIcon } from "./ui/icons";
+import { PlainText } from "./ui/editor-fields";
 
 /**
  * The content workbench, laid out as the owner's Maryjane project lays out its run page:
  * the tools on the left, the pieces in the middle, the pieces actually used on the right.
  *
  * On a phone the three stack — tools first, because on this page nothing exists until the
- * tools are used; then the pieces; then the used list. After a round is written the page
- * scrolls to the pieces, so the long form is not what the owner has to scroll back past.
+ * tools are used; then the pieces; then the used list. The สร้าง button and its price ride
+ * along the bottom of the tools (sticky), so the long form never hides them. After a round is
+ * written the form folds away and the page scrolls to the pieces.
  *
  * A piece is รอตรวจ or ใช้จริง. Maryjane's workbench has a bin as well; the owner did not want
  * one, so ลบ deletes, after one confirmation. Marking a piece ใช้จริง also teaches the formula
@@ -41,7 +45,7 @@ interface Props {
   initial: { items: ContentItem[]; counts: Record<ContentStatus, number> };
   initialUsed: ContentItem[];
   spend: { spent: number; cap: number };
-  /** a piece to open in the editor on arrival, from the calendar's เปิดแก้ไข */
+  /** a piece to open in the editor on arrival, from the calendar's แก้ไข */
   initialOpen?: ContentItem | null;
   /** the people library, for ใส่บุคคลในภาพ */
   people: PersonOption[];
@@ -68,11 +72,102 @@ const BRIEF_KEY = "content-picture-brief";
 const MAX_BRIEF = 300;
 
 const chip = (on: boolean) =>
-  `rounded-full border px-3 py-1.5 text-sm ${on
+  `inline-flex min-h-11 items-center justify-center rounded-full border px-3.5 py-1.5 text-sm ${on
     ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]"
     : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-ink)] hover:bg-[var(--ct-soft)]"}`;
 
-const field = "w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
+const field = "min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
+
+/** the question before leaving an editor with words not yet saved */
+const LEAVE = "ยังไม่ได้บันทึกที่แก้ไว้ ออกเลยไหม?";
+
+/**
+ * A word for the owner at the foot of the screen. Each comes from one place and replaces only
+ * that place's last word: a round's error is not overwritten by a picture that failed after
+ * it, nor cleared by a status change that went through.
+ */
+type Toast = { from: "round" | "round-note" | "draw" | "draw-note" | "status" | "delete" | "load" | "copy"; tone: "error" | "notice"; text: string };
+
+/** Drops a query parameter from the address bar without a trip to the server. */
+function dropParam(name: string) {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has(name)) return;
+    url.searchParams.delete(name);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  } catch { /* the address keeps it; nothing else depends on it */ }
+}
+
+/**
+ * The formula picker: a search over every formula, each shown whole. A select cut the long
+ * ones to their first words, and with fifty-odd of them the owner could not tell two apart.
+ * Radio buttons underneath, so the arrow keys move through them as in any list of choices.
+ */
+function HookPicker({ hooks, value, onChange }: { hooks: HookTemplate[]; value: string; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const id = useId();
+  const chosen = hooks.find((h) => h.id === value) ?? null;
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    // the same fields the formula library searches, and the category's name besides
+    return q
+      ? hooks.filter((h) => [h.template, h.exampleHook ?? "", HOOK_CATEGORY_LABEL[h.category]].some((t) => t.toLowerCase().includes(q)))
+      : hooks;
+  }, [hooks, query]);
+  const option = (key: string, label: React.ReactNode) => (
+    <label key={key || "none"} className={`flex min-h-11 cursor-pointer items-start gap-2.5 px-3 py-2 text-sm leading-snug hover:bg-[var(--ct-ground)] ${value === key ? "bg-[var(--ct-soft)]" : ""}`}>
+      <input
+        type="radio" name={`${id}-hook`} value={key} checked={value === key} onChange={() => onChange(key)}
+        className="mt-0.5 size-4 shrink-0 accent-[var(--ct-solid)]"
+      />
+      <span className="min-w-0 flex-1">{label}</span>
+    </label>
+  );
+  return (
+    <div>
+      <span id={`${id}-title`} className="mb-1 block text-sm font-medium">สูตรประโยคเปิด <span className="font-normal text-[var(--ct-mute)]">(ไม่ใช้ก็ได้)</span></span>
+      <button
+        type="button" aria-expanded={open} aria-controls={`${id}-panel`} aria-describedby={`${id}-title`} onClick={() => setOpen((o) => !o)}
+        className="flex min-h-11 w-full items-start justify-between gap-2 rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-left text-sm leading-snug hover:bg-[var(--ct-ground)]"
+      >
+        <span className="min-w-0 flex-1">{chosen ? `“${chosen.template}”` : "ไม่ใช้สูตร — ให้ AI คิดเอง"}</span>
+        <span className="flex shrink-0 items-center gap-1 text-[var(--ct-accent)]">
+          {open ? "ปิด" : "เลือก"}
+          <ChevronDownIcon className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        </span>
+      </button>
+      {chosen && (
+        <span className="mt-1 block text-xs text-[var(--ct-mute)]">หมวด {HOOK_CATEGORY_LABEL[chosen.category]} · ใช้ไปแล้ว {chosen.useCount} ครั้ง</span>
+      )}
+      {open && (
+        <div id={`${id}-panel`} className="mt-2 overflow-hidden rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)]">
+          <div className="border-b border-[var(--ct-hair)] p-2">
+            <label htmlFor={`${id}-q`} className="sr-only">ค้นหาสูตรประโยคเปิด</label>
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ct-mute)]" />
+              <input
+                id={`${id}-q`} type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+                placeholder="พิมพ์ค้นหา เช่น ลูก, ภาษี" autoComplete="off" className={`${field} pl-9`}
+              />
+            </div>
+            <p aria-live="polite" className="mt-1 text-xs text-[var(--ct-mute)]">{query.trim() ? `พบ ${shown.length} สูตร` : `ทั้งหมด ${hooks.length} สูตร`}</p>
+          </div>
+          <div role="radiogroup" aria-labelledby={`${id}-title`} className="max-h-72 divide-y divide-[var(--ct-hair)] overflow-y-auto overscroll-contain">
+            {option("", "ไม่ใช้สูตร — ให้ AI คิดเอง")}
+            {shown.map((h) => option(h.id, (
+              <>
+                “{h.template}”
+                <span className="mt-0.5 block text-xs text-[var(--ct-mute)]">{HOOK_CATEGORY_LABEL[h.category]} · ใช้ไปแล้ว {h.useCount} ครั้ง</span>
+              </>
+            )))}
+            {shown.length === 0 && <p className="px-3 py-3 text-sm text-[var(--ct-mute)]">ไม่พบสูตรที่มีคำนี้</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ContentStudio({ products, lengths, hooks, initialHook, initial, initialUsed, spend: initialSpend, initialOpen, people }: Props) {
   const [href, setHref] = useState(products[0]?.href ?? "");
@@ -145,8 +240,18 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   const [adAngles, setAdAngles] = useState(2);
   const [adTones, setAdTones] = useState(2);
   const [hookId, setHookId] = useState(initialHook ?? "");
-  const [error, setError] = useState<string>();
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  /** one word per source, the newest three on screen */
+  const say = (from: Toast["from"], text: string, tone: Toast["tone"] = "error") =>
+    setToasts((list) => [...list.filter((t) => t.from !== from), { from, tone, text }].slice(-3));
+  const hush = (from: Toast["from"]) => setToasts((list) => (list.some((t) => t.from === from) ? list.filter((t) => t.from !== from) : list));
   const [spend, setSpend] = useState(initialSpend);
+  const router = useRouter();
+  /** the create form on a phone: folded away after a round, so the pieces are what is on screen */
+  const [formOpen, setFormOpen] = useState(true);
+  const formId = useId();
+  /** the ใช้จริง rail below xl shows five until asked for the rest */
+  const [allUsed, setAllUsed] = useState(false);
 
   const [tab, setTab] = useState<ContentStatus>("draft");
   const [plan, setPlan] = useState("");
@@ -159,11 +264,14 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   /** pieces with a status change or a delete under way — one each, several at once */
   const [busy, setBusy] = useState<Set<string>>(() => new Set());
   const mark = (id: string, on: boolean) => setBusy((b) => { const n = new Set(b); if (on) n.add(id); else n.delete(id); return n; });
-  /** a word for the owner that is not an error: a round that landed while an editor was open */
-  const [notice, setNotice] = useState<string>();
   /** the ใช้จริง rail is every plan's, so its number is too — counts.used follows the filter */
   const [usedTotal, setUsedTotal] = useState(initial.counts.used);
   const [copied, setCopied] = useState<string | null>(null);
+  // the "copied" line's timer, stopped if the page is left before it runs
+  const copiedTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(copiedTimer.current), []);
+  /** the open editor holds words not yet saved (PieceEditor says so) */
+  const [editorDirty, setEditorDirty] = useState(false);
   const [drawing, setDrawing] = useState<Set<string>>(() => new Set());
   /**
    * How many pieces the round in progress asked for — fixed at the press, not the live
@@ -183,6 +291,33 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   const pieces = useRef<HTMLElement>(null);
 
   /**
+   * The tools column on a desk scrolls inside itself with the สร้าง button pinned at its foot,
+   * so the column must end where the window does — from wherever its top is right now. A fixed
+   * calc(100dvh − 2rem) held only once the column had stuck: on arrival, under the heading,
+   * its foot and the button were below the fold.
+   */
+  const tools = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = tools.current;
+    if (!el) return;
+    let frame = 0;
+    const fit = () => {
+      frame = 0;
+      const top = Math.max(16, el.getBoundingClientRect().top);
+      el.style.setProperty("--tools-room", `${Math.max(320, Math.round(window.innerHeight - top - 16))}px`);
+    };
+    const soon = () => { if (!frame) frame = requestAnimationFrame(fit); };
+    fit();
+    window.addEventListener("scroll", soon, { passive: true });
+    window.addEventListener("resize", soon);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", soon);
+      window.removeEventListener("resize", soon);
+    };
+  }, []);
+
+  /**
    * The editor has the middle column to itself: it opened inline among the cards, and the
    * owner saw pieces they were not editing above and below it. Opening scrolls to the top of
    * the column; leaving scrolls back to the card that was open, so the list is where it was.
@@ -193,25 +328,51 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     setEditing(id);
   }
   useEffect(() => {
+    setEditorDirty(false);
     if (editing) { pieces.current?.scrollIntoView({ block: "start" }); return; }
+    // the calendar's แก้ไข arrived as ?open=; once that editor is closed, a reload should not open it again
+    dropParam("open");
     if (returnTo.current) document.getElementById(`piece-${returnTo.current}`)?.scrollIntoView({ block: "center" });
     returnTo.current = null;
   }, [editing]);
 
+  /**
+   * Words typed in the editor and not saved are asked about before any link takes the page
+   * away — the tabs above, the menu, a link in the editor itself. Caught on the way down
+   * (capture), ahead of the link's own handler. Closing or reloading the tab is PieceEditor's
+   * own beforeunload, so the browser asks once.
+   */
+  useEffect(() => {
+    if (!editorDirty) return;
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const link = e.target instanceof Element ? e.target.closest("a[href]") : null;
+      if (!(link instanceof HTMLAnchorElement) || (link.target && link.target !== "_self") || link.hasAttribute("download")) return;
+      const url = new URL(link.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void ask(LEAVE, "ออกเลย").then((ok) => { if (ok) router.push(`${url.pathname}${url.search}${url.hash}`); });
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [editorDirty, router]);
+
   const nameOf = (h: string) => products.find((p) => p.href === h)?.name ?? h;
   // gone from the list — deleted, moved to the other tab, filtered out — and the list is back
   const editingItem = editing ? (items.find((x) => x.id === editing) ?? (opened?.id === editing ? opened : undefined)) : undefined;
-  const chosenHook = hooks.find((h) => h.id === hookId) ?? null;
 
   async function reload(nextTab = tab, nextPlan = plan) {
     const wb = await contentWorkbench({ status: nextTab, planHref: nextPlan || undefined });
     setItems(wb.items);
     setCounts(wb.counts);
+    hush("load");
   }
 
   async function generate() {
     if (pending) return;
-    setError(undefined);
+    hush("round");
     const asked = pieceCount;
     // อัตโนมัติ is settled at the press, on the money left then
     const paintWith = painterOf(painter, Math.max(0, spend.cap - spend.spent)).id;
@@ -219,7 +380,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     const pictureOf = person;
     setMaking(asked);
     setMakingFormat(format);
-    setNotice(undefined);
+    hush("round-note");
     try {
       let res: GenerateResult;
       try {
@@ -234,7 +395,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
          * to another app during the wait. The server carries on and saves the pieces
          * regardless, so they are very likely already under รอตรวจ rather than lost.
          */
-        setError("การเชื่อมต่อหลุดระหว่างรอ ชิ้นงานอาจสร้างเสร็จแล้ว ดูในแท็บ “รอตรวจ” ก่อนกดสร้างใหม่นะครับ");
+        say("round", "การเชื่อมต่อหลุดระหว่างรอ ชิ้นงานอาจสร้างเสร็จแล้ว ดูในแท็บ “รอตรวจ” ก่อนกดสร้างใหม่นะครับ");
         if (!view.current.editing) {
           setTab("draft");
           setPlan("");
@@ -242,8 +403,16 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
         }
         return;
       }
-      if (!res.ok) { setError(res.error); return; }
-      if (res.missing > 0) setError(`ได้ ${res.items.length} จาก ${asked} ชิ้น — อีก ${res.missing} ชิ้นเขียนไม่สำเร็จ กดสร้างเพิ่มได้`);
+      // a round that stopped part way still saved what it wrote: those join รอตรวจ with the reason shown
+      let fresh: ContentItem[];
+      if (res.ok) {
+        fresh = res.items;
+        if (res.missing > 0) say("round", `ได้ ${res.items.length} จาก ${asked} ชิ้น — อีก ${res.missing} ชิ้นเขียนไม่สำเร็จ กดสร้างเพิ่มได้`);
+      } else {
+        say("round", res.error);
+        if (!res.saved || !res.items?.length) return;
+        fresh = res.items;
+      }
       const now = view.current;
       if (now.editing) {
         /**
@@ -251,28 +420,35 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
          * words away; the new pieces join the list instead, or wait under รอตรวจ.
          */
         if (now.tab === "draft" && !now.plan) {
-          const fresh = new Set(res.items.map((i) => i.id));
-          setItems((list) => [...res.items, ...list.filter((x) => !fresh.has(x.id))]);
+          const ids = new Set(fresh.map((i) => i.id));
+          setItems((list) => [...fresh, ...list.filter((x) => !ids.has(x.id))]);
           // the list is out of sight behind the editor
-          setNotice(`สร้างเสร็จ ${res.items.length} ชิ้น รออยู่ในรายการ กด “กลับไปรายการ” เพื่อดู`);
+          say("round-note", `สร้างเสร็จ ${fresh.length} ชิ้น รออยู่ในรายการ กด “กลับไปรายการ” เพื่อดู`, "notice");
         } else {
-          setNotice(`สร้างเสร็จ ${res.items.length} ชิ้น อยู่ในแท็บ “รอตรวจ”`);
+          say("round-note", `สร้างเสร็จ ${fresh.length} ชิ้น อยู่ในแท็บ “รอตรวจ”`, "notice");
         }
-        setCounts((c) => ({ ...c, draft: c.draft + res.items.length }));
+        setCounts((c) => ({ ...c, draft: c.draft + fresh.length }));
         setMaking(0);
       } else {
         setTab("draft");
         setPlan("");
         await reload("draft", "").catch(() => {});
         setMaking(0);
+        // a phone: the form folds away so the new pieces are what the screen shows
+        if (window.matchMedia("(max-width: 1023.98px)").matches) setFormOpen(false);
         pieces.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
+      // ?hook= from the formula library did its job; a reload should not pick it again
+      dropParam("hook");
       // the painter as it was at the press, even if the owner changes it while waiting
-      // the brief too: what the box said at the press, not after
-      if (paintWith !== "none") void drawPictures(res.items.filter((i) => i.format !== "script"), paintWith, pictureBrief, pictureOf);
-      setSpend(await contentSpend().catch(() => spend));
+      // the brief too: what the box said at the press, not after. Only a round that finished:
+      // one stopped part way (the month's money ran out) leaves its pieces plain — the owner
+      // draws them from the editor if still wanted
+      if (res.ok && paintWith !== "none") void drawPictures(fresh.filter((i) => i.format !== "script"), paintWith, pictureBrief, pictureOf);
     } finally {
       setMaking(0);
+      // the budget line follows every round, a failed or dropped one included
+      void contentSpend().then(setSpend).catch(() => {});
     }
   }
 
@@ -286,7 +462,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     // null rather than left out: a round without a person draws none, whatever a piece held
     const results = await Promise.all(list.map((item) => drawOne(item.id, request, paintWith, false, who)));
     const failed = results.flatMap((r) => (r.ok ? [] : [r.error]));
-    if (failed.length > 0) setError(`วาดภาพไม่สำเร็จ ${failed.length} ชิ้น (${failed[0]}) — กด “แก้ไข” แล้ววาดใหม่ได้`);
+    if (failed.length > 0) say("draw", `วาดภาพไม่สำเร็จ ${failed.length} ชิ้น (${failed[0]}) — กด “แก้ไข” แล้ววาดใหม่ได้`);
     setSpend(await contentSpend().catch(() => spend));
   }
 
@@ -298,7 +474,8 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   async function drawOne(id: string, request: string, paintWith: string, refresh = true, who?: PiecePerson | null): Promise<DrawBackgroundResult> {
     setDrawing((d) => new Set(d).add(id));
     const res = await drawPicture(id, request, paintWith, who);
-    if (res.ok && res.note) setError(res.note);
+    // a note is information (a cheaper painter stood in, say), not a failure
+    if (res.ok && res.note) say("draw-note", res.note, "notice");
     setDrawing((d) => { const n = new Set(d); n.delete(id); return n; });
     if (res.ok) saved(res.item);
     if (refresh) setSpend(await contentSpend().catch(() => spend));
@@ -320,8 +497,8 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     mark(item.id, true);
     const res = await setContentStatus(item.id, status).catch(() => ({ ok: false })).finally(() => moving.current.delete(item.id));
     mark(item.id, false);
-    if (!res.ok) { setError("เปลี่ยนสถานะไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
-    setError(undefined);
+    if (!res.ok) { say("status", "เปลี่ยนสถานะไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
+    hush("status");
     if (view.current.editing === item.id) setEditing(null);
     // the copy on screen now, not the one the button was drawn with: an edit saved or a
     // picture landed since, and the rail showed the old words and the plain poster
@@ -337,12 +514,28 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   }
 
   async function remove(item: ContentItem) {
-    if (!(await ask("ลบชิ้นนี้ถาวร? ลบแล้วกู้คืนไม่ได้", "ลบ"))) return;
+    const scheduled = publishView(item.publish).kind === "scheduled";
+    const question = scheduled
+      ? "ลบชิ้นนี้ถาวร และเอาโพสต์ที่ตั้งเวลาไว้ออกจากเพจด้วย? กู้คืนไม่ได้"
+      : "ลบชิ้นนี้ถาวร? ลบแล้วกู้คืนไม่ได้";
+    if (!(await ask(question, "ลบ"))) return;
     mark(item.id, true);
-    const res = await removeContent(item.id).catch(() => ({ ok: false }));
+    type Removed = Awaited<ReturnType<typeof removeContent>>;
+    const dropped: Removed = { ok: false, error: "ลบไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
+    let res = await removeContent(item.id).catch(() => dropped);
+    // a send that never answered: Facebook may show it, so the owner looks before it is let go
+    if (!res.ok && res.confirmDelete) {
+      if (!(await ask("โพสต์นี้อาจขึ้นเพจไปแล้ว — เปิดเพจเช็กก่อน ถ้ายังไม่ขึ้นค่อยลบ", "ลบ"))) { mark(item.id, false); return; }
+      res = await removeContent(item.id, { force: true }).catch(() => dropped);
+    }
     mark(item.id, false);
-    if (!res.ok) { setError("ลบไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
-    setError(undefined);
+    if (!res.ok) {
+      say("delete", res.error || dropped.error!);
+      // someone else changed it meanwhile: the list is out of date
+      if (res.error?.startsWith("มีการแก้ชิ้นนี้พร้อมกันอยู่")) await reload().catch(() => {});
+      return;
+    }
+    hush("delete");
     if (view.current.editing === item.id) setEditing(null);
     setItems((list) => list.filter((x) => x.id !== item.id));
     setUsed((list) => list.filter((x) => x.id !== item.id));
@@ -381,17 +574,21 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     try {
       await navigator.clipboard.writeText(item.format === "ad" ? `${item.output.body}\n\n${footer(item.output)}` : fullText(item.output));
       setCopied(item.id);
-      setTimeout(() => setCopied(null), 2000);
+      hush("copy");
+      window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => setCopied(null), 2000);
     } catch {
-      setError("คัดลอกไม่ได้ กด “แก้ไข” แล้วเลือกข้อความคัดลอกเองนะครับ");
+      say("copy", "คัดลอกไม่ได้ กด “แก้ไข” แล้วเลือกข้อความคัดลอกเองนะครับ");
     }
   }
 
   async function openUsed(item: ContentItem) {
+    // the rail sits beside an open editor on a wide screen: opening another piece would drop its words
+    if (editorDirty && editing !== item.id && !(await ask(LEAVE, "ออกเลย"))) return;
     if (tab !== "used" || plan) {
       setTab("used");
       setPlan("");
-      await reload("used", "").catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"));
+      await reload("used", "").catch(() => say("load", "โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"));
     }
     openEditor(item.id);
   }
@@ -400,39 +597,44 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   // what one piece costs with the picks made, the picture included (scripts have none)
   const left = Math.max(0, spend.cap - spend.spent);
   const writes = writerOf(writer, left);
-  const paints = painterOf(painter, left);
+  // a person in the picture is drawn by Gemini whatever was picked, at Gemini's price
+  const paints = painterFor(painter, left, Boolean(person));
   const perPiece = writes.thb + OVERHEAD_THB + (format === "script" ? 0 : paints.thb);
   const estimate = (pieceCount * perPiece).toFixed(1);
   const more = Math.floor(left / perPiece);
 
+  const usedLink = (
+    <Link href="/content/calendar" className="inline-flex min-h-11 items-center text-xs font-medium text-[var(--ct-accent)] underline underline-offset-2">
+      ดูโพสต์ที่ลงเพจ/ตั้งเวลาไว้ในปฏิทิน →
+    </Link>
+  );
+
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">สร้างคอนเทนต์</h1>
-          <p className="mt-1 text-sm text-[var(--ct-mute)]">AI เขียนจากข้อมูลจริงของแบบประกัน ตัวเลขทุกตัวมาจากตารางเบี้ย อ่านทวนก่อนโพสต์ทุกครั้ง</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/content/calendar" className="rounded-full border border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-1.5 text-sm hover:bg-[var(--ct-soft)]">
-            ปฏิทินโพสต์ →
-          </Link>
-          <Link href="/content/hooks" className="rounded-full border border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-1.5 text-sm hover:bg-[var(--ct-soft)]">
-            คลังสูตรประโยคเปิด →
-          </Link>
-          <Link href="/content/people" className="rounded-full border border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-1.5 text-sm hover:bg-[var(--ct-soft)]">
-            คลังบุคคล →
-          </Link>
-        </div>
+      <div>
+        <h1 className="text-xl font-semibold">สร้างคอนเทนต์</h1>
+        <p className="mt-1 text-sm text-[var(--ct-mute)]">AI เขียนจากข้อมูลจริงของแบบประกัน ตัวเลขทุกตัวมาจากตารางเบี้ย อ่านทวนก่อนโพสต์ทุกครั้ง</p>
       </div>
 
       <div className="mt-5 grid items-start gap-4 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_240px]">
         {/* ---------------------------------- tools ---------------------------------- */}
-        <aside className="space-y-4 rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
-          <div className="border-b border-[var(--ct-hair)] pb-3">
-            <h2 className="font-semibold">เครื่องมือ</h2>
-            <p className="mt-0.5 text-xs text-[var(--ct-mute)]">เลือกแล้วกดสร้าง ชิ้นงานจะไปอยู่ที่ “รอตรวจ”</p>
+        {/* a desk: the form scrolls inside its own column; a phone: the page simply runs on */}
+        <aside ref={tools} className="rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] lg:sticky lg:top-4 lg:max-h-[var(--tools-room,calc(100dvh-2rem))] lg:overflow-y-auto">
+          <div className="flex items-start justify-between gap-2 border-b border-[var(--ct-hair)] px-4 pb-3 pt-4">
+            <div>
+              <h2 className="font-semibold">เครื่องมือ</h2>
+              <p className="mt-0.5 text-xs text-[var(--ct-mute)]">เลือกแล้วกดสร้าง ชิ้นงานจะไปอยู่ที่ “รอตรวจ”</p>
+            </div>
+            <button
+              type="button" aria-expanded={formOpen} aria-controls={formId} onClick={() => setFormOpen((o) => !o)}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-[var(--ct-line)] px-3 text-sm lg:hidden"
+            >
+              {formOpen ? "ซ่อนการตั้งค่า" : "ตั้งค่าการสร้าง"}
+              <ChevronDownIcon className={`size-4 transition-transform ${formOpen ? "rotate-180" : ""}`} />
+            </button>
           </div>
 
+          <div id={formId} className={`space-y-4 p-4 ${formOpen ? "" : "hidden lg:block"}`}>
           <label className="block">
             <span className="mb-1 block text-sm font-medium">แบบประกัน</span>
             <select value={href} onChange={(e) => setHref(e.target.value)} className={field}>
@@ -448,8 +650,8 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           </label>
 
           {format === "script" && (
-            <div>
-              <span className="mb-1.5 block text-sm font-medium">ความยาวคลิป</span>
+            <div role="group" aria-labelledby={`${formId}-length`}>
+              <span id={`${formId}-length`} className="mb-1.5 block text-sm font-medium">ความยาวคลิป</span>
               <div className="flex flex-wrap gap-2">
                 {lengths.map((l) => (
                   <button key={l.id} type="button" aria-pressed={length === l.id} onClick={() => setLength(l.id)} className={chip(length === l.id)}>{l.label}</button>
@@ -458,33 +660,41 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
             </div>
           )}
 
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
-            <select value={angle} onChange={(e) => setAngle(e.target.value as AngleId)} className={field}>
-              <option value="">ให้ AI เลือก</option>
-              {anglesFor(format, href).map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
-              <option value="custom">พิมพ์เอง…</option>
-            </select>
-            {angle === "custom" && (
-              <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={120} placeholder="เช่น ทำไมยิ่งอายุมากยิ่งซื้อยาก" className={`${field} mt-2`} />
-            )}
-          </label>
-
           <div>
-            <span className="mb-1.5 block text-sm font-medium">คนอ่านคือใคร <span className="font-normal text-[var(--ct-mute)]">(Niche · ระบบจำไว้ให้)</span></span>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
+              <select value={angle} onChange={(e) => setAngle(e.target.value as AngleId)} className={field}>
+                <option value="">ให้ AI เลือก</option>
+                {anglesFor(format, href).map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                <option value="custom">พิมพ์เอง…</option>
+              </select>
+            </label>
+            {angle === "custom" && (
+              <label className="mt-2 block">
+                <span className="sr-only">มุมที่อยากเล่า (พิมพ์เอง)</span>
+                <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={120} placeholder="เช่น ทำไมยิ่งอายุมากยิ่งซื้อยาก" className={field} />
+              </label>
+            )}
+          </div>
+
+          <div role="group" aria-labelledby={`${formId}-reader`}>
+            <span id={`${formId}-reader`} className="mb-1.5 block text-sm font-medium">คนอ่านคือใคร <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
             <div className="flex flex-wrap gap-2">
               <button type="button" aria-pressed={reader === ""} onClick={() => setReader("")} className={chip(reader === "")}>ทุกคน</button>
               {NICHES.map((n) => (
                 <button key={n} type="button" aria-pressed={reader === n} onClick={() => setReader(n)} className={chip(reader === n)}>{n}</button>
               ))}
             </div>
-            <input value={reader} onChange={(e) => setReader(e.target.value)} maxLength={MAX_READER} placeholder="หรือพิมพ์เอง เช่น พยาบาลกะดึก" className={`${field} mt-2`} />
+            <label className="mt-2 block">
+              <span className="sr-only">คนอ่าน (พิมพ์เอง)</span>
+              <input value={reader} onChange={(e) => setReader(e.target.value)} maxLength={MAX_READER} placeholder="หรือพิมพ์เอง เช่น พยาบาลกะดึก" className={field} />
+            </label>
           </div>
 
           {format !== "ad" && (
             <>
-            <div>
-              <span className="mb-1.5 block text-sm font-medium">อ่านจบแล้วอยากให้ทำอะไร</span>
+            <div role="group" aria-labelledby={`${formId}-goal`}>
+              <span id={`${formId}-goal`} className="mb-1.5 block text-sm font-medium">อ่านจบแล้วอยากให้ทำอะไร</span>
               <div className="flex flex-wrap gap-2">
                 <button type="button" aria-pressed={goal === ""} onClick={() => setGoal("")} className={chip(goal === "")}>ให้ AI เลือก</button>
                 {GOALS.map((g) => (
@@ -508,41 +718,32 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
               <p className="text-xs leading-relaxed text-[var(--ct-mute)]">
                 ได้โฆษณาหลายแบบในรอบเดียว: แต่ละ “มุมขาย” เขียนด้วยหลาย “น้ำเสียง” เอาไปยิงเทียบกันใน Ads Manager ว่าแบบไหนได้ผล
               </p>
-              <div>
-                <span className="mb-1.5 block text-sm font-medium">มุมขาย</span>
+              <div role="group" aria-labelledby={`${formId}-angles`}>
+                <span id={`${formId}-angles`} className="mb-1.5 block text-sm font-medium">มุมขาย</span>
                 <div className="flex gap-2">
                   {Array.from({ length: MAX_ANGLES }, (_, i) => i + 1).map((n) => (
-                    <button key={n} type="button" aria-pressed={adAngles === n} onClick={() => setAdAngles(n)} className={`${chip(adAngles === n)} min-w-10`}>{n}</button>
+                    <button key={n} type="button" aria-pressed={adAngles === n} onClick={() => setAdAngles(n)} className={`${chip(adAngles === n)} min-w-11`}>{n}</button>
                   ))}
                 </div>
               </div>
-              <div>
-                <span className="mb-1.5 block text-sm font-medium">น้ำเสียงต่อมุม</span>
+              <div role="group" aria-labelledby={`${formId}-tones`}>
+                <span id={`${formId}-tones`} className="mb-1.5 block text-sm font-medium">น้ำเสียงต่อมุม</span>
                 <div className="flex gap-2">
                   {Array.from({ length: MAX_TONES }, (_, i) => i + 1).map((n) => (
-                    <button key={n} type="button" aria-pressed={adTones === n} onClick={() => setAdTones(n)} className={`${chip(adTones === n)} min-w-10`}>{n}</button>
+                    <button key={n} type="button" aria-pressed={adTones === n} onClick={() => setAdTones(n)} className={`${chip(adTones === n)} min-w-11`}>{n}</button>
                   ))}
                 </div>
               </div>
             </div>
           ) : (
             <>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium">สูตรประโยคเปิด <span className="font-normal text-[var(--ct-mute)]">(ไม่ใช้ก็ได้)</span></span>
-              <select value={hookId} onChange={(e) => setHookId(e.target.value)} className={field}>
-                <option value="">ไม่ใช้สูตร — ให้ AI คิดเอง</option>
-                {hooks.map((h) => <option key={h.id} value={h.id}>{h.template}</option>)}
-              </select>
-              {chosenHook && (
-                <span className="mt-1 block text-xs text-[var(--ct-mute)]">หมวด {HOOK_CATEGORY_LABEL[chosenHook.category]} · ใช้ไปแล้ว {chosenHook.useCount} ครั้ง</span>
-              )}
-            </label>
+            <HookPicker hooks={hooks} value={hookId} onChange={setHookId} />
 
-            <div>
-              <span className="mb-1.5 block text-sm font-medium">จำนวนชิ้น <span className="font-normal text-[var(--ct-mute)]">(แต่ละชิ้นคนละมุม)</span></span>
+            <div role="group" aria-labelledby={`${formId}-count`}>
+              <span id={`${formId}-count`} className="mb-1.5 block text-sm font-medium">จำนวนชิ้น <span className="font-normal text-[var(--ct-mute)]">(แต่ละชิ้นคนละมุม)</span></span>
               <div className="flex flex-wrap gap-2">
                 {Array.from({ length: MAX_PIECES }, (_, i) => i + 1).map((n) => (
-                  <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={`${chip(count === n)} min-w-10`}>{n}</button>
+                  <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={`${chip(count === n)} min-w-11`}>{n}</button>
                 ))}
               </div>
             </div>
@@ -607,9 +808,12 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
               <span className="mt-1 block text-xs text-[var(--ct-mute)]">ใช้กับภาพทุกชิ้นในรอบนี้ ภาพจะยังไม่มีตัวหนังสือและเว้นที่ให้ข้อความเสมอ · {brief.length}/{MAX_BRIEF}</span>
             </label>
           )}
+          </div>
 
-          <div>
-            <button type="button" onClick={generate} disabled={pending || !href} className="w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
+          {/* the press and its price stay in reach however long the form runs: pinned to the
+              foot of the column on a desk, to the foot of the screen on a phone */}
+          <div className="sticky bottom-0 z-10 rounded-b-xl border-t border-[var(--ct-hair)] bg-[var(--ct-panel)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+            <button type="button" onClick={generate} disabled={pending || !href} className="min-h-11 w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
               {pending
                 ? `กำลังเขียน ${making} ${makingFormat === "ad" ? "แบบ" : "ชิ้น"}… (ราว 20–40 วินาที)`
                 : format === "ad" ? `สร้างโฆษณา ${pieceCount} แบบ` : `สร้าง ${count} ชิ้น`}
@@ -640,6 +844,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
                 people={people}
                 onStatus={(s) => changeStatus(editingItem, s)}
                 onPublished={published}
+                onDirtyChange={setEditorDirty}
                 onClose={() => {
                   setEditing(null);
                   // a piece posted from here is ใช้จริง and on the calendar now: it leaves on the way out
@@ -654,22 +859,28 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
               {TABS.map((t) => (
                 <button
                   key={t.id} type="button" role="tab" aria-selected={tab === t.id}
-                  onClick={() => { setTab(t.id); setEditing(null); reload(t.id, plan).catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ")); }}
-                  className={`rounded-full px-3 py-1.5 text-sm ${tab === t.id ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]"}`}
+                  onClick={() => { setTab(t.id); setEditing(null); reload(t.id, plan).catch(() => say("load", "โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ")); }}
+                  className={`inline-flex min-h-11 items-center gap-1 rounded-full px-4 text-sm ${tab === t.id ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]"}`}
                 >
                   {t.label} <span className="tabular-nums">{counts[t.id]}</span>
                 </button>
               ))}
             </div>
-            <select
-              value={plan} aria-label="กรองตามแบบประกัน"
-              onChange={(e) => { setPlan(e.target.value); setEditing(null); reload(tab, e.target.value).catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ")); }}
-              className="rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-2 py-1.5 text-sm"
-            >
-              <option value="">ทุกแบบ</option>
-              {products.map((p) => <option key={p.href} value={p.href}>{p.name}</option>)}
-            </select>
+            <label>
+              <span className="sr-only">กรองตามแบบประกัน</span>
+              <select
+                value={plan}
+                onChange={(e) => { setPlan(e.target.value); setEditing(null); reload(tab, e.target.value).catch(() => say("load", "โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ")); }}
+                className="min-h-11 rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-2 py-1.5 text-sm"
+              >
+                <option value="">ทุกแบบ</option>
+                {products.map((p) => <option key={p.href} value={p.href}>{p.name}</option>)}
+              </select>
+            </label>
           </div>
+          {tab === "used" && (
+            <p className="text-xs text-[var(--ct-mute)]">ชิ้นที่ใช้แล้วแต่ยังไม่ได้ลงเพจจากระบบ — ชิ้นที่ลงเพจหรือตั้งเวลาแล้วอยู่ในปฏิทินโพสต์</p>
+          )}
 
           {pending && (
             <div role="status" className="space-y-3">
@@ -687,9 +898,16 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           )}
 
           {items.length === 0 && !pending ? (
-            <p className="rounded-xl border border-dashed border-[var(--ct-line)] px-4 py-10 text-center text-sm text-[var(--ct-mute)]">
-              {tab === "draft" ? "ยังไม่มีชิ้นงานรอตรวจ — เลือกแบบประกันแล้วกดสร้างได้เลย" : "ยังไม่มีชิ้นงานที่ใช้จริง"}
-            </p>
+            <div className="rounded-xl border border-dashed border-[var(--ct-line)] px-4 py-10 text-center text-sm text-[var(--ct-mute)]">
+              {tab === "draft" ? (
+                <p>ยังไม่มีชิ้นงานรอตรวจ — เลือกแบบประกันแล้วกดสร้างได้เลย</p>
+              ) : (
+                <>
+                  <p>ยังไม่มีชิ้นที่ใช้แล้วแต่ยังไม่ได้ลงเพจ</p>
+                  <p className="mt-1">{usedLink}</p>
+                </>
+              )}
+            </div>
           ) : (
             <div className="grid gap-4 @xl:grid-cols-2">
               {items.map((item, i) => (
@@ -724,26 +942,35 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           )}
           </>
           )}
-          {copied && <p role="status" className="text-sm text-[var(--ct-mute)]">คัดลอกแล้ว ✓</p>}
+          {copied && (
+            <p role="status" className="flex items-center gap-1.5 text-sm text-[var(--ct-mute)]">
+              <CheckIcon className="size-4 text-[var(--ct-accent)]" />คัดลอกแล้ว
+            </p>
+          )}
         </section>
 
         {/* ------------------------------- used rail ------------------------------- */}
         <aside className="rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] lg:col-start-1 lg:row-start-2 xl:sticky xl:top-4 xl:col-start-3 xl:row-start-1">
-          <div className="flex items-end justify-between gap-2 border-b border-[var(--ct-hair)] p-4 pb-3">
-            <div>
-              <h2 className="font-semibold">ใช้จริง</h2>
-              <p className="mt-0.5 text-xs text-[var(--ct-mute)]">ชิ้นที่เลือกไปโพสต์แล้ว</p>
+          <div className="border-b border-[var(--ct-hair)] p-4 pb-2">
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <h2 className="font-semibold">ใช้จริง</h2>
+                <p className="mt-0.5 text-xs text-[var(--ct-mute)]">ชิ้นที่ใช้แล้วแต่ยังไม่ได้ลงเพจจากระบบ</p>
+              </div>
+              <span className="text-2xl tabular-nums text-[var(--ct-accent)]">{usedTotal}</span>
             </div>
-            <span className="text-2xl tabular-nums text-[var(--ct-accent)]">{usedTotal}</span>
+            {usedLink}
           </div>
           {used.length === 0 ? (
             <p className="m-4 rounded-lg border border-dashed border-[var(--ct-line)] px-3 py-6 text-center text-xs text-[var(--ct-mute)]">
-              กด “✓ ใช้จริง” ที่ชิ้นงาน แล้วจะย้ายมาอยู่ตรงนี้ — ระบบจะจำประโยคเปิดไว้เป็นสูตรใหม่ และไม่เขียนซ้ำ
+              กด “ใช้จริง” ที่ชิ้นงาน แล้วจะย้ายมาอยู่ตรงนี้ — ระบบจะจำประโยคเปิดไว้เป็นสูตรใหม่ และไม่เขียนซ้ำ
             </p>
           ) : (
-            <ul className="max-h-[60vh] divide-y divide-[var(--ct-hair)] overflow-y-auto">
-              {used.slice(0, 20).map((u) => (
-                <li key={u.id}>
+            <>
+            {/* one scroll for the page below xl; the rail scrolls on its own only where it sits sticky beside the pieces */}
+            <ul className="divide-y divide-[var(--ct-hair)] xl:max-h-[60dvh] xl:overflow-y-auto">
+              {used.slice(0, 20).map((u, i) => (
+                <li key={u.id} className={i >= 5 && !allUsed ? "hidden xl:block" : undefined}>
                   <button type="button" onClick={() => openUsed(u)} className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-[var(--ct-ground)]">
                     {/* eslint-disable-next-line @next/next/no-img-element -- the card's own poster, from the browser cache */}
                     <img
@@ -760,19 +987,37 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
                 </li>
               ))}
             </ul>
+            {Math.min(used.length, 20) > 5 && (
+              <button
+                type="button" aria-expanded={allUsed} onClick={() => setAllUsed((a) => !a)}
+                className="flex min-h-11 w-full items-center justify-center gap-1 border-t border-[var(--ct-hair)] text-sm text-[var(--ct-accent)] xl:hidden"
+              >
+                {allUsed ? "ย่อรายการ" : `ดูทั้งหมด (${Math.min(used.length, 20)})`}
+                <ChevronDownIcon className={`size-4 transition-transform ${allUsed ? "rotate-180" : ""}`} />
+              </button>
+            )}
+            </>
           )}
         </aside>
       </div>
 
-      {(error || notice) && (
-        <div
-          role={error ? "alert" : "status"}
-          className={`fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-start gap-3 rounded-lg border px-3 py-2 text-sm shadow-lg ${error
-            ? "border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] text-[var(--ct-alert)]"
-            : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-ink)]"}`}
-        >
-          <p className="flex-1">{error ?? notice}</p>
-          <button type="button" onClick={() => { setError(undefined); setNotice(undefined); }} aria-label="ปิดข้อความ" className="-mr-1 px-1 text-base leading-none">✕</button>
+      {toasts.length > 0 && (
+        // above the phone's pinned สร้าง bar; a desk has it in the column, so the foot is free
+        <div className="pointer-events-none fixed inset-x-4 bottom-28 z-40 mx-auto flex max-w-md flex-col gap-2 lg:bottom-4">
+          {toasts.map((t) => (
+            <div
+              key={t.from}
+              role={t.tone === "error" ? "alert" : "status"}
+              className={`pointer-events-auto flex items-start gap-1 rounded-lg border py-1 pl-3 pr-1 text-sm shadow-lg ${t.tone === "error"
+                ? "border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] text-[var(--ct-alert)]"
+                : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-ink)]"}`}
+            >
+              <p className="flex-1 py-2.5"><PlainText text={t.text} /></p>
+              <button type="button" onClick={() => hush(t.from)} aria-label="ปิด" className="flex size-11 shrink-0 items-center justify-center rounded-md">
+                <XIcon className="size-4" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

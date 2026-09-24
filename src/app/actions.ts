@@ -1,7 +1,7 @@
 "use server";
 import { headers } from "next/headers";
 import { answerFromKnowledge, type CopilotAnswer } from "@/lib/copilot/answer";
-import { allow } from "@/lib/assistant/rate-limit";
+import { clientIp, allow } from "@/lib/assistant/rate-limit";
 import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import type { AnySlots } from "@/lib/assistant/slots";
@@ -22,11 +22,9 @@ const BUSY = "ตอนนี้มีคำถามเข้ามาเยอ
 const OUT_OF_BUDGET = "ตอนนี้ผู้ช่วยปิดชั่วคราวครับ รบกวนติดต่อตัวแทนโดยตรงนะครับ";
 const BROKEN = "ขออภัยครับ ระบบขัดข้องชั่วคราว ลองถามใหม่อีกครั้งนะครับ";
 
-/** Whoever is asking, as well as this can be known behind a proxy. */
+/** Whoever is asking, as well as this can be known behind a proxy: the platform's x-real-ip first (see clientIp). */
 async function caller(): Promise<string> {
-  const h = await headers();
-  const forwarded = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || h.get("x-real-ip") || "unknown";
+  return clientIp(await headers());
 }
 
 export async function askCopilot(

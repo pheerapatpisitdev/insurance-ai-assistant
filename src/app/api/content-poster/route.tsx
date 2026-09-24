@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { limiter } from "@/lib/assistant/rate-limit";
+import { clientIp, limiter } from "@/lib/assistant/rate-limit";
 import { decodePoster, isSizeId, type SizeId } from "@/lib/content/poster";
 import { drawPoster } from "@/lib/content/poster-draw";
 
@@ -22,7 +22,7 @@ export const runtime = "nodejs";
 const allow = limiter(400, 60 * 60_000);
 
 export async function GET(req: NextRequest) {
-  const who = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const who = clientIp(req.headers);
   if (!allow(`poster:${who}`)) return new Response("ขอรูปถี่เกินไป รอสักครู่นะครับ", { status: 429 });
 
   const q = req.nextUrl.searchParams;

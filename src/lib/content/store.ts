@@ -1,8 +1,8 @@
-import { monthSpend, monthStart, type SpendLine } from "@/lib/ai/ledger";
+import { admits, monthSpend, monthStart, release, reserve, sweepHolds, type SpendLine } from "@/lib/ai/ledger";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ContentWord, WordHit, WordKind } from "./check";
 import { isHookCategory, type HookCategory, type HookTemplate } from "./hooks";
-import { ON_PAGE_STATES } from "./publish-label";
+import { ON_PAGE_STATES, POSTING_STALE_MS } from "./publish-label";
 import type { PolicyFinding } from "./policy";
 import type { Fix } from "./proofread";
 import type { AngleId, Format, Length } from "./prompt";
@@ -76,8 +76,17 @@ export const isContentStatus = (v: unknown): v is ContentStatus =>
  */
 export const DEFAULT_CONTENT_CAP_THB = 30;
 
+/**
+ * The ceiling, or the default when the owner never set one. A read that failed is not an
+ * unset ceiling: it throws, so the caller refuses to spend rather than spending against ฿30
+ * it made up.
+ */
 export async function contentCap(): Promise<number> {
-  const { data } = await supabaseAdmin().from("ins_ai_settings").select("content_budget_thb").maybeSingle();
+  const { data, error } = await supabaseAdmin().from("ins_ai_settings").select("content_budget_thb").maybeSingle();
+  if (error) {
+    console.error("content cap unreadable:", error.message);
+    throw new Error(`อ่านงบคอนเทนต์ไม่ได้: ${error.message}`);
+  }
   const set = data?.content_budget_thb;
   return set === null || set === undefined ? DEFAULT_CONTENT_CAP_THB : Number(set);
 }
@@ -87,9 +96,39 @@ export function contentBaht(lines: SpendLine[]): number {
   return lines.filter((l) => l.task?.startsWith("content")).reduce((s, l) => s + l.baht, 0);
 }
 
+/**
+ * What content has spent this month, with the money running rounds have set aside — the one
+ * reader that counts holds. Dead requests' holds are swept first so they do not count.
+ */
 export async function contentSpentThisMonth(): Promise<number> {
-  return contentBaht((await monthSpend(monthStart())).lines);
+  await sweepHolds();
+  return contentBaht((await monthSpend(monthStart(), { holds: true })).lines);
 }
+
+/** the ledger task a content reservation is written under; content-*, so the ceiling counts it */
+export const CONTENT_RESERVE_TASK = "content-reserve";
+
+/**
+ * Sets `thb` aside against the content ceiling before a call spends it, and reads the
+ * ledger again with it in. Goes ahead (with the reservation's id, to release when the work
+ * is over — the real costs are in the ledger by then) only when everything spent and held,
+ * this included, fits under `cap`; otherwise gives it back and says how much was left.
+ */
+export async function holdContentBudget(thb: number, cap: number): Promise<{ ok: true; id: string } | { ok: false; left: number }> {
+  const id = await reserve(CONTENT_RESERVE_TASK, thb);
+  let total: number;
+  try {
+    total = await contentSpentThisMonth();
+  } catch (e) {
+    await release(id);
+    throw e;
+  }
+  if (admits(total, cap)) return { ok: true, id };
+  await release(id);
+  return { ok: false, left: Math.max(0, cap - (total - thb)) };
+}
+
+export { release as releaseContentBudget };
 
 // one literal: supabase-js reads the column list's type from the string, and a joined one is opaque to it
 const COLUMNS = "id, created_at, plan_href, format, angle, length, output, flags, model, cost_thb, status, hook_template_id, fb_page_id, fb_post_id, publish_state, publish_at, publish_error";
@@ -145,14 +184,21 @@ export async function getContent(id: string): Promise<ContentItem | null> {
   return data ? toItem(data as Record<string, unknown>) : null;
 }
 
-/** the studio's lists: a piece on the Page is the calendar's to show (see onPage) */
-const OFF_PAGE = `publish_state.is.null,publish_state.not.in.(${ON_PAGE_STATES.join(",")})`;
+/**
+ * A claim older than this is a request that died: its row may be claimed again, and the
+ * lists show it as failed. Quoted for PostgREST, since a timestamp holds its reserved "." and ":".
+ */
+const staleClaim = (now = new Date()) =>
+  `and(publish_state.eq.posting,or(publish_at.is.null,publish_at.lt."${new Date(now.getTime() - POSTING_STALE_MS).toISOString()}"))`;
+
+/** the studio's lists: a piece on the Page is the calendar's to show (see onPage); a stuck send is not */
+const offPage = () => `publish_state.is.null,publish_state.not.in.(${ON_PAGE_STATES.join(",")}),${staleClaim()}`;
 
 export async function listContent(filter: { status?: ContentStatus; planHref?: string } = {}, limit = 40): Promise<ContentItem[]> {
   let q = supabaseAdmin().from("ins_content").select(COLUMNS).order("created_at", { ascending: false }).limit(limit);
   if (filter.status) q = q.eq("status", filter.status);
   if (filter.planHref) q = q.eq("plan_href", filter.planHref);
-  const { data, error } = await q.or(OFF_PAGE);
+  const { data, error } = await q.or(offPage());
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, unknown>[]).map(toItem);
 }
@@ -162,7 +208,7 @@ export async function countByStatus(planHref?: string): Promise<Record<ContentSt
   const counts = await Promise.all(CONTENT_STATUSES.map(async (status) => {
     let q = supabaseAdmin().from("ins_content").select("id", { count: "exact", head: true }).eq("status", status);
     if (planHref) q = q.eq("plan_href", planHref);
-    const { count, error } = await q.or(OFF_PAGE);
+    const { count, error } = await q.or(offPage());
     if (error) throw new Error(error.message);
     return [status, count ?? 0] as const;
   }));
@@ -174,12 +220,36 @@ export async function setStatus(id: string, status: ContentStatus): Promise<void
   if (error) throw new Error(error.message);
 }
 
-/** The owner's edits, with the checks run again over what they now say. */
-export async function saveOutput(id: string, output: ContentOutput, flags: Flags): Promise<ContentItem> {
+/** a new mark for the output's every write; see ContentOutput.rev */
+const nextRev = () => crypto.randomUUID();
+
+/**
+ * The owner's edits, with the checks run again over what they now say. Without `flags` only
+ * the output is written — for a change the checks do not read (a photograph), so flags
+ * written meanwhile by another request are not put back to an older copy.
+ */
+export async function saveOutput(id: string, output: ContentOutput, flags?: Flags): Promise<ContentItem> {
+  const next = { ...output, rev: nextRev() };
   const { data, error } = await supabaseAdmin().from("ins_content")
-    .update({ output, flags }).eq("id", id).select(COLUMNS).single();
+    .update(flags ? { output: next, flags } : { output: next }).eq("id", id).select(COLUMNS).single();
   if (error) throw new Error(error.message);
   return toItem(data as Record<string, unknown>);
+}
+
+/**
+ * saveOutput, only if the output is still the one read — its `rev` unchanged (null: a piece
+ * written before revisions, never written since). Null when another write came first: an
+ * edit saved while a picture was drawing, a picture that landed while an edit was saved. The
+ * caller reads the piece again and builds on that, rather than writing its older copy back.
+ */
+export async function saveOutputIf(id: string, output: ContentOutput, flags: Flags | undefined, rev: string | null): Promise<ContentItem | null> {
+  const next = { ...output, rev: nextRev() };
+  let q = supabaseAdmin().from("ins_content").update(flags ? { output: next, flags } : { output: next }).eq("id", id);
+  q = rev === null ? q.is("output->>rev", null) : q.eq("output->>rev", rev);
+  const { data, error } = await q.select(COLUMNS);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Record<string, unknown>[];
+  return rows.length === 1 ? toItem(rows[0]) : null;
 }
 
 /** The hooks of pieces the owner used, newest first — what the planner is told not to repeat. */
@@ -285,6 +355,21 @@ export async function saveBackground(pieceId: string, bytes: Buffer, mimeType: s
   return path;
 }
 
+/**
+ * A picture nobody shows any more, removed — only one filed under the piece it came from.
+ * Best effort: a leftover file costs a little storage; a save that failed over it costs the
+ * owner their edit.
+ */
+export async function removeBackground(pieceId: string, path: string | undefined | null): Promise<void> {
+  if (!path || !path.startsWith(`${pieceId}/`) || path.includes("..")) return;
+  try {
+    const { error } = await supabaseAdmin().storage.from(MEDIA).remove([path]);
+    if (error) console.error("old picture not removed:", error.message);
+  } catch (e) {
+    console.error("old picture not removed:", e);
+  }
+}
+
 /** A background as a data URI for the drawing library, or null when it has gone. */
 export async function backgroundDataUri(path: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin().storage.from(MEDIA).download(path);
@@ -298,12 +383,16 @@ export async function backgroundDataUri(path: string): Promise<string | null> {
  * Takes a piece for one request to post, or says someone has it. A single conditional update,
  * so two taps a moment apart cannot both reach Facebook and post it twice: the second finds
  * the row already claimed, scheduled or posted.
+ *
+ * The claim's time goes in publish_at (nothing reads publish_at of a posting row otherwise),
+ * so a claim whose request died — between claiming and recording what Facebook said — can be
+ * told from one still running, and taken again after POSTING_STALE_MS instead of never.
  */
-export async function claimPublish(id: string): Promise<boolean> {
+export async function claimPublish(id: string, now = new Date()): Promise<boolean> {
   const { data, error } = await supabaseAdmin().from("ins_content")
-    .update({ publish_state: "posting", publish_error: null })
+    .update({ publish_state: "posting", publish_error: null, publish_at: now.toISOString() })
     .eq("id", id)
-    .or("publish_state.is.null,publish_state.eq.failed,publish_state.eq.cancelled")
+    .or(`publish_state.is.null,publish_state.eq.failed,publish_state.eq.cancelled,${staleClaim(now)}`)
     .select("id");
   if (error) throw new Error(error.message);
   return (data ?? []).length === 1;
@@ -324,6 +413,32 @@ export async function recordPublish(id: string, p: {
   return toItem(data as Record<string, unknown>);
 }
 
+/**
+ * recordPublish, only if the row is still as the caller left it: in `from.state`, and with
+ * `from.postId` / `from.at` when given (a claim's time is its identity). Null when it is not —
+ * another request moved, cancelled or re-claimed it meanwhile, and this one must not write
+ * over what that one did. `posting` is allowed here, for a claim that changes hands.
+ */
+export async function recordPublishIf(
+  id: string,
+  from: { state: PublishState; postId?: string | null; at?: string },
+  p: { state: PublishState; pageId?: string | null; postId?: string | null; at?: string | null; error?: string | null },
+): Promise<ContentItem | null> {
+  let q = supabaseAdmin().from("ins_content").update({
+    publish_state: p.state,
+    ...(p.pageId !== undefined ? { fb_page_id: p.pageId } : {}),
+    ...(p.postId !== undefined ? { fb_post_id: p.postId } : {}),
+    ...(p.at !== undefined ? { publish_at: p.at } : {}),
+    publish_error: p.error ?? null,
+  }).eq("id", id).eq("publish_state", from.state);
+  if (from.postId !== undefined) q = from.postId === null ? q.is("fb_post_id", null) : q.eq("fb_post_id", from.postId);
+  if (from.at !== undefined) q = q.eq("publish_at", from.at);
+  const { data, error } = await q.select(COLUMNS);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Record<string, unknown>[];
+  return rows.length === 1 ? toItem(rows[0]) : null;
+}
+
 /** Pieces posted or held between two moments, oldest first — the calendar's week. */
 export async function listPublished(from: Date, to: Date): Promise<ContentItem[]> {
   const { data, error } = await supabaseAdmin().from("ins_content").select(COLUMNS)
@@ -334,14 +449,24 @@ export async function listPublished(from: Date, to: Date): Promise<ContentItem[]
   return ((data ?? []) as Record<string, unknown>[]).map(toItem);
 }
 
+/** Held posts whose time came between two moments, oldest first — the ones to ask Facebook about. */
+export async function listDue(from: Date, to: Date, limit = 50): Promise<ContentItem[]> {
+  const { data, error } = await supabaseAdmin().from("ins_content").select(COLUMNS)
+    .eq("publish_state", "scheduled")
+    .gte("publish_at", from.toISOString()).lt("publish_at", to.toISOString())
+    .order("publish_at", { ascending: true }).limit(limit);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map(toItem);
+}
+
 /**
- * Posts that could go on the calendar: never sent, taken back, or refused — newest first.
- * รอตรวจ and ใช้จริง both, since posting is itself the decision to use a piece.
+ * Posts that could go on the calendar: never sent, taken back, refused, or stuck sending —
+ * newest first. รอตรวจ and ใช้จริง both, since posting is itself the decision to use a piece.
  */
 export async function listWaiting(limit = 50): Promise<ContentItem[]> {
   const { data, error } = await supabaseAdmin().from("ins_content").select(COLUMNS)
     .eq("format", "post").in("status", ["draft", "used"])
-    .or("publish_state.is.null,publish_state.eq.cancelled,publish_state.eq.failed")
+    .or(`publish_state.is.null,publish_state.eq.cancelled,publish_state.eq.failed,${staleClaim()}`)
     .order("created_at", { ascending: false }).limit(limit);
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, unknown>[]).map(toItem);

@@ -31,7 +31,14 @@ const AMOUNT = /(\d[\d,]*(?:\.\d+)?)\s*(ล้าน|แสน|หมื่น|�
  * Only those: it was every `[…]`, so "[ตัวอย่าง: เบี้ยแค่ 3,500 บาท/เดือน]" went unchecked,
  * and a marker left unclosed hid everything up to the next "]".
  */
-const stripMarkers = (text: string) => text.replace(/\[\s*\d+\s*[–-]\s*\d+\s*วิ[^\[\]\n]*\]/g, " ");
+const stripMarkers = (text: string) => text.replace(/\[\s*\d+\s*[–-]\s*\d+\s*วิ[^\[\]\n]*\]/g, (m) => " ".repeat(m.length));
+
+/**
+ * Thai digits read as Arabic ones: "๕๐๐,๐๐๐ บาท" is the same claim as "500,000 บาท", and a
+ * check that only knew 0–9 let it through. One character for one, so a match found in the
+ * converted text is at the same place in the original, and is reported as the owner wrote it.
+ */
+const arabic = (text: string) => text.replace(/[๐-๙]/g, (d) => String(d.charCodeAt(0) - 0x0e50));
 
 interface Amount {
   raw: string;
@@ -42,10 +49,11 @@ interface Amount {
 
 function amounts(text: string): Amount[] {
   const out: Amount[] = [];
-  for (const m of stripMarkers(text).matchAll(AMOUNT)) {
+  // markers are blanked to their own length, so indexes still line up with `text`
+  for (const m of stripMarkers(arabic(text)).matchAll(AMOUNT)) {
     const n = Number(m[1].replace(/,/g, ""));
     if (!Number.isFinite(n)) continue;
-    out.push({ raw: m[0].trim(), value: n * (m[2] ? UNIT[m[2]] : 1), priced: Boolean(m[3]) });
+    out.push({ raw: text.slice(m.index, m.index + m[0].length).trim(), value: n * (m[2] ? UNIT[m[2]] : 1), priced: Boolean(m[3]) });
   }
   return out;
 }

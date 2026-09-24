@@ -25,13 +25,13 @@ export function ThemeSwatches<V extends ThemeChoice = Theme>({ value, onChange, 
           <button
             type="button" role="radio" aria-checked={auto} aria-label="ให้ AI เลือก" title="ให้ AI เลือกโทนให้แต่ละชิ้น"
             onClick={() => onChange(AUTO_THEME as V)}
-            className={`flex aspect-square flex-col items-center justify-center gap-0.5 rounded-md text-white ${auto ? "ring-2 ring-[var(--ct-solid)] ring-offset-2" : "ring-1 ring-black/10"}`}
+            className={`flex aspect-square min-h-11 flex-col items-center justify-center gap-0.5 rounded-md text-[var(--ct-on-scrim)] ${auto ? "ring-2 ring-[var(--ct-solid)] ring-offset-2" : "ring-1 ring-[var(--ct-hair)]"}`}
             style={{ background: AUTO_WHEEL }}
           >
             <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4 drop-shadow">
               <path d="M11 4l1.7 4.3L17 10l-4.3 1.7L11 16l-1.7-4.3L5 10l4.3-1.7zM17.5 14.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" />
             </svg>
-            <span className="text-[10px] font-semibold leading-none drop-shadow">AI</span>
+            <span className="text-xs font-semibold leading-none drop-shadow">AI</span>
           </button>
         )}
         {THEMES.map((t) => {
@@ -41,7 +41,7 @@ export function ThemeSwatches<V extends ThemeChoice = Theme>({ value, onChange, 
             <button
               key={t} type="button" role="radio" aria-checked={on} aria-label={THEME_LABEL[t]} title={THEME_LABEL[t]}
               onClick={() => onChange(t as V)}
-              className={`flex aspect-square items-center justify-center rounded-md text-sm font-semibold ${on ? "ring-2 ring-[var(--ct-solid)] ring-offset-2" : "ring-1 ring-black/10"}`}
+              className={`flex aspect-square min-h-11 items-center justify-center rounded-md text-sm font-semibold ${on ? "ring-2 ring-[var(--ct-solid)] ring-offset-2" : "ring-1 ring-[var(--ct-hair)]"}`}
               style={{ background: `linear-gradient(160deg, ${c.from}, ${c.to})`, color: c.headline }}
             >
               {t === "photo" ? (

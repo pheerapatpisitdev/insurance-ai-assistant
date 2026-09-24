@@ -24,15 +24,22 @@
   --ct-alert: var(--bot-red-ink);
   --ct-alert-bg: var(--bot-red-soft);
   --ct-alert-line: var(--bot-red);
+  /* what sits over a picture or the page behind a dialog: the palette's ink, see-through,
+     and the light ink laid on it (a remove × on a photo, the AI swatch's mark) */
+  --ct-scrim: color-mix(in srgb, var(--bot-ink) 60%, transparent);
+  --ct-scrim-strong: color-mix(in srgb, var(--bot-ink) 80%, transparent);
+  --ct-on-scrim: var(--bot-surface);
 
   background: var(--ct-ground);
   color: var(--ct-ink);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body:has(.content-page) { background: var(--ct-ground); }
 
-.content-page :is(button, a, select, input, textarea, summary):focus-visible {
+/* the calendar's cards are role=button divs, so they are named here with the real buttons */
+.content-page :is(button, a, select, input, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
   outline: 3px solid var(--ct-accent);
   outline-offset: 3px;
 }

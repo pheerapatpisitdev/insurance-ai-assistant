@@ -42,25 +42,96 @@ export function monthStart(now = new Date()): Date {
   return new Date(Date.UTC(bkk.getUTCFullYear(), bkk.getUTCMonth(), 1) - BKK_MS);
 }
 
+/* ------------------------------ reservations ------------------------------ */
+
+/**
+ * Money set aside in the ledger before a call spends it.
+ *
+ * The content ceiling was read, then spent against: ten rounds started in the same second
+ * all read the same "฿2 left" and all went ahead. A reservation is a ledger row written
+ * first, at the estimated price, under a task the ceiling counts — so the second request
+ * reads the first one's money as gone. The real rows are written by the AI client as each
+ * call returns; the reservation is deleted once the work is over, whether it went well or not.
+ *
+ * A reservation whose request died never gets deleted by it, so every new one sweeps those
+ * older than RESERVATION_TTL_MS first: a stale hold may block the ceiling for minutes, never
+ * for the month.
+ */
+export const RESERVATION_MODEL = "reservation";
+export const RESERVATION_TTL_MS = 15 * 60_000;
+
+/**
+ * Whether a request may go ahead, read after its own reservation is in the ledger: `total`
+ * counts every reservation, this one included, and all of it must fit under the ceiling.
+ * Requests running at once see each other's holds, so together they cannot pass it by more
+ * than the estimates were wrong.
+ */
+export function admits(total: number, cap: number): boolean {
+  return total <= cap + 1e-9;
+}
+
+/**
+ * Deletes reservations older than RESERVATION_TTL_MS: the requests that wrote them are gone.
+ * Run by reserve() and before the ceiling is read, so a dead request's hold does not count.
+ * Never throws — a hold left one more read is fifteen minutes of a slightly lower ceiling.
+ */
+export async function sweepHolds(now = new Date()): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin().from("ins_usage_ledger").delete()
+      .eq("model", RESERVATION_MODEL).lt("created_at", new Date(now.getTime() - RESERVATION_TTL_MS).toISOString());
+    if (error) console.error("stale reservations not swept:", error.message);
+  } catch (e) {
+    console.error("stale reservations not swept:", e);
+  }
+}
+
+/** Sets `thb` aside under `task`; returns the row's id, for release. */
+export async function reserve(task: string, thb: number, now = new Date()): Promise<string> {
+  const db = supabaseAdmin();
+  await sweepHolds(now);
+  const { data, error } = await db.from("ins_usage_ledger")
+    .insert({ model: RESERVATION_MODEL, task, input_tokens: 0, output_tokens: 0, cost_thb: Number(Math.max(0, thb).toFixed(6)) })
+    .select("id").single();
+  if (error || !data) throw new Error(`กันงบไม่สำเร็จ: ${error?.message ?? "no row"}`);
+  return String((data as { id: string }).id);
+}
+
+/** Gives a reservation back. Never throws: the sweep catches what this misses. */
+export async function release(id: string): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin().from("ins_usage_ledger").delete().eq("id", id).eq("model", RESERVATION_MODEL);
+    if (error) console.error("reservation not released:", error.message);
+  } catch (e) {
+    console.error("reservation not released:", e);
+  }
+}
+
 /** PostgREST's code for a function it cannot find; the one error worth reading past */
 const FUNCTION_MISSING = "PGRST202";
 
 /** rows per page when paging; well under the library's own cap so a page is never clipped */
 const PAGE = 500;
 
-export async function monthSpend(since: Date): Promise<MonthSpend> {
+/**
+ * `holds`: count money set aside by reservations (see below) as spent. Only the content
+ * ceiling wants that; every other reader — the assistant's budget guard, the admin cards —
+ * wants what was paid, so by default reservation rows are left out. They are one model name,
+ * so they arrive from the sum as lines of their own and are dropped here.
+ */
+export async function monthSpend(since: Date, opts: { holds?: boolean } = {}): Promise<MonthSpend> {
   const supabase = supabaseAdmin();
   const { data, error } = await supabase.rpc("ins_month_spend", { p_since: since.toISOString() });
   if (error && error.code === FUNCTION_MISSING) {
     console.error("ins_month_spend is not in the database yet; paging the ledger instead");
-    return total(await paged(since));
+    return total(await paged(since), opts.holds);
   }
   if (error) throw new Error(`อ่านค่าใช้จ่าย AI ไม่ได้: ${error.message}`);
   const rows = (data ?? []) as { model: string | null; task: string | null; calls: number | string; cost_thb: number | string | null }[];
-  return total(rows.map((r) => ({ model: r.model, task: r.task, calls: Number(r.calls), baht: Number(r.cost_thb ?? 0) })));
+  return total(rows.map((r) => ({ model: r.model, task: r.task, calls: Number(r.calls), baht: Number(r.cost_thb ?? 0) })), opts.holds);
 }
 
-function total(lines: SpendLine[]): MonthSpend {
+function total(all: SpendLine[], holds = false): MonthSpend {
+  const lines = holds ? all : all.filter((l) => l.model !== RESERVATION_MODEL);
   return {
     calls: lines.reduce((n, l) => n + l.calls, 0),
     baht: lines.reduce((s, l) => s + l.baht, 0),

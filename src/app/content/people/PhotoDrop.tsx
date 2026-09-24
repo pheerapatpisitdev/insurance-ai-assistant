@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { XIcon } from "../ui/icons";
 
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 
@@ -67,12 +68,15 @@ export function PhotoDrop({ files, onChange, limit }: { files: File[]; onChange:
             <div key={`${f.name}-${i}`} className="relative size-20 overflow-hidden rounded-lg ring-1 ring-[var(--ct-hair)]">
               {/* eslint-disable-next-line @next/next/no-img-element -- a local preview of a file not yet sent */}
               <img src={previews[i]} alt="" className="size-full object-cover" />
+              {/* a finger-sized press over a small drawn circle, so the photo stays visible */}
               <button
                 type="button" aria-label="เอารูปนี้ออก" title="เอารูปนี้ออก"
                 onClick={() => onChange(files.filter((_, j) => j !== i))}
-                className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                className="group absolute right-0 top-0 flex size-11 items-start justify-end p-1"
               >
-                <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="size-3.5"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                <span className="flex size-7 items-center justify-center rounded-full bg-[var(--ct-scrim)] text-[var(--ct-on-scrim)] group-hover:bg-[var(--ct-scrim-strong)]">
+                  <XIcon className="size-4" />
+                </span>
               </button>
             </div>
           ))}

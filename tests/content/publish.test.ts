@@ -25,11 +25,17 @@ describe("publishView", () => {
 });
 
 describe("onPage", () => {
-  const p = (state: Publish["state"]): Publish => ({ state, pageId: "1", postId: null, at: null, error: null });
+  // a posting row carries its claim's time (claimPublish); one with none, or an old one, is stuck
+  const p = (state: Publish["state"]): Publish => ({ state, pageId: "1", postId: null, at: state === "posting" ? new Date().toISOString() : null, error: null });
   it("a piece posted, scheduled or on its way lives on the calendar, not in the studio's lists", () => {
     expect(onPage(p("scheduled"))).toBe(true);
     expect(onPage(p("published"))).toBe(true);
     expect(onPage(p("posting"))).toBe(true);
+  });
+  it("a send stuck for more than ten minutes comes back to the lists, shown as failed", () => {
+    const stuck: Publish = { state: "posting", pageId: "1", postId: null, at: new Date(Date.now() - 11 * 60_000).toISOString(), error: null };
+    expect(onPage(stuck)).toBe(false);
+    expect(publishView(stuck).kind).toBe("failed");
   });
   it("a cancelled or refused one comes back to the lists, as does one never sent", () => {
     expect(onPage(p("cancelled"))).toBe(false);
@@ -49,7 +55,12 @@ describe("quickTimes", () => {
 
 describe("Facebook's refusals", () => {
   it("names the missing permission, the expired login and the temporary block in words the owner can act on", () => {
-    expect(explain({ error: { code: 200, message: "(#200) permission" } }, 403).message).toContain("pages_manage_posts");
+    const permission = explain({ error: { code: 200, message: "(#200) permission" } }, 403).message;
+    expect(permission).toContain("อนุญาตให้โพสต์");
+    // the phrase the editor looks for to offer its link to the Page settings
+    expect(permission).toContain("ยังไม่ได้เปิดสิทธิ์โพสต์");
+    // the owner's words, not the permission's name in Facebook's developer settings
+    expect(permission).not.toContain("pages_manage_posts");
     expect(explain({ error: { code: 190 } }, 400).message).toContain("หมดอายุ");
     expect(explain({ error: { code: 368 } }, 400).message).toContain("บล็อก");
     expect(explain({ error: { code: 100, message: "bad time" } }, 400).message).toContain("bad time");

@@ -80,3 +80,23 @@ describe("brackets in the copy", () => {
     expect(strayNumbers("[3–15 วิ เบี้ยแค่ 3,500 บาท\n\n[15–30 วิ] ต่อ", brief)).toEqual(["3,500 บาท"]);
   });
 });
+
+describe("Thai digits", () => {
+  it("reads ๕๐๐,๐๐๐ บาท as the same amount as 500,000 บาท", () => {
+    expect(numbersIn("ทุน ๕๐๐,๐๐๐ บาท")).toContain(500_000);
+    expect(numbersIn("๑.๕ ล้านบาท")).toContain(1_500_000);
+  });
+
+  it("flags a Thai-digit amount the brief never had, as the owner wrote it", () => {
+    expect(strayNumbers("เบี้ยเพียง ๑๒,๓๔๕ บาท", "เบี้ย 9,999 บาท")).toEqual(["๑๒,๓๔๕ บาท"]);
+  });
+
+  it("allows it when the brief has it, in either kind of digit", () => {
+    expect(strayNumbers("ทุน ๕๐๐,๐๐๐ บาท", "ทุน 500,000 บาท")).toEqual([]);
+    expect(strayNumbers("ทุน 500,000 บาท", "ทุน ๕๐๐,๐๐๐ บาท")).toEqual([]);
+  });
+
+  it("still leaves a script's time markers alone, and reports amounts after them as written", () => {
+    expect(strayNumbers("[๐–๓ วิ] เบี้ย 3,500 บาท", "")).toEqual(["3,500 บาท"]);
+  });
+});

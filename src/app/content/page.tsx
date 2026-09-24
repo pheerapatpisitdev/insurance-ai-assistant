@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/shell/AppShell";
 import { StudioPage } from "./StudioPage";
 
 export const dynamic = "force-dynamic";
@@ -10,15 +9,8 @@ export const metadata = {
   description: "สร้างโพสต์เฟซบุ๊กและสคริปต์วิดีโอจากข้อมูลจริงของแบบประกัน",
 };
 
+// the menu, the palette and the tabs come from layout.tsx
 export default async function ContentPage({ searchParams }: { searchParams: Promise<{ hook?: string; open?: string }> }) {
   const { hook, open } = await searchParams;
-  return (
-    <div className="content-page">
-      <AppShell>
-        <div className="mx-auto max-w-[1400px] px-4 pb-10 pt-16 lg:pt-8">
-          <StudioPage hook={hook} open={open} />
-        </div>
-      </AppShell>
-    </div>
-  );
+  return <StudioPage hook={hook} open={open} />;
 }

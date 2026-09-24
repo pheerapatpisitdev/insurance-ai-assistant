@@ -5,6 +5,7 @@ import { FORMAT_SHORT } from "@/lib/content/prompt";
 import type { ContentItem } from "@/lib/content/store";
 import { shortModel } from "@/lib/content/models";
 import { SAVE_LABEL, usePictureSaver } from "./savePicture";
+import { CheckIcon } from "./ui/icons";
 
 /**
  * One piece on the workbench, in the shape of Maryjane's piece-card: the picture on top, the
@@ -64,7 +65,7 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
         <p className="line-clamp-2 text-sm font-semibold leading-snug">{item.output.hooks[0]}</p>
         {item.output.angle && <p className="text-xs text-[var(--ct-mute)]">มุม: {item.output.angle}</p>}
         {item.model && (
-          <p className="text-[0.7rem] text-[var(--ct-mute)]">
+          <p className="text-xs text-[var(--ct-mute)]">
             เขียนโดย {shortModel(item.model)}{item.output.pictureBy ? ` · ภาพ ${item.output.pictureBy}` : ""}
           </p>
         )}
@@ -82,11 +83,11 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
           <button type="button" onClick={onCopy} className={cell}>คัดลอก</button>
         ) : (
           <button type="button" disabled={busy} onClick={() => onStatus("used")} className={`${cell} font-medium text-[var(--ct-accent)]`}>
-            ✓ ใช้จริง
+            <CheckIcon className="size-4" />ใช้จริง
           </button>
         )}
         <button type="button" disabled={drawing || saver.state === "saving"} onClick={saver.save} className={cell} aria-live="polite">
-          {drawing ? "รอภาพ…" : SAVE_LABEL[saver.state]}
+          {drawing ? "รอภาพ…" : <>{saver.state === "saved" && <CheckIcon className="size-4" />}{SAVE_LABEL[saver.state]}</>}
         </button>
         <button type="button" onClick={onEdit} className={cell}>แก้ไข</button>
         <button type="button" disabled={busy} onClick={onDelete} className={`${cell} text-[var(--ct-alert)]`}>

@@ -57,6 +57,24 @@ export function painterOf(id: string | null | undefined, leftThb = Infinity): Pa
   return byId(PAINTERS, id!);
 }
 
+/**
+ * The painter that will actually draw — and so what the picture costs — when a person from
+ * the library may be in it.
+ *
+ * A person's photos go to Gemini Image whatever painter was picked (the AI client's
+ * REFERENCE_PREFERENCE: it keeps a face best), so a picture with a person costs Gemini's
+ * ฿2.41, not the ฿0.43 of มาตรฐาน. อัตโนมัติ with a person draws only while there is room for
+ * that price; "none" still draws nothing. The server decides with this, and the page's
+ * estimate should too.
+ */
+export function painterFor(id: string | null | undefined, leftThb = Infinity, withPerson = false): Painter {
+  const picked = painterOf(id, leftThb);
+  if (!withPerson || !picked.modelId) return picked;
+  const gemini = byId(PAINTERS, "gemini");
+  if ((id === AUTO || !PAINTERS.some((p) => p.id === id)) && leftThb < Math.max(AUTO_FLOOR_THB, gemini.thb)) return byId(PAINTERS, "none");
+  return gemini;
+}
+
 /** A model's name as the card shows it — including a fallback the owner did not pick. */
 const SHORT: Record<string, string> = {
   "claude-sonnet-5": "Sonnet 5", "gpt-5": "GPT-5", "gemini-3.7-flash": "Gemini Flash",

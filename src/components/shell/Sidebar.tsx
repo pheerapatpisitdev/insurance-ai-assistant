@@ -216,7 +216,7 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
         onClick={() => setOpen(true)}
         aria-label="เปิดเมนู"
         aria-expanded={open}
-        className="shell-hamburger fixed left-3 top-3 z-30 rounded-full border p-2 backdrop-blur lg:hidden"
+        className="shell-hamburger fixed left-3 top-3 z-30 flex size-11 items-center justify-center rounded-full border backdrop-blur lg:hidden"
         style={{ background: "var(--shell-bg)", borderColor: "var(--shell-line)", color: "var(--shell-ink)" }}
       >
         <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">

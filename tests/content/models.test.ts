@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, PAINTERS, WRITERS, painterOf, shortModel, writerOf } from "@/lib/content/models";
+import { AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, PAINTERS, WRITERS, painterFor, painterOf, shortModel, writerOf } from "@/lib/content/models";
+import { fallbackWriters } from "@/lib/content/write";
 
 describe("the models the owner may pick", () => {
   it("offers the three writers the bake-off kept, Sonnet first and the default", () => {
@@ -45,6 +46,32 @@ describe("the models the owner may pick", () => {
     it("leaves an explicit pick alone whatever the budget", () => {
       expect(writerOf("best", 0.5).model).toBe("claude-sonnet-5");
       expect(painterOf("sharp", 0.5).id).toBe("sharp");
+    });
+  });
+
+  describe("a picture with a person in it", () => {
+    it("is drawn, and priced, as Gemini whatever painter was picked", () => {
+      expect(painterFor("standard", 20, true).id).toBe("gemini");
+      expect(painterFor("auto", 20, true).id).toBe("gemini");
+      expect(painterFor("standard", 20, false).id).toBe("standard");
+    });
+
+    it("draws nothing when nothing was asked for, or อัตโนมัติ is near the end of the budget", () => {
+      expect(painterFor("none", 20, true).id).toBe("none");
+      expect(painterFor("auto", 1, true).id).toBe("none");
+    });
+  });
+
+  describe("fallback for a writer that is down", () => {
+    it("keeps ประหยัด to the cheap model alone", () => {
+      expect(fallbackWriters(writerOf("cheap").model)).toEqual(["gemini-3.7-flash"]);
+      // อัตโนมัติ near the end of the budget picks ประหยัด, and is held to it too
+      expect(fallbackWriters(writerOf("auto", 1).model)).toEqual(["gemini-3.7-flash"]);
+    });
+
+    it("lets the dearer picks fall back across the list, and nothing when no pick", () => {
+      expect(fallbackWriters("claude-sonnet-5")).toEqual(WRITERS.map((w) => w.model));
+      expect(fallbackWriters(undefined)).toBeUndefined();
     });
   });
 });

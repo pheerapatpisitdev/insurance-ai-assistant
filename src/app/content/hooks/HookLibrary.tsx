@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { HOOK_CATEGORIES, HOOK_CATEGORY_LABEL, type HookCategory, type HookTemplate } from "@/lib/content/hooks";
+import { CheckIcon, SearchIcon } from "../ui/icons";
 
 /**
  * The formula library as Maryjane's hook-library shows it: a search, a chip per category, and
@@ -19,6 +20,10 @@ export function HookLibrary({ items }: { items: HookTemplate[] }) {
   const [category, setCategory] = useState<HookCategory | "ALL">("ALL");
   const [copied, setCopied] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
+  const searchId = useId();
+  // the "copied" mark's timer, stopped if the page is left before it runs
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -31,23 +36,30 @@ export function HookLibrary({ items }: { items: HookTemplate[] }) {
     try {
       await navigator.clipboard.writeText(h.template);
       setCopied(h.id);
-      setTimeout(() => setCopied(null), 1500);
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setCopied(null), 1500);
     } catch { /* the row still shows the text to select by hand */ }
   }
 
   const chipCls = (on: boolean) =>
-    `rounded-full border px-3 py-1 text-xs ${on ? "border-[var(--ct-solid)] bg-[var(--ct-soft)] text-[var(--ct-accent)]" : "border-[var(--ct-line)] text-[var(--ct-mute)] hover:bg-[var(--ct-panel)]"}`;
+    `inline-flex min-h-11 items-center rounded-full border px-3.5 text-sm ${on ? "border-[var(--ct-solid)] bg-[var(--ct-soft)] text-[var(--ct-accent)]" : "border-[var(--ct-line)] text-[var(--ct-mute)] hover:bg-[var(--ct-panel)]"}`;
 
   return (
     <div className="mt-5 space-y-4">
-      <input
-        value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาสูตร เช่น ลูก, ภาษี, เรื่องที่ควรรู้"
-        className="w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-2.5 text-sm outline-none focus:border-[var(--ct-accent)]"
-      />
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setCategory("ALL")} className={chipCls(category === "ALL")}>ทั้งหมด {items.length}</button>
+      <div>
+        <label htmlFor={searchId} className="sr-only">ค้นหาสูตรประโยคเปิด</label>
+        <div className="relative">
+          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--ct-mute)]" />
+          <input
+            id={searchId} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาสูตร เช่น ลูก, ภาษี, เรื่องที่ควรรู้"
+            className="min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] py-2.5 pl-9 pr-4 text-sm outline-none focus:border-[var(--ct-accent)]"
+          />
+        </div>
+      </div>
+      <div role="group" aria-label="หมวดของสูตร" className="flex flex-wrap gap-2">
+        <button type="button" aria-pressed={category === "ALL"} onClick={() => setCategory("ALL")} className={chipCls(category === "ALL")}>ทั้งหมด {items.length}</button>
         {HOOK_CATEGORIES.map((c) => (
-          <button key={c} type="button" onClick={() => setCategory(c)} className={chipCls(category === c)}>
+          <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(c)} className={chipCls(category === c)}>
             {HOOK_CATEGORY_LABEL[c]}
           </button>
         ))}
@@ -70,9 +82,9 @@ export function HookLibrary({ items }: { items: HookTemplate[] }) {
               </div>
               <span className="shrink-0 rounded bg-[var(--ct-ground)] px-2 py-1 text-xs text-[var(--ct-mute)]">{HOOK_CATEGORY_LABEL[h.category]}</span>
               <span className="w-14 shrink-0 text-right text-sm tabular-nums text-[var(--ct-accent)]" title="จำนวนครั้งที่ใช้">{h.useCount}×</span>
-              <Link href={`/content?hook=${h.id}`} className="shrink-0 rounded-lg border border-[var(--ct-line)] px-3 py-1.5 text-sm hover:bg-[var(--ct-soft)]">ใช้อันนี้</Link>
-              <button type="button" onClick={() => copy(h)} className="shrink-0 rounded-lg px-2 py-1.5 text-sm text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]">
-                {copied === h.id ? "✓" : "คัดลอก"}
+              <Link href={`/content?hook=${h.id}`} className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-[var(--ct-line)] px-3 text-sm hover:bg-[var(--ct-soft)]">ใช้อันนี้</Link>
+              <button type="button" onClick={() => copy(h)} aria-live="polite" className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-sm text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]">
+                {copied === h.id ? <><CheckIcon className="size-4 text-[var(--ct-accent)]" />คัดลอกแล้ว</> : "คัดลอก"}
               </button>
             </li>
           ))}

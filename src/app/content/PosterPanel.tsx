@@ -4,11 +4,13 @@ import {
   BLOCK_KINDS, BLOCK_LABEL, LAYOUTS, LAYOUT_LABEL, MAX_CHARS, SIZES,
   posterUrl, type BlockKind, type PosterSpec, type SizeId,
 } from "@/lib/content/poster";
-import { PAINTERS, painterOf } from "@/lib/content/models";
+import { PAINTERS, painterFor } from "@/lib/content/models";
 import type { PiecePerson } from "@/lib/content/people";
 import { SAVE_LABEL, usePictureSaver } from "./savePicture";
 import { PersonPicker, type PersonOption } from "./PersonPicker";
 import { ThemeSwatches } from "./ThemeSwatches";
+import { ask } from "./ask";
+import { CheckIcon, LockIcon } from "./ui/editor-icons";
 
 /**
  * The poster, editable: its four lines, where they sit, which colours, which size to download.
@@ -29,7 +31,7 @@ function textsOf(p: PosterSpec): Record<BlockKind, string> {
 }
 
 const chip = (on: boolean) =>
-  `rounded-full border px-3 py-1 text-xs ${on
+  `min-h-11 rounded-full border px-3.5 py-1.5 text-sm disabled:opacity-50 ${on
     ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]"
     : "border-[var(--ct-line)] bg-[var(--ct-panel)] hover:bg-[var(--ct-soft)]"}`;
 
@@ -43,18 +45,42 @@ interface Props {
   person: PiecePerson | null;
   /** a photograph is already being drawn for this piece, ordered by the page */
   busy?: boolean;
+  /**
+   * The piece is held by Facebook or on the Page: a new picture would not reach the post, so
+   * drawing and the plain colour are shut, with a line saying why.
+   */
+  pictureLocked?: boolean;
+  /** the piece is on the Page: nothing here can be changed */
+  readOnly?: boolean;
+  /** asked before a link leaves the editor; false stays */
+  confirmLeave?: () => Promise<boolean>;
 }
 
-/** a person's picture is drawn by Gemini Image whatever the painter, so it is priced as that */
-const GEMINI_THB = PAINTERS.find((p) => p.id === "gemini")?.thb ?? 2.41;
+/** who the picture was last drawn with, when they are still in the library */
+const known = (who: PiecePerson | null, people: PersonOption[]) => (who && people.some((p) => p.id === who.id) ? who : null);
 
-export function PosterPanel({ value, onChange, onDraw, busy, people, person: drawnWith }: Props) {
+export function PosterPanel({ value, onChange, onDraw, busy, people, person: drawnWith, pictureLocked, readOnly, confirmLeave }: Props) {
   const [request, setRequest] = useState("");
-  const [person, setPerson] = useState<PiecePerson | null>(drawnWith && people.some((p) => p.id === drawnWith.id) ? drawnWith : null);
+  const [person, setPerson] = useState<PiecePerson | null>(() => known(drawnWith, people));
+  // the piece's own person again when it changes under the editor (a redraw landed) or the
+  // library arrives after the editor opened
+  const peopleKey = people.map((p) => p.id).join(",");
+  useEffect(() => {
+    setPerson(known(drawnWith, people));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the ids, not the arrays' identity
+  }, [drawnWith?.id, drawnWith?.pose, peopleKey]);
   const [painter, setPainter] = useState("standard");
-  const price = `~฿${(person ? GEMINI_THB : painterOf(painter).thb).toFixed(2)}`;
+  // a person's photos go to Gemini Image whatever the painter, so it is priced as that
+  const price = `~฿${painterFor(painter, Infinity, Boolean(person)).thb.toFixed(2)}`;
   const [drawing, setDrawing] = useState(false);
   const [drawError, setDrawError] = useState<string | null>(null);
+  const shut = Boolean(pictureLocked || readOnly);
+
+  /** the paid photograph goes only when the owner says so */
+  async function dropPicture() {
+    if (!(await ask("ทิ้งภาพที่ AI วาดไว้? วาดใหม่ต้องจ่ายอีกรอบ", "ใช้สีพื้น"))) return;
+    onChange({ layout: value.layout, theme: value.theme, blocks: value.blocks });
+  }
 
   async function draw() {
     setDrawing(true);
@@ -107,74 +133,90 @@ export function PosterPanel({ value, onChange, onDraw, busy, people, person: dra
             type="button"
             onClick={saver.save}
             disabled={saver.state === "saving" || shown !== value}
-            className="mt-2 block w-full rounded-lg bg-[var(--ct-solid)] px-3 py-2 text-center text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50"
+            className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-center text-sm font-medium hover:bg-[var(--ct-soft)] disabled:opacity-50"
           >
+            {saver.state === "saved" && <CheckIcon className="size-4" />}
             {SAVE_LABEL[saver.state]}
           </button>
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="min-w-0 space-y-3">
+      <fieldset disabled={readOnly} className="m-0 min-w-0 space-y-3 border-0 p-0">
+        <legend className="sr-only">ข้อความและสีบนรูป</legend>
         {ORDER.map((kind) => (
           <label key={kind} className="block">
-            <span className="mb-1 flex justify-between text-xs font-medium">
+            <span className="mb-1 flex justify-between text-sm font-medium">
               <span>{BLOCK_LABEL[kind]}{kind === "headline" ? "" : " (ไม่ใส่ก็ได้)"}</span>
-              <span className="font-normal text-[var(--ct-mute)]">{[...texts[kind]].length}/{MAX_CHARS[kind]}</span>
+              <span className="text-xs font-normal text-[var(--ct-mute)]">{[...texts[kind]].length}/{MAX_CHARS[kind]}</span>
             </span>
             <input
               value={texts[kind]}
               maxLength={MAX_CHARS[kind]}
               onChange={(e) => set(kind, e.target.value)}
-              className="w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-1.5 text-sm outline-none focus:border-[var(--ct-accent)]"
+              className="min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)] disabled:opacity-60"
             />
           </label>
         ))}
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        <div role="group" aria-label="ตำแหน่งข้อความ" className="flex flex-wrap items-center gap-1.5 text-sm">
           <span className="mr-1 font-medium">ตำแหน่งข้อความ</span>
           {LAYOUTS.map((l) => (
             <button key={l} type="button" aria-pressed={value.layout === l} onClick={() => onChange({ ...value, layout: l })} className={chip(value.layout === l)}>{LAYOUT_LABEL[l]}</button>
           ))}
         </div>
-        <div className="text-xs">
+        <div className="text-sm">
           <span className="mb-1.5 block font-medium">โทนสี</span>
           <ThemeSwatches value={value.theme} onChange={(theme) => onChange({ ...value, theme })} />
         </div>
-        <div className="space-y-2 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-2.5">
-          <p className="text-xs font-medium">
+        </fieldset>
+        <fieldset disabled={shut} className="m-0 min-w-0 space-y-2 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-2.5">
+          <legend className="sr-only">ภาพพื้นหลัง</legend>
+          <p className="text-sm font-medium">
             ภาพพื้นหลัง {value.background ? "— มีภาพจาก AI แล้ว" : "— ตอนนี้เป็นสีพื้น"}
           </p>
-          <input
-            value={request} onChange={(e) => setRequest(e.target.value)} maxLength={300}
-            placeholder="อยากได้ภาพแบบไหน (ไม่ใส่ก็ได้) เช่น พ่อกับลูกสาวอ่านนิทานก่อนนอน"
-            className="w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-1.5 text-xs outline-none focus:border-[var(--ct-accent)]"
-          />
-          <div className="text-xs">
-            <span className="mb-1 block font-medium">ใส่บุคคลในภาพ</span>
-            <PersonPicker people={people} value={person} onChange={setPerson} />
-          </div>
-          {!person && <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="mr-1 font-medium">วาดด้วย</span>
-            {PAINTERS.filter((p) => p.modelId).map((p) => (
-              <button key={p.id} type="button" aria-pressed={painter === p.id} onClick={() => setPainter(p.id)} className={chip(painter === p.id)}>
-                {p.label} ฿{p.thb.toFixed(2)}
-              </button>
-            ))}
-          </div>}
+          {pictureLocked && !readOnly && (
+            <p className="flex items-start gap-1.5 text-sm text-[var(--ct-warn-ink)]">
+              <LockIcon className="mt-0.5 size-4" />
+              <span>ภาพของโพสต์ที่ตั้งเวลา/ขึ้นเพจแล้วแก้ไม่ได้ — ยกเลิกการตั้งเวลาก่อน</span>
+            </p>
+          )}
+          {!shut && <>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">อยากได้ภาพแบบไหน (ไม่ใส่ก็ได้)</span>
+              <input
+                value={request} onChange={(e) => setRequest(e.target.value)} maxLength={300}
+                placeholder="เช่น พ่อกับลูกสาวอ่านนิทานก่อนนอน"
+                className="min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]"
+              />
+            </label>
+            <div className="text-sm">
+              <span className="mb-1 block font-medium">ใส่บุคคลในภาพ</span>
+              <PersonPicker people={people} value={person} onChange={setPerson} confirmLeave={confirmLeave} />
+            </div>
+            {!person && <div role="group" aria-label="วาดด้วย" className="flex flex-wrap items-center gap-1.5 text-sm">
+              <span className="mr-1 font-medium">วาดด้วย</span>
+              {PAINTERS.filter((p) => p.modelId).map((p) => (
+                <button key={p.id} type="button" aria-pressed={painter === p.id} onClick={() => setPainter(p.id)} className={chip(painter === p.id)}>
+                  {p.label} ฿{p.thb.toFixed(2)}
+                </button>
+              ))}
+            </div>}
+          </>}
           <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={draw} disabled={drawing || busy} className="rounded-lg bg-[var(--ct-solid)] px-3 py-1.5 text-xs font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
+            <button type="button" onClick={draw} disabled={drawing || busy || shut} className="min-h-11 rounded-lg border border-[var(--ct-accent)] bg-[var(--ct-panel)] px-3 py-2 text-sm font-medium text-[var(--ct-accent)] hover:bg-[var(--ct-soft)] disabled:opacity-50">
               {drawing || busy ? "กำลังวาด… ราว 20–40 วินาที" : value.background ? `วาดภาพใหม่ (${price})` : `วาดภาพพื้นหลังด้วย AI (${price})`}
             </button>
             {value.background && !drawing && !busy && (
-              <button type="button" onClick={() => onChange({ layout: value.layout, theme: value.theme, blocks: value.blocks })} className="rounded-lg border border-[var(--ct-line)] px-3 py-1.5 text-xs">
+              <button type="button" onClick={dropPicture} disabled={shut} className="min-h-11 rounded-lg border border-[var(--ct-line)] px-3 py-2 text-sm hover:bg-[var(--ct-soft)] disabled:opacity-50">
                 ใช้สีพื้นแทน
               </button>
             )}
           </div>
-          {drawError && <p role="alert" className="text-xs text-[var(--ct-alert)]">{drawError}</p>}
-          <p className="text-[0.7rem] leading-relaxed text-[var(--ct-mute)]">
+          {drawError && <p role="alert" className="rounded-lg border border-[var(--ct-alert-line)] bg-[var(--ct-alert-bg)] px-3 py-2 text-sm text-[var(--ct-alert)]">{drawError}</p>}
+          <p className="text-xs leading-relaxed text-[var(--ct-mute)]">
             AI วาดเฉพาะภาพ ไม่มีตัวหนังสือ แล้วระบบพิมพ์ข้อความไทยทับด้วยฟอนต์จริง จึงไม่เพี้ยน · ค่ารูปนับรวมในงบคอนเทนต์เดือนนี้
           </p>
-        </div>
+        </fieldset>
         <p className="text-xs text-[var(--ct-mute)]">ตัวเลขบนภาพถูกตรวจเทียบตารางเบี้ยเมื่อกดบันทึก</p>
       </div>
     </div>

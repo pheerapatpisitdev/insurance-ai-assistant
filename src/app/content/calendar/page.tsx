@@ -1,6 +1,4 @@
-import "../theme.css";
 import Link from "next/link";
-import { AppShell } from "@/components/shell/AppShell";
 import {
   dayKey, dayStart, monthGridDays, nextDayKey, parseMonth, shiftMonth, thaiMonthYear, timeOfDay, todayKey,
   countByPage, DROP_TIME, type BoardItem,
@@ -8,11 +6,15 @@ import {
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { contentProduct } from "@/lib/content/products";
 import { publishView } from "@/lib/content/publish-label";
+import { verifyDue } from "@/lib/content/publish-flow";
 import { listPublished, listWaiting, type ContentItem } from "@/lib/content/store";
 import { publishSetup } from "../publish";
+import { ChevronLeftIcon, ChevronRightIcon } from "../ui/icons";
 import { CalendarBoard, MonthList } from "./CalendarBoard";
 
 export const dynamic = "force-dynamic";
+/** the board's own actions (a drop posts through Facebook) run from this page, as /content's do */
+export const maxDuration = 300;
 
 export const metadata = {
   title: "ปฏิทินโพสต์ | advisortool",
@@ -51,6 +53,12 @@ function toBoard(item: ContentItem, pageName: (id: string | null) => string): Bo
   };
 }
 
+/** why a failed card failed — a send that never answered, or a time Facebook let pass — for the card and its sheet */
+function failure(item: ContentItem): [string, string][] {
+  const view = publishView(item.publish);
+  return view.kind === "failed" ? [[item.id, view.error]] : [];
+}
+
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ y?: string; m?: string; page?: string; view?: string }> }) {
   const params = await searchParams;
   const today = todayKey();
@@ -63,6 +71,15 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const from = dayStart(cells[0].day);
   const to = dayStart(nextDayKey(cells[cells.length - 1].day));
 
+  // held posts whose time came are asked about first, so the board says what Facebook did;
+  // never lets a Graph or database error keep the page from drawing
+  // and never keeps it waiting long: past eight seconds the board draws, and the rest is asked next load
+  // the timer is cleared the moment the check ends, so a quick check is not followed by an eight-second wait
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    verifyDue().catch((e) => console.error("calendar verify failed:", e)),
+    new Promise((done) => { timer = setTimeout(done, 8_000); }),
+  ]).finally(() => clearTimeout(timer));
   const [setup, placed, waiting] = await Promise.all([
     publishSetup(),
     listPublished(from, to).catch(() => []),
@@ -72,6 +89,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const pageName = (id: string | null) => setup.pages.find((p) => p.pageId === id)?.pageName ?? "";
 
   const all = [...placed, ...waiting].map((i) => toBoard(i, pageName));
+  const errors: Record<string, string> = Object.fromEntries([...placed, ...waiting].flatMap(failure));
   const counts = countByPage(all);
   // the filter hides other Pages' posts; the waiting rail belongs to no Page yet and stays
   const items = pageFilter ? all.filter((i) => !i.day || i.pageId === pageFilter) : all;
@@ -89,49 +107,49 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const prev = shiftMonth(year, month, -1);
   const next = shiftMonth(year, month, 1);
   const chip = (on: boolean) =>
-    `inline-flex min-h-10 items-center rounded-full border px-4 text-sm ${on ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]" : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-mute)]"}`;
-  const toggle = (on: boolean) => `inline-flex min-h-9 items-center rounded-full px-4 text-sm ${on ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)]"}`;
-  const navBtn = "inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 text-sm";
+    `inline-flex min-h-11 items-center rounded-full border px-4 text-sm ${on ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]" : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-mute)]"}`;
+  const toggle = (on: boolean) => `inline-flex min-h-11 items-center rounded-full px-4 text-sm ${on ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)]"}`;
+  const navBtn = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 text-sm";
 
+  // the menu, the palette and the tabs come from ../layout.tsx
   return (
-    <div className="content-page">
-      <AppShell>
-        <div className="mx-auto max-w-[1400px] space-y-4 px-4 pb-10 pt-16 lg:pt-8">
-          <Link href="/content" className="text-sm text-[var(--ct-mute)] hover:text-[var(--ct-accent)]">← กลับไปสร้างคอนเทนต์</Link>
-          <h1 className="text-xl font-semibold">ปฏิทินโพสต์</h1>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">ปฏิทินโพสต์</h1>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Link href={query({ y: String(ty), m: String(tm) })} className={navBtn}>วันนี้</Link>
-              <Link href={query({ y: String(prev.year), m: String(prev.month) })} aria-label="เดือนก่อนหน้า" className={navBtn}>‹</Link>
-              <h2 className="min-w-40 text-center text-lg font-semibold">{thaiMonthYear(year, month)}</h2>
-              <Link href={query({ y: String(next.year), m: String(next.month) })} aria-label="เดือนถัดไป" className={navBtn}>›</Link>
-            </div>
-            <div className="flex items-center gap-1 rounded-full border border-[var(--ct-line)] bg-[var(--ct-panel)] p-1">
-              <Link href={query({ view: undefined })} className={toggle(!listView)}>เดือน</Link>
-              <Link href={query({ view: "list" })} className={toggle(listView)}>รายการ</Link>
-            </div>
-          </div>
-
-          {setup.pages.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-[var(--ct-mute)]">เพจ</span>
-              <Link href={query({ page: undefined })} className={chip(!pageFilter)}>ทุกเพจ · {all.filter((i) => i.day).length}</Link>
-              {setup.pages.map((p) => (
-                <Link key={p.pageId} href={query({ page: p.pageId })} className={chip(pageFilter === p.pageId)}>
-                  {p.pageName} · {counts.get(p.pageId) ?? 0}
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {listView ? (
-            <MonthList items={items.filter((i) => i.day && cells.some((c) => c.day === i.day && c.inMonth))} />
-          ) : (
-            <CalendarBoard cells={cells} items={items} today={today} setup={setup} defaultPage={pageFilter} />
-          )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Link href={query({ y: String(ty), m: String(tm) })} className={navBtn}>วันนี้</Link>
+          <Link href={query({ y: String(prev.year), m: String(prev.month) })} aria-label="เดือนก่อน" className={navBtn}>
+            <ChevronLeftIcon className="size-5" />
+          </Link>
+          <h2 className="min-w-36 text-center text-lg font-semibold sm:min-w-40">{thaiMonthYear(year, month)}</h2>
+          <Link href={query({ y: String(next.year), m: String(next.month) })} aria-label="เดือนถัดไป" className={navBtn}>
+            <ChevronRightIcon className="size-5" />
+          </Link>
         </div>
-      </AppShell>
+        <div className="flex items-center gap-1 rounded-full border border-[var(--ct-line)] bg-[var(--ct-panel)] p-1">
+          <Link href={query({ view: undefined })} aria-current={!listView ? "page" : undefined} className={toggle(!listView)}>เดือน</Link>
+          <Link href={query({ view: "list" })} aria-current={listView ? "page" : undefined} className={toggle(listView)}>รายการ</Link>
+        </div>
+      </div>
+
+      {setup.pages.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-[var(--ct-mute)]">เพจ</span>
+          <Link href={query({ page: undefined })} aria-current={!pageFilter ? "page" : undefined} className={chip(!pageFilter)}>ทุกเพจ · {all.filter((i) => i.day).length}</Link>
+          {setup.pages.map((p) => (
+            <Link key={p.pageId} href={query({ page: p.pageId })} aria-current={pageFilter === p.pageId ? "page" : undefined} className={chip(pageFilter === p.pageId)}>
+              {p.pageName} · {counts.get(p.pageId) ?? 0}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {listView ? (
+        <MonthList items={items.filter((i) => i.day && cells.some((c) => c.day === i.day && c.inMonth))} />
+      ) : (
+        <CalendarBoard cells={cells} items={items} errors={errors} today={today} setup={setup} defaultPage={pageFilter} />
+      )}
     </div>
   );
 }

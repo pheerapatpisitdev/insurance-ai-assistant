@@ -19,7 +19,7 @@ export async function StudioPage({ hook, open }: { hook?: string; open?: string 
     contentSpend(),
     listPeople().catch(() => []),
   ]);
-  // the calendar's เปิดแก้ไข: the piece opens in the editor on arrival
+  // the calendar's แก้ไข: the piece opens in the editor on arrival
   const opened = open && /^[0-9a-f-]{36}$/.test(open) ? await getContent(open).catch(() => null) : null;
   return (
     <ContentStudio

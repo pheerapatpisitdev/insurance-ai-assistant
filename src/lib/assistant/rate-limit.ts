@@ -22,3 +22,16 @@ export function limiter(max: number, windowMs: number): (key: string, now?: numb
 
 /** the chat's limit: eight a minute, which no person reaches and a script does at once */
 export const allow = limiter(8, 60_000);
+
+/**
+ * Who is asking, for the limits above. On Vercel x-real-ip is set by the platform from the
+ * connection itself; x-forwarded-for may carry whatever the caller wrote before the platform
+ * appended the real address, so only its first entry is used, and only when x-real-ip is
+ * missing. A limiter keyed on a header the caller controls limits nobody — which is why the
+ * content ceiling's reservations, not this, are the real stop on spending.
+ */
+export function clientIp(h: { get(name: string): string | null }): string {
+  const real = h.get("x-real-ip")?.trim();
+  if (real) return real;
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+}

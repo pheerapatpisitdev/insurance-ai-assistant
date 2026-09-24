@@ -38,4 +38,18 @@ describe("checkPolicy", () => {
   it("says nothing about clean copy", () => {
     expect(codes("ทุน 1,000,000 บาท ถ้าเสียชีวิตก่อนอายุ 60 ครอบครัวได้ 2 เท่า")).toEqual([]);
   });
+
+  it("reads the polite ท่าน as the reader too", () => {
+    expect(codes("ท่านป่วยเป็นเบาหวานอยู่ใช่ไหม")).toEqual(["health_you"]);
+    expect(codes("ท่านมีหนี้บ้านอยู่ใช่ไหม")).toEqual(["debt_you"]);
+    expect(codes("ท่านตกงานอยู่หรือเปล่า")).toEqual(["job_you"]);
+    expect(codes("ถ้าวันหนึ่งท่านป่วยหนัก ใครดูแล")).toEqual([]);
+  });
+
+  it("reads Thai digits as digits", () => {
+    expect(codes("คุณอายุ ๔๐ แล้ว ต้องมีประกัน")).toEqual(["age_you"]);
+    expect(codes("อายุ ๕๐ ปีขึ้นไปสมัครได้ทันที")).toEqual(["age_you"]);
+    expect(codes("สมัครวันนี้ อนุมัติ ๑๐๐%")).toEqual(["guarantee"]);
+    expect(codes("อันดับ ๑ ของประเทศ")).toEqual(["superlative"]);
+  });
 });

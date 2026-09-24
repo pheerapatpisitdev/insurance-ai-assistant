@@ -3,6 +3,7 @@ import { shortModel } from "@/lib/content/models";
 import { LENGTHS } from "@/lib/content/prompt";
 import { scenes } from "@/lib/content/script";
 import type { ContentItem } from "@/lib/content/store";
+import { CheckIcon } from "./ui/editor-icons";
 
 /**
  * A video script on the workbench: a shot list, not a poster.
@@ -68,7 +69,8 @@ export function ScriptCard({ item, index, busy, onEdit, onStatus, onDelete, onCo
           <button type="button" onClick={onCopy} className={cell}>คัดลอก</button>
         ) : (
           <button type="button" disabled={busy} onClick={() => onStatus("used")} className={`${cell} font-medium text-[var(--ct-accent)]`}>
-            ✓ ใช้จริง
+            <CheckIcon className="size-4" />
+            ใช้จริง
           </button>
         )}
         <button type="button" onClick={onEdit} className={cell}>แก้ไข</button>

@@ -1,4 +1,4 @@
-import { chat, parseJsonReply } from "@/lib/ai/client";
+import { BudgetExceeded, chat, parseJsonReply } from "@/lib/ai/client";
 import { DISCLAIMER, TAX_LINE, type ContentOutput } from "./output";
 import { adCopyMessages, matrixCells, matrixMessages, parseAdCopy, parseMatrix } from "./ads";
 import { parsePoster } from "./poster";
@@ -95,6 +95,36 @@ export interface WrittenPiece {
   costThb: number;
 }
 
+/**
+ * The writers a pick may fall back to when its model is down.
+ *
+ * ประหยัด — picked, or chosen by อัตโนมัติ because the month's money is nearly gone — falls
+ * back to nothing dearer: a cheap pick answered by Sonnet at six times the price is exactly
+ * the spend it was picked to avoid. The dearer picks keep the whole list.
+ */
+export function fallbackWriters(prefer: string | undefined): string[] | undefined {
+  if (!prefer) return undefined;
+  const cheapest = Math.min(...WRITERS.map((w) => w.thb));
+  const picked = WRITERS.find((w) => w.model === prefer);
+  return picked && picked.thb <= cheapest ? [prefer] : WRITERS.map((w) => w.model);
+}
+
+/** What a round of parallel calls came to: the pieces, and how many the budget stopped. */
+export interface Round {
+  pieces: WrittenPiece[];
+  /** pieces refused because the month's AI budget ran out while the round was writing */
+  budgetHit: number;
+}
+
+/** The fulfilled ones; all failed throws the first reason, a budget refusal before any other. */
+function gather(settled: PromiseSettledResult<WrittenPiece>[]): Round {
+  const pieces = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
+  const reasons = settled.flatMap((s) => (s.status === "rejected" ? [s.reason as unknown] : []));
+  const budgetHit = reasons.filter((r) => r instanceof BudgetExceeded).length;
+  if (pieces.length === 0) throw reasons.find((r) => r instanceof BudgetExceeded) ?? reasons[0] ?? new UnreadableReply();
+  return { pieces, budgetHit };
+}
+
 /** a large model writing one post in Thai; comfortably past the 25 seconds a chat reply gets */
 const WRITE_TIMEOUT_MS = 60_000;
 
@@ -107,8 +137,8 @@ const WRITE_TIMEOUT_MS = 60_000;
  * short enough to finish, and a piece that fails costs only itself. The planner already made
  * the angles distinct, so no writer needs to see the others' plans.
  */
-export async function write(ask: Ask, opts: { only?: string; prefer?: string } = {}): Promise<WrittenPiece[]> {
-  const within = opts.prefer ? WRITERS.map((w) => w.model) : undefined;
+export async function write(ask: Ask, opts: { only?: string; prefer?: string } = {}): Promise<Round> {
+  const within = fallbackWriters(opts.prefer);
   const settled = await Promise.allSettled(ask.plans.map(async (p) => {
     const r = await chat({
       tier: "large", task: "content", messages: buildMessages({ ...ask, plans: [p] }),
@@ -124,19 +154,14 @@ export async function write(ask: Ask, opts: { only?: string; prefer?: string } =
     }
     return { output, model: r.model, costThb: r.costThb };
   }));
-  const written = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
-  if (written.length === 0) {
-    const first = settled.find((s): s is PromiseRejectedResult => s.status === "rejected");
-    throw first?.reason ?? new UnreadableReply();
-  }
-  return written;
+  return gather(settled);
 }
 
 /**
  * A round of ads: the cheap model designs the angles and tones, then every cell is written in
  * parallel by the large one, as posts are. A cell that fails costs only itself.
  */
-export async function writeAds(opts: { brief: string; angles: number; tones: number; hint: string; prefer?: string }): Promise<{ pieces: WrittenPiece[]; planThb: number; planned: number }> {
+export async function writeAds(opts: { brief: string; angles: number; tones: number; hint: string; prefer?: string }): Promise<Round & { planThb: number; planned: number }> {
   const m = await chat({ tier: "small", task: "content-plan", messages: matrixMessages(opts.brief, opts.angles, opts.tones, opts.hint), maxTokens: 900, json: true })
     .catch(() => null);
   const matrix = parseMatrix(m?.text ?? "", opts.angles, opts.tones);
@@ -145,7 +170,7 @@ export async function writeAds(opts: { brief: string; angles: number; tones: num
     const r = await chat({
       tier: "large", task: "content", messages: adCopyMessages(opts.brief, cell),
       maxTokens: 3000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low", prefer: opts.prefer,
-      within: opts.prefer ? WRITERS.map((w) => w.model) : undefined,
+      within: fallbackWriters(opts.prefer),
     });
     const copy = parseAdCopy(r.text);
     if (!copy) {
@@ -166,12 +191,7 @@ export async function writeAds(opts: { brief: string; angles: number; tones: num
     };
     return { output, model: r.model, costThb: r.costThb };
   }));
-  const pieces = settled.flatMap((x) => (x.status === "fulfilled" ? [x.value] : []));
-  if (pieces.length === 0) {
-    const first = settled.find((x): x is PromiseRejectedResult => x.status === "rejected");
-    throw first?.reason ?? new UnreadableReply();
-  }
-  return { pieces, planThb: m?.costThb ?? 0, planned: cells.length };
+  return { ...gather(settled), planThb: m?.costThb ?? 0, planned: cells.length };
 }
 
 /**

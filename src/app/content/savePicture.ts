@@ -71,5 +71,5 @@ export function usePictureSaver(url: string, name: string) {
 }
 
 export const SAVE_LABEL: Record<SaveState, string> = {
-  idle: "บันทึกรูป", saving: "กำลังเตรียม…", saved: "บันทึกแล้ว ✓", failed: "ไม่สำเร็จ ลองใหม่",
+  idle: "บันทึกรูป", saving: "กำลังเตรียม…", saved: "บันทึกแล้ว", failed: "ไม่สำเร็จ ลองใหม่",
 };

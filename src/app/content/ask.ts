@@ -19,7 +19,8 @@ export function ask(message: string, okLabel = "ยืนยัน"): Promise<bo
       borderRadius: "0.75rem",
       background: "var(--bot-surface)",
       color: "var(--bot-ink)",
-      boxShadow: "0 12px 32px rgb(0 0 0 / 0.18)",
+      // the palette's ink, faint — the same dark the rest of the page is drawn in
+      boxShadow: "0 12px 32px color-mix(in srgb, var(--bot-ink) 18%, transparent)",
     });
 
     const text = document.createElement("p");
@@ -35,6 +36,7 @@ export function ask(message: string, okLabel = "ยืนยัน"): Promise<bo
       b.textContent = label;
       Object.assign(b.style, {
         padding: "0.5rem 1rem",
+        minHeight: "2.75rem",
         borderRadius: "0.5rem",
         fontSize: "0.9rem",
         cursor: "pointer",
@@ -43,6 +45,14 @@ export function ask(message: string, okLabel = "ยืนยัน"): Promise<bo
         color: strong ? "var(--bot-surface)" : "var(--bot-ink)",
         fontWeight: strong ? "600" : "400",
       });
+      /* the box sits in the top layer, outside .content-page and its focus ring, so it draws its
+         own: a ring on a keyboard's focus only, as :focus-visible decides */
+      b.addEventListener("focus", () => {
+        if (!b.matches(":focus-visible")) return;
+        b.style.outline = "3px solid var(--bot-navy)";
+        b.style.outlineOffset = "2px";
+      });
+      b.addEventListener("blur", () => { b.style.outline = ""; b.style.outlineOffset = ""; });
       return b;
     };
     const no = button("ยกเลิก", false);

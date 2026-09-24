@@ -54,6 +54,23 @@ export interface ContentOutput {
    * is edited and checked again — they are in no brief.
    */
   fact?: string;
+  /**
+   * For a ตัวเลขชัดๆ piece, the engine's figures it was written from (numbersYardstick of its
+   * sheet). They are in no brief either, so without them the first save of an untouched
+   * numbers post flagged every premium in it as not from the rate table.
+   */
+  figures?: string;
+  /**
+   * Which of `hooks` went to the Page, for older pieces that carry three; absent is the
+   * first. A held post taken back and sent again (a move, an edit) goes with the same one.
+   */
+  postedHook?: number;
+  /**
+   * Changes on every write of the output (store.ts sets it), so a write that read the piece
+   * earlier can ask "still as I read it?" — an edit saved while a picture was drawing, or a
+   * picture landing while an edit was saved, is then read again instead of written over.
+   */
+  rev?: string;
 }
 
 /** The piece as it will be pasted: one hook, the body, the closing, the tags, the footer. */
