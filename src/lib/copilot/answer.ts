@@ -13,6 +13,7 @@ import { asksCi123Price, ci123NamedIn } from "./ci123-price";
 import { asksCancerPrice, cancerNamedIn } from "./cancer-price";
 import { PRICED_FOLLOW_UPS, type GuideItem } from "./guide";
 import { noteAfterAnswer } from "@/lib/assistant/unanswered";
+import { forTheWebsite } from "@/lib/assistant/channel";
 
 /**
  * The assistant that answers out of this system's own knowledge, and out of nothing else.
@@ -151,7 +152,8 @@ export async function answerFromKnowledge(
     const turns: ChatMessage[] = [...history.slice(-6), { role: "user", content: question }];
     // said outright, because the wording depends on it: this side renders markdown
     const answer = await answerAny(turns, slots, "web");
-    const text = answer.messages.map((m) => m.text).filter(Boolean).join("\n\n");
+    // the inbox's words, less its promises that a person reads this chat — nobody does here
+    const text = forTheWebsite(answer.messages.map((m) => m.text).filter(Boolean).join("\n\n"));
     const cards = answer.messages.map((m) => m.card).filter((c): c is string => Boolean(c));
 
     /**
@@ -210,5 +212,5 @@ export async function answerFromKnowledge(
   if (!reply) return { text: BROKEN, model: "—", slots, failed: true };
   // the library wrote this one too, and by the same argument it is worth knowing about
   noteAfterAnswer({ question, route: "library" });
-  return { text: reply.text, model: reply.model, slots };
+  return { text: forTheWebsite(reply.text), model: reply.model, slots };
 }

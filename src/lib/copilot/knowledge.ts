@@ -138,8 +138,8 @@ function planSection(code: string, name: string, rules: PlanRules): string {
     PRICEABLE.has(code)
       ? "- คิดเบี้ยในแชทนี้ได้ — บอกอายุ เพศ ทุนประกัน (และระยะเวลาชำระเบี้ยถ้าแบบนี้มีให้เลือก)"
       : getPlan(code)?.rules.base.premiumBasis
-        // its figures run the other way: a premium in, a sum assured back
-        ? "- **แชทนี้คิดให้ไม่ได้** เพราะแบบนี้กรอกเบี้ยที่อยากจ่ายแล้วได้ทุนกลับมา ไม่ใช่กรอกทุน ใช้ที่หน้าแบบประกันอื่นๆ (/other-plans)"
+        // its figures run the other way, and its own brain takes them that way round
+        ? "- คิดเบี้ยในแชทนี้ได้ — บอกอายุ เพศ และเงินที่อยากจ่ายต่อเดือน (ระบบบอกทุนที่ได้) หรือทุนประกันที่ต้องการ"
         : "- **คิดเบี้ยในแชทนี้ไม่ได้** ตอบเรื่องเงื่อนไขได้อย่างเดียว เบี้ยต้องไปที่หน้าแบบประกันอื่นๆ (/other-plans)",
   ];
   const b = rules.base;

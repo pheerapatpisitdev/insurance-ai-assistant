@@ -95,8 +95,8 @@ describe("the guide the page opens with", () => {
          * "iHealthy มีระยะเวลารอคอยกี่วัน" answered down the pricing path would come back as
          * an apology about a missing age.
          *
-         * iShield's button is in the price group and is a price question — it just gets the
-         * explanation rather than a figure, because it takes a premium and returns a sum.
+         * iShield's button is in the price group and is a price question — a monthly premium
+         * in and the cover it buys back, which its own brain answers with a figure.
          */
         const money = group.kind === "price";
         expect(goesToTheEngine(item.ask), `${item.label} → ${item.ask}`).toBe(money);

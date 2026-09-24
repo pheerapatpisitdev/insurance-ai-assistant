@@ -7,14 +7,28 @@ import type { AnySlots } from "@/lib/assistant/slots";
 import type { GuideGroup, GuideItem } from "@/lib/copilot/guide";
 
 /**
- * The two pieces of markdown a model reaches for, drawn rather than printed.
+ * The two pieces of markdown a model reaches for, drawn rather than printed — and a bare
+ * address, which is a link whether or not anybody wrote it as one.
  *
  * Not a markdown library: the answers here are short Thai paragraphs with the occasional
- * bolded rule and the occasional link back to the calculator, and a parser for the whole
- * language would be a dependency earning its keep on two characters. Anything else the model
- * writes is left exactly as it typed it.
+ * bolded rule and the occasional link, and a parser for the whole language would be a
+ * dependency earning its keep on two characters. Anything else the model writes is left
+ * exactly as it typed it.
+ *
+ * Links used to be drawn only when they led back into this site. An address anywhere else
+ * came out as its label alone, or as plain text — and the application form is somewhere else,
+ * so the one message that turns a quotation into a sale was a line nobody could press.
  */
-const INLINE = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
+const INLINE = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)|https?:\/\/[^\s)]+)/g;
+const OUTSIDE = /^https?:\/\//;
+
+function Away({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="break-all font-medium underline underline-offset-2">
+      {children}
+    </a>
+  );
+}
 
 function Rich({ text }: { text: string }) {
   return (
@@ -24,10 +38,14 @@ function Rich({ text }: { text: string }) {
         if (bold) return <strong key={i}>{bold[1]}</strong>;
         const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
         if (link) {
-          return link[2].startsWith("/")
-            ? <Link key={i} href={link[2]} className="underline underline-offset-2">{link[1]}</Link>
+          if (link[2].startsWith("/")) {
+            return <Link key={i} href={link[2]} className="font-medium underline underline-offset-2">{link[1]}</Link>;
+          }
+          return OUTSIDE.test(link[2])
+            ? <Away key={i} href={link[2]}>{link[1]}</Away>
             : <span key={i}>{link[1]}</span>;
         }
+        if (OUTSIDE.test(part)) return <Away key={i} href={part}>{part}</Away>;
         return <span key={i}>{part}</span>;
       })}
     </p>

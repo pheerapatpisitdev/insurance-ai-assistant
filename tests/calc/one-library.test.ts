@@ -49,11 +49,16 @@ describe("a premium for a plan with no brain", () => {
     }
   });
 
-  it("explains iShield rather than quoting it, because it is asked for a premium", async () => {
+  /**
+   * iShield is named in the brainless list but has a brain of its own, and it is that brain
+   * which answers. It used to be caught here and told to go to another page — the most common
+   * unanswered question on the website, from a button the website offered.
+   */
+  it("hands iShield to its own brain, which quotes it", async () => {
     const a = await answerAny(said("iShield ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่"), null);
-    expect(a.priced).toBeFalsy();
-    expect(a.messages[0].text).toContain("กรอกเบี้ยที่อยากจ่าย");
-    expect(a.messages[0].card).toBeUndefined();
+    expect(a.priced).toBe(true);
+    expect(a.messages[0].text).not.toContain("/other-plans");
+    expect(a.messages.some((m) => m.card)).toBe(true);
   });
 
   it("asks for the paying term instead of choosing one", async () => {
@@ -111,18 +116,19 @@ describe("which door the message came through", () => {
    * the wording without saying which side asked is how a customer who arrived through an
    * advertisement came to be shown "**iSmart 80/6**" and a link they could not press.
    */
-  const ask = "iShield ชาย 35 ทุน 1 ล้าน เบี้ยเท่าไหร่";
+  // below Life Treasure's smallest sum, so the answer is a refusal with a name and a page in it
+  const ask = "Life Treasure ชาย 40 ทุน 1 ล้าน จ่าย 6 ปี เบี้ยเท่าไหร่";
 
   it("writes markdown for the website, which draws it", async () => {
     const a = await answerAny(said(ask), null, "web");
-    expect(a.messages[0].text).toContain("**iShield**");
+    expect(a.messages[0].text).toContain("**Life Treasure**");
     expect(a.messages[0].text).toContain("](/other-plans)");
   });
 
   it("writes plain words and a whole address for the inbox, which draws neither", async () => {
     const a = await answerAny(said(ask), null, "facebook");
     const text = a.messages[0].text;
-    expect(text).toContain("iShield");
+    expect(text).toContain("Life Treasure");
     expect(text).not.toContain("**");
     expect(text).not.toMatch(/\]\(/);
     // a relative path means nothing to someone reading it in Messenger

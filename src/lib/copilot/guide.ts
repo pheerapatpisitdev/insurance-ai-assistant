@@ -120,11 +120,15 @@ export function openingGuide(): GuideGroup[] {
     if (code === "LIFEPROTECT") continue;
 
     /**
-     * iShield is asked the other way round — a premium in, a sum back — so it gets a button
-     * that says what it is rather than one that quotes a sum it would refuse.
+     * iShield is asked the other way round — a saving in, the cover it buys back — so its
+     * example is a monthly saving, which its own brain prices. It used to be "คิดเบี้ยยังไง",
+     * answered by sending the reader to another page.
      */
     if (plan.rules.base.premiumBasis) {
-      priceItems.push({ label: `${name} — คิดยังไง`, ask: `${name} คิดเบี้ยยังไง` });
+      priceItems.push({
+        label: `${name} · ชาย 35 ออมเดือนละ 3,000`,
+        ask: `${name} ชาย 35 จ่ายเบี้ยเดือนละ 3,000 ได้ทุนเท่าไหร่`,
+      });
       continue;
     }
 

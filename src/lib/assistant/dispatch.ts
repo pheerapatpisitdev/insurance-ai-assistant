@@ -209,7 +209,14 @@ export async function answerAny(
    * would otherwise be quoted as the plan that owns that subject.
    */
   const other = planNamedIn(asked);
-  if (other && asksAboutMoney(asked)) {
+  /**
+   * iShield is in that list of names and is not brainless: it has a brain of its own, which
+   * takes a monthly saving and answers with the cover it buys. Caught here, it was answered
+   * with the brainless path's apology — "this chat can't, use the other page" — which was
+   * the most common unanswered question on the website (16 in a fortnight), from a button
+   * the page itself offered. Named, it goes to its brain below.
+   */
+  if (other && other.code !== "ISHIELD" && asksAboutMoney(asked)) {
     const priced = priceNamedPlan(asked, other.code, other.label);
     return {
       messages: [
