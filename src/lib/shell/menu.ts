@@ -122,6 +122,8 @@ export const SALES_SECTIONS: { title: string; links: MenuLink[] }[] = [
     title: "วางแผนประกัน",
     links: [
       { href: "/plan", label: "Insurance Planner", icon: "calc", hue: "#3a2b73" },
+      // the agency's own questionnaire: scores first, then the same plan /plan builds
+      { href: "/fhc", label: "Financial Health Check", icon: "pulse", hue: "#35306e" },
     ],
   },
   {

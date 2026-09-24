@@ -25,6 +25,8 @@ export type RetireAge = (typeof RETIRE_AGES)[number];
 export const PENSION_FROM_AGE: RetireAge = 60;
 /** เงินก้อนเพื่อเกษียณ หารให้พอใช้ถึงอายุนี้ ไม่คิดดอกผล */
 export const LUMP_LASTS_TO_AGE = 85;
+/** อายุเฉลี่ยที่ลูกค้าเลือกเองได้ (หน้า FHC) — ใช้แทน LUMP_LASTS_TO_AGE เมื่อกรอกมา */
+export const LIFE_EXPECTANCY = { min: 75, max: 100 } as const;
 /** บำนาญที่ไม่ได้อยู่ท้ายลำดับ: ลดทีละเท่านี้ (บาท/เดือน) จนเบี้ยพอดีงบ */
 export const PENSION_STEP = 1_000;
 /** Life Protect x 2 จ่ายสองเท่าเมื่อเสียชีวิตก่อนอายุนี้ — the test checks it against the rate table */

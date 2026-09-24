@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
-import { MoneyInput } from "@/components/MoneyInput";
+import { Choice, Field, HEALTH_NOW, INPUT, LABEL, MoneyField, n, PANEL, type Money } from "@/components/plan/fields";
 import {
   HOSPITAL_LABEL, LIFE_WANT_LABEL, PLANNER_AGE, RETIRE_AGES, type Hospital, type LifeWant,
 } from "@/lib/plan/assumptions";
@@ -9,54 +9,6 @@ import type { Prose } from "@/lib/plan/prose";
 import type { PlanResult } from "@/lib/plan/recommend";
 import { buildPlan, explainPlan } from "./actions";
 import { PlanView } from "./PlanView";
-
-type Money = number | "";
-
-const INPUT =
-  "mt-1.5 w-full rounded-sm border border-[var(--lg-panel-line)] bg-[var(--lg-raise)] px-3 py-2.5 text-lg tabular-nums text-[var(--lg-white)]";
-const LABEL = "block text-sm text-[var(--lg-mute)]";
-const PANEL = "space-y-4 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-panel)] p-5";
-
-function Choice<T extends string>({ value, options, onChange }: {
-  value: T; options: [T, string][]; onChange: (v: T) => void;
-}) {
-  return (
-    <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {options.map(([v, label]) => (
-        <button
-          key={v} type="button" aria-pressed={value === v} onClick={() => onChange(v)}
-          className={`rounded-sm border px-2 py-2.5 text-sm transition-colors ${
-            value === v ? "lg-metal-face border-[var(--lg-gold)] font-medium" : "border-[var(--lg-panel-line)] text-[var(--lg-mute)]"
-          }`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className={LABEL}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function MoneyField({ label, value, onChange, hint }: { label: string; value: Money; onChange: (v: Money) => void; hint?: string }) {
-  return (
-    <div>
-      <span className={LABEL}>{label}</span>
-      <MoneyInput value={value} onChange={onChange} className={INPUT} placeholder="0" hint={hint} />
-    </div>
-  );
-}
-
-const HEALTH_NOW: [HealthNow, string][] = [
-  ["none", "ไม่มี"], ["public", "ประกันสังคม/บัตรทอง"], ["employer", "สวัสดิการบริษัท"], ["private", "ประกันสุขภาพส่วนตัว"],
-];
 
 export function Planner() {
   const [age, setAge] = useState<Money>(35);
@@ -89,7 +41,6 @@ export function Planner() {
   const [editing, setEditing] = useState(true);
   const seq = useRef(0);
 
-  const n = (v: Money) => (v === "" ? 0 : v);
   const shownBudget = budgetTouched ? budget : defaultBudget(n(income), n(premiumsNow)) || "";
   const shownRetire = retireTouched ? retireMonthly : defaultRetireMonthly(n(expense)) || "";
 

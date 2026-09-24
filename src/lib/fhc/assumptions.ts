@@ -1,0 +1,43 @@
+/**
+ * The Financial Health Check's rules of thumb, each named in one place, so the owner can move
+ * a threshold without reading the scoring. Agreed 2026-09-25 — see
+ * docs/superpowers/specs/2026-09-25-fhc-design.md.
+ */
+
+/** อายุเฉลี่ยตั้งต้น */
+export const DEFAULT_EXPECTANCY = 85;
+/** เงินสำรองฉุกเฉิน (เงินสด + ฝากประจำ): กี่เดือนของค่าใช้จ่าย — ตั้งแต่ green = เขียว, ตั้งแต่ yellow = เหลือง */
+export const EMERGENCY_MONTHS = { green: 6, yellow: 3 } as const;
+/** เงินเหลือต่อเดือน เทียบรายได้ */
+export const SAVING_SHARE = { green: 0.2, yellow: 0.1 } as const;
+/** หนี้รวม เทียบรายได้ต่อปี (น้อยดี): ต่ำกว่า green = เขียว, ไม่เกิน yellow = เหลือง */
+export const DEBT_YEARS = { green: 1, yellow: 3 } as const;
+/** ความคุ้มครองชีวิตและเงินเกษียณ: ที่มี เทียบที่ควรมี */
+export const COVER_SHARE = { green: 1, yellow: 0.5 } as const;
+
+export type WorkAbility = "full" | "partial" | "none";
+export const WORK_ABILITY_LABEL: Record<WorkAbility, string> = {
+  full: "ทำงานได้เต็มที่",
+  partial: "ทำงานได้บางส่วน",
+  none: "ทำงานไม่ได้",
+};
+
+export type Relation = "child" | "spouse" | "parent" | "other";
+export const RELATION_LABEL: Record<Relation, string> = {
+  child: "ลูก",
+  spouse: "คู่สมรส",
+  parent: "พ่อแม่",
+  other: "อื่นๆ",
+};
+/** แถวคนในความดูแลที่ให้กรอก */
+export const MAX_PEOPLE = 4;
+
+/** FHC's five events, in its own order */
+export type EventKey = "illness" | "accident" | "disability" | "death" | "jobLoss";
+export const EVENTS: { key: EventKey; name: string }[] = [
+  { key: "illness", name: "การเจ็บป่วย" },
+  { key: "accident", name: "อุบัติเหตุ" },
+  { key: "disability", name: "ทุพพลภาพถาวร" },
+  { key: "death", name: "การจากไปโดยไม่ทันตั้งตัว" },
+  { key: "jobLoss", name: "การตกงาน" },
+];

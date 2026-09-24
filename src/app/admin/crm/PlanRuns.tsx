@@ -20,14 +20,14 @@ export async function PlanRuns() {
   return (
     <section className="space-y-3 rounded-lg border border-[var(--bot-line)] bg-white p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold text-[var(--bot-ink)]">ลูกค้าวางแผนเอง (/plan)</h2>
+        <h2 className="text-base font-semibold text-[var(--bot-ink)]">ลูกค้าวางแผนเอง (/plan, /fhc)</h2>
         <p className="text-sm text-[var(--bot-ink-mute)]">7 วัน {week} ครั้ง · 30 วัน {rows.length} ครั้ง</p>
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs text-[var(--bot-ink-mute)]">
-              <tr><th className="py-1.5 pr-3">เวลา</th><th className="pr-3">อายุ</th><th className="pr-3">เงินเดือน</th><th className="pr-3">ที่เสนอ</th><th className="pr-3">ลำดับ</th><th>เบี้ยรวม/ปี</th></tr>
+              <tr><th className="py-1.5 pr-3">เวลา</th><th className="pr-3">ที่มา</th><th className="pr-3">อายุ</th><th className="pr-3">เงินเดือน</th><th className="pr-3">ที่เสนอ</th><th className="pr-3">ลำดับ</th><th>เบี้ยรวม/ปี</th></tr>
             </thead>
             <tbody>
               {rows.slice(0, 20).map((r) => (
@@ -35,6 +35,7 @@ export async function PlanRuns() {
                   <td className="whitespace-nowrap py-1.5 pr-3">
                     {new Date(r.created_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", dateStyle: "short", timeStyle: "short" })}
                   </td>
+                  <td className="pr-3">{(r.input as { from?: string }).from === "fhc" ? "FHC" : "plan"}</td>
                   <td className="pr-3 tabular-nums">{r.input.age}</td>
                   <td className="pr-3 tabular-nums">{r.input.income.toLocaleString("en-US")}</td>
                   <td className="pr-3">

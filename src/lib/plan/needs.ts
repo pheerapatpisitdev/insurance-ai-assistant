@@ -1,6 +1,6 @@
 import {
   CHILD_SUPPORTED_UNTIL, CI_YEARS_OF_INCOME, DEFAULT_BUDGET_SHARE, EDUCATION_PER_CHILD, FUNERAL, HEALTH_TIERS,
-  HOSPITAL_TIER, LIFE_DOUBLE_BEFORE_AGE, LIFE_SUMS, LUMP_LASTS_TO_AGE, PENSION_FROM_AGE, PLANNER_AGE,
+  HOSPITAL_TIER, LIFE_DOUBLE_BEFORE_AGE, LIFE_EXPECTANCY, LIFE_SUMS, LUMP_LASTS_TO_AGE, PENSION_FROM_AGE, PLANNER_AGE,
   RETIRE_AGES, RETIRE_SHARE_OF_EXPENSE, YEARS_FOR_OTHER_DEPENDANTS, type Hospital, type LifeWant, type RetireAge,
 } from "./assumptions";
 
@@ -42,6 +42,8 @@ export interface PlanInput {
   pensionHave: number;
   /** baht kept for retirement (PVD, RMF, savings for it) — not the savings the life need counts */
   retireLump: number;
+  /** the age the lump sum must last to; LUMP_LASTS_TO_AGE when absent */
+  lifeExpectancy?: number;
   /** baht a month the customer will add */
   budget: number;
 }
@@ -86,8 +88,14 @@ export function cleanInput(raw: unknown): PlanInput | string {
     retireMonthly: money(r.retireMonthly) || defaultRetireMonthly(expense),
     pensionHave: money(r.pensionHave),
     retireLump: money(r.retireLump),
+    lifeExpectancy: lifeExpectancy(r.lifeExpectancy),
     budget: money(r.budget),
   };
+}
+
+function lifeExpectancy(v: unknown): number | undefined {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= LIFE_EXPECTANCY.min && n <= LIFE_EXPECTANCY.max ? n : undefined;
 }
 
 /** the first step at or above x, or the last step when x is past them all */
@@ -156,7 +164,7 @@ export function defaultRetireMonthly(expense: number): number {
 
 /** baht a month: what the customer wants after work, what is already coming, and the gap */
 export function retireNeed(p: PlanInput): { should: number; have: number; gap: number } {
-  const months = Math.max(1, LUMP_LASTS_TO_AGE - p.retireAge) * 12;
+  const months = Math.max(1, (p.lifeExpectancy ?? LUMP_LASTS_TO_AGE) - p.retireAge) * 12;
   const have = p.pensionHave + Math.round(p.retireLump / months / 100) * 100;
   return { should: p.retireMonthly, have, gap: Math.max(0, p.retireMonthly - have) };
 }

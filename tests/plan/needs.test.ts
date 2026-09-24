@@ -76,6 +76,12 @@ describe("ciNeed, retireNeed", () => {
     const n = retireNeed({ ...OWNER, retireMonthly: 20_000, pensionHave: 3_000, retireLump: 1_500_000 });
     expect(n).toEqual({ should: 20_000, have: 8_000, gap: 12_000 });
   });
+  it("spreads the lump sum to the customer's own life expectancy when given", () => {
+    // 1,500,000 over (75 - 60) × 12 = 8,333 → 8,300
+    expect(retireNeed({ ...OWNER, retireLump: 1_500_000, lifeExpectancy: 75 }).have).toBe(8_300);
+    expect((cleanInput({ age: 35, income: 1, lifeExpectancy: 90 }) as PlanInput).lifeExpectancy).toBe(90);
+    expect((cleanInput({ age: 35, income: 1, lifeExpectancy: 200 }) as PlanInput).lifeExpectancy).toBeUndefined();
+  });
   it("has no gap when what is there covers it", () => {
     expect(retireNeed({ ...OWNER, retireMonthly: 10_000, pensionHave: 12_000 }).gap).toBe(0);
   });
