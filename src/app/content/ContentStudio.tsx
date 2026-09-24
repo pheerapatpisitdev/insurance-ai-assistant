@@ -12,6 +12,7 @@ import type { ContentItem, ContentStatus } from "@/lib/content/store";
 import { contentSpend, contentWorkbench, removeContent, setContentStatus, type DrawBackgroundResult, type GenerateResult } from "./actions";
 import { drawPicture, generateRound } from "./draw";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
+import { CalendarView } from "./CalendarView";
 import { PieceEditor } from "./PieceEditor";
 import { ScriptCard } from "./ScriptCard";
 
@@ -101,6 +102,12 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   const [counts, setCounts] = useState(initial.counts);
   const [used, setUsed] = useState(initialUsed);
   const [editing, setEditing] = useState<string | null>(null);
+  /** the ปฏิทิน view in place of a tab's list; the tab underneath is kept for coming back */
+  const [calendar, setCalendar] = useState(false);
+  /** a piece opened from the calendar, which is not in any tab's list */
+  const [opened, setOpened] = useState<ContentItem | null>(null);
+  /** bumped when a post goes up or is taken back, so the calendar reads its week again */
+  const [calendarTick, setCalendarTick] = useState(0);
   /** pieces with a status change or a delete under way — one each, several at once */
   const [busy, setBusy] = useState<Set<string>>(() => new Set());
   const mark = (id: string, on: boolean) => setBusy((b) => { const n = new Set(b); if (on) n.add(id); else n.delete(id); return n; });
@@ -145,7 +152,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
 
   const nameOf = (h: string) => products.find((p) => p.href === h)?.name ?? h;
   // gone from the list — deleted, moved to the other tab, filtered out — and the list is back
-  const editingItem = editing ? items.find((x) => x.id === editing) : undefined;
+  const editingItem = editing ? (items.find((x) => x.id === editing) ?? (opened?.id === editing ? opened : undefined)) : undefined;
   const chosenHook = hooks.find((h) => h.id === hookId) ?? null;
 
   async function reload(nextTab = tab, nextPlan = plan) {
@@ -294,6 +301,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   function published(next: ContentItem) {
     const before = view.current.items.find((x) => x.id === next.id);
     saved(next);
+    setCalendarTick((n) => n + 1);
     if (before?.status === "draft" && next.status === "used") {
       setCounts((c) => ({ ...c, draft: Math.max(0, c.draft - 1), used: c.used + 1 }));
       setUsedTotal((n) => n + 1);
@@ -304,6 +312,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
   function saved(next: ContentItem) {
     setItems((list) => list.map((x) => (x.id === next.id ? next : x)));
     setUsed((list) => list.map((x) => (x.id === next.id ? next : x)));
+    setOpened((o) => (o?.id === next.id ? next : o));
   }
 
   async function copy(item: ContentItem) {
@@ -531,6 +540,7 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                 onPublished={published}
                 onClose={() => {
                   setEditing(null);
+                  if (calendar) setCalendarTick((n) => n + 1);
                   // a piece posted from here is ใช้จริง now, and leaves the รอตรวจ list on the way out
                   setItems((list) => list.filter((x) => x.status === tab));
                 }}
@@ -542,22 +552,29 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             <div role="tablist" aria-label="สถานะชิ้นงาน" className="inline-flex items-center gap-1 rounded-full border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-1">
               {TABS.map((t) => (
                 <button
-                  key={t.id} type="button" role="tab" aria-selected={tab === t.id}
-                  onClick={() => { setTab(t.id); setEditing(null); reload(t.id, plan).catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ")); }}
-                  className={`rounded-full px-3 py-1.5 text-sm ${tab === t.id ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]"}`}
+                  key={t.id} type="button" role="tab" aria-selected={!calendar && tab === t.id}
+                  onClick={() => { setCalendar(false); setTab(t.id); setEditing(null); reload(t.id, plan).catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ")); }}
+                  className={`rounded-full px-3 py-1.5 text-sm ${!calendar && tab === t.id ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]"}`}
                 >
                   {t.label} <span className="tabular-nums">{counts[t.id]}</span>
                 </button>
               ))}
+              <button
+                type="button" role="tab" aria-selected={calendar}
+                onClick={() => { setCalendar(true); setEditing(null); }}
+                className={`rounded-full px-3 py-1.5 text-sm ${calendar ? "bg-[var(--ct-soft)] font-medium text-[var(--ct-accent)]" : "text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]"}`}
+              >
+                ปฏิทิน
+              </button>
             </div>
-            <select
+            {!calendar && <select
               value={plan} aria-label="กรองตามแบบประกัน"
               onChange={(e) => { setPlan(e.target.value); setEditing(null); reload(tab, e.target.value).catch(() => setError("โหลดรายการไม่สำเร็จ ลองใหม่อีกครั้งนะครับ")); }}
               className="rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-2 py-1.5 text-sm"
             >
               <option value="">ทุกแบบ</option>
               {products.map((p) => <option key={p.href} value={p.href}>{p.name}</option>)}
-            </select>
+            </select>}
           </div>
 
           {pending && (
@@ -575,7 +592,9 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
             </div>
           )}
 
-          {items.length === 0 && !pending ? (
+          {calendar ? (
+            <CalendarView nameOf={nameOf} refresh={calendarTick} onOpen={(item) => { setOpened(item); openEditor(item.id); }} />
+          ) : items.length === 0 && !pending ? (
             <p className="rounded-xl border border-dashed border-[var(--ct-line)] px-4 py-10 text-center text-sm text-[var(--ct-mute)]">
               {tab === "draft" ? "ยังไม่มีชิ้นงานรอตรวจ — เลือกแบบประกันแล้วกดสร้างได้เลย" : "ยังไม่มีชิ้นงานที่ใช้จริง"}
             </p>
