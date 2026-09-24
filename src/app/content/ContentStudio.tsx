@@ -5,6 +5,7 @@ import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { footer, fullText } from "@/lib/content/output";
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
+import { onPage } from "@/lib/content/publish-label";
 import { FORMAT_LABEL, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
@@ -294,15 +295,25 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
     if (item.status === "used") setUsedTotal((n) => Math.max(0, n - 1));
   }
 
-  /** posted, scheduled or taken back from the editor: counted as used the moment it is sent */
+  /**
+   * Posted, scheduled or taken back from the editor. A piece on the Page leaves both lists
+   * for the calendar (it stays open while being edited, and goes on close); one taken back
+   * returns as ใช้จริง.
+   */
   function published(next: ContentItem) {
-    const before = view.current.items.find((x) => x.id === next.id);
+    const before = [...view.current.items, ...view.current.used].find((x) => x.id === next.id);
     saved(next);
-    if (before?.status === "draft" && next.status === "used") {
-      setCounts((c) => ({ ...c, draft: Math.max(0, c.draft - 1), used: c.used + 1 }));
-      setUsedTotal((n) => n + 1);
-      setUsed((list) => [next, ...list.filter((x) => x.id !== next.id)]);
-    }
+    const wasListed = before != null && !onPage(before.publish);
+    const listed = !onPage(next.publish);
+    if (wasListed === listed && before?.status === next.status) return;
+    setCounts((c) => {
+      const out = { ...c };
+      if (wasListed && before) out[before.status] = Math.max(0, out[before.status] - 1);
+      if (listed) out[next.status] += 1;
+      return out;
+    });
+    setUsedTotal((n) => Math.max(0, n - (wasListed && before?.status === "used" ? 1 : 0) + (listed && next.status === "used" ? 1 : 0)));
+    setUsed((list) => (listed && next.status === "used" ? [next, ...list.filter((x) => x.id !== next.id)] : list.filter((x) => x.id !== next.id)));
   }
 
   function saved(next: ContentItem) {
@@ -541,8 +552,8 @@ export function ContentStudio({ products, angles, lengths, hooks, initialHook, i
                 onPublished={published}
                 onClose={() => {
                   setEditing(null);
-                  // a piece posted from here is ใช้จริง now, and leaves the รอตรวจ list on the way out
-                  setItems((list) => list.filter((x) => x.status === tab));
+                  // a piece posted from here is ใช้จริง and on the calendar now: it leaves on the way out
+                  setItems((list) => list.filter((x) => x.status === tab && !onPage(x.publish)));
                 }}
               />
             </>

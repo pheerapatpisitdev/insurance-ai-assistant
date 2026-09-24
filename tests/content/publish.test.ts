@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publishLabel, publishView, quickTimes } from "@/lib/content/publish-label";
+import { onPage, publishLabel, publishView, quickTimes } from "@/lib/content/publish-label";
 import { explain, postLink } from "@/lib/facebook/publish";
 import type { Publish } from "@/lib/content/store";
 
@@ -21,6 +21,20 @@ describe("publishView", () => {
     expect(publishLabel(at("2026-09-25T19:30:00+07:00"), now)).toContain("19:30");
     expect(publishLabel({ state: "failed", pageId: null, postId: null, at: null, error: "x" }, now)).toContain("ไม่สำเร็จ");
     expect(publishLabel(null, now)).toBeNull();
+  });
+});
+
+describe("onPage", () => {
+  const p = (state: Publish["state"]): Publish => ({ state, pageId: "1", postId: null, at: null, error: null });
+  it("a piece posted, scheduled or on its way lives on the calendar, not in the studio's lists", () => {
+    expect(onPage(p("scheduled"))).toBe(true);
+    expect(onPage(p("published"))).toBe(true);
+    expect(onPage(p("posting"))).toBe(true);
+  });
+  it("a cancelled or refused one comes back to the lists, as does one never sent", () => {
+    expect(onPage(p("cancelled"))).toBe(false);
+    expect(onPage(p("failed"))).toBe(false);
+    expect(onPage(null)).toBe(false);
   });
 });
 

@@ -2,6 +2,7 @@ import { monthSpend, monthStart, type SpendLine } from "@/lib/ai/ledger";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ContentWord, WordHit, WordKind } from "./check";
 import { isHookCategory, type HookCategory, type HookTemplate } from "./hooks";
+import { ON_PAGE_STATES } from "./publish-label";
 import type { PolicyFinding } from "./policy";
 import type { Fix } from "./proofread";
 import type { AngleId, Format, Length } from "./prompt";
@@ -137,11 +138,14 @@ export async function getContent(id: string): Promise<ContentItem | null> {
   return data ? toItem(data as Record<string, unknown>) : null;
 }
 
+/** the studio's lists: a piece on the Page is the calendar's to show (see onPage) */
+const OFF_PAGE = `publish_state.is.null,publish_state.not.in.(${ON_PAGE_STATES.join(",")})`;
+
 export async function listContent(filter: { status?: ContentStatus; planHref?: string } = {}, limit = 40): Promise<ContentItem[]> {
   let q = supabaseAdmin().from("ins_content").select(COLUMNS).order("created_at", { ascending: false }).limit(limit);
   if (filter.status) q = q.eq("status", filter.status);
   if (filter.planHref) q = q.eq("plan_href", filter.planHref);
-  const { data, error } = await q;
+  const { data, error } = await q.or(OFF_PAGE);
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, unknown>[]).map(toItem);
 }
@@ -151,7 +155,7 @@ export async function countByStatus(planHref?: string): Promise<Record<ContentSt
   const counts = await Promise.all(CONTENT_STATUSES.map(async (status) => {
     let q = supabaseAdmin().from("ins_content").select("id", { count: "exact", head: true }).eq("status", status);
     if (planHref) q = q.eq("plan_href", planHref);
-    const { count, error } = await q;
+    const { count, error } = await q.or(OFF_PAGE);
     if (error) throw new Error(error.message);
     return [status, count ?? 0] as const;
   }));

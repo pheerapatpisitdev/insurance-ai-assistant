@@ -24,6 +24,15 @@ export function publishView(p: Publish | null, now: Date = new Date()): PublishV
   return { kind: "published", at };
 }
 
+/** On the Page or on its way there. Such a piece lives on the calendar; the studio's
+    รอตรวจ and ใช้จริง lists leave it out (the owner's call, 2026-09-24). It stays ใช้จริง
+    underneath, so the hook formulas still learn from it. */
+export const ON_PAGE_STATES = ["posting", "scheduled", "published"] as const;
+
+export function onPage(p: Publish | null): boolean {
+  return p != null && (ON_PAGE_STATES as readonly string[]).includes(p.state);
+}
+
 /** "25 ก.ย. 19:30", in Thailand's time whatever the browser's clock says */
 export function thaiWhen(d: Date): string {
   return d.toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
