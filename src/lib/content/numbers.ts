@@ -1,3 +1,5 @@
+import { parseJsonReply } from "@/lib/ai/client";
+import type { ChatMessage } from "@/lib/ai/types";
 import type { PosterSpec } from "./poster";
 
 /**
@@ -53,4 +55,42 @@ const DIGIT = /[0-9๐-๙]/;
 export function safeHeadline(text: string, fallback: string): string {
   const t = text.trim();
   return t && !DIGIT.test(t) ? t : fallback;
+}
+
+/** used in turn when the model's headline has a digit or is missing */
+export const FALLBACK_HEADLINES = [
+  "ตัวเลขจริง ไม่ต้องเดา",
+  "ความคุ้มครองก้อนใหญ่ ในเบี้ยที่จ่ายไหว",
+  "เช็กให้ชัด ก่อนตัดสินใจ",
+];
+const FALLBACK_PICTURE = "A Thai adult at home reviewing household paperwork at a wooden table, natural window light, calm and hopeful mood, no text";
+
+/** One call for the whole round: a headline and a picture line per sheet, from the cheap model. */
+export function headlineMessages(sheets: NumberSheet[]): ChatMessage[] {
+  const list = sheets.map((s, i) => `ชิ้นที่ ${i + 1}: ${s.product} · ${s.who} · ${s.claims.join(" · ")}`).join("\n");
+  return [
+    {
+      role: "system",
+      content: [
+        "คุณเขียนพาดหัวโพสต์เฟซบุ๊กภาษาไทยให้ตัวแทนประกันชีวิต",
+        "ใต้พาดหัว ระบบจะวางตัวเลขเบี้ยและทุนให้เอง พาดหัวมีหน้าที่ทำให้คนหยุดอ่านตัวเลข",
+        "กติกา: ห้ามมีตัวเลขใดๆ ทั้งเลขอารบิกและเลขไทย · ยาวไม่เกิน 60 ตัวอักษร · ห้ามสัญญาเกินข้อมูลที่ให้ · ห้ามใช้คำว่าถูกที่สุด ดีที่สุด การันตี",
+        "imagePrompt: คำบรรยายภาพประกอบเป็นภาษาอังกฤษ 1–2 ประโยค คนไทย แสงธรรมชาติ ห้ามมีตัวหนังสือในภาพ",
+        'ตอบเป็น JSON เท่านั้น: {"pieces":[{"headline":"…","imagePrompt":"…"}]}',
+      ].join("\n"),
+    },
+    { role: "user", content: `เขียน ${sheets.length} ชิ้น ชิ้นละหนึ่งพาดหัว ไม่ซ้ำกัน\n${list}` },
+  ];
+}
+
+/** Always `count` lines: a headline the guard lets through, or a fallback in its place. */
+export function parseHeadlines(reply: string, count: number): { headline: string; imagePrompt: string }[] {
+  const raw = parseJsonReply<{ pieces?: unknown }>(reply);
+  const list = Array.isArray(raw?.pieces) ? (raw.pieces as { headline?: unknown; imagePrompt?: unknown }[]) : [];
+  return Array.from({ length: count }, (_, i) => {
+    const p = list[i] ?? {};
+    const fallback = FALLBACK_HEADLINES[i % FALLBACK_HEADLINES.length];
+    const picture = typeof p.imagePrompt === "string" && p.imagePrompt.trim() ? p.imagePrompt.trim() : FALLBACK_PICTURE;
+    return { headline: safeHeadline(typeof p.headline === "string" ? p.headline : "", fallback), imagePrompt: picture };
+  });
 }

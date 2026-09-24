@@ -92,3 +92,27 @@ describe("Life Protect's number sheets", () => {
     expect(Object.keys(NUMBERS_PLANS).sort()).toEqual([...NUMBERS_HREFS].sort());
   });
 });
+
+import { FALLBACK_HEADLINES, headlineMessages, parseHeadlines } from "@/lib/content/numbers";
+
+describe("headlines", () => {
+  it("asks for one digit-free headline per sheet", () => {
+    const all = headlineMessages([sheet, sheet]).map((m) => m.content).join("\n");
+    expect(all).toContain("ห้ามมีตัวเลข");
+    expect(all).toContain("2 ชิ้น");
+  });
+  it("reads the reply, replacing a headline with digits and filling a missing one", () => {
+    const reply = JSON.stringify({ pieces: [
+      { headline: "ตัวเลขจริง ไม่ต้องเดา", imagePrompt: "a Thai man at a desk" },
+      { headline: "วันละ 48 บาท", imagePrompt: "" },
+    ] });
+    const out = parseHeadlines(reply, 3);
+    expect(out[0]).toEqual({ headline: "ตัวเลขจริง ไม่ต้องเดา", imagePrompt: "a Thai man at a desk" });
+    expect(FALLBACK_HEADLINES).toContain(out[1].headline);
+    expect(FALLBACK_HEADLINES).toContain(out[2].headline);
+    expect(out[2].imagePrompt.length).toBeGreaterThan(0);
+  });
+  it("survives an unreadable reply", () => {
+    expect(parseHeadlines("not json", 2)).toHaveLength(2);
+  });
+});

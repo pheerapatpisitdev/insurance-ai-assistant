@@ -3,6 +3,7 @@ import { DISCLAIMER, TAX_LINE, type ContentOutput } from "./output";
 import { adCopyMessages, matrixCells, matrixMessages, parseAdCopy, parseMatrix } from "./ads";
 import { parsePoster } from "./poster";
 import { WRITERS } from "./models";
+import { headlineMessages, parseHeadlines, type NumberSheet } from "./numbers";
 import { parsePlans, planMessages, type PiecePlan } from "./plan";
 import { buildMessages, type AngleId, type Ask } from "./prompt";
 
@@ -171,4 +172,14 @@ export async function writeAds(opts: { brief: string; angles: number; tones: num
     throw first?.reason ?? new UnreadableReply();
   }
   return { pieces, planThb: m?.costThb ?? 0, planned: cells.length };
+}
+
+/**
+ * The ตัวเลขชัดๆ angle's one call: a headline and a picture line per sheet, from the cheap
+ * model. Any failure gives the fallback headlines — the figures under them are the post.
+ */
+export async function headlines(sheets: NumberSheet[]): Promise<{ lines: { headline: string; imagePrompt: string }[]; model: string; costThb: number }> {
+  const r = await chat({ tier: "small", task: "content-headline", messages: headlineMessages(sheets), maxTokens: 800, json: true })
+    .catch((e) => { console.error("content headlines failed:", e); return null; });
+  return { lines: parseHeadlines(r?.text ?? "", sheets.length), model: r?.model ?? "fallback", costThb: r?.costThb ?? 0 };
 }
