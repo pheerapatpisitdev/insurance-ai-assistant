@@ -11,7 +11,7 @@ import { buildPlan, explainPlan } from "./actions";
 import { PlanView } from "./PlanView";
 
 export function Planner() {
-  const [age, setAge] = useState<Money>(35);
+  const [age, setAge] = useState(35);
   const [sex, setSex] = useState<"M" | "F">("M");
   const [income, setIncome] = useState<Money>("");
   const [expense, setExpense] = useState<Money>("");
@@ -46,7 +46,7 @@ export function Planner() {
 
   function submit() {
     const form = {
-      age: n(age), sex, income: n(income), expense: n(expense), savings: n(savings),
+      age, sex, income: n(income), expense: n(expense), savings: n(savings),
       children: children.filter((c) => c !== ""), otherDependants, debts: n(debts), lifeCover: n(lifeCover),
       ciCover: n(ciCover), healthNow, healthRoom: n(healthRoom), premiumsNow: n(premiumsNow), hospital, lifeWant,
       retireAge: Number(retireAge), retireMonthly: n(shownRetire), pensionHave: n(pensionHave), retireLump: n(retireLump),
@@ -87,10 +87,11 @@ export function Planner() {
         <h2 className="text-base font-medium text-[var(--lg-white)]">ตัวคุณ</h2>
         <div className="grid grid-cols-2 gap-3">
           <Field label="อายุ (ปี)">
-            <input
-              type="text" inputMode="numeric" className={INPUT} value={age}
-              onChange={(e) => { const d = e.target.value.replace(/\D/g, ""); setAge(d === "" ? "" : Math.min(Number(d), 99)); }}
-            />
+            <select className={INPUT} value={age} onChange={(e) => setAge(Number(e.target.value))}>
+              {Array.from({ length: PLANNER_AGE.max - PLANNER_AGE.min + 1 }, (_, i) => PLANNER_AGE.min + i).map((a) => (
+                <option key={a} value={a}>{a} ปี</option>
+              ))}
+            </select>
           </Field>
           <div>
             <span className={LABEL}>เพศ</span>
