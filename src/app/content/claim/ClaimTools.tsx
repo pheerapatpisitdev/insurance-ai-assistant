@@ -292,7 +292,20 @@ function ReviewDialog({ docs, onDocs, facts, onFacts, posterDoc, onPosterDoc, on
             {docs.map((d, i) => (
               <section key={i} aria-label={`เอกสาร ${i + 1}`} className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium">รูปที่ {i + 1} · {DOC_KINDS.find((k) => k.id === d.kind)?.label} <span className="font-normal text-[var(--ct-mute)]">· ปิดไว้ {d.boxes.length} จุด</span></p>
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="font-medium">รูปที่ {i + 1}</span>
+                    {/* the model's guess at what the paper is; the owner puts it right when it guessed wrong */}
+                    <label className="flex items-center gap-1.5">
+                      <span className="sr-only">หมวดเอกสารรูปที่ {i + 1}</span>
+                      <select
+                        value={d.kind} onChange={(e) => change(i, { kind: e.target.value as DocKind })}
+                        className="min-h-11 rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-2.5 text-sm outline-none focus:border-[var(--ct-accent)]"
+                      >
+                        {DOC_KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+                      </select>
+                    </label>
+                    <span className="text-[var(--ct-mute)]">ปิดไว้ {d.boxes.length} จุด</span>
+                  </div>
                   <button
                     type="button" aria-pressed={drawing === i} onClick={() => setDrawing(drawing === i ? null : i)}
                     className={chip(drawing === i)}
