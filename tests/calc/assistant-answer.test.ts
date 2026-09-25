@@ -479,13 +479,25 @@ describe("deciding to buy", () => {
   it("hands over the application form, in the agency's own words, without a model", async () => {
     const answer = await answerQuestion(said("เอาแผนนี้ครับ"), quoted);
     expect(chat).not.toHaveBeenCalled();
-    expect(answer.messages.map((m) => m.text)).toEqual([
-      "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ",
+    const [steps, ...rest] = answer.messages.map((m) => m.text);
+    // the owner's buying steps (2026-09-26): the form, the ID card, the e-KYC SMS, payment
+    expect(steps).toContain("1️⃣ กรอกฟอร์มออนไลน์ตามลิงก์ด้านล่าง");
+    expect(steps).toContain("บัตรประชาชนตัวจริงที่ยังไม่หมดอายุ");
+    expect(steps).toContain("e-KYC");
+    expect(steps).toContain("QR Code");
+    expect(rest).toEqual([
       FORM,
       "กรอกเสร็จแล้วแจ้งในแชทนี้ได้เลย เดี๋ยวตัวแทนติดต่อกลับไปดูแลขั้นตอนต่อให้ครับ",
     ]);
     expect(answer.slots.formSent).toBe(true);
     expect(answer.slots.coverWanted).toBe(2_000_000);
+  });
+
+  it("answers which documents it takes with the same steps", async () => {
+    const answer = await answerQuestion(said("ใช้เอกสารอะไรบ้างครับ"), quoted);
+    expect(chat).not.toHaveBeenCalled();
+    expect(answer.messages[0].text).toContain("บัตรประชาชน");
+    expect(answer.messages[1].text).toBe(FORM);
   });
 
   it("does the same for someone asking what to do next", async () => {

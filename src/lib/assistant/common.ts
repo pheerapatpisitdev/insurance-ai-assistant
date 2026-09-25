@@ -181,8 +181,29 @@ export function spoken(text: string, fallback: string): Reply {
  */
 export function handOverForm(quoted: boolean): Reply {
   const next = quoted ? FORM_NEXT : `${FORM_NEXT} ถ้าอยากทราบเบี้ยก่อน บอกเพศกับอายุมาได้เลยครับ เดี๋ยวคิดให้`;
-  return { messages: [{ text: "ยินดีครับ 😊 รบกวนกรอกข้อมูลตามฟอร์มนี้ได้เลยครับ" }, { text: APPLICATION_FORM }, { text: next }] };
+  return { messages: [{ text: APPLY_STEPS }, { text: APPLICATION_FORM }, { text: next }] };
 }
+
+/**
+ * How buying works, step by step — the owner's own account of it (2026-09-26), set in order
+ * and sent word for word whenever a customer decides to apply or asks what it takes:
+ * "ใช้เอกสารอะไรบ้าง", "ต้องทำยังไง", "ซื้อยังไง", สนใจสมัคร, เอาแบบนี้. It used to be one line
+ * and the form, which left a customer who asked about documents without an answer.
+ */
+export const APPLY_STEPS = [
+  "ขั้นตอนสมัครทำออนไลน์ได้ทั้งหมดเลยครับ 😊",
+  "",
+  "1️⃣ กรอกฟอร์มออนไลน์ตามลิงก์ด้านล่าง",
+  "2️⃣ เตรียมบัตรประชาชนตัวจริงที่ยังไม่หมดอายุ",
+  "3️⃣ รอ SMS จากบริษัทเพื่อยืนยันตัวตน (e-KYC) สำหรับการซื้อประกันออนไลน์",
+  " • เปิด SMS แล้วกดลิงก์ ทำตามขั้นตอนบนหน้าจอ",
+  " • ถ่ายรูปบัตรประชาชน ด้านหน้าและด้านหลัง",
+  " • ถ่ายเซลฟี่คู่กับบัตรประชาชน",
+  "4️⃣ รอระบบตรวจสอบสักครู่",
+  "5️⃣ ชำระเบี้ยผ่านลิงก์ใน SMS ที่บริษัทส่งมา หรือถ้าสะดวกสแกน QR Code ตัวแทนจะส่งให้ในแชทนี้",
+  "",
+  "เท่านี้ก็เรียบร้อยครับ 🙏",
+].join("\n");
 
 /**
  * Handing a company over: the page, and a person.
