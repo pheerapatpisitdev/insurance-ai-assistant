@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 
+/** what drawing a content poster reads off disk at run time: the Thai faces and two .wasm files */
+const POSTER_FILES = [
+  "./src/app/api/card/*.ttf",
+  "./node_modules/harfbuzzjs/hb.wasm",
+  "./node_modules/@resvg/resvg-wasm/index_bg.wasm",
+];
+
 const nextConfig: NextConfig = {
   // Production builds write to a separate folder so verifying a build never clobbers the
   // dev server's .next (which leaves it throwing "Cannot find module './xxx.js'").
@@ -15,11 +22,12 @@ const nextConfig: NextConfig = {
     "/api/card": ["./src/app/api/card/*.ttf"],
     "/api/ihealthy-card": ["./src/app/api/card/*.ttf"],
     // the content posters borrow the quote card's Thai faces rather than keep a second copy
-    "/api/content-poster": [
-      "./src/app/api/card/*.ttf",
-      "./node_modules/harfbuzzjs/hb.wasm",
-      "./node_modules/@resvg/resvg-wasm/index_bg.wasm",
-    ],
+    "/api/content-poster": POSTER_FILES,
+    // posting draws the poster inside the page the owner pressed from — the workbench and the
+    // calendar — so those pages need the same files; without them every post from the
+    // calendar failed with ENOENT on index_bg.wasm (2026-09-25)
+    "/content": POSTER_FILES,
+    "/content/**": POSTER_FILES,
   },
 };
 
