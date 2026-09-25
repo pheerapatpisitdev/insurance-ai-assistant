@@ -25,6 +25,19 @@ const BASIS_LABEL: Record<PensionBasis, string> = {
   sumAssured: "ทุนประกัน",
 };
 
+// the three ways in, as buttons: a dropdown hid the premium one from the owner
+const BASIS_TAB: Record<PensionBasis, string> = {
+  monthlyPension: "จากบำนาญ",
+  premium: "จากเบี้ย",
+  sumAssured: "จากทุน",
+};
+
+const BASIS_HINT: Record<PensionBasis, string> = {
+  monthlyPension: "ระบบจะหาทุนและเบี้ยที่ให้บำนาญเท่านี้",
+  premium: "ระบบจะหาทุนและบำนาญที่เบี้ยนี้ซื้อได้ (เบี้ยสัญญาหลัก ไม่รวมสัญญาเพิ่มเติม)",
+  sumAssured: "75,000–20,000,000 บาท",
+};
+
 // dropped, not rounded — the rule every premium in this app is shown by
 const baht = (n: number) => Math.floor(n).toLocaleString("en-US");
 const baht2 = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -68,6 +81,17 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
   const who = { age: age === "" ? PENSION_LIMITS.ageMin : age, sex };
   const copyText = q ? pensionQuoteText(who, q) : undefined;
 
+  // switching keeps the same plan on screen: the new box starts at the figure the old one came to
+  function switchBasis(next: PensionBasis) {
+    if (next === basis) return;
+    if (q) {
+      setAmount(next === "sumAssured" ? q.sumAssured
+        : next === "premium" ? Math.ceil(q.modePremium)
+        : q.monthlyPension);
+    }
+    setBasis(next);
+  }
+
   return (
     <div className="pension-tool space-y-6">
         <div className="grid gap-6">
@@ -91,15 +115,22 @@ export function PensionCalculator({ sticky = false }: { sticky?: boolean }) {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium">คิดจาก</label>
-              <select className={field} value={basis} onChange={(e) => setBasis(e.target.value as PensionBasis)}>
-                {(Object.keys(BASIS_LABEL) as PensionBasis[]).map((b) => <option key={b} value={b}>{BASIS_LABEL[b]}</option>)}
-              </select>
+              <span className="block text-sm font-medium">คำนวณจาก</span>
+              <div role="radiogroup" aria-label="คำนวณจาก" className="mt-1 grid grid-cols-3 gap-1 rounded-lg border border-[var(--op-line)] p-1">
+                {(Object.keys(BASIS_TAB) as PensionBasis[]).map((b) => (
+                  <button key={b} type="button" role="radio" aria-checked={basis === b} onClick={() => switchBasis(b)}
+                          className={`rounded-md px-2 py-2 text-sm font-medium ${basis === b
+                            ? "bg-[var(--op-accent)] text-[var(--op-panel)]"
+                            : "text-[var(--op-mute)] hover:bg-[var(--op-figure-bg)]"}`}>
+                    {BASIS_TAB[b]}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium">{BASIS_LABEL[basis]} (บาท)</label>
-                <MoneyInput value={amount} onChange={setAmount} className={field} />
+                <MoneyInput value={amount} onChange={setAmount} className={field} hint={BASIS_HINT[basis]} />
               </div>
               <div>
                 <label className="block text-sm font-medium">งวดชำระ</label>

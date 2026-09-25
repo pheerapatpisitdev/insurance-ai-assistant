@@ -296,6 +296,27 @@ function ridersFor(
 const cents = (n: number) => Math.round(n * 100) / 100;
 
 /** The main contract and its riders; the refusals are the calculator's own sentences. */
+/**
+ * Someone working from a premium is told the premium, not the sum, that the limits come to:
+ * the whole-baht instalment at the edge, found by the same arithmetic that turns it into a sum.
+ */
+function premiumBound(input: PensionInput, rate: number, edge: "min" | "max"): string {
+  if (input.basis !== "premium" || !(rate > 0)) return "";
+  const sa = (p: number) => sumAssuredFor({ ...input, amount: p }, rate);
+  const per = MODE_FACTOR[input.mode] * rate / 1000;
+  const when = MODE_LABEL[input.mode];
+  if (edge === "min") {
+    let p = Math.max(1, Math.ceil(PENSION_LIMITS.saMin * per));
+    while (sa(p) < PENSION_LIMITS.saMin) p++;
+    while (p > 1 && sa(p - 1) >= PENSION_LIMITS.saMin) p--;
+    return ` — เบี้ยขั้นต่ำ ${p.toLocaleString("en-US")} บาท (${when})`;
+  }
+  let p = Math.floor(PENSION_LIMITS.saMax * per);
+  while (sa(p) > PENSION_LIMITS.saMax) p--;
+  while (sa(p + 1) <= PENSION_LIMITS.saMax) p++;
+  return ` — เบี้ยสูงสุด ${p.toLocaleString("en-US")} บาท (${when})`;
+}
+
 export function quotePension(input: PensionInput): PensionResult {
   const { age, sex } = input;
   if (!Number.isInteger(age) || age < PENSION_LIMITS.ageMin || age > PENSION_LIMITS.ageMax) {
@@ -311,10 +332,10 @@ export function quotePension(input: PensionInput): PensionResult {
   const rate = mainRate(plan, sex, age);
   const sumAssured = sumAssuredFor(input, rate);
   if (sumAssured < PENSION_LIMITS.saMin) {
-    return { ok: false, error: `ทุนประกันที่ได้ (${sumAssured.toLocaleString("en-US")}) ต่ำกว่าขั้นต่ำ 75,000 บาท` };
+    return { ok: false, error: `ทุนประกันที่ได้ (${sumAssured.toLocaleString("en-US")}) ต่ำกว่าขั้นต่ำ 75,000 บาท${premiumBound(input, rate, "min")}` };
   }
   if (sumAssured > PENSION_LIMITS.saMax) {
-    return { ok: false, error: `ทุนประกันที่ได้ (${sumAssured.toLocaleString("en-US")}) สูงกว่าสูงสุด 20,000,000 บาท` };
+    return { ok: false, error: `ทุนประกันที่ได้ (${sumAssured.toLocaleString("en-US")}) สูงกว่าสูงสุด 20,000,000 บาท${premiumBound(input, rate, "max")}` };
   }
 
   const annualPremium = rdown(rate * rdown(sumAssured / 1000, 3), 2);
