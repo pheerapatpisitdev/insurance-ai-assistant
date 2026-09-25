@@ -7,6 +7,7 @@ import { drawPoster } from "./poster-draw";
 import { contentProduct } from "./products";
 import { timeOfDay } from "./calendar";
 import { maybeOnPage, stalePosting } from "./publish-label";
+import { POST_SCOPE } from "./posting-health";
 import { claimPublish, getContent, listDue, recordPublishIf, saveOutput, type ContentItem } from "./store";
 
 /**
@@ -21,7 +22,8 @@ import { claimPublish, getContent, listDue, recordPublishIf, saveOutput, type Co
  * back without the row saying so.
  */
 
-export const POST_SCOPE = "pages_manage_posts";
+// kept beside the ออโต้โพสต์ screen's check, which reads it without loading the poster renderer
+export { POST_SCOPE };
 
 /** Facebook took it and the row could not say so; pressing again may post it twice */
 export const POSSIBLY_POSTED = "โพสต์อาจขึ้นเพจไปแล้ว — เปิดเพจเช็กก่อนกดส่งใหม่";

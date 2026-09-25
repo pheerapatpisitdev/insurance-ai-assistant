@@ -449,6 +449,24 @@ export async function listPublished(from: Date, to: Date): Promise<ContentItem[]
   return ((data ?? []) as Record<string, unknown>[]).map(toItem);
 }
 
+/**
+ * Every piece ever sent to a Page, cut down to where it stands — the ออโต้โพสต์ screen counts
+ * them per Page. Newest first, so a cap drops the oldest history rather than today's.
+ */
+export async function listPublishRows(limit = 1000): Promise<Pick<Publish, "pageId" | "state" | "at" | "error">[]> {
+  const { data, error } = await supabaseAdmin().from("ins_content")
+    .select("fb_page_id, publish_state, publish_at, publish_error")
+    .not("publish_state", "is", null)
+    .order("publish_at", { ascending: false, nullsFirst: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    pageId: (r.fb_page_id as string | null) ?? null,
+    state: r.publish_state as PublishState,
+    at: (r.publish_at as string | null) ?? null,
+    error: (r.publish_error as string | null) ?? null,
+  }));
+}
+
 /** Held posts whose time came between two moments, oldest first — the ones to ask Facebook about. */
 export async function listDue(from: Date, to: Date, limit = 50): Promise<ContentItem[]> {
   const { data, error } = await supabaseAdmin().from("ins_content").select(COLUMNS)

@@ -212,6 +212,8 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
         title: "ช่องทาง",
         links: [
           { href: "/admin/messenger", label: "Messenger", icon: "chat", hue: "#2b2e73" },
+          // the same Page connection, seen from the content workbench: can it post, what went up
+          { href: "/admin/posting", label: "ออโต้โพสต์", icon: "pen", hue: "#302f79" },
           // the advertising account sits next to the inbox it fills
           { href: "/admin/ads", label: "ADS", icon: "megaphone", hue: "#352f80" },
           { href: "/admin/api", label: "MCP", icon: "plug", hue: "#3e338a" },

@@ -159,8 +159,9 @@ describe("what the menu shows to somebody who has not signed in", () => {
    */
   it("gives the back office its own tools and nothing else", () => {
     expect(hrefs(true).sort()).toEqual(
-      // /admin/knowledge (สอน AI) still exists; the owner took it out of the menu on 2026-09-23
-      ["/admin", "/admin/crm", "/admin/ai", "/admin/messenger", "/admin/ads", "/admin/api"].sort(),
+      // /admin/knowledge (สอน AI) still exists; the owner took it out of the menu on 2026-09-23.
+      // /admin/posting (ออโต้โพสต์) was asked for on 2026-09-25
+      ["/admin", "/admin/crm", "/admin/ai", "/admin/messenger", "/admin/posting", "/admin/ads", "/admin/api"].sort(),
     );
   });
 
