@@ -60,6 +60,8 @@ describe("a budget instead of a sum", () => {
     // and the longest term buys the most cover for the same money
     const sums = [...text.matchAll(/ทุน ([\d,]+) บาท/g)].map((m) => Number(m[1].replace(/,/g, "")));
     expect(sums[2]).toBeGreaterThan(sums[0]);
+    // paying 19 years is the first line, as it is the first quotation
+    expect(text.split("\n").find((l) => l.startsWith("• "))).toContain("จ่าย 19 ปี");
     // the figures are the table's own: only the cheap router was asked anything
     expect(chat.mock.calls.map((c) => c[0].task)).toEqual(["route"]);
   });

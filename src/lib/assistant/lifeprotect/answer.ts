@@ -393,7 +393,8 @@ function answerFromBudget(slots: Routed, budget: Budget): Answer {
 
   const lines: string[] = [];
   let overBudget = false;
-  for (const variant of ["WLF09H", "WLF19H", "WLF99H"]) {
+  // paying 19 years leads, as it does in the quotation (the owner, 2026-09-25)
+  for (const variant of [FIRST_TERM, "WLF09H", "WLF99H"]) {
     const raw = sumAssuredFromPremium(rates, { variant, sex, age, mode, targetPremium: budget.baht });
     if (raw === undefined) continue;
     // rounded down, so what is quoted back fits inside the money they said they had
