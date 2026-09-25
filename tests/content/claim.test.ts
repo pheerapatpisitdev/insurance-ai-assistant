@@ -166,8 +166,9 @@ describe("parseClaimPiece", () => {
   it("makes a post that keeps its facts for later checks", () => {
     const out = parseClaimPiece(JSON.stringify({
       hook: "เคลมจริง จ่ายจริง", body: "ลูกค้าของผม…", closing: "ทักมาได้ครับ", hashtags: ["รีวิวเคลม", "#ประกันสุขภาพ"],
-      poster: { headline: "จ่ายแล้ว 48,250 บาท" },
+      poster: { headline: "จ่ายแล้ว 48,250 บาท" }, imagePrompt: "A relieved Thai family at home",
     }), facts, "เล่าเหตุการณ์")!;
+    expect(out.imagePrompt).toBe("A relieved Thai family at home");
     expect(out.hooks).toEqual(["เคลมจริง จ่ายจริง"]);
     expect(out.hashtags).toEqual(["#รีวิวเคลม", "#ประกันสุขภาพ"]);
     expect(out.angle).toBe("รีวิวเคลม · เล่าเหตุการณ์");
@@ -181,14 +182,24 @@ describe("parseClaimPiece", () => {
   });
 });
 
-describe("a poster's document", () => {
-  it("is kept only with the one path shape and a paper's ratio", () => {
+describe("a poster's papers", () => {
+  const H = [{ kind: "headline", text: "x" }];
+  it("keeps each only with the one path shape and a paper's ratio", () => {
     expect(toDocument({ path: PATH, ratio: 0.7 })).toEqual({ path: PATH, ratio: 0.7 });
     expect(toDocument({ path: "../etc/passwd", ratio: 0.7 })).toBeNull();
     expect(toDocument({ path: PATH, ratio: 40 })).toBeNull();
-    const p = parsePoster({ blocks: [{ kind: "headline", text: "x" }], document: { path: PATH, ratio: 0.75 } })!;
-    expect(p.document).toEqual({ path: PATH, ratio: 0.75 });
-    expect(parsePoster({ blocks: [{ kind: "headline", text: "x" }], document: { path: "x", ratio: 1 } })!.document).toBeUndefined();
+    // a claims-table screenshot is about five times wider than tall
+    expect(toDocument({ path: PATH, ratio: 4.53 })).not.toBeNull();
+  });
+
+  it("keeps up to three, dropping any that are not papers", () => {
+    const p = parsePoster({ blocks: H, documents: [{ path: PATH, ratio: 0.75 }, { path: "x", ratio: 1 }, { path: PATH, ratio: 1.2 }, { path: PATH, ratio: 1 }, { path: PATH, ratio: 2 }] })!;
+    expect(p.documents).toEqual([{ path: PATH, ratio: 0.75 }, { path: PATH, ratio: 1.2 }, { path: PATH, ratio: 1 }]);
+    expect(parsePoster({ blocks: H, documents: [{ path: "x", ratio: 1 }] })!.documents).toBeUndefined();
+  });
+
+  it("reads a poster from before there could be several as a list of its one", () => {
+    expect(parsePoster({ blocks: H, document: { path: PATH, ratio: 0.75 } })!.documents).toEqual([{ path: PATH, ratio: 0.75 }]);
   });
 });
 

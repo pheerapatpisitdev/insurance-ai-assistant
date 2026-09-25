@@ -117,11 +117,13 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
     if (landed && !plain) setDraft((d) => (d.poster.background === landed ? d : { ...d, poster: { ...d.poster, background: landed } }));
   }, [landed, plain]);
 
-  // a รีวิวเคลม paper replaced by the owner's check joins the draft the same way
-  const paper = item.output.poster?.document;
+  // รีวิวเคลม papers replaced by the owner's check join the draft the same way
+  const papers = item.output.poster?.documents;
+  const papersKey = papers?.map((p) => p.path).join("|") ?? "";
   useEffect(() => {
-    if (paper) setDraft((d) => (d.poster.document?.path === paper.path ? d : { ...d, poster: { ...d.poster, document: paper } }));
-  }, [paper]);
+    if (papers?.length) setDraft((d) => (d.poster.documents?.map((p) => p.path).join("|") === papersKey ? d : { ...d, poster: { ...d.poster, documents: papers } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the paths, not the array's identity
+  }, [papersKey]);
 
   // the proofreader runs on first opening and is kept: one small call per piece, ever — and
   // none for a piece already on the Page, whose words can no longer change here
@@ -307,7 +309,7 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
         </p>
       )}
 
-      {item.output.poster?.document && item.output.paperChecked === false && !locked && (
+      {Boolean(item.output.poster?.documents?.length) && item.output.paperChecked === false && !locked && (
         <ClaimPaperCheck item={item} onChecked={onSaved} />
       )}
 

@@ -3,7 +3,8 @@ import { useId, useState } from "react";
 import {
   CLAIM_ANGLES, FACT_LIMIT, MAX_CLAIM_CUSTOM, MAX_CLAIM_PIECES, MAX_DOCS, claimAngleLines, type ClaimFacts, type DocRead,
 } from "@/lib/content/claim";
-import { AUTO, OVERHEAD_THB, WRITERS, writerOf } from "@/lib/content/models";
+import { AUTO, AUTO_FLOOR_THB, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
+import { MAX_PAPERS } from "@/lib/content/poster";
 import { FORMAT_LABEL, LENGTHS, MAX_READER, NICHES, type Format, type Length } from "@/lib/content/prompt";
 import type { GenerateResult } from "../actions";
 import { PhotoDrop } from "../people/PhotoDrop";
@@ -29,9 +30,12 @@ const chip = (on: boolean) =>
 const field = "min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
 const solid = "min-h-11 w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50";
 
-export function ClaimTools({ writer, onWriter, reader, onReader, left, pending, making, run }: {
+export function ClaimTools({ writer, onWriter, painter, onPainter, reader, onReader, left, pending, making, run }: {
   writer: string;
   onWriter: (id: string) => void;
+  /** the picture behind the poster, as on the plan form; shared with it and remembered */
+  painter: string;
+  onPainter: (id: string) => void;
   /** who the posts talk to — the plan form's, remembered on this device for both */
   reader: string;
   onReader: (r: string) => void;
@@ -39,7 +43,8 @@ export function ClaimTools({ writer, onWriter, reader, onReader, left, pending, 
   left: number;
   pending: boolean;
   making: number;
-  run: (asked: number, format: Format, send: () => Promise<GenerateResult>) => Promise<void>;
+  /** `paintWith` is the painter settled at the press; the page draws each new poster's picture with it */
+  run: (asked: number, format: Format, send: () => Promise<GenerateResult>, paintWith: string) => Promise<void>;
 }) {
   const id = useId();
   const [files, setFiles] = useState<File[]>([]);
@@ -57,7 +62,9 @@ export function ClaimTools({ writer, onWriter, reader, onReader, left, pending, 
       : angle === "custom" && !custom.trim() ? "พิมพ์มุมที่อยากเล่า หรือเลือก “ให้ AI เลือก”" : null;
 
   const pick = writerOf(writer, left);
-  const estimate = (READ_THB + count * (pick.thb + OVERHEAD_THB)).toFixed(2);
+  const paints = painterOf(painter, left);
+  const drawn = format === "script" ? 0 : paints.thb * count;
+  const estimate = (READ_THB + count * (pick.thb + OVERHEAD_THB) + drawn).toFixed(2);
   const unit = format === "ad" ? "แบบ" : "ชิ้น";
 
   async function create() {
@@ -65,6 +72,8 @@ export function ClaimTools({ writer, onWriter, reader, onReader, left, pending, 
     // the form as it was at the press, whatever changes while the round is out
     const papers = files;
     const round = { format, length, angle, custom: custom.trim(), reader: reader.trim(), note: note.trim(), count, writer };
+    // อัตโนมัติ settled at the press, on the money left then, as the plan form does
+    const paintWith = round.format === "script" ? "none" : painterOf(painter, left).id;
     await run(count, round.format, async (): Promise<GenerateResult> => {
       const shrunk = await Promise.all(papers.map((f) => shrink(f)));
       const readForm = new FormData();
@@ -83,16 +92,18 @@ export function ClaimTools({ writer, onWriter, reader, onReader, left, pending, 
       form.set("angle", round.angle);
       form.set("custom", round.custom);
       form.set("reader", round.reader);
-      // a script is spoken: no poster, so no paper. Otherwise the approval letter shows the
-      // payment best; failing that, the first paper — with the AI's stickers, checked later
+      // a script is spoken: no poster, so no papers. Otherwise up to three on the poster, the
+      // approval letters first (they show the payment best), then the rest in the order given —
+      // each with the AI's stickers, checked in the editor before anything is posted
       if (round.format !== "script") {
-        const approval = read.docs.findIndex((d) => d.kind === "approval");
-        const at = approval >= 0 ? approval : 0;
-        form.set("paper", await burn(shrunk[at].blob, read.docs[at]?.boxes ?? []), "paper.jpg");
-        form.set("ratio", String(shrunk[at].width / shrunk[at].height));
+        const order = shrunk.map((_, i) => i).sort((a, b) => Number(read.docs[b]?.kind === "approval") - Number(read.docs[a]?.kind === "approval"));
+        for (const at of order.slice(0, MAX_PAPERS)) {
+          form.append("paper", await burn(shrunk[at].blob, read.docs[at]?.boxes ?? []), `paper-${at + 1}.jpg`);
+          form.append("ratio", String(shrunk[at].width / shrunk[at].height));
+        }
       }
       return await (await fetch("/api/content-claim", { method: "PUT", body: form })).json() as GenerateResult;
-    });
+    }, paintWith);
   }
 
   return (
@@ -101,7 +112,7 @@ export function ClaimTools({ writer, onWriter, reader, onReader, left, pending, 
         <div>
           <span className="mb-1 block text-sm font-medium">เอกสารเคลม <span className="font-normal text-[var(--ct-mute)]">(ไม่เกิน {MAX_DOCS} รูป)</span></span>
           <PhotoDrop files={files} onChange={setFiles} limit={MAX_DOCS} />
-          <p className="mt-1.5 text-xs text-[var(--ct-mute)]">หนังสืออนุมัติ บิลโรงพยาบาล ใบรับรองแพทย์ แคปแชท/สลิป · PDF ให้แคปหน้าจอก่อน · AI อ่านแล้วแปะสติ๊กเกอร์ปิดชื่อให้ · ระบบเก็บเฉพาะรูปที่ปิดข้อมูลแล้ว</p>
+          <p className="mt-1.5 text-xs text-[var(--ct-mute)]">หนังสืออนุมัติ บิลโรงพยาบาล ใบรับรองแพทย์ แคปแชท/สลิป · PDF ให้แคปหน้าจอก่อน · AI อ่านทุกรูป แปะสติ๊กเกอร์ปิดชื่อ แล้ววางบนโปสเตอร์ได้ถึง {MAX_PAPERS} ใบ (หนังสืออนุมัติก่อน) · ระบบเก็บเฉพาะรูปที่ปิดข้อมูลแล้ว</p>
         </div>
 
         <label className="flex items-start gap-2.5 rounded-lg border border-[var(--ct-warn-line)] bg-[var(--ct-warn-bg)] p-3 text-sm text-[var(--ct-warn-ink)]">
@@ -179,6 +190,21 @@ export function ClaimTools({ writer, onWriter, reader, onReader, left, pending, 
               : claimAngleLines({ angle, custom }, count).map((a) => a.label).join(" · ")}
           </p>
         </div>
+
+        {format !== "script" && (
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">ภาพประกอบ</span>
+            <select value={painter} onChange={(e) => onPainter(e.target.value)} className={field}>
+              <option value={AUTO}>อัตโนมัติ</option>
+              {PAINTERS.map((p) => <option key={p.id} value={p.id}>{p.label}{p.thb > 0 ? ` · ฿${p.thb.toFixed(2)} ต่อภาพ` : ""}</option>)}
+            </select>
+            <span className="mt-1 block text-xs text-[var(--ct-mute)]">
+              {painter === AUTO
+                ? `ตอนนี้${paints.modelId ? `วาดด้วย ${paints.short}` : "ไม่วาดภาพ"} — งบเหลือต่ำกว่า ฿${AUTO_FLOOR_THB} จะหยุดวาดเอง`
+                : painter === "none" ? "ใช้พื้นสีตามโทน วาดทีหลังได้ในหน้าแก้ไข" : `${paints.short} · AI วาดภาพพื้นหลังหลังรูปเอกสาร ให้ทุกชิ้นหลังเขียนเสร็จ`}
+            </span>
+          </label>
+        )}
 
         <label className="block">
           <span className="mb-1 block text-sm font-medium">โมเดลเขียน</span>

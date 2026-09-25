@@ -42,11 +42,14 @@ export interface PosterSpec {
   /** a picture behind the words: a path in the content-media bucket, "<piece id>/<file id>.<ext>" */
   background?: string;
   /**
-   * รีวิวเคลม: the owner's claim paper, blacked out and checked, drawn as a card under the
-   * words. Same path shape as a background; ratio is its width over its height.
+   * รีวิวเคลม: the owner's claim papers, stickered and checked, drawn as a small pile of cards
+   * under the words — one to MAX_PAPERS. Same path shape as a background; ratio is width over height.
    */
-  document?: PosterDocument;
+  documents?: PosterDocument[];
 }
+
+/** papers on one claim poster: more and each is too small to read */
+export const MAX_PAPERS = 3;
 
 export interface PosterDocument {
   path: string;
@@ -57,11 +60,24 @@ export interface PosterDocument {
 const BACKGROUND_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(png|jpe?g|webp)$/;
 export const isBackgroundPath = (v: unknown): v is string => typeof v === "string" && BACKGROUND_PATH.test(v);
 
+/**
+ * A poster's papers, kept only when each is one; a poster from before there could be several
+ * carried one as `document`, and is read as a list of that one.
+ */
+function documentsOf(raw: Record<string, unknown>): { documents?: PosterDocument[] } {
+  const list = Array.isArray(raw.documents) ? raw.documents : raw.document ? [raw.document] : [];
+  const documents = list.map(toDocument).filter((d): d is PosterDocument => d !== null).slice(0, MAX_PAPERS);
+  return documents.length ? { documents } : {};
+}
+
+/** a paper's width over its height, as a real one could be: a claims table screenshot runs to 5 or more */
+export const okRatio = (r: unknown): r is number => typeof r === "number" && Number.isFinite(r) && r >= 0.15 && r <= 8;
+
 /** a document from anywhere, or null: a path of the one allowed shape and a ratio a paper could have */
 export function toDocument(v: unknown): PosterDocument | null {
   if (!v || typeof v !== "object") return null;
   const { path, ratio } = v as Record<string, unknown>;
-  if (!isBackgroundPath(path) || typeof ratio !== "number" || !Number.isFinite(ratio) || ratio < 0.2 || ratio > 5) return null;
+  if (!isBackgroundPath(path) || !okRatio(ratio)) return null;
   return { path, ratio };
 }
 
@@ -153,7 +169,7 @@ export function parsePoster(input: unknown): PosterSpec | null {
     theme: THEMES.includes(raw.theme as Theme) ? (raw.theme as Theme) : "navy",
     blocks,
     ...(isBackgroundPath(raw.background) ? { background: raw.background } : {}),
-    ...(toDocument(raw.document) ? { document: toDocument(raw.document)! } : {}),
+    ...documentsOf(raw),
   };
 }
 

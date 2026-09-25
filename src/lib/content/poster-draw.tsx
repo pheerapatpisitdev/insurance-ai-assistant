@@ -111,14 +111,29 @@ function Poster({ spec, canvas, photo }: { spec: PosterSpec; canvas: Canvas; pho
   );
 }
 
-/** the words' share of a claim poster's height; the paper takes the rest */
+/** the words' share of a claim poster's height; the papers take the rest */
 const WORDS_SHARE = 0.44;
 
 /**
- * รีวิวเคลม: the words at the top, the owner's blacked-out paper below them as a white card
- * tilted a little, and the amount paid on the highlighter. Themes and sizes as any poster.
+ * Where each paper of a pile sits, as fractions of the pile's area: its box (fx × fy) and its
+ * centre's offset, and a tilt. Portrait papers fan out side by side, landscape ones (a
+ * screenshot of a claims table is five times wider than tall) one above another. Every card
+ * stays inside the area: an offset is never more than half of what its box leaves free.
  */
-function DocumentPoster({ spec, canvas, paper, doc }: { spec: PosterSpec; canvas: Canvas; paper: string; doc: PosterDocument }) {
+const FAN: Record<number, { f: number; at: number[]; tilt: number[] }> = {
+  1: { f: 1, at: [0], tilt: [-2.5] },
+  2: { f: 0.64, at: [-0.17, 0.17], tilt: [-4, 3] },
+  3: { f: 0.5, at: [-0.24, 0, 0.24], tilt: [-5, 1.5, 5] },
+};
+
+/**
+ * รีวิวเคลม: the words at the top, the owner's stickered papers below them as a pile of white
+ * cards, and the amount paid on the highlighter. Over the theme's colour, or over a drawn
+ * photograph with the theme's wash where the words sit.
+ */
+function DocumentPoster({ spec, canvas, papers, photo }: {
+  spec: PosterSpec; canvas: Canvas; papers: { uri: string; doc: PosterDocument }[]; photo: string | null;
+}) {
   const c = POSTER_THEMES[spec.theme];
   const m = metrics(canvas);
   const room = canvas.height - m.padTop - m.padBottom;
@@ -126,10 +141,11 @@ function DocumentPoster({ spec, canvas, paper, doc }: { spec: PosterSpec; canvas
   // the words fitted to their share alone: a canvas whose usable height is that share
   const scale = fitScale(spec, { width: canvas.width, height: wordsH + 2 * m.padX });
   const frame = Math.round(14 * m.k);
-  const areaW = m.usableWidth * 0.9;
-  const areaH = room - wordsH - m.gap * 2 - frame * 2;
-  const w = Math.max(1, Math.round(Math.min(areaW, areaH * doc.ratio)));
-  const h = Math.max(1, Math.round(w / doc.ratio));
+  const areaW = m.usableWidth;
+  const areaH = room - wordsH - m.gap;
+  const fan = FAN[Math.min(3, papers.length)];
+  const wide = papers.reduce((sum, p) => sum + p.doc.ratio, 0) / papers.length >= 1.3;
+  const cover = Math.max(canvas.width, canvas.height);
 
   return (
     <div
@@ -139,28 +155,47 @@ function DocumentPoster({ spec, canvas, paper, doc }: { spec: PosterSpec; canvas
         display: "flex",
         flexDirection: "column",
         padding: `${m.padTop}px ${m.padX}px ${m.padBottom}px`,
-        backgroundImage: `linear-gradient(160deg, ${c.from}, ${c.to})`,
+        backgroundImage: photo ? `url(${photo})` : `linear-gradient(160deg, ${c.from}, ${c.to})`,
+        ...(photo ? { backgroundSize: `${cover}px ${cover}px`, backgroundPosition: "center" } : {}),
         fontFamily: "Plex",
         position: "relative",
       }}
     >
+      {photo && c.scrim !== null && (
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", backgroundImage: posterScrim(spec.theme, "top") }} />
+      )}
       <div style={{ display: "flex", flexDirection: "column", height: wordsH }}>
         {lines(spec, m, scale, true)}
       </div>
-      <div style={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center", marginTop: m.gap }}>
-        <div
-          style={{
-            display: "flex",
-            padding: frame,
-            backgroundColor: CARD_PALETTE.ground,
-            borderRadius: Math.round(10 * m.k),
-            boxShadow: "0 18px 40px rgba(0, 0, 0, 0.35)",
-            transform: "rotate(-2.5deg)",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element -- drawn by satori, not a page */}
-          <img src={paper} width={w} height={h} style={{ width: w, height: h }} alt="" />
-        </div>
+      <div style={{ display: "flex", position: "relative", width: areaW, height: areaH, marginTop: m.gap }}>
+        {papers.slice(0, 3).map((p, i) => {
+          // the box this card may fill, less its white frame, then the paper fitted inside it
+          const boxW = areaW * (wide ? 0.94 : fan.f) - 2 * frame;
+          const boxH = areaH * (wide ? fan.f : 0.94) - 2 * frame;
+          const w = Math.max(1, Math.round(Math.min(boxW, boxH * p.doc.ratio)));
+          const h = Math.max(1, Math.round(w / p.doc.ratio));
+          const cx = areaW / 2 + (wide ? 0 : fan.at[i] * areaW);
+          const cy = areaH / 2 + (wide ? fan.at[i] * areaH : 0);
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: Math.round(cx - w / 2 - frame),
+                top: Math.round(cy - h / 2 - frame),
+                display: "flex",
+                padding: frame,
+                backgroundColor: CARD_PALETTE.ground,
+                borderRadius: Math.round(10 * m.k),
+                boxShadow: "0 18px 40px rgba(0, 0, 0, 0.35)",
+                transform: `rotate(${fan.tilt[i]}deg)`,
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- drawn by satori, not a page */}
+              <img src={p.uri} width={w} height={h} style={{ width: w, height: h }} alt="" />
+            </div>
+          );
+        })}
       </div>
       <InsurerLine spec={spec} canvas={canvas} m={m} />
     </div>
@@ -170,9 +205,10 @@ function DocumentPoster({ spec, canvas, paper, doc }: { spec: PosterSpec; canvas
 /** The poster drawn at a size; a background that has gone missing draws the plain theme. */
 export async function drawPoster(spec: PosterSpec, size: SizeId = "square"): Promise<Buffer> {
   const canvas = SIZES[size];
-  // a paper gone missing draws the plain poster, as a missing background does
-  const paper = spec.document ? await backgroundDataUri(spec.document.path) : null;
-  if (spec.document && paper) return renderPng(<DocumentPoster spec={spec} canvas={canvas} paper={paper} doc={spec.document} />, canvas);
   const photo = spec.background ? await backgroundDataUri(spec.background) : null;
+  // a paper gone missing is left out; with none left, the plain poster, as for a missing background
+  const papers = (await Promise.all((spec.documents ?? []).map(async (doc) => ({ doc, uri: await backgroundDataUri(doc.path) }))))
+    .flatMap((p) => (p.uri ? [{ doc: p.doc, uri: p.uri }] : []));
+  if (papers.length) return renderPng(<DocumentPoster spec={spec} canvas={canvas} papers={papers} photo={photo} />, canvas);
   return renderPng(<Poster spec={spec} canvas={canvas} photo={photo} />, canvas);
 }

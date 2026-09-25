@@ -9,7 +9,7 @@ import {
 import { OVERHEAD_THB, writerOf } from "./models";
 import type { ContentOutput } from "./output";
 import { checkPolicy } from "./policy";
-import { posterText } from "./poster";
+import { MAX_PAPERS, posterText } from "./poster";
 import { LENGTHS, MAX_READER, type Format, type Length } from "./prompt";
 import {
   backgroundDataUri, contentCap, contentSpentThisMonth, getContent, holdContentBudget, listWords, releaseContentBudget,
@@ -77,8 +77,14 @@ export interface ClaimWriteInput {
   custom?: string;
   /** who the posts talk to, as on the plan form */
   reader?: string;
-  /** the paper for the poster, blacked out in the browser and ticked ตรวจแล้ว; none draws the plain poster */
-  paper: { bytes: Buffer; mimeType: string; ratio: number } | null;
+  /** the papers for the poster, one to MAX_PAPERS, stickered in the browser; none draws the plain poster */
+  papers: Paper[];
+}
+
+export interface Paper {
+  bytes: Buffer;
+  mimeType: string;
+  ratio: number;
 }
 
 /** every line the checks read, as the workbench's own checks read them */
@@ -153,7 +159,7 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
           : { ok: false, error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ", saved: 0 };
       }
       // a script is spoken to camera: no poster, so no paper on one
-      items.push(input.paper && format !== "script" ? await withPaper(item, input.paper) : item);
+      items.push(input.papers.length && format !== "script" ? await withPapers(item, input.papers) : item);
     }
     return { ok: true, items, costThb: items.reduce((s, i) => s + i.costThb, 0), missing: count - items.length };
   } catch (e) {
@@ -166,32 +172,34 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
 }
 
 /**
- * The paper filed under the piece — deleting the piece deletes it — and put on its poster.
+ * The papers filed under the piece — deleting the piece deletes them — and put on its poster.
  * A failure leaves the piece with its plain poster: the words are the work, and the owner
  * is shown them rather than an error.
  */
-async function withPaper(item: ContentItem, paper: NonNullable<ClaimWriteInput["paper"]>): Promise<ContentItem> {
-  let path: string | null = null;
+async function withPapers(item: ContentItem, papers: Paper[]): Promise<ContentItem> {
+  const paths: string[] = [];
+  const dropAll = () => Promise.all(paths.map((p) => removeBackground(item.id, p)));
   try {
-    path = await saveBackground(item.id, paper.bytes, paper.mimeType);
+    for (const paper of papers.slice(0, MAX_PAPERS)) paths.push(await saveBackground(item.id, paper.bytes, paper.mimeType));
     const poster = item.output.poster;
-    if (!poster) return item;
+    if (!poster) { await dropAll(); return item; }
+    const documents = paths.map((path, i) => ({ path, ratio: papers[i].ratio }));
     // the stickers are the AI's until the owner ticks them in the editor
-    const saved = await saveOutputIf(item.id, { ...item.output, poster: { ...poster, document: { path, ratio: paper.ratio } }, paperChecked: false }, undefined, item.output.rev ?? null);
+    const saved = await saveOutputIf(item.id, { ...item.output, poster: { ...poster, documents }, paperChecked: false }, undefined, item.output.rev ?? null);
     if (saved) return saved;
-    await removeBackground(item.id, path);
+    await dropAll();
     return item;
   } catch (e) {
-    console.error("claim paper not put on the poster:", e);
-    if (path) await removeBackground(item.id, path);
+    console.error("claim papers not put on the poster:", e);
+    await dropAll();
     return item;
   }
 }
 
-/** A claim piece's paper, for the editor to show and add stickers to; null when it has none. */
-export async function claimPaper(id: string): Promise<{ bytes: Buffer; mimeType: string } | null> {
+/** A claim piece's i-th paper, for the editor to show and add stickers to; null when there is none. */
+export async function claimPaper(id: string, i: number): Promise<{ bytes: Buffer; mimeType: string } | null> {
   const item = await getContent(id);
-  const path = item?.planHref === CLAIM_HREF ? item.output.poster?.document?.path : null;
+  const path = item?.planHref === CLAIM_HREF ? item.output.poster?.documents?.[i]?.path : null;
   if (!path) return null;
   const uri = await backgroundDataUri(path);
   const m = uri && /^data:([^;]+);base64,(.*)$/.exec(uri);
@@ -201,31 +209,35 @@ export async function claimPaper(id: string): Promise<{ bytes: Buffer; mimeType:
 export type CheckResult = { ok: true; item: ContentItem } | { ok: false; error: string };
 
 /**
- * ตรวจแล้ว on a claim paper: the owner looked, and perhaps laid more stickers — then `paper`
- * is the new picture, stickers burnt in, and it replaces the old one. Either way the piece may
- * now go to a Page. Stickers can be added this way, never lifted: the picture on file is
- * already covered, and nothing uncovered is kept to lift them from.
+ * ตรวจแล้ว on a claim poster's papers: the owner looked at every one, and perhaps laid more
+ * stickers — `replaced` holds the new pictures by their place in the pile, stickers burnt in,
+ * and each replaces the one it was drawn from. Either way the piece may now go to a Page.
+ * Stickers can be added this way, never lifted: the pictures on file are already covered, and
+ * nothing uncovered is kept to lift them from.
  */
-export async function checkPaper(id: string, paper: NonNullable<ClaimWriteInput["paper"]> | null): Promise<CheckResult> {
-  let added: string | null = null;
+export async function checkPaper(id: string, replaced: Map<number, Paper>): Promise<CheckResult> {
+  const added = new Map<number, string>();
+  const dropAdded = () => Promise.all([...added.values()].map((p) => removeBackground(id, p)));
   try {
     for (let attempt = 0; attempt < 3; attempt++) {
       const item = await getContent(id);
-      const doc = item?.output.poster?.document;
-      if (!item || item.planHref !== CLAIM_HREF || !doc || !item.output.poster) return { ok: false, error: "ไม่พบรูปเอกสารของชิ้นนี้" };
-      if (paper && !added) added = await saveBackground(item.id, paper.bytes, paper.mimeType);
-      const document = added ? { path: added, ratio: paper!.ratio } : doc;
-      const saved = await saveOutputIf(item.id, { ...item.output, poster: { ...item.output.poster, document }, paperChecked: true }, undefined, item.output.rev ?? null);
+      const docs = item?.output.poster?.documents;
+      if (!item || item.planHref !== CLAIM_HREF || !docs?.length || !item.output.poster) return { ok: false, error: "ไม่พบรูปเอกสารของชิ้นนี้" };
+      for (const [i, paper] of replaced) {
+        if (i >= 0 && i < docs.length && !added.has(i)) added.set(i, await saveBackground(item.id, paper.bytes, paper.mimeType));
+      }
+      const documents = docs.map((d, i) => (added.has(i) ? { path: added.get(i)!, ratio: replaced.get(i)!.ratio } : d));
+      const saved = await saveOutputIf(item.id, { ...item.output, poster: { ...item.output.poster, documents }, paperChecked: true }, undefined, item.output.rev ?? null);
       if (!saved) continue;
-      if (added) await removeBackground(item.id, doc.path);
+      // the pictures the new ones replaced are shown nowhere any more
+      await Promise.all(docs.filter((_, i) => added.has(i)).map((d) => removeBackground(item.id, d.path)));
       return { ok: true, item: saved };
     }
-    if (added) await removeBackground(id, added);
+    await dropAdded();
     return { ok: false, error: "ชิ้นนี้ถูกแก้ระหว่างบันทึก ลองกดอีกครั้งนะครับ" };
   } catch (e) {
     console.error("claim paper check failed:", e);
-    if (added) await removeBackground(id, added);
+    await dropAdded();
     return { ok: false, error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
   }
 }
-

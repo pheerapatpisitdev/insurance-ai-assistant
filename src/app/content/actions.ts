@@ -455,10 +455,10 @@ export async function saveContentEdits(
         const drawn = { ...output.poster };
         delete drawn.background;
         output.poster = kept && !opts.plain ? { ...drawn, background: kept } : drawn;
-        // a รีวิวเคลม paper is the server's too: it was blacked out and checked before it was
+        // รีวิวเคลม papers are the server's too: it was blacked out and checked before it was
         // filed, and no edit from a browser may swap it for another path
-        delete output.poster.document;
-        if (item.output.poster?.document) output.poster.document = item.output.poster.document;
+        delete output.poster.documents;
+        if (item.output.poster?.documents) output.poster.documents = item.output.poster.documents;
       }
       // back to the plain colour: nobody drew it any more, and its file can go
       const dropped = opts.plain && kept && output.poster && !output.poster.background ? kept : null;

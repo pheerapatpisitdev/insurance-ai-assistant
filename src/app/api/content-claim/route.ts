@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { clientIp, limiter } from "@/lib/assistant/rate-limit";
 import { MAX_DOCS } from "@/lib/content/claim";
+import { MAX_PAPERS, okRatio } from "@/lib/content/poster";
 import { readClaim, writeClaim } from "@/lib/content/claim-run";
 
 /**
@@ -55,14 +56,15 @@ export async function PUT(req: NextRequest) {
   } catch {
     return bad("ข้อมูลการเคลมไม่ครบ ลองใหม่อีกครั้งนะครับ");
   }
+  // paper, ratio: one pair per paper, in order, the pile's first on top of the list
   const files = images(form, "paper");
   if (typeof files === "string") return bad(files);
-  const ratio = Number(form.get("ratio"));
-  if (files.length > 0 && !(ratio >= 0.2 && ratio <= 5)) return bad("ขนาดรูปเอกสารไม่ถูกต้อง ลองเลือกรูปใหม่นะครับ");
+  const ratios = form.getAll("ratio").map(Number);
+  if (files.length > MAX_PAPERS || ratios.length !== files.length || !ratios.every(okRatio)) return bad("ขนาดรูปเอกสารไม่ถูกต้อง ลองเลือกรูปใหม่นะครับ");
   if (!roundsPerHour(`claim-write:${clientIp(req.headers)}`)) return bad("สร้างครบ 10 รอบในชั่วโมงนี้แล้ว รอสักพักแล้วลองใหม่นะครับ", 429);
-  const paper = files[0] ? { bytes: Buffer.from(await files[0].arrayBuffer()), mimeType: files[0].type, ratio } : null;
+  const papers = await Promise.all(files.map(async (f, i) => ({ bytes: Buffer.from(await f.arrayBuffer()), mimeType: f.type, ratio: ratios[i] })));
   return Response.json(await writeClaim({
-    facts, count: Number(form.get("count")), writer: String(form.get("writer") ?? ""), paper,
+    facts, count: Number(form.get("count")), writer: String(form.get("writer") ?? ""), papers,
     format: String(form.get("format") ?? ""), length: String(form.get("length") ?? ""),
     angle: String(form.get("angle") ?? ""), custom: String(form.get("custom") ?? ""), reader: String(form.get("reader") ?? ""),
   }));

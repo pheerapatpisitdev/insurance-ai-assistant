@@ -82,4 +82,12 @@ Budget: reading and writing count against the content cap and the hourly limits 
   ตรวจแล้ว (a new stickered picture replaces the old). `clear()` in publish-flow refuses to post
   or schedule until then. Stickers can be added there, never lifted.
 - A script has no poster, so no paper goes with it and nothing needs checking.
+- **Up to three papers on a poster** (owner, later the same day): `PosterSpec.documents`, approval
+  letters first, drawn as a pile — portrait papers fanned side by side, wide screenshots stacked.
+  A poster that carried one `document` is read as a list of it.
+- **An AI photograph behind the pile**, as a plan's posters get one: the writer gives an
+  `imagePrompt`, the form has ภาพประกอบ, and each new claim poster's picture is drawn after the
+  round. The theme's wash sits under the words.
+- **Claims tables:** the reader picks the approved row with the highest approved amount and
+  fills every field from it; ยอดอนุมัติ is paid, ยอดเรียกร้อง the bill.
 

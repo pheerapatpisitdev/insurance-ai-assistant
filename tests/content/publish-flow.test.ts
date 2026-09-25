@@ -72,7 +72,7 @@ beforeEach(() => {
 describe("a รีวิวเคลม paper the owner has not looked at", () => {
   const PAPER = { path: "0b7d3f4e-1c2a-4b5d-8e9f-0a1b2c3d4e5f/9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d.jpg", ratio: 0.75 };
   const withPaper = (paperChecked: boolean): ContentOutput => ({
-    ...output, paperChecked, poster: { layout: "top", theme: "navy", blocks: [{ kind: "headline", text: "x" }], document: PAPER },
+    ...output, paperChecked, poster: { layout: "top", theme: "navy", blocks: [{ kind: "headline", text: "x" }], documents: [PAPER] },
   });
 
   it("keeps the piece off the Page, now or later, until it is ticked", async () => {

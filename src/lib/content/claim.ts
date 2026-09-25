@@ -158,6 +158,9 @@ const READ_SYSTEM = [
   '"docs":[{"kind":"approval|bill|certificate|chat|other","boxes":[{"label":"ชื่อผู้เอาประกัน","box_2d":[0,0,0,0]}]}]}',
   "- docs เรียงตามลำดับรูปที่ได้รับ จำนวนเท่ากับจำนวนรูปพอดี",
   "- ตัวเลขเงินคัดลอกตามที่พิมพ์ในเอกสาร ถ้าไม่มีข้อมูลช่องไหนให้ใส่ \"\"",
+  "- paid คือยอดที่บริษัทจ่าย/อนุมัติ เช่น “จำนวนเงินที่บริษัทจ่าย” “ยอดอนุมัติ” “ยอดอนุมัติสินไหม” · billTotal คือค่ารักษาทั้งหมด/ยอดที่ยื่น เช่น “ค่ารักษาพยาบาลทั้งหมด” “ยอดเรียกร้อง” “ยอดเรียกร้องสินไหม” · selfPaid คือส่วนที่ลูกค้าจ่ายเอง/ส่วนเกิน",
+  "- ถ้าเอกสารเป็นตารางประวัติการเรียกร้องหลายรายการ ให้เลือกรายการเดียว: รายการที่สถานะอนุมัติแล้วและยอดอนุมัติสูงสุด แล้วกรอกทุกช่องจากรายการนั้น ห้ามรวมยอดหลายรายการ",
+  "- nights นับจากวันเข้ารักษาถึงวันออกจากโรงพยาบาลได้ ถ้าเอกสารระบุทั้งสองวันของรายการเดียวกัน",
   "- daysToApprove คิดได้เฉพาะเมื่อเห็นทั้งวันยื่นและวันอนุมัติ ไม่อย่างนั้นใส่ \"\"",
 ].join("\n");
 
@@ -266,12 +269,13 @@ const WRITE_RULES = [
 ].join("\n");
 
 const POSTER_LINES = [
-  "- poster.headline: ข้อความบนภาพไม่เกิน 50 ตัวอักษร ใจความเดียว เช่น “นอนโรงพยาบาล 3 คืน ไม่ต้องสำรองจ่าย” ตัวเลขต้องมาจากข้อมูลตรงตัว",
+  "- imagePrompt: ภาพพื้นหลังหลังรูปเอกสาร เป็นภาษาอังกฤษ 1–2 ประโยค คนไทย แสงธรรมชาติ บรรยากาศโล่งใจ อบอุ่น เช่น ครอบครัวยิ้มอยู่ด้วยกันที่บ้าน หรือห้องพักฟื้นที่สว่างสงบ ห้ามมีตัวหนังสือ ห้ามมีเอกสาร ห้ามภาพคนป่วยหนักหรือเลือด",
+  "- poster.headline: ข้อความบนภาพไม่เกิน 50 ตัวอักษร ใจความเดียว เช่น “นอนโรงพยาบาล 3 คืน ไม่ต้องสำรองจ่าย” ตัวเลขต้องมาจากข้อมูลตรงตัว ไม่ต้องใส่ยอดที่ประกันจ่าย เพราะระบบวางยอดนี้ไว้ในแถบเหลืองใต้พาดหัวให้แล้ว",
   "- poster.footer: ไม่เกิน 40 ตัวอักษร เช่น ชวนทักแชท",
   "- poster.theme เลือกโทนสีหนึ่งจากรายการนี้:",
   ...THEMES.filter((t) => t !== "photo").map((t) => `    ${t} — ${THEME_MOOD[t]}`),
 ];
-const POSTER_SHAPE = '"poster":{"theme":"navy","headline":"…","footer":"…"}';
+const POSTER_SHAPE = '"imagePrompt":"…","poster":{"theme":"navy","headline":"…","footer":"…"}';
 
 const LENGTH_LABEL: Record<Length, string> = { "30": "30 วินาที", "60": "60 วินาที", "180": "2–3 นาที" };
 
@@ -373,7 +377,7 @@ export function parseClaimPiece(reply: string, facts: ClaimFacts, angleLabel: st
     closing: format === "ad" ? text(raw.closing).slice(0, 120) : text(raw.closing),
     // an ad's fields are Ads Manager's; tags are a post's and a clip's
     hashtags: format === "ad" ? [] : [...new Set(tags.map((h) => (h.startsWith("#") ? h : `#${h}`)))].slice(0, 8),
-    imagePrompt: "",
+    imagePrompt: format === "script" ? "" : text(raw.imagePrompt),
     disclaimer: DISCLAIMER,
     // a script is spoken, and has no poster; the paper goes on a post's or an ad's
     ...(format === "script" ? {} : { poster: claimPoster(raw.poster, facts, hook) }),

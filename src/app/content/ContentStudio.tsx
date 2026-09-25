@@ -664,9 +664,12 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           {mode === "claim" ? (
             <div id={formId} className={formOpen ? "" : "hidden lg:block"}>
               <ClaimTools
-                writer={writer} onWriter={(w) => pick({ writer: w })} reader={reader} onReader={setReader}
-                left={left} pending={pending} making={making}
-                run={(asked, fmt, send) => runRound(asked, fmt, send)}
+                writer={writer} onWriter={(w) => pick({ writer: w })} painter={painter} onPainter={(p) => pick({ painter: p })}
+                reader={reader} onReader={setReader} left={left} pending={pending} making={making}
+                run={(asked, fmt, send, paintWith) => runRound(asked, fmt, send, (fresh) => {
+                  // the photograph behind each new claim poster, drawn as a plan round's are
+                  if (paintWith !== "none") void drawPictures(fresh.filter((i) => i.format !== "script"), paintWith, "", null);
+                })}
               />
             </div>
           ) : (
