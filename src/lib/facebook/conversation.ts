@@ -168,19 +168,18 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
   await keepTranscript({ ...thread, product: productOf(session.slots) }, [{ role: "customer", text }]);
 
   /**
-   * The form has gone out. The bot has nothing left to do in this thread.
+   * A person has the thread: the bot says nothing.
    *
-   * What follows a form is an agent: a name to check, a birthdate to read back, a question
-   * about the health declaration that no model may answer. The bot answering over the top of
-   * that is the failure this stops — and a customer who has been handed an application does
-   * not need another quotation.
+   * Only a person's reply stamps it now. Sending the form used to as well, and the bot went
+   * quiet on the customer the moment it had — someone who had only asked which documents to
+   * bring was handed a form and then met silence. The owner took that out on 2026-09-26: the
+   * bot keeps answering after the form until an agent actually writes in the thread.
    *
    * The message is still recorded, so the report shows a live thread rather than one that
    * stopped. The silence does not expire: `handed_over_at` is read past the session's own
-   * staleness, because a session is a day old and an application is not finished in a day.
-   * Clearing that column is what gives the thread back to the bot.
+   * staleness. Clearing it (ให้บอทดูแลต่อ on /admin/crm) gives the thread back to the bot.
    */
-  if (session.handedOverAt || handedOver(session.slots)) {
+  if (session.handedOverAt) {
     await record(conversationId, ledger, productOf(session.slots));
     return;
   }
@@ -243,13 +242,13 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     }
     await keepTranscript({ ...thread, product: productOf(answer.slots) }, [botTurn(answer.messages, answer.replies)]);
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
-    // the turn that hands the form over is the turn that stamps the thread; every other save
-    // leaves the column alone, so a stamp already there is never wiped
+    // the turn that hands the form over is counted, but no longer silences the bot: only an
+    // agent's own reply does (owner, 2026-09-26)
     const justSent = handedOver(answer.slots) && !handedOver(session.slots);
-    // no mute argument: recording what was said must never clear one
+    // no mute argument: recording what was said must never clear one, nor the agent's stamp
     await saveSession(
       "facebook", userHash, [...history, { role: "assistant", content: spoken }],
-      answer.slots, undefined, conversationId, justSent ? new Date() : undefined,
+      answer.slots, undefined, conversationId,
     );
     /**
      * A quotation is where the conversation used to stop, so it is where the bot now arms one

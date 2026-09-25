@@ -111,11 +111,19 @@ describe("a LINE customer's message", () => {
     expect(answer).not.toHaveBeenCalled();
   });
 
-  it("gets no bot once the form has gone out — a person has the thread", async () => {
+  it("gets no bot in a thread a person has taken", async () => {
     session.handedOverAt = new Date().toISOString();
     await handle(said("กรอกแล้วครับ"));
     expect(answer).not.toHaveBeenCalled();
     expect(replies).toHaveLength(0);
+  });
+
+  // the owner, 2026-09-26: the form alone no longer silences the bot
+  it("keeps answering after the form has gone out", async () => {
+    session.slots = { product: "lifeprotect", formSent: true };
+    await handle(said("ต้องใช้เอกสารอะไรบ้าง"));
+    expect(answer).toHaveBeenCalled();
+    expect(replies.length).toBeGreaterThan(0);
   });
 
   it("is told a person is coming when no answer can be had", async () => {

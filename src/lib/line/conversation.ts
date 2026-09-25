@@ -96,8 +96,13 @@ export async function handle(event: LineEvent, destination = ""): Promise<void> 
   const thread = { channel: "line" as const, pageId: destination, userHash, conversationId };
   await keepTranscript({ ...thread, product: productOf(session.slots) }, [{ role: "customer", text }]);
 
-  // the form has gone out and a person has the thread now; the message is still counted
-  if (session.handedOverAt || handedOver(session.slots)) {
+  /**
+   * A thread a person has taken. The form no longer counts as one (owner, 2026-09-26: the bot
+   * answers until a person writes) — and LINE never tells the webhook what an agent types in
+   * OA Manager, so here only a stamp set some other way silences the bot. The message is
+   * still counted.
+   */
+  if (session.handedOverAt) {
     await record(conversationId, ledger, productOf(session.slots));
     return;
   }
@@ -123,10 +128,11 @@ export async function handle(event: LineEvent, destination = ""): Promise<void> 
     await keepTranscript({ ...thread, product: productOf(answer.slots) }, [botTurn(answer.messages, answer.replies)]);
 
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
+    // counted in the report, but it silences nothing any more
     const justSent = handedOver(answer.slots) && !handedOver(session.slots);
     await saveSession(
       "line", userHash, [...history, { role: "assistant", content: spoken }],
-      answer.slots, undefined, conversationId, justSent ? new Date() : undefined,
+      answer.slots, undefined, conversationId,
     );
 
     const product = productOf(answer.slots);

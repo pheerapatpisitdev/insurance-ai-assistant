@@ -321,17 +321,16 @@ describe("the picture of the quotation, when Messenger will not take it", () => 
 });
 
 /**
- * What follows an application form is an agent — a name to check, a birthdate to read back,
- * a question about the health declaration that no model may answer.
+ * The form used to silence the bot. The owner took that out on 2026-09-26: a customer who had
+ * only asked which documents to bring was handed the form and then met silence. The bot now
+ * answers until a person writes in the thread — the stamp an agent's reply leaves.
  */
 describe("once the form has been handed over", () => {
-  it("says nothing more in that thread, whatever the customer writes", async () => {
+  it("keeps answering the customer until a person writes", async () => {
     session.slots = { product: "lifeprotect", formSent: true };
     await handle({ sender: { id: "psid-done" }, message: { mid: "mg1", text: "กรอกแล้วครับ" } });
-    expect(sent.text).toEqual([]);
-    expect(sent.images).toEqual([]);
-    // and no model was asked to compose the silence
-    expect(answer).not.toHaveBeenCalled();
+    expect(answer).toHaveBeenCalled();
+    expect(sent.text.length).toBeGreaterThan(0);
   });
 
   /**
@@ -347,13 +346,13 @@ describe("once the form has been handed over", () => {
     expect(answer).not.toHaveBeenCalled();
   });
 
-  it("stamps the thread on the turn the form goes out, and not on any other", async () => {
+  it("does not stamp the thread when the form goes out: only a person's reply does", async () => {
     answer.mockImplementationOnce(async (): Promise<Answer> => ({
       messages: [{ text: "ยินดีครับ 😊" }],
       slots: { intent: "quote", product: "lifeprotect", formSent: true },
     }));
     await handle({ sender: { id: "psid-stamp" }, message: { mid: "mg5", text: "สนใจสมัคร" } });
-    expect(saved.at(-1)!.handedOverAt).toBeInstanceOf(Date);
+    expect(saved.at(-1)!.handedOverAt).toBeUndefined();
 
     // an ordinary turn leaves the column alone rather than writing null over a stamp
     saved.length = 0;
