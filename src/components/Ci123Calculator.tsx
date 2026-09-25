@@ -6,7 +6,7 @@ import { PAY_MODE_LABEL } from "@/calc/types";
 import { formatBaht } from "@/calc/money";
 import { displayPremium, perDayText } from "@/lib/legacy-cta";
 import { ci123QuoteText, stagePays, sumWords, type Ci123Age } from "@/lib/ci123-cta";
-import { cardPath } from "@/lib/card-link";
+import { cardPath, diseaseCardPath } from "@/lib/card-link";
 import { ContactButtons } from "@/components/sales/ContactButtons";
 import type { Ci123Table } from "@/lib/ci123-table";
 import { Highlighted } from "@/components/Highlighted";
@@ -225,7 +225,8 @@ export function Ci123Calculator({ table, sticky = false }: { table: Ci123Table; 
         <AllSums table={table} age={age} sex={sex} tier={tier} onPick={setTier} />
       )}
 
-      <ContactButtons copyText={quoteText} cardPath={card} />
+      {/* the illness list goes out with or without a price, as on iShield */}
+      <ContactButtons copyText={quoteText} cardPath={card} diseaseCardPath={diseaseCardPath("CI123")} />
 
       {sticky && (quoteText || card) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
