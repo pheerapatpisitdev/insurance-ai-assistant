@@ -20,8 +20,11 @@ import {
   WANTS_IN, wantsToBuy,
 } from "../common";
 
-/** The package quoted when the customer has not named one: the cheapest instalment of the three. */
-const DEFAULT_TERM = "WLF99H";
+/** The package quoted when the customer has not named one: paying 19 years, the owner's first offer (2026-09-25). */
+const FIRST_TERM = "WLF19H";
+
+/** The cheapest instalment of the three: what "แพงไป" is pointed to, and where the smallest contract is measured. */
+const CHEAPEST_TERM = "WLF99H";
 
 /**
  * The packages this chat may price. The plan's table also holds the x1.5 product and two
@@ -255,7 +258,7 @@ function answerValueTable(slots: Routed): Reply {
   }
   if (table.expired) return one(`ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HAND_OVER}`);
 
-  const variant = QUOTABLE.has(slots.variant ?? "") ? slots.variant! : DEFAULT_TERM;
+  const variant = QUOTABLE.has(slots.variant ?? "") ? slots.variant! : FIRST_TERM;
   const sumAssured = sumBehind(table, age, coverWanted, variant, slots.offer, slots.takenSum);
   const term = termAt(table, variant);
   return {
@@ -291,7 +294,10 @@ function answerQuote(slots: Routed): Reply {
     return one(`ตารางเบี้ยชุดนี้หมดอายุแล้วครับ ขอราคาปัจจุบันจากตัวแทนได้เลย ${HAND_OVER}`);
   }
 
-  const variant = slots.variant ?? DEFAULT_TERM;
+  // naming the cover a cheaper offer put on the table takes that offer, term and all: the
+  // offer is priced to-99, and quoting its sum on the first term would change the price
+  const onOffer = slots.offer && slots.offer.coverWanted === coverWanted ? slots.offer.variant : undefined;
+  const variant = slots.variant ?? onOffer ?? FIRST_TERM;
   const messages = people.map((who) => quoteFor(table, variant, who, coverWanted, slots.offer, slots.takenSum));
 
   // the offer of the other terms belongs once, under the last price on the screen
@@ -378,7 +384,7 @@ function answerFromBudget(slots: Routed, budget: Budget): Answer {
   if (table.expired || age < table.ageMin || age > table.ageMax) return { ...one(HAND_OVER), slots: kept };
 
   const rates = getPlan(PLAN_CODE)!.rates;
-  const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, DEFAULT_TERM).min;
+  const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, CHEAPEST_TERM).min;
   const mode = budget.per === "month" ? "monthly" : "annual";
   const multiple = coverMultiple(table, age);
 
@@ -414,8 +420,8 @@ function answerFromBudget(slots: Routed, budget: Budget): Answer {
      * The money does not reach the smallest contract sold. Said plainly, with the figure it
      * would take — a customer told only "ไม่ได้ครับ" has nothing to decide with.
      */
-    const least = instalment(DEFAULT_TERM, floor);
-    const term = table.terms.find((t) => t.variant === DEFAULT_TERM)?.label ?? "";
+    const least = instalment(CHEAPEST_TERM, floor);
+    const term = table.terms.find((t) => t.variant === CHEAPEST_TERM)?.label ?? "";
     return {
       ...one(least
         ? `งบ${per}ละ ${money(budget.baht)} บาท ยังไม่ถึงทุนขั้นต่ำของแบบนี้ครับ 🙏\n`
@@ -451,31 +457,31 @@ function answerCheaper(slots: Routed): Answer {
   const baht = formatBaht;
   const monthly = (variant: string, sum: number) =>
     lifeProtectModes(table, termAt(table, variant), { sex, age, sumAssured: sum })?.find((m) => m.mode === "monthly");
-  const variant = slots.variant ?? DEFAULT_TERM;
+  const variant = slots.variant ?? FIRST_TERM;
   const sumNow = slots.offer && slots.offer.coverWanted === coverWanted ? slots.offer.sumAssured : sumForCover(table, age, coverWanted);
   const lines: string[] = [];
 
   // the term: to-99 is the cheapest by the year, and worth naming if they are not on it
-  if (variant !== DEFAULT_TERM) {
-    const m = monthly(DEFAULT_TERM, sumNow);
+  if (variant !== CHEAPEST_TERM) {
+    const m = monthly(CHEAPEST_TERM, sumNow);
     if (m) lines.push(`ถ้าเปลี่ยนเป็นแบบจ่ายถึงอายุ 99 ทุนเท่าเดิม เบี้ยจะเหลือประมาณ ${baht(m.total)} บาท/เดือนครับ (แบบนี้เบี้ยต่อปีถูกที่สุด)`);
   } else {
     lines.push("แบบจ่ายถึงอายุ 99 ที่คิดให้อยู่นี้ เป็นแบบที่เบี้ยต่อปีถูกที่สุดแล้วครับ");
   }
 
   // the cover: halve the sum, and keep the arrangement so "เอา" can take it
-  const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, DEFAULT_TERM).min;
+  const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, CHEAPEST_TERM).min;
   const half = Math.round(sumNow / 2 / 1000) * 1000;
   let offer = slots.offer;
   if (half >= floor) {
-    const m = monthly(DEFAULT_TERM, half);
+    const m = monthly(CHEAPEST_TERM, half);
     const coverHalf = half * coverMultiple(table, age);
     if (m) {
       lines.push(
         `หรือถ้าลดทุนลงครึ่งหนึ่ง เป็นทุน ${half.toLocaleString("en-US")} บาท (ครอบครัวได้รับ ${coverHalf.toLocaleString("en-US")}) `
         + `เบี้ยจะประมาณ ${baht(m.total)} บาท/เดือนครับ`,
       );
-      offer = { coverWanted: coverHalf, sumAssured: half, variant: DEFAULT_TERM };
+      offer = { coverWanted: coverHalf, sumAssured: half, variant: CHEAPEST_TERM };
     }
   } else {
     lines.push(`ทุนตอนนี้อยู่ที่ขั้นต่ำของแบบนี้แล้วครับ ลดลงกว่านี้ไม่ได้`);
@@ -550,7 +556,7 @@ function knownSoFar(slots: Routed, table: LifeProtectTable): string {
 function quotedFigures(slots: Routed, table: LifeProtectTable): string | undefined {
   const { age, sex, coverWanted } = slots;
   if (age === undefined || sex === undefined || coverWanted === undefined || table.expired) return undefined;
-  const variant = slots.variant ?? DEFAULT_TERM;
+  const variant = slots.variant ?? FIRST_TERM;
   if (!QUOTABLE.has(variant)) return undefined;
   if (age < table.ageMin || age > table.ageMax) return undefined;
 
@@ -625,7 +631,7 @@ async function answerSmallTalk(history: ChatMessage[], slots: Routed): Promise<R
 function planInfoText(): string {
   const f = lifeProtectFacts();
   const table = lifeProtectTable();
-  const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, DEFAULT_TERM).min;
+  const floor = baseSumAssuredLimits(getPlan(PLAN_CODE)!.rules, CHEAPEST_TERM).min;
   return [
     "ชื่อแบบ: Life Protect x 2",
     `รับประกันอายุ ${f.ageMin}-${f.ageMax} ปี คุ้มครองถึงอายุ ${f.coverToAge} ปี`,

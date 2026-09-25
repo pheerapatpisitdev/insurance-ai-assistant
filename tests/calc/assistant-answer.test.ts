@@ -97,7 +97,8 @@ describe("a quote", () => {
   it("says the owner's wording, with the rate table's figures", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
     const table = lifeProtectTable();
-    const term = termAt(table, "WLF99H");
+    // no term named: the owner's first offer is paying 19 years
+    const term = termAt(table, "WLF19H");
     // two million reaching the family; before sixty that is a sum assured of one
     const SUM = 1_000_000;
     const expected = lifeProtectChatQuoteText({
@@ -123,12 +124,12 @@ describe("a quote", () => {
   it("sends a card of the same arrangement", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
     expect(answer.messages[0].card)
-      .toMatch(/^\/api\/card\?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=1000000&v=[0-9a-z]+-[0-9]+$/);
+      .toMatch(/^\/api\/card\?plan=LIFEPROTECT&variant=WLF19H&age=35&sex=M&sum=1000000&v=[0-9a-z]+-[0-9]+$/);
   });
 
   it("offers the two terms it did not quote", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
-    expect(answer.messages[0].text).toContain("ถ้าอยากดูแบบออม 9 ปี หรือ จ่าย 19 ปี คุ้มครองถึง 99 ปี");
+    expect(answer.messages[0].text).toContain("ถ้าอยากดูแบบออม 9 ปี หรือ จ่ายถึงอายุ 99 คุ้มครองถึง 99 ปี");
   });
 
   it("quotes the term the customer named", async () => {
@@ -411,7 +412,7 @@ describe("the buttons under a quotation", () => {
 
   it("offers the table, the terms not taken, and the way on", async () => {
     const answer = await answerQuestion(said("ชาย 35 ล้านนึง"), null);
-    expect(answer.replies).toEqual(["ขอตารางมูลค่า", "จ่าย 9 ปี", "จ่าย 19 ปี", "สนใจสมัคร"]);
+    expect(answer.replies).toEqual(["ขอตารางมูลค่า", "จ่าย 9 ปี", "จ่ายถึงอายุ 99", "สนใจสมัคร"]);
   });
 
   it("never offers the term the customer is already looking at", async () => {
@@ -446,7 +447,7 @@ describe("the value table", () => {
     expect(chat.mock.calls.map((c) => c[0].task)).toEqual(["route"]);
     expect(answer.messages).toHaveLength(1);
     expect(answer.messages[0].card)
-      .toMatch(/^\/api\/card\/table\?plan=LIFEPROTECT&variant=WLF99H&age=35&sex=M&sum=1000000&v=[0-9a-z]+-[0-9]+$/);
+      .toMatch(/^\/api\/card\/table\?plan=LIFEPROTECT&variant=WLF19H&age=35&sex=M&sum=1000000&v=[0-9a-z]+-[0-9]+$/);
     expect(answer.messages[0].text).toContain("ตารางมูลค่าทุกปี");
   });
 
@@ -539,13 +540,20 @@ describe("the price being too much", () => {
     routed = { intent: "other" };
     const taken = await answerQuestion(said("เอา"), offered.slots);
     // 9,550 a year is 859.50 a month; the quotation floors it and so must the offer
-    const shown = offered.messages[0].text.match(/ประมาณ ([\d,]+) บาท\/เดือน/)![1];
+    const shown = offered.messages[0].text.match(/ลดทุนลงครึ่งหนึ่ง.*?ประมาณ ([\d,]+) บาท\/เดือน/)![1];
     expect(taken.messages[0].text).toContain(`รายเดือน ${shown} บาท`);
+  });
+
+  it("points the first quote, paying 19 years, at the to-99 premium for the same cover", async () => {
+    routed = { intent: "other" };
+    const answer = await answerQuestion(said("แพงไป"), known);
+    expect(answer.messages[0].text).toContain("ถ้าเปลี่ยนเป็นแบบจ่ายถึงอายุ 99");
+    expect(answer.messages[0].text).toContain(`${monthlyFor("WLF99H", 1_000_000)} บาท/เดือน`);
   });
 
   it("names the to-99 term as the cheapest by the year, and offers half the cover with a real figure", async () => {
     routed = { intent: "other" };
-    const answer = await answerQuestion(said("แพงไปหน่อย มีถูกกว่านี้ไหม"), known);
+    const answer = await answerQuestion(said("แพงไปหน่อย มีถูกกว่านี้ไหม"), { ...known, variant: "WLF99H" });
     const text = answer.messages[0].text;
     expect(text).toContain("ถูกที่สุดแล้ว");
     expect(text).toContain("ทุน 500,000 บาท (ครอบครัวได้รับ 1,000,000)");
