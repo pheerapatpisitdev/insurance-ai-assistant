@@ -1,0 +1,68 @@
+import type { NextRequest } from "next/server";
+import { clientIp, limiter } from "@/lib/assistant/rate-limit";
+import { MAX_DOCS } from "@/lib/content/claim";
+import { readClaim, writeClaim } from "@/lib/content/claim-run";
+
+/**
+ * รีวิวเคลม, as plain requests: six photographs are more than a server action's one-megabyte
+ * body takes, and a round of writing should not queue the page's other actions behind it.
+ *
+ * POST reads the papers; PUT writes the pieces. Both refuse without the consent tick — the
+ * page asks for it too, but the rule is the server's. The photographs POST receives are sent
+ * to the model and dropped; only the blacked-out paper PUT receives is ever kept.
+ */
+
+export const maxDuration = 300;
+
+const TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+/** the page sends them resized to 1600px; this is the ceiling for one that was not */
+const MAX_BYTES = 4 * 1024 * 1024;
+const readsPerHour = limiter(20, 60 * 60_000);
+const roundsPerHour = limiter(10, 60 * 60_000);
+
+const bad = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
+const NO_CONSENT = "ต้องติ๊กยืนยันว่าลูกค้ายินยอมให้ใช้เอกสารนี้ก่อนนะครับ";
+
+function images(form: FormData, name: string): File[] | string {
+  const files = form.getAll(name).filter((f): f is File => f instanceof File && f.size > 0);
+  for (const f of files) {
+    if (!TYPES.has(f.type)) return "รับเฉพาะรูป JPG, PNG หรือ WebP (PDF ให้แคปหน้าจอก่อน)";
+    if (f.size > MAX_BYTES) return "รูปใหญ่เกิน 4 MB";
+  }
+  return files;
+}
+
+export async function POST(req: NextRequest) {
+  const form = await req.formData().catch(() => null);
+  if (!form) return bad("ข้อมูลไม่ครบ ลองใหม่อีกครั้งนะครับ");
+  if (form.get("consent") !== "on") return bad(NO_CONSENT);
+  const files = images(form, "docs");
+  if (typeof files === "string") return bad(files);
+  if (files.length === 0 || files.length > MAX_DOCS) return bad(`เลือกรูปเอกสาร 1–${MAX_DOCS} รูปนะครับ`);
+  if (!readsPerHour(`claim-read:${clientIp(req.headers)}`)) return bad("อ่านเอกสารครบ 20 ครั้งในชั่วโมงนี้แล้ว รอสักพักนะครับ", 429);
+  const pics = await Promise.all(files.map(async (f) => ({ base64: Buffer.from(await f.arrayBuffer()).toString("base64"), mimeType: f.type })));
+  return Response.json(await readClaim(pics));
+}
+
+export async function PUT(req: NextRequest) {
+  const form = await req.formData().catch(() => null);
+  if (!form) return bad("ข้อมูลไม่ครบ ลองใหม่อีกครั้งนะครับ");
+  if (form.get("consent") !== "on") return bad(NO_CONSENT);
+  let facts: unknown;
+  try {
+    facts = JSON.parse(String(form.get("facts") ?? ""));
+  } catch {
+    return bad("ข้อมูลการเคลมไม่ครบ ลองใหม่อีกครั้งนะครับ");
+  }
+  const files = images(form, "paper");
+  if (typeof files === "string") return bad(files);
+  const ratio = Number(form.get("ratio"));
+  // a paper comes only with its ตรวจแล้ว; one without is refused rather than quietly dropped
+  if (files.length > 0 && form.get("checked") !== "on") return bad("กด “ตรวจแล้ว” ที่รูปที่จะใช้ทำโปสเตอร์ก่อนนะครับ");
+  if (files.length > 0 && !(ratio >= 0.2 && ratio <= 5)) return bad("ขนาดรูปเอกสารไม่ถูกต้อง ลองเลือกรูปใหม่นะครับ");
+  if (!roundsPerHour(`claim-write:${clientIp(req.headers)}`)) return bad("สร้างครบ 10 รอบในชั่วโมงนี้แล้ว รอสักพักแล้วลองใหม่นะครับ", 429);
+  const paper = files[0] ? { bytes: Buffer.from(await files[0].arrayBuffer()), mimeType: files[0].type, ratio } : null;
+  return Response.json(await writeClaim({
+    facts, count: Number(form.get("count")), writer: String(form.get("writer") ?? ""), paper,
+  }));
+}

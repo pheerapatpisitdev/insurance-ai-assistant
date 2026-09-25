@@ -41,11 +41,29 @@ export interface PosterSpec {
   blocks: PosterBlock[];
   /** a picture behind the words: a path in the content-media bucket, "<piece id>/<file id>.<ext>" */
   background?: string;
+  /**
+   * รีวิวเคลม: the owner's claim paper, blacked out and checked, drawn as a card under the
+   * words. Same path shape as a background; ratio is its width over its height.
+   */
+  document?: PosterDocument;
+}
+
+export interface PosterDocument {
+  path: string;
+  ratio: number;
 }
 
 /** the only shape a background may have; anything else could point the drawing route elsewhere */
 const BACKGROUND_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(png|jpe?g|webp)$/;
 export const isBackgroundPath = (v: unknown): v is string => typeof v === "string" && BACKGROUND_PATH.test(v);
+
+/** a document from anywhere, or null: a path of the one allowed shape and a ratio a paper could have */
+export function toDocument(v: unknown): PosterDocument | null {
+  if (!v || typeof v !== "object") return null;
+  const { path, ratio } = v as Record<string, unknown>;
+  if (!isBackgroundPath(path) || typeof ratio !== "number" || !Number.isFinite(ratio) || ratio < 0.2 || ratio > 5) return null;
+  return { path, ratio };
+}
 
 export const BLOCK_LABEL: Record<BlockKind, string> = {
   badge: "ป้ายเล็ก",
@@ -135,6 +153,7 @@ export function parsePoster(input: unknown): PosterSpec | null {
     theme: THEMES.includes(raw.theme as Theme) ? (raw.theme as Theme) : "navy",
     blocks,
     ...(isBackgroundPath(raw.background) ? { background: raw.background } : {}),
+    ...(toDocument(raw.document) ? { document: toDocument(raw.document)! } : {}),
   };
 }
 

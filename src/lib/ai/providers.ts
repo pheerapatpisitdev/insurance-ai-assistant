@@ -36,6 +36,38 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
   return res.json();
 }
 
+/** A message in the OpenAI chat shape: plain text, or text and pictures as data URLs. */
+export function openAiMessage(m: ChatMessage): { role: string; content: unknown } {
+  if (!m.images?.length) return { role: m.role, content: m.content };
+  return {
+    role: m.role,
+    content: [
+      { type: "text", text: m.content },
+      ...m.images.map((i) => ({ type: "image_url", image_url: { url: `data:${i.mimeType};base64,${i.base64}` } })),
+    ],
+  };
+}
+
+/** A message in Anthropic's shape: the pictures first, then the words, as its docs advise. */
+export function anthropicMessage(m: ChatMessage): { role: string; content: unknown } {
+  if (!m.images?.length) return { role: m.role, content: m.content };
+  return {
+    role: m.role,
+    content: [
+      ...m.images.map((i) => ({ type: "image", source: { type: "base64", media_type: i.mimeType, data: i.base64 } })),
+      { type: "text", text: m.content },
+    ],
+  };
+}
+
+/** A message's parts in Gemini's shape. */
+export function googleParts(m: ChatMessage): unknown[] {
+  return [
+    ...(m.images ?? []).map((i) => ({ inlineData: { mimeType: i.mimeType, data: i.base64 } })),
+    { text: m.content },
+  ];
+}
+
 /** Splits the system prompt out; Anthropic takes it as its own field. */
 function splitSystem(messages: ChatMessage[]) {
   const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
@@ -54,7 +86,7 @@ export const CALLERS: Record<string, (a: CallArgs) => Promise<CallResult>> = {
       // Haiku 4.5 and the 4.5-and-older models reject effort with a 400
       ...(effort && !/haiku|4-5|claude-3/.test(model) ? { output_config: { effort } } : {}),
       ...(system ? { system } : {}),
-      messages: rest.map((m) => ({ role: m.role, content: m.content })),
+      messages: rest.map(anthropicMessage),
     }, signal);
     const text = (data.content ?? []).filter((c: { type: string }) => c.type === "text")
       .map((c: { text: string }) => c.text).join("");
@@ -65,7 +97,7 @@ export const CALLERS: Record<string, (a: CallArgs) => Promise<CallResult>> = {
     const data = await postJson("https://api.openai.com/v1/chat/completions", {
       Authorization: `Bearer ${apiKey}`,
     }, {
-      model, messages, max_completion_tokens: maxTokens,
+      model, messages: messages.map(openAiMessage), max_completion_tokens: maxTokens,
       ...(openAiReasoning(model, effort)),
       ...(json ? { response_format: { type: "json_object" } } : {}),
     }, signal);
@@ -83,7 +115,7 @@ export const CALLERS: Record<string, (a: CallArgs) => Promise<CallResult>> = {
       {},
       {
         ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-        contents: rest.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
+        contents: rest.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: googleParts(m) })),
         generationConfig: {
           maxOutputTokens: maxTokens,
           ...(json ? { responseMimeType: "application/json" } : {}),
@@ -132,7 +164,8 @@ export function openAiReasoning(model: string, effort?: CallArgs["effort"]): { r
 
 async function openAiCompatible(url: string, { apiKey, model, messages, maxTokens, json, signal }: CallArgs, extra: Record<string, unknown> = {}): Promise<CallResult> {
   const data = await postJson(url, { Authorization: `Bearer ${apiKey}` }, {
-    model, messages, max_tokens: maxTokens,
+    // GLM here reads no pictures; the words go without them
+    model, messages: messages.map((m) => ({ role: m.role, content: m.content })), max_tokens: maxTokens,
     ...(json ? { response_format: { type: "json_object" } } : {}),
     ...extra,
   }, signal);

@@ -158,17 +158,23 @@ export function PosterPanel({ value, onChange, onDraw, busy, people, person: dra
             />
           </label>
         ))}
-        <div role="group" aria-label="ตำแหน่งข้อความ" className="flex flex-wrap items-center gap-1.5 text-sm">
+        {/* a รีวิวเคลม poster lays its words above the paper, always */}
+        {!value.document && <div role="group" aria-label="ตำแหน่งข้อความ" className="flex flex-wrap items-center gap-1.5 text-sm">
           <span className="mr-1 font-medium">ตำแหน่งข้อความ</span>
           {LAYOUTS.map((l) => (
             <button key={l} type="button" aria-pressed={value.layout === l} onClick={() => onChange({ ...value, layout: l })} className={chip(value.layout === l)}>{LAYOUT_LABEL[l]}</button>
           ))}
-        </div>
+        </div>}
         <div className="text-sm">
           <span className="mb-1.5 block font-medium">โทนสี</span>
           <ThemeSwatches value={value.theme} onChange={(theme) => onChange({ ...value, theme })} />
         </div>
         </fieldset>
+        {value.document ? (
+          <p className="rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-2.5 text-sm text-[var(--ct-mute)]">
+            โปสเตอร์รีวิวเคลม — ใช้รูปเอกสารที่ถมดำและตรวจแล้ว ไม่ต้องวาดภาพพื้นหลัง
+          </p>
+        ) : (
         <fieldset disabled={shut} className="m-0 min-w-0 space-y-2 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-2.5">
           <legend className="sr-only">ภาพพื้นหลัง</legend>
           <p className="text-sm font-medium">
@@ -217,6 +223,7 @@ export function PosterPanel({ value, onChange, onDraw, busy, people, person: dra
             AI วาดเฉพาะภาพ ไม่มีตัวหนังสือ แล้วระบบพิมพ์ข้อความไทยทับด้วยฟอนต์จริง จึงไม่เพี้ยน · ค่ารูปนับรวมในงบคอนเทนต์เดือนนี้
           </p>
         </fieldset>
+        )}
         <p className="text-xs text-[var(--ct-mute)]">ตัวเลขบนภาพถูกตรวจเทียบตารางเบี้ยเมื่อกดบันทึก</p>
       </div>
     </div>

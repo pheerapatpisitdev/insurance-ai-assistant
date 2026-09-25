@@ -20,6 +20,8 @@ import { ask } from "./ask";
 import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
 import { ScriptCard } from "./ScriptCard";
+import { ClaimTools } from "./claim/ClaimTools";
+import { CLAIM_HREF, CLAIM_NAME } from "@/lib/content/claim";
 import { CheckIcon, ChevronDownIcon, SearchIcon, XIcon } from "./ui/icons";
 import { PlainText } from "./ui/editor-fields";
 
@@ -172,6 +174,8 @@ function HookPicker({ hooks, value, onChange }: { hooks: HookTemplate[]; value: 
 export function ContentStudio({ products, lengths, hooks, initialHook, initial, initialUsed, spend: initialSpend, initialOpen, people }: Props) {
   const [href, setHref] = useState(products[0]?.href ?? "");
   const [format, setFormat] = useState<Format>("post");
+  /** จากแบบประกัน or รีวิวเคลม: the two forms share the pieces, the models and the budget line */
+  const [mode, setMode] = useState<"plan" | "claim">("plan");
   const [writer, setWriter] = useState(DEFAULT_WRITER);
   const [painter, setPainter] = useState(DEFAULT_PAINTER);
   useEffect(() => {
@@ -359,7 +363,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     return () => document.removeEventListener("click", onClick, true);
   }, [editorDirty, router]);
 
-  const nameOf = (h: string) => products.find((p) => p.href === h)?.name ?? h;
+  const nameOf = (h: string) => (h === CLAIM_HREF ? CLAIM_NAME : products.find((p) => p.href === h)?.name ?? h);
   // gone from the list — deleted, moved to the other tab, filtered out — and the list is back
   const editingItem = editing ? (items.find((x) => x.id === editing) ?? (opened?.id === editing ? opened : undefined)) : undefined;
 
@@ -372,23 +376,37 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
 
   async function generate() {
     if (pending) return;
-    hush("round");
-    const asked = pieceCount;
     // อัตโนมัติ is settled at the press, on the money left then
     const paintWith = painterOf(painter, Math.max(0, spend.cap - spend.spent)).id;
     const pictureBrief = brief.trim();
     const pictureOf = person;
+    await runRound(pieceCount, format, () => generateRound({
+      href, format, angle, custom, length: format === "script" ? length : null, count,
+      hookTemplateId: format === "ad" ? null : hookId || null, adAngles, adTones, writer,
+      reader, goal: format === "ad" ? "" : goal, fact: format === "ad" ? "" : fact, theme,
+    }), (fresh) => {
+      // the painter as it was at the press, even if the owner changes it while waiting
+      // the brief too: what the box said at the press, not after. Only a round that finished:
+      // one stopped part way (the month's money ran out) leaves its pieces plain — the owner
+      // draws them from the editor if still wanted
+      if (paintWith !== "none") void drawPictures(fresh.filter((i) => i.format !== "script"), paintWith, pictureBrief, pictureOf);
+    });
+  }
+
+  /**
+   * A round from either form — a plan's or รีวิวเคลม — from the press to its pieces on screen.
+   * `finished` runs only for a round that came back whole.
+   */
+  async function runRound(asked: number, fmt: Format, send: () => Promise<GenerateResult>, finished?: (fresh: ContentItem[]) => void) {
+    if (pending) return;
+    hush("round");
     setMaking(asked);
-    setMakingFormat(format);
+    setMakingFormat(fmt);
     hush("round-note");
     try {
       let res: GenerateResult;
       try {
-        res = await generateRound({
-          href, format, angle, custom, length: format === "script" ? length : null, count,
-          hookTemplateId: format === "ad" ? null : hookId || null, adAngles, adTones, writer,
-          reader, goal: format === "ad" ? "" : goal, fact: format === "ad" ? "" : fact, theme,
-        });
+        res = await send();
       } catch {
         /**
          * The connection dropped mid-write — on a phone, usually because the owner switched
@@ -440,11 +458,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
       }
       // ?hook= from the formula library did its job; a reload should not pick it again
       dropParam("hook");
-      // the painter as it was at the press, even if the owner changes it while waiting
-      // the brief too: what the box said at the press, not after. Only a round that finished:
-      // one stopped part way (the month's money ran out) leaves its pieces plain — the owner
-      // draws them from the editor if still wanted
-      if (res.ok && paintWith !== "none") void drawPictures(fresh.filter((i) => i.format !== "script"), paintWith, pictureBrief, pictureOf);
+      if (res.ok) finished?.(fresh);
     } finally {
       setMaking(0);
       // the budget line follows every round, a failed or dropped one included
@@ -634,6 +648,28 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
             </button>
           </div>
 
+          <div className={`px-4 pt-4 ${formOpen ? "" : "hidden lg:block"}`}>
+            <div role="group" aria-label="สร้างจาก" className="grid grid-cols-2 gap-1 rounded-lg bg-[var(--ct-soft)] p-1">
+              {([["plan", "จากแบบประกัน"], ["claim", CLAIM_NAME]] as const).map(([m, label]) => (
+                <button
+                  key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}
+                  className={`min-h-10 rounded-md px-2 text-sm ${mode === m ? "bg-[var(--ct-panel)] font-medium shadow-sm" : "text-[var(--ct-mute)]"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {mode === "claim" ? (
+            <div id={formId} className={formOpen ? "" : "hidden lg:block"}>
+              <ClaimTools
+                writer={writer} onWriter={(w) => pick({ writer: w })} left={left} pending={pending} making={making}
+                run={(asked, send) => runRound(asked, "post", send)}
+              />
+            </div>
+          ) : (
+          <>
           <div id={formId} className={`space-y-4 p-4 ${formOpen ? "" : "hidden lg:block"}`}>
           <label className="block">
             <span className="mb-1 block text-sm font-medium">แบบประกัน</span>
@@ -822,6 +858,8 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
               ราว ฿{estimate} · สร้างได้อีกราว {more} ชิ้น · งบคอนเทนต์เดือนนี้เหลือ ฿{left.toFixed(2)} จาก ฿{spend.cap}
             </p>
           </div>
+          </>
+          )}
         </aside>
 
         {/* ---------------------------------- pieces ---------------------------------- */}
@@ -875,6 +913,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
               >
                 <option value="">ทุกแบบ</option>
                 {products.map((p) => <option key={p.href} value={p.href}>{p.name}</option>)}
+                <option value={CLAIM_HREF}>{CLAIM_NAME}</option>
               </select>
             </label>
           </div>

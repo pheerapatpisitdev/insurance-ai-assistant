@@ -1,0 +1,311 @@
+import type { ChatMessage } from "@/lib/ai/types";
+import { parseJsonReply } from "@/lib/ai/client";
+import { DISCLAIMER, type ContentOutput } from "./output";
+import { POLICY_RULES_TH } from "./policy";
+import { clip, MAX_CHARS, parsePoster, THEME_MOOD, THEMES, type PosterBlock, type PosterSpec } from "./poster";
+
+/**
+ * รีวิวเคลม (owner, 2026-09-25): the owner's claim papers read by a model, and a post and a
+ * poster written from what was read. See docs/superpowers/specs/2026-09-25-claim-review-design.md.
+ *
+ * Two calls. The first reads up to six photographs and returns the claim's facts and, per
+ * photograph, boxes around whatever names someone; the page blacks the boxes out and the owner
+ * checks every one before a photograph may go on a poster. The second writes a piece from the
+ * facts alone — it never sees a photograph, so it cannot copy a name off one.
+ *
+ * Browser-safe: the page builds its form from these types, and nothing here calls a model.
+ */
+
+/** the pieces' plan_href: a claim post belongs to no plan (owner: tell the claim, sell nothing) */
+export const CLAIM_HREF = "claim-review";
+export const CLAIM_NAME = "รีวิวเคลม";
+
+export const MAX_DOCS = 6;
+/** what a photograph is resized to before it is sent: enough to read a bill, small enough to post */
+export const DOC_MAX_SIDE = 1600;
+
+export const CLAIM_KINDS = [
+  { id: "ipd", label: "นอนโรงพยาบาล" },
+  { id: "opd", label: "ผู้ป่วยนอก (OPD)" },
+  { id: "ci", label: "โรคร้ายแรง" },
+  { id: "accident", label: "อุบัติเหตุ" },
+  { id: "other", label: "อื่นๆ" },
+] as const;
+export type ClaimKind = (typeof CLAIM_KINDS)[number]["id"];
+
+export const DOC_KINDS = [
+  { id: "approval", label: "หนังสืออนุมัติ" },
+  { id: "bill", label: "บิลโรงพยาบาล" },
+  { id: "certificate", label: "ใบรับรองแพทย์" },
+  { id: "chat", label: "แชท/สลิป" },
+  { id: "other", label: "อื่นๆ" },
+] as const;
+export type DocKind = (typeof DOC_KINDS)[number]["id"];
+
+/** What the post may say about the claim. Every figure is a string as the paper prints it. */
+export interface ClaimFacts {
+  kind: ClaimKind;
+  /** the illness or injury in everyday words: "ไข้เลือดออก" */
+  illness: string;
+  nights: string;
+  /** the hospital's whole bill */
+  billTotal: string;
+  /** what the insurer paid */
+  paid: string;
+  /** what the customer paid themselves */
+  selfPaid: string;
+  /** days from sending the claim to its approval */
+  daysToApprove: string;
+  /** "ผู้หญิง วัย 40+" — never a name */
+  who: string;
+  /** one line the owner adds: how the customer felt, what they said */
+  note: string;
+}
+
+export const EMPTY_FACTS: ClaimFacts = {
+  kind: "ipd", illness: "", nights: "", billTotal: "", paid: "", selfPaid: "", daysToApprove: "", who: "", note: "",
+};
+
+export const FACT_LIMIT: Record<Exclude<keyof ClaimFacts, "kind">, number> = {
+  illness: 60, nights: 6, billTotal: 16, paid: 16, selfPaid: 16, daysToApprove: 6, who: 40, note: 200,
+};
+
+/** A black bar on a photograph, as fractions of its width and height from the top left. */
+export interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface DocRead {
+  kind: DocKind;
+  boxes: Box[];
+}
+
+export interface ClaimRead {
+  facts: ClaimFacts;
+  docs: DocRead[];
+}
+
+/* -------------------------------- privacy -------------------------------- */
+
+/**
+ * Nine or more digits in a row, spaces and dashes allowed between: an ID card, a phone, a
+ * policy, an account. No figure a claim post needs is that long — a bill of ฿1,250,000.00 is
+ * written with commas and stops at seven digits before them.
+ */
+const LONG_NUMBER = /\d(?:[\s-]?\d){8,}/g;
+/** a titled name: นาย/นาง/นางสาว/ด.ช./ด.ญ./คุณ and the word after it */
+const TITLED_NAME = /(?:นางสาว|นาง|นาย|ด\.ช\.|ด\.ญ\.|เด็กชาย|เด็กหญิง|น\.ส\.)\s*[฀-๿]{2,}(?:\s+[฀-๿]{2,})?/g;
+
+/** A line with anything that could name a person taken out. Runs on every fact, the model's and the owner's. */
+export function scrub(text: string): string {
+  return text.replace(LONG_NUMBER, "").replace(TITLED_NAME, "").replace(/\s{2,}/g, " ").trim();
+}
+
+/** A figure as a post would print it: digits and commas, a trailing .00 dropped; anything else is not a figure. */
+export function cleanAmount(v: unknown, max = 16): string {
+  if (typeof v !== "string" && typeof v !== "number") return "";
+  const t = String(v).replace(/[^\d.,]/g, "").replace(/\.0+$/, "").replace(/^[.,]+|[.,]+$/g, "");
+  return /\d/.test(t) ? t.slice(0, max) : "";
+}
+
+/** Facts from anywhere — the model's reply, the owner's form — made safe to write from. */
+export function cleanFacts(input: unknown): ClaimFacts {
+  const r = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const words = (k: keyof typeof FACT_LIMIT) => (typeof r[k] === "string" ? scrub(r[k] as string).slice(0, FACT_LIMIT[k]) : "");
+  const amount = (k: keyof typeof FACT_LIMIT) => cleanAmount(r[k], FACT_LIMIT[k]);
+  return {
+    kind: CLAIM_KINDS.some((k) => k.id === r.kind) ? (r.kind as ClaimKind) : "other",
+    illness: words("illness"),
+    nights: amount("nights"),
+    billTotal: amount("billTotal"),
+    paid: amount("paid"),
+    selfPaid: amount("selfPaid"),
+    daysToApprove: amount("daysToApprove"),
+    who: words("who"),
+    note: words("note"),
+  };
+}
+
+/** The facts as the lines the writer is given — and the yardstick every number in the piece is checked against. */
+export function factsBlock(f: ClaimFacts): string {
+  const kind = CLAIM_KINDS.find((k) => k.id === f.kind)?.label ?? "";
+  return [
+    `ประเภทการเคลม: ${kind}`,
+    f.illness && `โรค/อาการ: ${f.illness}`,
+    f.nights && `นอนโรงพยาบาล: ${f.nights} คืน`,
+    f.billTotal && `ค่ารักษาทั้งหมด: ${f.billTotal} บาท`,
+    f.paid && `บริษัทประกันจ่าย: ${f.paid} บาท`,
+    f.selfPaid && `ลูกค้าจ่ายเอง: ${f.selfPaid} บาท`,
+    f.daysToApprove && `ยื่นเคลมถึงอนุมัติ: ${f.daysToApprove} วัน`,
+    f.who && `ผู้เอาประกัน: ${f.who}`,
+    f.note && `เจ้าของเพจเล่าเพิ่ม: ${f.note}`,
+  ].filter(Boolean).join("\n");
+}
+
+/* -------------------------------- reading -------------------------------- */
+
+const READ_SYSTEM = [
+  "คุณอ่านเอกสารเคลมประกันชีวิต/สุขภาพของไทย (หนังสืออนุมัติจ่ายสินไหม บิลโรงพยาบาล ใบรับรองแพทย์ แคปแชท สลิปโอนเงิน)",
+  "งานมี 2 อย่าง:",
+  "1. สรุปข้อเท็จจริงของการเคลมนี้ (รวมจากทุกรูป) — ห้ามใส่ชื่อคน ชื่อโรงพยาบาล เลขใดๆ ที่ระบุตัวตน หรือวันที่",
+  "2. หาตำแหน่งทุกจุดในแต่ละรูปที่ระบุตัวบุคคลได้ เพื่อถมดำ: ชื่อ-นามสกุล (ทุกคน รวมผู้รับผลประโยชน์และตัวแทน), เลขบัตรประชาชน, เลขกรมธรรม์, เลขที่เคลม/เลขที่สินไหม, HN, AN, ที่อยู่, เบอร์โทร, อีเมล, วันเกิด, เลขบัญชีธนาคาร, ชื่อแพทย์, ลายเซ็น, รูปหน้าคน, QR code, บาร์โค้ด, ชื่อไลน์/เฟซบุ๊กและรูปโปรไฟล์ในแชท",
+  "   หาให้ครบทุกจุด ถ้าไม่แน่ใจให้ใส่กรอบไว้ก่อน กรอบใหญ่กว่าข้อความเล็กน้อยได้ ห้ามใส่กรอบทับยอดเงิน",
+  "   กรอบเป็น box_2d = [ymin, xmin, ymax, xmax] สเกล 0–1000 ของความสูงและความกว้างรูป",
+  "",
+  "ตอบเป็น JSON อย่างเดียว ตามรูปแบบนี้:",
+  '{"facts":{"kind":"ipd|opd|ci|accident|other","illness":"โรคหรืออาการเป็นคำง่ายๆ","nights":"จำนวนคืนที่นอน","billTotal":"ค่ารักษาทั้งหมด","paid":"ยอดที่บริษัทประกันจ่าย","selfPaid":"ส่วนที่ลูกค้าจ่ายเอง","daysToApprove":"จำนวนวันจากยื่นเคลมถึงอนุมัติ","who":"เพศและช่วงอายุ เช่น ผู้หญิง วัย 40+"},',
+  '"docs":[{"kind":"approval|bill|certificate|chat|other","boxes":[{"label":"ชื่อผู้เอาประกัน","box_2d":[0,0,0,0]}]}]}',
+  "- docs เรียงตามลำดับรูปที่ได้รับ จำนวนเท่ากับจำนวนรูปพอดี",
+  "- ตัวเลขเงินคัดลอกตามที่พิมพ์ในเอกสาร ถ้าไม่มีข้อมูลช่องไหนให้ใส่ \"\"",
+  "- daysToApprove คิดได้เฉพาะเมื่อเห็นทั้งวันยื่นและวันอนุมัติ ไม่อย่างนั้นใส่ \"\"",
+].join("\n");
+
+export function readMessages(count: number): ChatMessage[] {
+  return [
+    { role: "system", content: READ_SYSTEM },
+    { role: "user", content: `เอกสารเคลม ${count} รูป เรียงตามลำดับ` },
+  ];
+}
+
+/** a bar a little larger than the model's box: a letter's tail left showing is a name read */
+const PAD = 0.006;
+const unit = (n: number) => Math.min(1, Math.max(0, n));
+
+/** One box_2d as a Box, or null when it is not four numbers that make a box. */
+export function toBox(b: unknown): Box | null {
+  if (!Array.isArray(b) || b.length !== 4 || !b.every((n) => typeof n === "number" && Number.isFinite(n))) return null;
+  const [y0, x0, y1, x1] = (b as number[]).map((n) => n / 1000);
+  const x = unit(Math.min(x0, x1) - PAD);
+  const y = unit(Math.min(y0, y1) - PAD);
+  const w = unit(Math.max(x0, x1) + PAD) - x;
+  const h = unit(Math.max(y0, y1) + PAD) - y;
+  return w > 0.002 && h > 0.002 ? { x, y, w, h } : null;
+}
+
+/**
+ * The reply as facts and one DocRead per photograph, or null when it is not JSON at all.
+ * A photograph the reply left out gets no boxes — the owner sees it bare and must bar it
+ * by hand before ticking it; nothing is assumed safe.
+ */
+export function parseRead(reply: string, count: number): ClaimRead | null {
+  const raw = parseJsonReply<{ facts?: unknown; docs?: unknown }>(reply);
+  if (!raw) return null;
+  const docs = Array.isArray(raw.docs) ? raw.docs : [];
+  return {
+    facts: cleanFacts(raw.facts),
+    docs: Array.from({ length: count }, (_, i): DocRead => {
+      const d = (docs[i] && typeof docs[i] === "object" ? docs[i] : {}) as Record<string, unknown>;
+      const boxes = (Array.isArray(d.boxes) ? d.boxes : []).flatMap((b) => {
+        const box = toBox(b && typeof b === "object" ? (b as Record<string, unknown>).box_2d : null);
+        return box ? [box] : [];
+      });
+      return { kind: DOC_KINDS.some((k) => k.id === d.kind) ? (d.kind as DocKind) : "other", boxes };
+    }),
+  };
+}
+
+/** Boxes from the page, kept only when they are boxes on the photograph. */
+export function cleanBoxes(input: unknown): Box[] {
+  return (Array.isArray(input) ? input : []).flatMap((b) => {
+    if (!b || typeof b !== "object") return [];
+    const { x, y, w, h } = b as Record<string, unknown>;
+    if (![x, y, w, h].every((n) => typeof n === "number" && Number.isFinite(n))) return [];
+    const box = { x: unit(x as number), y: unit(y as number), w: unit(w as number), h: unit(h as number) };
+    return box.w > 0 && box.h > 0 ? [box] : [];
+  }).slice(0, 80);
+}
+
+/* -------------------------------- writing -------------------------------- */
+
+/** One per piece, so a round of three tells the claim three ways without a planner. */
+export const CLAIM_ANGLES = [
+  { id: "amount", label: "ยอดเงินชัดๆ", say: "เปิดด้วยตัวเลข: ค่ารักษาเท่าไร ประกันจ่ายเท่าไร ลูกค้าจ่ายเองเท่าไร แล้วค่อยเล่าว่าเกิดอะไรขึ้น" },
+  { id: "story", label: "เล่าเหตุการณ์", say: "เล่าเป็นเรื่องตามลำดับเวลา ตั้งแต่เริ่มป่วยจนได้รับเงิน ให้เห็นความรู้สึกของลูกค้าและครอบครัว" },
+  { id: "lesson", label: "ข้อคิด", say: "เล่าเคสนี้สั้นๆ แล้วสรุปข้อคิดที่คนอ่านเอาไปใช้ได้ เช่น ทำไมควรมีประกันสุขภาพก่อนป่วย เตรียมเอกสารเคลมอย่างไร" },
+] as const;
+export type ClaimAngleId = (typeof CLAIM_ANGLES)[number]["id"];
+export const MAX_CLAIM_PIECES = CLAIM_ANGLES.length;
+
+const WRITE_SYSTEM = [
+  "คุณคือนักเขียนคอนเทนต์ให้ตัวแทนประกันชีวิตในประเทศไทย เขียนโพสต์เฟซบุ๊กรีวิวการเคลมจริงของลูกค้า ภาษาไทยแบบที่คนทั่วไปพูดกัน อ่านง่ายบนมือถือ อบอุ่น จริงใจ ไม่ขายแรง",
+  "",
+  "กฎที่ห้ามละเมิด:",
+  "1. ใช้เฉพาะข้อเท็จจริงใน “ข้อมูลการเคลม” ห้ามเติมอาการ เหตุการณ์ ความรู้สึก หรือรายละเอียดที่ไม่มีในนั้น",
+  "2. ตัวเลขทุกตัวต้องคัดลอกจากข้อมูลการเคลมตรงตัว ห้ามคำนวณ ห้ามปัดเศษ ห้ามบวกลบ ถ้าไม่มีตัวเลขที่ต้องการให้เขียนโดยไม่ใส่ตัวเลข",
+  "3. ห้ามใส่ชื่อคน ชื่อโรงพยาบาล ชื่อแพทย์ วันที่ หรือข้อมูลใดที่ทำให้รู้ว่าเป็นลูกค้าคนไหน เรียกว่า “ลูกค้าของผม” ได้",
+  "4. ห้ามบอกชื่อแบบประกันหรือแนะนำแบบประกันใดๆ โพสต์นี้เล่าการเคลมอย่างเดียว",
+  "5. ห้ามคำโฆษณาเกินจริง เช่น การันตี เคลมได้ทุกกรณี จ่ายเต็มแน่นอน ดีที่สุด เร็วที่สุด อันดับ 1",
+  "6. ห้ามพูดถึงหรือเปรียบเทียบกับบริษัทประกันอื่น",
+  "7. ห้ามเขียนข้อความเตือนหรือ disclaimer เอง ระบบจะต่อท้ายให้",
+  "8. ผู้เขียนเป็นตัวแทนผู้ชาย ใช้คำลงท้าย “ครับ” เท่านั้น ห้ามใช้ “ค่ะ” หรือ “คะ”",
+  "",
+  POLICY_RULES_TH,
+  "",
+  "ตอบเป็น JSON อย่างเดียว ไม่มีข้อความอื่น ตามรูปแบบนี้:",
+  '{"hook":"…","body":"…","closing":"…","hashtags":["#…"],"poster":{"theme":"navy","headline":"…","footer":"…"}}',
+  "- hook: ประโยคเปิด 1 บรรทัด หยุดนิ้วคนเลื่อนฟีด",
+  "- body: 5–10 บรรทัดสั้นๆ ต่อจาก hook ใช้ \\n ขึ้นบรรทัดใหม่ ใช้อีโมจิได้ไม่เกินบรรทัดละ 1 ตัว",
+  "- closing: 1–2 บรรทัด ชวนทักแชทถามเรื่องการเคลมหรือการเตรียมตัว",
+  "- hashtags: 3–6 แท็ก เช่น #รีวิวเคลม",
+  "- poster.headline: ข้อความบนภาพไม่เกิน 50 ตัวอักษร ใจความเดียว เช่น “นอนโรงพยาบาล 3 คืน ไม่ต้องสำรองจ่าย” ตัวเลขต้องมาจากข้อมูลตรงตัว",
+  "- poster.footer: ไม่เกิน 40 ตัวอักษร เช่น ชวนทักแชท",
+  "- poster.theme เลือกโทนสีหนึ่งจากรายการนี้:",
+  ...THEMES.filter((t) => t !== "photo").map((t) => `    ${t} — ${THEME_MOOD[t]}`),
+].join("\n");
+
+export function claimMessages(facts: ClaimFacts, angle: ClaimAngleId): ChatMessage[] {
+  const a = CLAIM_ANGLES.find((x) => x.id === angle) ?? CLAIM_ANGLES[0];
+  return [
+    { role: "system", content: WRITE_SYSTEM },
+    { role: "user", content: `ข้อมูลการเคลม (เรื่องจริง ลูกค้ายินยอมให้เล่าแล้ว):\n${factsBlock(facts)}\n\nมุมของโพสต์นี้: ${a.say}` },
+  ];
+}
+
+/** the line under the headline, on the highlighter: the amount the insurer paid */
+export function amountLine(f: ClaimFacts): string {
+  return f.paid ? `ประกันจ่ายให้ ${f.paid} บาท` : "";
+}
+
+/**
+ * The claim poster: a fixed badge, the writer's headline, the paid amount (from the facts,
+ * never the writer), a footer. The document photograph is put on it once the piece is saved.
+ */
+export function claimPoster(raw: unknown, facts: ClaimFacts, hook: string): PosterSpec {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const headline = clip(typeof r.headline === "string" && r.headline.trim() ? r.headline : hook, MAX_CHARS.headline);
+  const footer = typeof r.footer === "string" ? clip(r.footer, MAX_CHARS.footer) : "";
+  const blocks: PosterBlock[] = [
+    { kind: "badge", text: "รีวิวเคลมจริง" },
+    { kind: "headline", text: headline },
+    ...(amountLine(facts) ? [{ kind: "sub" as const, text: amountLine(facts) }] : []),
+    { kind: "footer", text: footer || "ทักแชทถามเรื่องเคลมได้ครับ" },
+  ];
+  const theme = THEMES.includes(r.theme as never) && r.theme !== "photo" ? r.theme : "navy";
+  return parsePoster({ layout: "top", theme, blocks })!;
+}
+
+/** One claim piece from a reply, or null when the reply has no body. */
+export function parseClaimPiece(reply: string, facts: ClaimFacts, angle: ClaimAngleId): ContentOutput | null {
+  const raw = parseJsonReply<Record<string, unknown>>(reply);
+  if (!raw) return null;
+  const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const body = text(raw.body);
+  const hook = text(raw.hook);
+  if (!body || !hook) return null;
+  const tags = Array.isArray(raw.hashtags) ? raw.hashtags.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean) : [];
+  return {
+    hooks: [hook],
+    angle: `${CLAIM_NAME} · ${CLAIM_ANGLES.find((a) => a.id === angle)?.label ?? ""}`,
+    body,
+    closing: text(raw.closing),
+    hashtags: [...new Set(tags.map((h) => (h.startsWith("#") ? h : `#${h}`)))].slice(0, 8),
+    imagePrompt: "",
+    disclaimer: DISCLAIMER,
+    poster: claimPoster(raw.poster, facts, hook),
+    // the facts stay with the piece: an edit is checked against them again, as a story's are
+    fact: factsBlock(facts),
+  };
+}

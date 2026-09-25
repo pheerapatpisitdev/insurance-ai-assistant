@@ -1,7 +1,15 @@
 export type Role = "system" | "user" | "assistant";
+/** a picture sent with a message, for a model to read — base64 without the data: prefix */
+export interface ChatImage {
+  base64: string;
+  mimeType: string;
+}
+
 export interface ChatMessage {
   role: Role;
   content: string;
+  /** pictures to read with this message; only user messages carry them */
+  images?: ChatImage[];
 }
 
 export interface ModelRow {
