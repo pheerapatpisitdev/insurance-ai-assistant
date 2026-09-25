@@ -8,6 +8,7 @@ import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { openConversation, openLead, record, type RecordedEvent } from "@/lib/chat/record";
 import { WANTS_IN } from "@/lib/assistant/common";
+import { botTurn, keepTranscript } from "@/lib/chat/transcript";
 
 /**
  * One event from the LINE official account, answered — the same brains, the same session
@@ -92,6 +93,8 @@ export async function handle(event: LineEvent, destination = ""): Promise<void> 
     conversationId = await openConversation("line", destination, userHash, undefined, undefined);
   }
   const ledger: RecordedEvent[] = [{ kind: "message" }];
+  const thread = { channel: "line" as const, pageId: destination, userHash, conversationId };
+  await keepTranscript({ ...thread, product: productOf(session.slots) }, [{ role: "customer", text }]);
 
   // the form has gone out and a person has the thread now; the message is still counted
   if (session.handedOverAt || handedOver(session.slots)) {
@@ -117,6 +120,7 @@ export async function handle(event: LineEvent, destination = ""): Promise<void> 
       ...(m.card ? [{ image: siteUrl(m.card) }] : []),
     ]);
     await say(replyToken, userId, toMessages(said, answer.replies));
+    await keepTranscript({ ...thread, product: productOf(answer.slots) }, [botTurn(answer.messages, answer.replies)]);
 
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
     const justSent = handedOver(answer.slots) && !handedOver(session.slots);

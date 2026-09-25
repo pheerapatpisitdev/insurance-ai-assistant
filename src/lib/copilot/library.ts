@@ -38,9 +38,22 @@ const SYSTEM = `${VOICE}
    ห้ามเดา ห้ามเติมจากความรู้ทั่วไปของคุณเอง แม้จะมั่นใจแค่ไหนก็ตาม
 2. ห้ามคิดหรือคาดเดาตัวเลขค่าเบี้ยเด็ดขาด ถ้าถูกถามเรื่องค่าเบี้ย ให้ขอ อายุ เพศ แบบประกัน และวงเงินคุ้มครอง
    ระบบจะคิดให้จากตารางจริง — ห้ามให้ตัวเลขประมาณการใดๆ ทั้งสิ้น
-3. ถ้าคำตอบมาจาก "บันทึกของตัวแทนเอง" ต้องบอกให้ชัดว่าเป็นบันทึกภายใน ไม่ใช่เอกสารบริษัท
-   นอกจากกรณีนี้ ไม่ต้องขึ้นต้นว่าข้อมูลมาจากไหน ตอบเนื้อหาไปเลย
+3. ไม่ต้องขึ้นต้นว่าข้อมูลมาจากไหน ตอบเนื้อหาไปเลย
 4. ห้ามรับรองผลการตรวจสุขภาพก่อนรับทำประกัน เรื่องนั้นเป็นคำตอบของบริษัทเท่านั้น`;
+
+/**
+ * Where an answer from the agent's own notes says so.
+ *
+ * On the website the reader is the agent at their own desk, and knowing a line came from a
+ * note rather than the contract is the point. In a customer's inbox it read as the bot
+ * disowning its own answer — and since 2026-09-26 the notes are what the daily chat review
+ * teaches the bot, so the owner asked for it to go there (Messenger and LINE only).
+ */
+function notesRule(channel: Channel): string {
+  return channel === "web"
+    ? '\n5. ถ้าคำตอบมาจาก "บันทึกของตัวแทนเอง" ต้องบอกให้ชัดว่าเป็นบันทึกภายใน ไม่ใช่เอกสารบริษัท'
+    : '\n5. คำตอบจาก "บันทึกของตัวแทนเอง" ใช้ตอบลูกค้าได้ตามปกติ ไม่ต้องบอกว่ามาจากบันทึก';
+}
 
 export interface LibraryAnswer {
   text: string;
@@ -65,7 +78,7 @@ export async function askLibrary(
       task: "library",
       maxTokens: 900,
       messages: [
-        { role: "system", content: `${SYSTEM}${formattingRule(channel)}\n\n---\n\n${knowledge}` },
+        { role: "system", content: `${SYSTEM}${notesRule(channel)}${formattingRule(channel)}\n\n---\n\n${knowledge}` },
         ...history.slice(-6),
         { role: "user", content: question },
       ],

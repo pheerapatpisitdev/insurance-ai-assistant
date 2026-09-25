@@ -1,6 +1,15 @@
 {
-  "regions": ["sin1"],
+  "regions": [
+    "sin1"
+  ],
   "crons": [
-    { "path": "/api/facebook/ads/sync", "schedule": "0 3 * * *" }
+    {
+      "path": "/api/facebook/ads/sync",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/chat-review",
+      "schedule": "0 1 * * *"
+    }
   ]
 }

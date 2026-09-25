@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 /** Last change to what this page describes, not to its wording. */
-const UPDATED = "15 กันยายน 2569";
+const UPDATED = "26 กันยายน 2569";
 const CONTACT = "pheerapatpisit.dev@gmail.com";
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -42,14 +42,23 @@ export default function PrivacyPage() {
           และถ้าคุณไม่กดปุ่มนั้น ตัวเลขของคุณก็ไม่ได้ออกจากเบราว์เซอร์เลย
         </p>
         <p>
-          <strong>เมื่อคุณทักแชทเพจเฟซบุ๊ก</strong> เราเก็บข้อความในบทสนทนาไว้ไม่เกิน{" "}
-          <strong>24 ชั่วโมง</strong> เพื่อให้ถามต่อเนื่องได้ว่าอ้างถึงอะไร แล้วข้อความนั้นจะถูกลบ
-          ส่วนตัวตนของผู้ส่ง เราไม่ได้เก็บรหัสที่เฟซบุ๊กให้มาตรง ๆ แต่เก็บเป็นค่าที่เข้ารหัสทางเดียว
+          <strong>เมื่อคุณทักแชทเพจเฟซบุ๊กหรือ LINE ของตัวแทน</strong> เราเก็บข้อความในบทสนทนา
+          ทั้งที่คุณพิมพ์ ที่ผู้ช่วยตอบ และที่ตัวแทนพิมพ์ตอบเอง ไว้ไม่เกิน <strong>90 วัน</strong>{" "}
+          แล้วลบอัตโนมัติ เพื่อสองอย่าง คือให้ผู้ช่วยตอบต่อเนื่องได้ว่าคุณอ้างถึงอะไร
+          และให้ตัวแทนนำมาปรับปรุงคำตอบของผู้ช่วย ก่อนบันทึก ระบบจะปิดเบอร์โทรศัพท์ เลขบัตรประชาชน
+          อีเมล และไอดีไลน์ที่อยู่ในข้อความไว้
+          ส่วนตัวตนของผู้ส่ง เราไม่ได้เก็บรหัสที่เฟซบุ๊กหรือ LINE ให้มาตรง ๆ แต่เก็บเป็นค่าที่เข้ารหัสทางเดียว
           ซึ่งใช้ต่อบทสนทนาเดิมได้อย่างเดียว และย้อนกลับเป็นตัวคุณไม่ได้
           เราไม่ได้เก็บชื่อ รูปโปรไฟล์ หรือรายชื่อเพื่อนของคุณ
         </p>
         <p>
-          <strong>บันทึกว่าบทสนทนาไปถึงไหน</strong> นอกเหนือจากข้อความที่ลบใน 24 ชั่วโมง
+          <strong>การนำแชทมาปรับปรุงผู้ช่วย</strong> วันละครั้ง ระบบส่งข้อความของวันที่ผ่านมา
+          ให้ผู้ให้บริการโมเดลภาษาอ่าน แล้วสรุปว่าผู้ช่วยควรตอบเรื่องใดให้ดีขึ้น
+          โดยไม่มีตัวตนของคุณติดไปด้วย ข้อเสนอเหล่านั้นตัวแทนเป็นผู้ตรวจและตัดสินใจเองทุกข้อ
+          สรุปนี้เก็บไว้ 90 วันเช่นเดียวกับข้อความ
+        </p>
+        <p>
+          <strong>บันทึกว่าบทสนทนาไปถึงไหน</strong> นอกเหนือจากข้อความที่ลบใน 90 วัน
           เราเก็บสรุปของบทสนทนาไว้เพื่อดูว่าผู้ช่วยทำงานได้ดีแค่ไหน ได้แก่ สนใจแบบประกันใด
           ได้รับใบเสนอหรือไม่ ตัวเลขในใบเสนอนั้น (อายุ เพศ ทุน และเบี้ย) กดขอสมัครหรือไม่
           ตัวแทนเข้ามาตอบเองหรือไม่ และมาจากโฆษณาชิ้นใด <strong>บันทึกนี้ไม่มีข้อความของคุณอยู่เลย</strong>{" "}
@@ -103,7 +112,8 @@ export default function PrivacyPage() {
         </p>
         <p>
           ผู้ช่วยที่ตอบในแชทก็ไม่ถามสิ่งเหล่านี้เช่นกัน ไม่รับสมัครทำประกัน และไม่รับรองผลการพิจารณารับประกัน
-          หากคุณพิมพ์ข้อมูลเหล่านี้เข้ามาเอง ข้อความนั้นจะถูกลบพร้อมบทสนทนาภายใน 24 ชั่วโมง
+          หากคุณพิมพ์ข้อมูลเหล่านี้เข้ามาเอง เบอร์โทร เลขบัตรประชาชน และอีเมลจะถูกปิดก่อนบันทึก
+          และข้อความที่เหลือจะถูกลบพร้อมบทสนทนาภายใน 90 วัน
         </p>
       </Section>
 
@@ -129,7 +139,7 @@ export default function PrivacyPage() {
           ผู้ที่ใช้หน้าคำนวณเบี้ยอย่างเดียวไม่มีข้อมูลอยู่กับเราเลย จึงไม่มีอะไรให้ลบ
         </p>
         <p>
-          ผู้ที่ทักแชทเพจ <strong>ข้อความ</strong>จะหมดอายุและถูกลบเองภายใน 24 ชั่วโมง
+          ผู้ที่ทักแชทเพจหรือ LINE <strong>ข้อความ</strong>จะหมดอายุและถูกลบเองภายใน 90 วัน
           ส่วน<strong>สรุปว่าบทสนทนาไปถึงไหน</strong>และ<strong>รหัสที่เข้ารหัสไว้</strong>{" "}
           อยู่นานกว่านั้นตามที่อธิบายไว้ข้างบน
         </p>
@@ -137,7 +147,7 @@ export default function PrivacyPage() {
           <strong>คุณขอให้ลบได้ทุกเมื่อ</strong> ส่งอีเมลมาที่{" "}
           <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>{" "}
           พร้อมบอกว่าทักเข้ามาจากเพจใดและช่วงเวลาไหน เมื่อตรวจสอบได้ว่าเป็นคุณจริง
-          เราจะลบทั้งสรุปบทสนทนา รายการเหตุการณ์ และรหัสที่เข้ารหัสไว้ทั้งหมดของคุณ ภายใน 30 วัน
+          เราจะลบทั้งข้อความในบทสนทนา สรุปบทสนทนา รายการเหตุการณ์ และรหัสที่เข้ารหัสไว้ทั้งหมดของคุณ ภายใน 30 วัน
           และแจ้งกลับเมื่อทำเสร็จ การลบนี้ทำให้ตัวแทนติดต่อคุณกลับผ่านระบบนี้ไม่ได้อีก
         </p>
         <p>
@@ -172,9 +182,13 @@ export default function PrivacyPage() {
             <strong>What we keep.</strong> From the calculator, nothing: it runs in your browser, and the
             age, sex and sum assured you choose are never sent to us. There are no visitor accounts and no
             tracking cookies — the site&rsquo;s only cookie belongs to the agency&rsquo;s own admin page.
-            From a chat with the agency&rsquo;s Facebook Page, the message text is kept for at most 24 hours
-            so that follow-up questions make sense, then deleted. The sender is stored only as a one-way
-            hash of the page-scoped id, which cannot be turned back into a person.
+            From a chat with the agency&rsquo;s Facebook Page or LINE account, the text of the conversation
+            — yours, the assistant&rsquo;s and the agent&rsquo;s — is kept for at most 90 days, with phone
+            numbers, national id numbers, emails and LINE ids blanked out before it is written, then deleted.
+            It is kept so follow-up questions make sense and so the agent can improve the assistant: once a
+            day a language model reads the previous day&rsquo;s chats, without your identity, and suggests
+            better answers, which the agent reviews one by one. The sender is stored only as a one-way
+            hash of the platform&rsquo;s id, which cannot be turned back into a person.
           </p>
           <p>
             <strong>What we keep for longer.</strong> A record of how far a conversation got — which plan,
@@ -187,7 +201,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             <strong>Deletion.</strong> Write to the address below from the Page you messaged, and once we can
-            confirm it is you we delete your conversation record, its events and the stored id within 30 days.
+            confirm it is you we delete your messages, conversation record, its events and the stored id within 30 days.
           </p>
           <p>
             <strong>Who else sees it.</strong> The site is served from Vercel, which sees the ordinary

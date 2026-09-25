@@ -55,12 +55,24 @@ vi.mock("@/lib/chat/session", async () => {
 
 vi.mock("@/lib/assistant/dispatch", () => ({ answerAny: answer }));
 
+/** what the transcript kept, by speaker — the daily review reads these */
+const kept: { role: string; text: string }[] = [];
+vi.mock("@/lib/chat/transcript", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/chat/transcript")>("@/lib/chat/transcript");
+  return {
+    ...actual,
+    keepTranscript: async (_t: unknown, turns: ({ role: string; text: string } | undefined)[]) => {
+      for (const t of turns) if (t) kept.push(t);
+    },
+  };
+});
+
 const { handle } = await import("@/lib/facebook/conversation");
 
 beforeEach(() => {
   process.env.FB_APP_ID = "app-1";
   process.env.FB_APP_SECRET = "secret";
-  sent.text = []; sent.images = []; sent.replies = []; saved.length = 0;
+  sent.text = []; sent.images = []; sent.replies = []; saved.length = 0; kept.length = 0;
   imageFailures = 0;
   followups.armed.length = 0; followups.dropped.length = 0;
   session.messages = []; session.slots = null; session.mutedUntil = null; session.handedOverAt = null;
@@ -363,5 +375,25 @@ describe("once the form has been handed over", () => {
     session.slots = { product: "lifeprotect" };
     await handle({ sender: { id: "psid-live" }, message: { mid: "mg3", text: "ขอตารางมูลค่า" } });
     expect(sent.text.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the transcript", () => {
+  it("keeps the customer's words and the bot's answer, with a marker for the card", async () => {
+    await handle({ sender: { id: "psid" }, message: { mid: "t1", text: "ชาย 35 ล้านนึง" } });
+    expect(kept).toEqual([
+      { role: "customer", text: "ชาย 35 ล้านนึง" },
+      { role: "bot", text: "เบี้ยประมาณ…\n[การ์ดใบเสนอ]" },
+    ]);
+  });
+
+  it("keeps what the agent typed by hand", async () => {
+    await handle({ sender: { id: "page" }, recipient: { id: "psid" }, message: { mid: "t2", text: "เดี๋ยวโทรหาครับ", is_echo: true } });
+    expect(kept).toEqual([{ role: "agent", text: "เดี๋ยวโทรหาครับ" }]);
+  });
+
+  it("does not keep the bot's own echo a second time", async () => {
+    await handle({ sender: { id: "page" }, recipient: { id: "psid" }, message: { mid: "t3", text: "เบี้ย…", is_echo: true, app_id: "app-1" } });
+    expect(kept).toEqual([]);
   });
 });

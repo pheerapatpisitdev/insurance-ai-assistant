@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { listContentWords, listNotes } from "./actions";
+import { listContentWords, listLessons, listNotes } from "./actions";
+import { Lessons } from "./Lessons";
 import { Notes } from "./Notes";
 import { Words } from "./Words";
 
 export const dynamic = "force-dynamic";
+/** สรุปแชทตอนนี้ runs the review as this page's action: a model reading a day of chats */
+export const maxDuration = 300;
 
 /** Named for the tab in the owner's words; the root layout's title is the calculator's. */
 export const metadata: Metadata = {
@@ -19,10 +22,12 @@ export const metadata: Metadata = {
  * through a paid advertisement.
  */
 export default async function KnowledgePage() {
-  const [notes, words] = await Promise.all([listNotes(), listContentWords()]);
+  const [notes, words, { review, lessons }] = await Promise.all([listNotes(), listContentWords(), listLessons()]);
   return (
     <>
-      <Notes initial={notes} />
+      <Lessons review={review} initial={lessons} />
+      {/* keyed on the list, so a lesson taken with ใช้ shows up here without a reload */}
+      <Notes key={notes.map((n) => n.id).join(",")} initial={notes} />
       <Words initial={words} />
     </>
   );

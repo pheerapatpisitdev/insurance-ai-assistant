@@ -130,3 +130,108 @@ export async function removeContentWord(word: string): Promise<Result> {
     return { ok: false, error: "ลบคำไม่สำเร็จ คำนี้ยังอยู่ ลองใหม่อีกครั้งนะครับ" };
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Lessons from the chats: the daily review and its proposals
+ *
+ * A proposal reaches customers only through ใช้, which copies it into ins_faq, so it is read
+ * the way every other note is. ข้าม keeps it out of the list without deleting the review.
+ * ------------------------------------------------------------------ */
+
+export interface ChatReview {
+  id: number;
+  createdAt: string;
+  conversations: number;
+  summary: string;
+  costThb: number;
+}
+
+export interface Lesson {
+  id: number;
+  kind: "unanswered" | "wrong" | "dropoff" | "agent";
+  question: string;
+  evidence: string;
+  answer: string;
+  reviewedAt: string;
+}
+
+export async function listLessons(): Promise<{ review: ChatReview | null; lessons: Lesson[] }> {
+  try {
+    const db = supabaseAdmin();
+    const [rev, items] = await Promise.all([
+      db.from("ins_chat_reviews").select("id, created_at, conversations, summary, cost_thb")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      db.from("ins_chat_review_items").select("id, kind, question, evidence, answer, ins_chat_reviews(created_at)")
+        .eq("status", "open").order("id", { ascending: false }).limit(40),
+    ]);
+    if (rev.error) throw new Error(rev.error.message);
+    if (items.error) throw new Error(items.error.message);
+    const r = rev.data as Record<string, unknown> | null;
+    return {
+      review: r ? {
+        id: Number(r.id), createdAt: String(r.created_at), conversations: Number(r.conversations),
+        summary: String(r.summary), costThb: Number(r.cost_thb),
+      } : null,
+      lessons: ((items.data ?? []) as Record<string, unknown>[]).map((x) => ({
+        id: Number(x.id),
+        kind: x.kind as Lesson["kind"],
+        question: String(x.question),
+        evidence: String(x.evidence ?? ""),
+        answer: String(x.answer),
+        reviewedAt: String((x.ins_chat_reviews as { created_at?: string } | null)?.created_at ?? ""),
+      })),
+    };
+  } catch (e) {
+    console.error("อ่านบทเรียนจากแชทไม่สำเร็จ:", e);
+    return { review: null, lessons: [] };
+  }
+}
+
+/** The owner's ใช้: the answer as they left it, into the notes the AI reads. */
+export async function applyLesson(id: number, question: string, answer: string): Promise<Result> {
+  const q = question.trim().slice(0, MAX_Q);
+  const a = answer.trim().slice(0, MAX_A);
+  if (q.length < 4 || a.length < 4) return { ok: false, error: "คำถามหรือคำตอบสั้นเกินไปครับ" };
+  if (/\[ตรวจ:/.test(a)) return { ok: false, error: "ยังมีจุด [ตรวจ: …] ในคำตอบ แก้ให้เรียบร้อยก่อนกดใช้นะครับ" };
+  try {
+    const db = supabaseAdmin();
+    const faq = await db.from("ins_faq").insert({ question: q, answer: a, enabled: true }).select("id").single();
+    if (faq.error || !faq.data) throw new Error(faq.error?.message ?? "no row");
+    const { error } = await db.from("ins_chat_review_items")
+      .update({ status: "used", faq_id: (faq.data as { id: string }).id, decided_at: new Date().toISOString(), question: q, answer: a })
+      .eq("id", id);
+    if (error) console.error("บันทึกสถานะบทเรียนไม่สำเร็จ:", error.message);
+    revalidatePath("/admin/knowledge");
+    return { ok: true };
+  } catch (e) {
+    console.error("ใช้บทเรียนไม่สำเร็จ:", e);
+    return { ok: false, error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
+  }
+}
+
+export async function skipLesson(id: number): Promise<Result> {
+  try {
+    const { error } = await supabaseAdmin().from("ins_chat_review_items")
+      .update({ status: "skipped", decided_at: new Date().toISOString() }).eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/admin/knowledge");
+    return { ok: true };
+  } catch (e) {
+    console.error("ข้ามบทเรียนไม่สำเร็จ:", e);
+    return { ok: false, error: "ข้ามไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
+  }
+}
+
+/** The same review the morning cron runs, on the owner's press. */
+export async function reviewChatsNow(): Promise<Result> {
+  try {
+    const { runChatReview } = await import("@/lib/chat/review");
+    const r = await runChatReview();
+    if (!r.ok) return { ok: false, error: `สรุปไม่สำเร็จ: ${r.error ?? ""}` };
+    revalidatePath("/admin/knowledge");
+    return { ok: true };
+  } catch (e) {
+    console.error("สรุปแชทไม่สำเร็จ:", e);
+    return { ok: false, error: "สรุปแชทไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
+  }
+}

@@ -206,6 +206,8 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
         title: "ผู้ช่วย AI",
         links: [
           { href: "/admin/ai", label: "ตั้งค่า AI", icon: "key", hue: "#2b4673" },
+          // back in the menu on 2026-09-26 (owner): the daily บทเรียนจากแชท waits here for ใช้
+          { href: "/admin/knowledge", label: "สอน AI", icon: "spark", hue: "#2e4a7a" },
         ],
       },
       {

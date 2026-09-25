@@ -1,23 +1,9 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { syncAds } from "@/lib/ads/sync";
+import { refuseUnlessCron } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-/**
- * Whether the request carries the cron secret, compared in constant time.
- *
- * `!==` stops at the first differing character, so how long a refusal takes says how much of
- * a guess was right — slow to exploit over the internet, but the webhook check next door
- * (src/lib/facebook/verify.ts) already does this properly and a secret is a secret.
- */
-function bearerMatches(header: string | null, secret: string): boolean {
-  if (!header) return false;
-  const a = Buffer.from(header);
-  const b = Buffer.from(`Bearer ${secret}`);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
 
 /**
  * Vercel calls this once a day (vercel.json) with `Authorization: Bearer <CRON_SECRET>`.
@@ -30,13 +16,8 @@ function bearerMatches(header: string | null, secret: string): boolean {
  * account's failure is written onto its own card on the ADS page by the sync itself.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: "ยังไม่ได้ตั้งค่า CRON_SECRET" }, { status: 503 });
-  }
-  if (!bearerMatches(req.headers.get("authorization"), secret)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const refused = refuseUnlessCron(req);
+  if (refused) return refused;
   const result = await syncAds();
   for (const e of result.errors) console.error(`ดึงตัวเลขโฆษณา ${e.name} (${e.actId}) ไม่สำเร็จ: ${e.message}`);
   const allFailed = result.accounts > 0 && result.errors.length >= result.accounts;

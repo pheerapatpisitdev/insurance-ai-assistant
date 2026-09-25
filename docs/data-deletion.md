@@ -52,6 +52,8 @@ select 'sessions', count(*) from ins_chat_sessions where user_hash = :'hash'
 union all
 select 'followups', count(*) from ins_chat_followups where user_hash = :'hash'
 union all
+select 'transcripts', count(*) from ins_transcripts where user_hash = :'hash'
+union all
 select 'events', count(*) from ins_events
   where conversation_id in (select id from ins_conversations where user_hash = :'hash');
 ```
@@ -76,6 +78,9 @@ where c.user_hash = :'hash' order by e.at;
 ```sql
 begin;
 
+-- ข้อความในแชทที่เก็บไว้ 90 วัน (ตั้งแต่ 2026-09-26)
+delete from ins_transcripts where user_hash = :'hash';
+
 -- คิวติดตามและ session ที่ยังค้าง
 delete from ins_chat_followups where user_hash = :'hash';
 delete from ins_chat_sessions  where user_hash = :'hash';
@@ -92,7 +97,8 @@ delete from ins_conversations where user_hash = :'hash';
 select 'conversations' as t, count(*) from ins_conversations where user_hash = :'hash'
 union all select 'leads', count(*) from ins_leads where user_hash = :'hash'
 union all select 'sessions', count(*) from ins_chat_sessions where user_hash = :'hash'
-union all select 'followups', count(*) from ins_chat_followups where user_hash = :'hash';
+union all select 'followups', count(*) from ins_chat_followups where user_hash = :'hash'
+union all select 'transcripts', count(*) from ins_transcripts where user_hash = :'hash';
 
 -- ทุกแถวต้องเป็น 0 ถ้าไม่ใช่ ให้ rollback แล้วหาสาเหตุ
 commit;
@@ -103,6 +109,7 @@ commit;
 | อยู่ที่ไหน | ลบอย่างไร |
 |---|---|
 | ข้อความในแชทฝั่งเฟซบุ๊ก | ผู้ขอลบเองจากหน้าแชท เราลบแทนไม่ได้ |
+| `ins_chat_review_items` | ข้อเสนอจากสรุปรายวันอาจยกข้อความสั้นๆ จากแชทมา (ไม่มีตัวตน) ระบบลบเองใน 90 วัน ถ้าผู้ขอเห็นข้อความของตัวเองในหน้า `/admin/knowledge` ให้กด "ข้าม" แล้วลบแถวนั้นด้วย SQL |
 | `ins_unanswered` | ไม่ผูกกับตัวบุคคลโดยตั้งใจ จึงชี้ว่าแถวไหนเป็นของใครไม่ได้ ระบบลบเองใน 30 วัน |
 | `ins_usage_ledger` | มีแต่จำนวนคำกับค่าใช้จ่าย ไม่มีตัวตนหรือข้อความ |
 | log ของ Vercel | หมดอายุเองตามนโยบายของผู้ให้บริการ |

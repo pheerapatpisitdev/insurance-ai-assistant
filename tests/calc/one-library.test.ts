@@ -155,4 +155,17 @@ describe("which door the message came through", () => {
     const web = chat.mock.calls.at(-1)![0].messages[0].content as string;
     expect(web).not.toContain("ห้ามใช้มาร์กดาวน์");
   });
+
+  // the owner, 2026-09-26: an answer taught through the notes is the bot's own in a customer's inbox
+  it("says an answer came from the agent's notes on the website only", async () => {
+    await answerAny(said("HIC ซื้อคู่กับ MEB ได้ไหม"), null, "facebook");
+    const inbox = chat.mock.calls.at(-1)![0].messages[0].content as string;
+    expect(inbox).not.toContain("บันทึกภายใน");
+    expect(inbox).toContain("ไม่ต้องบอกว่ามาจากบันทึก");
+
+    chat.mockClear();
+    await answerAny(said("HIC ซื้อคู่กับ MEB ได้ไหม"), null, "web");
+    const web = chat.mock.calls.at(-1)![0].messages[0].content as string;
+    expect(web).toContain("บันทึกภายใน");
+  });
 });

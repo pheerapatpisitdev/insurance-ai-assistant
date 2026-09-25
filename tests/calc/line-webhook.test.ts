@@ -50,6 +50,12 @@ vi.mock("@/lib/chat/session", async () => {
     saveSession: async () => {},
   };
 });
+/** the transcript is the same code on both channels; the Messenger test checks what it keeps */
+vi.mock("@/lib/chat/transcript", async () => ({
+  ...await vi.importActual<typeof import("@/lib/chat/transcript")>("@/lib/chat/transcript"),
+  keepTranscript: async () => {},
+}));
+
 vi.mock("@/lib/chat/record", () => ({
   openConversation: async () => "conv-1",
   record: async () => {},

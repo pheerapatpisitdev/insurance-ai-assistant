@@ -11,6 +11,7 @@ import { agentTyped, customerOf, eventKey, referralOf, textOf, type Messaging } 
 import { productFromAd } from "@/lib/facebook/from-ad";
 import { attribute, openConversation, openLead, record, type RecordedEvent } from "@/lib/chat/record";
 import { WANTS_IN } from "@/lib/assistant/common";
+import { botTurn, keepTranscript } from "@/lib/chat/transcript";
 
 /**
  * The answer, with one more attempt before giving up.
@@ -123,6 +124,11 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     // a thread an agent answered by hand is not a thread the bot lost: the report should say
     // a person stepped in, rather than showing a conversation that simply stopped
     await record(session.conversationId, [{ kind: "agent_replied" }], null);
+    // what the agent typed is what the daily review learns most from
+    await keepTranscript(
+      { channel: "facebook", pageId, userHash, conversationId: session.conversationId, product: productOf(session.slots) },
+      [{ role: "agent", text: event.message?.text ?? "" }],
+    );
     return;
   }
 
@@ -158,6 +164,8 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     await attribute(conversationId, referral);
   }
   const ledger: RecordedEvent[] = [{ kind: "message" }];
+  const thread = { channel: "facebook" as const, pageId, userHash, conversationId };
+  await keepTranscript({ ...thread, product: productOf(session.slots) }, [{ role: "customer", text }]);
 
   /**
    * The form has gone out. The bot has nothing left to do in this thread.
@@ -233,6 +241,7 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
       // it — and a couple priced together gets the pair in the order they were named
       if (said.card) await sendCard(psid, siteUrl(said.card), last ? answer.replies : undefined, pageId);
     }
+    await keepTranscript({ ...thread, product: productOf(answer.slots) }, [botTurn(answer.messages, answer.replies)]);
     const spoken = answer.messages.map((m) => m.text).join("\n\n");
     // the turn that hands the form over is the turn that stamps the thread; every other save
     // leaves the column alone, so a stamp already there is never wiped

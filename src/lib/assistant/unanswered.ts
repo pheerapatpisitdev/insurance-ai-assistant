@@ -34,6 +34,13 @@ const SCRUB: [RegExp, string][] = [
   [/(?:\+66|0)[\d\s-]{8,11}\d/g, "[เบอร์]"],
 ];
 
+/** The same contact details taken out of any text, whatever its length — the transcripts use it too. */
+export function scrubContact(text: string): string {
+  let out = text;
+  for (const [pattern, replacement] of SCRUB) out = out.replace(pattern, replacement);
+  return out;
+}
+
 /**
  * A question with the person taken out of it.
  *
@@ -46,9 +53,7 @@ const SCRUB: [RegExp, string][] = [
  * question and keeping the word "[เบอร์]" three hundred times helps no one.
  */
 export function scrubForLearning(question: string): string | undefined {
-  let out = question;
-  for (const [pattern, replacement] of SCRUB) out = out.replace(pattern, replacement);
-  out = out.replace(/\s+/g, " ").trim().slice(0, MAX);
+  const out = scrubContact(question).replace(/\s+/g, " ").trim().slice(0, MAX);
   // what is left has to contain something that is not a placeholder
   const bare = out.replace(/\[(เลขบัตร|อีเมล|ไลน์|เบอร์)\]/g, "").trim();
   return bare.length > 0 ? out : undefined;
