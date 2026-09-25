@@ -82,7 +82,7 @@ export function Fhc() {
   const [mode, setMode] = useState<Mode>("customer");
   const agent = mode === "agent";
 
-  const [age, setAge] = useState<Money>(35);
+  const [age, setAge] = useState(35);
   const [sex, setSex] = useState<"M" | "F">("M");
   const [retireAge, setRetireAge] = useState("60");
   const [expectancy, setExpectancy] = useState(String(DEFAULT_EXPECTANCY));
@@ -125,7 +125,7 @@ export function Fhc() {
 
   // what the server gets: no names, no interviewer
   const input: FhcInput = {
-    age: n(age), sex, income: n(income), expense: n(expense), lifeCover: n(lifeCover), ciCover: n(ciCover),
+    age, sex, income: n(income), expense: n(expense), lifeCover: n(lifeCover), ciCover: n(ciCover),
     healthNow, healthRoom: n(healthRoom), premiumsNow: n(premiumsNow), hospital, lifeWant,
     retireAge: Number(retireAge) as RetireAge, retireMonthly: n(shownRetire), pensionHave: n(pensionHave),
     budget: n(shownBudget), expectancy: Number(expectancy), work,
@@ -197,11 +197,12 @@ export function Fhc() {
             <Calc label="ปีที่ต้องใช้เงิน" value={String(g.moneyYears)} unit="ปี" />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={`อายุปัจจุบัน (${PLANNER_AGE.min}–${PLANNER_AGE.max} ปี)`}>
-              <input
-                type="text" inputMode="numeric" className={INPUT} value={age}
-                onChange={(e) => { const d = e.target.value.replace(/\D/g, ""); setAge(d === "" ? "" : Math.min(Number(d), 99)); }}
-              />
+            <Field label="อายุปัจจุบัน (ปี)">
+              <select className={INPUT} value={age} onChange={(e) => setAge(Number(e.target.value))}>
+                {Array.from({ length: PLANNER_AGE.max - PLANNER_AGE.min + 1 }, (_, i) => PLANNER_AGE.min + i).map((a) => (
+                  <option key={a} value={a}>{a} ปี</option>
+                ))}
+              </select>
             </Field>
             <div>
               <span className={LABEL}>เพศ</span>
