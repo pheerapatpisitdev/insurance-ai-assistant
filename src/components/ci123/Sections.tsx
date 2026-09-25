@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { diseaseCardPath } from "@/lib/card-link";
 import type { Ci123Table } from "@/lib/ci123-table";
 import { Fold, H2, Rule } from "@/components/sales/Blocks";
 
@@ -188,15 +187,9 @@ export function DiseaseSection({ table }: { table: Ci123Table }) {
     <section className="py-12">
       <Rule />
       <div className="pt-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <H2>คุ้มครอง {table.diseaseCount} โรคร้ายแรง</H2>
-          <a
-            href={diseaseCardPath("CI123")} download={`CI123-${table.diseaseCount}-โรคร้ายแรง.png`}
-            className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-xs font-medium text-[var(--lg-gold)]"
-          >
-            ดาวน์โหลดรูปรายชื่อโรค
-          </a>
-        </div>
+        {/* the list as a picture is handed over from the calculator's buttons — the owner
+            took this section's download link out (2026-09-25) */}
+        <H2>คุ้มครอง {table.diseaseCount} โรคร้ายแรง</H2>
         <div className="mt-5 border-t border-[var(--lg-panel-line)]">
           {table.groups.map((g) => (
             <Fold key={g.title} summary={`${g.title.replace(/\s*\(.*$/, "")} (${g.diseases.length})`}>
