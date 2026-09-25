@@ -9,11 +9,13 @@ import type { ContactWords } from "@/lib/ihealthy-words";
  * Facebook Page — the owner took them all out (2026-09-23).
  */
 export function ContactButtons(
-  { copyText, cardPath, tableCardPath, tableLabel, compact = false, words }:
+  { copyText, cardPath, tableCardPath, tableLabel, diseaseCardPath, compact = false, words }:
     {
       copyText?: string; cardPath?: string; tableCardPath?: string;
       /** what the table's button says, for a plan whose table is not a table of values */
       tableLabel?: { full: string; compact: string };
+      /** the contract's illnesses as a picture — the same for every customer, so it needs no quote */
+      diseaseCardPath?: string;
       compact?: boolean;
       /** the buttons' labels in another language; each button keeps its own Thai without it */
       words?: ContactWords;
@@ -35,6 +37,15 @@ export function ContactButtons(
           compact={compact}
           filename="value-table.png"
           label={tableLabel ?? { full: "บันทึกตารางมูลค่า", compact: "ตาราง" }}
+          className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`}
+        />
+      )}
+      {diseaseCardPath && (
+        <CardButton
+          path={diseaseCardPath}
+          compact={compact}
+          filename="diseases.png"
+          label={{ full: "บันทึกรายชื่อโรคร้ายแรง", compact: "โรค" }}
           className={`${shape} border border-[var(--lg-gold)] text-[var(--lg-gold)]`}
         />
       )}

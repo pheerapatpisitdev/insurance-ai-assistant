@@ -10,7 +10,7 @@ import {
   cashAt, deathBenefitOf, iShieldModes, illnessBenefit, payYears, termAt, termTakes,
 } from "@/lib/ishield-quote";
 import { iShieldQuoteText, type IShieldAge } from "@/lib/ishield-cta";
-import { cardPath, valueTablePath } from "@/lib/card-link";
+import { cardPath, diseaseCardPath, valueTablePath } from "@/lib/card-link";
 import { CashValueChart } from "@/components/lifeprotect/CashValueChart";
 import { CashValueTable } from "@/components/lifeprotect/CashValueTable";
 import { ContactButtons } from "@/components/sales/ContactButtons";
@@ -307,7 +307,9 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
         </div>
       )}
 
-      <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} />
+      {/* the illness list goes out with or without a price: "โรคอะไรบ้าง" is asked before
+          anyone has given an age. Not in the sticky bar — five buttons do not fit a phone */}
+      <ContactButtons copyText={quoteText} cardPath={card} tableCardPath={tableCard} diseaseCardPath={diseaseCardPath("ISHIELD")} />
 
       {sticky && (quoteText || card) && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--lg-hair)] bg-[var(--lg-ground)]/95 p-3 backdrop-blur sm:hidden">
