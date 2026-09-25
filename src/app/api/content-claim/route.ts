@@ -64,5 +64,7 @@ export async function PUT(req: NextRequest) {
   const paper = files[0] ? { bytes: Buffer.from(await files[0].arrayBuffer()), mimeType: files[0].type, ratio } : null;
   return Response.json(await writeClaim({
     facts, count: Number(form.get("count")), writer: String(form.get("writer") ?? ""), paper,
+    format: String(form.get("format") ?? ""), length: String(form.get("length") ?? ""),
+    angle: String(form.get("angle") ?? ""), custom: String(form.get("custom") ?? ""), reader: String(form.get("reader") ?? ""),
   }));
 }

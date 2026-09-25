@@ -3,13 +3,14 @@ import type { ChatImage } from "@/lib/ai/types";
 import type { GenerateResult } from "@/app/content/actions";
 import { findWords, strayNumbers } from "./check";
 import {
-  CLAIM_ANGLES, CLAIM_HREF, MAX_CLAIM_PIECES, MAX_DOCS, claimMessages, cleanFacts, factsBlock, parseClaimPiece, parseRead,
+  CLAIM_HREF, MAX_CLAIM_PIECES, MAX_DOCS, claimAngleLines, claimMessages, cleanFacts, factsBlock, parseClaimPiece, parseRead,
   readMessages, type ClaimFacts, type ClaimRead,
 } from "./claim";
 import { OVERHEAD_THB, writerOf } from "./models";
 import type { ContentOutput } from "./output";
 import { checkPolicy } from "./policy";
 import { posterText } from "./poster";
+import { LENGTHS, MAX_READER, type Format, type Length } from "./prompt";
 import {
   contentCap, contentSpentThisMonth, holdContentBudget, listWords, releaseContentBudget, removeBackground, saveBackground,
   saveContent, saveOutputIf, type ContentItem,
@@ -67,7 +68,15 @@ export async function readClaim(images: ChatImage[]): Promise<ReadResult> {
 export interface ClaimWriteInput {
   facts: unknown;
   count: number;
+  /** โพสต์, สคริปต์วิดีโอ or โฆษณา, as on the plan form; a script has a length and no poster */
+  format?: string;
+  length?: string;
   writer?: string;
+  /** an angle id, "custom" with the owner's words, or "" for the AI's turn-taking */
+  angle?: string;
+  custom?: string;
+  /** who the posts talk to, as on the plan form */
+  reader?: string;
   /** the paper for the poster, blacked out in the browser and ticked ตรวจแล้ว; none draws the plain poster */
   paper: { bytes: Buffer; mimeType: string; ratio: number } | null;
 }
@@ -86,6 +95,8 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
   const facts = cleanFacts(input.facts);
   if (tooThin(facts)) return { ok: false, error: "ใส่อย่างน้อยโรค/อาการ หรือยอดเงินก่อนนะครับ" };
   const count = Math.min(MAX_CLAIM_PIECES, Math.max(1, Math.round(Number(input.count) || 1)));
+  const format: Format = input.format === "script" || input.format === "ad" ? input.format : "post";
+  const length: Length | null = format === "script" ? (LENGTHS.find((l) => l.id === input.length)?.id ?? "60") : null;
   const yardstick = factsBlock(facts);
   let hold: string | null = null;
   try {
@@ -97,14 +108,15 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
     hold = held.id;
     const words = await listWords();
 
-    const angles = CLAIM_ANGLES.slice(0, count);
+    const angles = claimAngleLines({ angle: input.angle, custom: input.custom }, count);
+    const reader = (input.reader ?? "").trim().slice(0, MAX_READER);
     const settled = await Promise.allSettled(angles.map(async (a) => {
       const r = await chat({
-        tier: "large", task: "content", messages: claimMessages(facts, a.id),
+        tier: "large", task: "content", messages: claimMessages(facts, a, reader, format, length),
         maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low",
         prefer: writer.model, within: fallbackWriters(writer.model),
       });
-      const output = parseClaimPiece(r.text, facts, a.id);
+      const output = parseClaimPiece(r.text, facts, a.label, format);
       if (!output) {
         console.error(`claim piece unreadable (${r.model}, ${r.outputTokens} tokens):`, r.text.slice(0, 600));
         throw new UnreadableReply();
@@ -125,7 +137,7 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
       let item: ContentItem;
       try {
         item = await saveContent({
-          planHref: CLAIM_HREF, format: "post", angle: "", length: null, output: w.output,
+          planHref: CLAIM_HREF, format, angle: "", length, output: w.output,
           flags: {
             numbers: strayNumbers(checkedText(w.output), yardstick),
             words: findWords(checkedText(w.output), words),
@@ -140,7 +152,8 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
           ? { ok: false, error: `บันทึกได้ ${items.length} จาก ${written.length} ชิ้น — ดูชิ้นที่ได้ในรอตรวจ`, saved: items.length, items }
           : { ok: false, error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ", saved: 0 };
       }
-      items.push(input.paper ? await withPaper(item, input.paper) : item);
+      // a script is spoken to camera: no poster, so no paper on one
+      items.push(input.paper && format !== "script" ? await withPaper(item, input.paper) : item);
     }
     return { ok: true, items, costThb: items.reduce((s, i) => s + i.costThb, 0), missing: count - items.length };
   } catch (e) {

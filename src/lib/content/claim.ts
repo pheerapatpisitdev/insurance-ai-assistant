@@ -2,6 +2,8 @@ import type { ChatMessage } from "@/lib/ai/types";
 import { parseJsonReply } from "@/lib/ai/client";
 import { DISCLAIMER, type ContentOutput } from "./output";
 import { POLICY_RULES_TH } from "./policy";
+import { AD_LIMITS } from "./ads";
+import { steerLines, type Format, type Length } from "./prompt";
 import { clip, MAX_CHARS, parsePoster, THEME_MOOD, THEMES, type PosterBlock, type PosterSpec } from "./poster";
 
 /**
@@ -220,47 +222,129 @@ export function cleanBoxes(input: unknown): Box[] {
 
 /* -------------------------------- writing -------------------------------- */
 
-/** One per piece, so a round of three tells the claim three ways without a planner. */
+/**
+ * The ways a claim can be told. Left to the AI, a round takes the first three in turn, so a
+ * round of three tells the claim three ways without a planner; picked by the owner, every
+ * piece takes that one and they differ by how they open (OPENERS).
+ */
 export const CLAIM_ANGLES = [
   { id: "amount", label: "ยอดเงินชัดๆ", say: "เปิดด้วยตัวเลข: ค่ารักษาเท่าไร ประกันจ่ายเท่าไร ลูกค้าจ่ายเองเท่าไร แล้วค่อยเล่าว่าเกิดอะไรขึ้น" },
   { id: "story", label: "เล่าเหตุการณ์", say: "เล่าเป็นเรื่องตามลำดับเวลา ตั้งแต่เริ่มป่วยจนได้รับเงิน ให้เห็นความรู้สึกของลูกค้าและครอบครัว" },
   { id: "lesson", label: "ข้อคิด", say: "เล่าเคสนี้สั้นๆ แล้วสรุปข้อคิดที่คนอ่านเอาไปใช้ได้ เช่น ทำไมควรมีประกันสุขภาพก่อนป่วย เตรียมเอกสารเคลมอย่างไร" },
+  { id: "without", label: "ถ้าไม่มีประกัน", say: "ชวนคนอ่านนึกภาพว่าถ้าไม่มีประกัน ค่ารักษาทั้งก้อนต้องจ่ายเอง เทียบกับที่ลูกค้าจ่ายจริง ใช้เฉพาะตัวเลขในข้อมูล ห้ามคำนวณเพิ่ม" },
+  { id: "speed", label: "เคลมง่าย ได้เงินไว", say: "เน้นขั้นตอนการเคลมที่ง่ายและระยะเวลาที่ได้รับอนุมัติ (ถ้าข้อมูลมีจำนวนวัน) และตัวแทนช่วยดูแลเอกสารให้" },
 ] as const;
 export type ClaimAngleId = (typeof CLAIM_ANGLES)[number]["id"];
-export const MAX_CLAIM_PIECES = CLAIM_ANGLES.length;
+/** a round's pieces at most; with ให้ AI เลือก they take the first this many angles in turn */
+export const MAX_CLAIM_PIECES = 3;
+export const MAX_CLAIM_CUSTOM = 120;
 
-const WRITE_SYSTEM = [
-  "คุณคือนักเขียนคอนเทนต์ให้ตัวแทนประกันชีวิตในประเทศไทย เขียนโพสต์เฟซบุ๊กรีวิวการเคลมจริงของลูกค้า ภาษาไทยแบบที่คนทั่วไปพูดกัน อ่านง่ายบนมือถือ อบอุ่น จริงใจ ไม่ขายแรง",
-  "",
+/** how pieces told from one picked angle open, so a round of three is not three of the same post */
+const OPENERS = [
+  "เปิดด้วยตัวเลขหรือข้อเท็จจริงที่หนักแน่นที่สุด",
+  "เปิดด้วยคำถามที่คนอ่านต้องหยุดคิด",
+  "เปิดด้วยความรู้สึกหรือเหตุการณ์ในวันที่ลูกค้าป่วย",
+];
+
+/** What the owner told the round: the angle (or their own words for one) and who reads it. */
+export interface ClaimSteer {
+  /** an angle id, "custom" for the owner's own, or "" to leave it to the AI */
+  angle?: string;
+  custom?: string;
+  reader?: string;
+}
+
+/** Each piece's angle line, in order: the AI's turn-taking, or the owner's one angle opened three ways. */
+export function claimAngleLines(steer: ClaimSteer, count: number): { label: string; say: string }[] {
+  const custom = (steer.custom ?? "").trim().slice(0, MAX_CLAIM_CUSTOM);
+  const picked = steer.angle === "custom" && custom
+    ? { label: custom, say: custom }
+    : CLAIM_ANGLES.find((a) => a.id === steer.angle);
+  return Array.from({ length: count }, (_, i) => {
+    if (!picked) return CLAIM_ANGLES[i % MAX_CLAIM_PIECES];
+    return count > 1 ? { label: picked.label, say: `${picked.say}\n${OPENERS[i % OPENERS.length]}` } : picked;
+  });
+}
+
+const WRITE_RULES = [
   "กฎที่ห้ามละเมิด:",
   "1. ใช้เฉพาะข้อเท็จจริงใน “ข้อมูลการเคลม” ห้ามเติมอาการ เหตุการณ์ ความรู้สึก หรือรายละเอียดที่ไม่มีในนั้น",
   "2. ตัวเลขทุกตัวต้องคัดลอกจากข้อมูลการเคลมตรงตัว ห้ามคำนวณ ห้ามปัดเศษ ห้ามบวกลบ ถ้าไม่มีตัวเลขที่ต้องการให้เขียนโดยไม่ใส่ตัวเลข",
   "3. ห้ามใส่ชื่อคน ชื่อโรงพยาบาล ชื่อแพทย์ วันที่ หรือข้อมูลใดที่ทำให้รู้ว่าเป็นลูกค้าคนไหน เรียกว่า “ลูกค้าของผม” ได้",
-  "4. ห้ามบอกชื่อแบบประกันหรือแนะนำแบบประกันใดๆ โพสต์นี้เล่าการเคลมอย่างเดียว",
+  "4. ห้ามบอกชื่อแบบประกันหรือแนะนำแบบประกันใดๆ งานนี้เล่าการเคลมอย่างเดียว",
   "5. ห้ามคำโฆษณาเกินจริง เช่น การันตี เคลมได้ทุกกรณี จ่ายเต็มแน่นอน ดีที่สุด เร็วที่สุด อันดับ 1",
   "6. ห้ามพูดถึงหรือเปรียบเทียบกับบริษัทประกันอื่น",
   "7. ห้ามเขียนข้อความเตือนหรือ disclaimer เอง ระบบจะต่อท้ายให้",
   "8. ผู้เขียนเป็นตัวแทนผู้ชาย ใช้คำลงท้าย “ครับ” เท่านั้น ห้ามใช้ “ค่ะ” หรือ “คะ”",
   "",
   POLICY_RULES_TH,
-  "",
-  "ตอบเป็น JSON อย่างเดียว ไม่มีข้อความอื่น ตามรูปแบบนี้:",
-  '{"hook":"…","body":"…","closing":"…","hashtags":["#…"],"poster":{"theme":"navy","headline":"…","footer":"…"}}',
-  "- hook: ประโยคเปิด 1 บรรทัด หยุดนิ้วคนเลื่อนฟีด",
-  "- body: 5–10 บรรทัดสั้นๆ ต่อจาก hook ใช้ \\n ขึ้นบรรทัดใหม่ ใช้อีโมจิได้ไม่เกินบรรทัดละ 1 ตัว",
-  "- closing: 1–2 บรรทัด ชวนทักแชทถามเรื่องการเคลมหรือการเตรียมตัว",
-  "- hashtags: 3–6 แท็ก เช่น #รีวิวเคลม",
+].join("\n");
+
+const POSTER_LINES = [
   "- poster.headline: ข้อความบนภาพไม่เกิน 50 ตัวอักษร ใจความเดียว เช่น “นอนโรงพยาบาล 3 คืน ไม่ต้องสำรองจ่าย” ตัวเลขต้องมาจากข้อมูลตรงตัว",
   "- poster.footer: ไม่เกิน 40 ตัวอักษร เช่น ชวนทักแชท",
   "- poster.theme เลือกโทนสีหนึ่งจากรายการนี้:",
   ...THEMES.filter((t) => t !== "photo").map((t) => `    ${t} — ${THEME_MOOD[t]}`),
-].join("\n");
+];
+const POSTER_SHAPE = '"poster":{"theme":"navy","headline":"…","footer":"…"}';
 
-export function claimMessages(facts: ClaimFacts, angle: ClaimAngleId): ChatMessage[] {
-  const a = CLAIM_ANGLES.find((x) => x.id === angle) ?? CLAIM_ANGLES[0];
+const LENGTH_LABEL: Record<Length, string> = { "30": "30 วินาที", "60": "60 วินาที", "180": "2–3 นาที" };
+
+/** The writer's brief for one kind of work — the rules are the same for all three. */
+export function claimSystem(format: Format, length: Length | null = null): string {
+  const task: Record<Format, string[]> = {
+    post: [
+      "งาน: โพสต์เฟซบุ๊กรีวิวการเคลมจริงของลูกค้า",
+      "ตอบเป็น JSON อย่างเดียว ไม่มีข้อความอื่น ตามรูปแบบนี้:",
+      `{"hook":"…","body":"…","closing":"…","hashtags":["#…"],${POSTER_SHAPE}}`,
+      "- hook: ประโยคเปิด 1 บรรทัด หยุดนิ้วคนเลื่อนฟีด",
+      "- body: 5–10 บรรทัดสั้นๆ ต่อจาก hook ใช้ \\n ขึ้นบรรทัดใหม่ ใช้อีโมจิได้ไม่เกินบรรทัดละ 1 ตัว",
+      "- closing: 1–2 บรรทัด ชวนทักแชทถามเรื่องการเคลมหรือการเตรียมตัว",
+      "- hashtags: 3–6 แท็ก เช่น #รีวิวเคลม",
+      ...POSTER_LINES,
+    ],
+    script: [
+      `งาน: สคริปต์พูดหน้ากล้อง เล่ารีวิวการเคลมจริงของลูกค้า ความยาวรวมประมาณ ${LENGTH_LABEL[length ?? "60"]}`,
+      "ตอบเป็น JSON อย่างเดียว ไม่มีข้อความอื่น ตามรูปแบบนี้:",
+      '{"hook":"…","body":"…","closing":"…","hashtags":["#…"]}',
+      "- hook: ประโยคที่พูดใน 3 วินาทีแรก [0–3 วิ] ต้องหยุดคนดูให้ได้",
+      "- body: แบ่งเป็นช่วง ขึ้นต้นแต่ละช่วงด้วยเวลาในวงเล็บเหลี่ยม เช่น [3–15 วิ] เขียนเป็นภาษาพูด ใส่ท่าทางในวงเล็บ เช่น (ชูเอกสารให้กล้องเห็น) และข้อความขึ้นจอเป็น {จอ: …} เฉพาะจุดสำคัญ ใช้ \\n ขึ้นบรรทัดใหม่",
+      "- closing: ช่วงปิดท้าย ขึ้นต้นด้วยเวลาในวงเล็บเหลี่ยม ชวนทักแชทถามเรื่องการเคลม",
+      "- hashtags: 3–6 แท็ก สำหรับแคปชันใต้คลิป",
+    ],
+    ad: [
+      "งาน: โฆษณา Facebook จากรีวิวการเคลมจริง หยุดสายตาในบรรทัดแรก แล้วชวนให้ทักแชท ไม่ขายด้วยความกลัว",
+      "ตอบเป็น JSON อย่างเดียว ไม่มีข้อความอื่น ตามรูปแบบนี้:",
+      `{"hook":"…","body":"…","closing":"…",${POSTER_SHAPE}}`,
+      `- hook คือ headline: สั้นมาก 3–5 คำ ไม่เกิน ${AD_LIMITS.headline} ตัวอักษร (แสดงใต้ภาพ ข้างปุ่ม) ต้องจบในตัว`,
+      `- body คือ primary text: ${AD_LIMITS.fold} ตัวอักษรแรกต้องอ่านรู้เรื่องจบในตัว ทั้งหมดไม่เกิน 400 ตัวอักษร ปิดท้ายด้วยการชวนทักแชท`,
+      `- closing คือ description: สั้นมาก 3–5 คำ ไม่เกิน ${AD_LIMITS.description} ตัวอักษร ถ้ามีตัวเลขต้องมีหน่วยครบ`,
+      ...POSTER_LINES,
+    ],
+  };
   return [
-    { role: "system", content: WRITE_SYSTEM },
-    { role: "user", content: `ข้อมูลการเคลม (เรื่องจริง ลูกค้ายินยอมให้เล่าแล้ว):\n${factsBlock(facts)}\n\nมุมของโพสต์นี้: ${a.say}` },
+    "คุณคือนักเขียนคอนเทนต์ให้ตัวแทนประกันชีวิตในประเทศไทย ภาษาไทยแบบที่คนทั่วไปพูดกัน อ่านง่ายบนมือถือ อบอุ่น จริงใจ ไม่ขายแรง",
+    "",
+    WRITE_RULES,
+    "",
+    ...task[format],
+  ].join("\n");
+}
+
+export function claimMessages(
+  facts: ClaimFacts, angle: { say: string }, reader = "", format: Format = "post", length: Length | null = null,
+): ChatMessage[] {
+  const steer = steerLines({ reader: reader.trim() });
+  return [
+    { role: "system", content: claimSystem(format, length) },
+    {
+      role: "user",
+      content: [
+        `ข้อมูลการเคลม (เรื่องจริง ลูกค้ายินยอมให้เล่าแล้ว):\n${factsBlock(facts)}`,
+        `มุมของโพสต์นี้: ${angle.say}`,
+        steer,
+      ].filter(Boolean).join("\n\n"),
+    },
   ];
 }
 
@@ -287,8 +371,8 @@ export function claimPoster(raw: unknown, facts: ClaimFacts, hook: string): Post
   return parsePoster({ layout: "top", theme, blocks })!;
 }
 
-/** One claim piece from a reply, or null when the reply has no body. */
-export function parseClaimPiece(reply: string, facts: ClaimFacts, angle: ClaimAngleId): ContentOutput | null {
+/** One claim piece from a reply, or null when the reply has no hook or body. */
+export function parseClaimPiece(reply: string, facts: ClaimFacts, angleLabel: string, format: Format = "post"): ContentOutput | null {
   const raw = parseJsonReply<Record<string, unknown>>(reply);
   if (!raw) return null;
   const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -296,15 +380,19 @@ export function parseClaimPiece(reply: string, facts: ClaimFacts, angle: ClaimAn
   const hook = text(raw.hook);
   if (!body || !hook) return null;
   const tags = Array.isArray(raw.hashtags) ? raw.hashtags.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean) : [];
+  const angle = `${CLAIM_NAME} · ${angleLabel}`;
   return {
-    hooks: [hook],
-    angle: `${CLAIM_NAME} · ${CLAIM_ANGLES.find((a) => a.id === angle)?.label ?? ""}`,
-    body,
-    closing: text(raw.closing),
-    hashtags: [...new Set(tags.map((h) => (h.startsWith("#") ? h : `#${h}`)))].slice(0, 8),
+    hooks: [format === "ad" ? hook.slice(0, 120) : hook],
+    angle,
+    body: format === "ad" ? body.slice(0, 1200) : body,
+    closing: format === "ad" ? text(raw.closing).slice(0, 120) : text(raw.closing),
+    // an ad's fields are Ads Manager's; tags are a post's and a clip's
+    hashtags: format === "ad" ? [] : [...new Set(tags.map((h) => (h.startsWith("#") ? h : `#${h}`)))].slice(0, 8),
     imagePrompt: "",
     disclaimer: DISCLAIMER,
-    poster: claimPoster(raw.poster, facts, hook),
+    // a script is spoken, and has no poster; the paper goes on a post's or an ad's
+    ...(format === "script" ? {} : { poster: claimPoster(raw.poster, facts, hook) }),
+    ...(format === "ad" ? { ad: { angle: angleLabel, tone: CLAIM_NAME } } : {}),
     // the facts stay with the piece: an edit is checked against them again, as a story's are
     fact: factsBlock(facts),
   };

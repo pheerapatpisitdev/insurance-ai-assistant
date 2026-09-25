@@ -2,10 +2,11 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  CLAIM_ANGLES, CLAIM_KINDS, DOC_KINDS, EMPTY_FACTS, FACT_LIMIT, MAX_CLAIM_PIECES, MAX_DOCS,
+  CLAIM_ANGLES, CLAIM_KINDS, DOC_KINDS, EMPTY_FACTS, FACT_LIMIT, MAX_CLAIM_CUSTOM, MAX_CLAIM_PIECES, MAX_DOCS, claimAngleLines,
   type Box, type ClaimFacts, type ClaimKind, type DocKind, type DocRead,
 } from "@/lib/content/claim";
 import { AUTO, OVERHEAD_THB, WRITERS, writerOf } from "@/lib/content/models";
+import { FORMAT_LABEL, LENGTHS, MAX_READER, NICHES, type Format, type Length } from "@/lib/content/prompt";
 import type { GenerateResult } from "../actions";
 import { PhotoDrop } from "../people/PhotoDrop";
 import { AlertIcon, CheckIcon, XIcon } from "../ui/icons";
@@ -49,14 +50,17 @@ const NUMBER_FIELDS: { key: "billTotal" | "paid" | "selfPaid" | "nights" | "days
   { key: "daysToApprove", label: "ยื่นเคลมถึงอนุมัติ", unit: "วัน" },
 ];
 
-export function ClaimTools({ writer, onWriter, left, pending, making, run }: {
+export function ClaimTools({ writer, onWriter, reader, onReader, left, pending, making, run }: {
   writer: string;
   onWriter: (id: string) => void;
+  /** who the posts talk to — the plan form's, remembered on this device for both */
+  reader: string;
+  onReader: (r: string) => void;
   /** the month's content money left, for the estimate and for อัตโนมัติ */
   left: number;
   pending: boolean;
   making: number;
-  run: (asked: number, send: () => Promise<GenerateResult>) => Promise<void>;
+  run: (asked: number, format: Format, send: () => Promise<GenerateResult>) => Promise<void>;
 }) {
   const id = useId();
   const [files, setFiles] = useState<File[]>([]);
@@ -65,6 +69,11 @@ export function ClaimTools({ writer, onWriter, left, pending, making, run }: {
   const [facts, setFacts] = useState<ClaimFacts>(EMPTY_FACTS);
   const [posterDoc, setPosterDoc] = useState<number | null>(null);
   const [count, setCount] = useState(1);
+  const [format, setFormat] = useState<Format>("post");
+  const [length, setLength] = useState<Length>("60");
+  /** an angle id, "custom", or "" for ให้ AI เลือก */
+  const [angle, setAngle] = useState("");
+  const [custom, setCustom] = useState("");
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [review, setReview] = useState(false);
@@ -114,12 +123,14 @@ export function ClaimTools({ writer, onWriter, left, pending, making, run }: {
   }
 
   const chosen = docs && posterDoc !== null ? docs[posterDoc] : null;
-  const unchecked = chosen ? !chosen.checked : false;
+  // a script has no poster, so no paper goes with it and none needs its ตรวจแล้ว
+  const unchecked = chosen && format !== "script" ? !chosen.checked : false;
   const thin = !facts.illness.trim() && !facts.paid.trim() && !facts.billTotal.trim();
   const blocked = !docs ? "ให้ AI อ่านเอกสารก่อน"
     : !consent ? "ติ๊กยืนยันความยินยอมของลูกค้าก่อน"
       : unchecked ? "ตรวจสติ๊กเกอร์ปิดข้อมูลของรูปที่ใช้ทำโปสเตอร์ แล้วกด “ตรวจแล้ว” ก่อน"
-        : thin ? "ใส่โรค/อาการ หรือยอดเงินก่อน" : null;
+        : thin ? "ใส่โรค/อาการ หรือยอดเงินก่อน"
+          : angle === "custom" && !custom.trim() ? "พิมพ์มุมที่อยากเล่า หรือเลือก “ให้ AI เลือก”" : null;
 
   const pick = writerOf(writer, left);
   const estimate = (count * (pick.thb + OVERHEAD_THB)).toFixed(2);
@@ -127,14 +138,22 @@ export function ClaimTools({ writer, onWriter, left, pending, making, run }: {
   async function write() {
     if (pending || blocked || !docs) return;
     // the paper as the owner last saw it, bars and all, taken at the press
-    const paper = chosen;
+    const paper = format === "script" ? null : chosen;
+    const fmt = format;
+    const len = length;
     const payload = { ...facts };
-    await run(count, async () => {
+    const steer = { angle, custom: custom.trim(), reader: reader.trim() };
+    await run(count, fmt, async () => {
       const form = new FormData();
       form.set("consent", "on");
       form.set("facts", JSON.stringify(payload));
       form.set("count", String(count));
       form.set("writer", writer);
+      form.set("format", fmt);
+      form.set("length", len);
+      form.set("angle", steer.angle);
+      form.set("custom", steer.custom);
+      form.set("reader", steer.reader);
       if (paper) {
         form.set("paper", await burn(paper.blob, paper.boxes), "paper.jpg");
         form.set("ratio", String(paper.width / paper.height));
@@ -202,6 +221,55 @@ export function ClaimTools({ writer, onWriter, left, pending, making, run }: {
               <button type="button" onClick={() => setReview(true)} className="mt-1 text-sm font-medium text-[var(--ct-accent)] underline underline-offset-2">แก้ข้อมูล</button>
             </div>
 
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">ทำอะไร</span>
+              <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className={field}>
+                {(["post", "script", "ad"] as const).map((f) => <option key={f} value={f}>{FORMAT_LABEL[f]}</option>)}
+              </select>
+            </label>
+
+            {format === "script" && (
+              <div role="group" aria-labelledby={`${id}-length`}>
+                <span id={`${id}-length`} className="mb-1.5 block text-sm font-medium">ความยาวคลิป</span>
+                <div className="flex flex-wrap gap-2">
+                  {LENGTHS.map((l) => (
+                    <button key={l.id} type="button" aria-pressed={length === l.id} onClick={() => setLength(l.id)} className={chip(length === l.id)}>{l.label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
+                <select value={angle} onChange={(e) => setAngle(e.target.value)} className={field}>
+                  <option value="">ให้ AI เลือก</option>
+                  {CLAIM_ANGLES.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                  <option value="custom">พิมพ์เอง…</option>
+                </select>
+              </label>
+              {angle === "custom" && (
+                <label className="mt-2 block">
+                  <span className="sr-only">มุมที่อยากเล่า (พิมพ์เอง)</span>
+                  <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={MAX_CLAIM_CUSTOM} placeholder="เช่น เคลมได้แม้เพิ่งทำประกันได้ 1 ปี" className={field} />
+                </label>
+              )}
+            </div>
+
+            <div role="group" aria-labelledby={`${id}-reader`}>
+              <span id={`${id}-reader`} className="mb-1.5 block text-sm font-medium">คนอ่านคือใคร <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" aria-pressed={reader === ""} onClick={() => onReader("")} className={chip(reader === "")}>ทุกคน</button>
+                {NICHES.map((n) => (
+                  <button key={n} type="button" aria-pressed={reader === n} onClick={() => onReader(n)} className={chip(reader === n)}>{n}</button>
+                ))}
+              </div>
+              <label className="mt-2 block">
+                <span className="sr-only">คนอ่าน (พิมพ์เอง)</span>
+                <input value={reader} onChange={(e) => onReader(e.target.value)} maxLength={MAX_READER} placeholder="หรือพิมพ์เอง เช่น พยาบาลกะดึก" className={field} />
+              </label>
+            </div>
+
             <div role="group" aria-labelledby={`${id}-count`}>
               <span id={`${id}-count`} className="mb-1.5 block text-sm font-medium">จำนวนชิ้น <span className="font-normal text-[var(--ct-mute)]">(แต่ละชิ้นเล่าคนละมุม)</span></span>
               <div className="flex flex-wrap gap-2">
@@ -209,7 +277,11 @@ export function ClaimTools({ writer, onWriter, left, pending, making, run }: {
                   <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={chip(count === n)}>{n}</button>
                 ))}
               </div>
-              <p className="mt-1.5 text-xs text-[var(--ct-mute)]">{CLAIM_ANGLES.slice(0, count).map((a) => a.label).join(" · ")}</p>
+              <p className="mt-1.5 text-xs text-[var(--ct-mute)]">
+                {angle && count > 1 && (angle !== "custom" || custom.trim())
+                  ? `ทุกชิ้นเล่ามุมที่เลือก เปิดเรื่องต่างกัน`
+                  : claimAngleLines({ angle, custom }, count).map((a) => a.label).join(" · ")}
+              </p>
             </div>
 
             <label className="block">
@@ -226,7 +298,9 @@ export function ClaimTools({ writer, onWriter, left, pending, making, run }: {
       {docs && (
         <div className="sticky bottom-0 z-10 rounded-b-xl border-t border-[var(--ct-hair)] bg-[var(--ct-panel)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
           <button type="button" onClick={write} disabled={pending || Boolean(blocked)} className={solid}>
-            {pending ? `กำลังเขียน ${making} ชิ้น… (ราว 20–40 วินาที)` : `สร้างรีวิวเคลม ${count} ชิ้น`}
+            {pending
+              ? `กำลังเขียน ${making} ${format === "ad" ? "แบบ" : "ชิ้น"}… (ราว 20–40 วินาที)`
+              : format === "post" ? `สร้างรีวิวเคลม ${count} ชิ้น` : `สร้าง${format === "ad" ? "โฆษณา" : "สคริปต์"}รีวิวเคลม ${count} ${format === "ad" ? "แบบ" : "ชิ้น"}`}
           </button>
           <p className="mt-2 text-xs text-[var(--ct-mute)]">{blocked ?? `ราว ฿${estimate} · งบคอนเทนต์เดือนนี้เหลือ ฿${left.toFixed(2)}`}</p>
         </div>

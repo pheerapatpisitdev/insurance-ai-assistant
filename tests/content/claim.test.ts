@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CLAIM_ANGLES, amountLine, claimMessages, claimPoster, cleanAmount, cleanBoxes, cleanFacts, factsBlock, parseClaimPiece,
+  CLAIM_ANGLES, amountLine, claimAngleLines, claimMessages, claimSystem, claimPoster, cleanAmount, cleanBoxes, cleanFacts, factsBlock, parseClaimPiece,
   parseRead, scrub, toBox, EMPTY_FACTS,
 } from "@/lib/content/claim";
 import { strayNumbers } from "@/lib/content/check";
@@ -120,11 +120,37 @@ describe("the facts as the writer gets them", () => {
   });
 
   it("tells the writer never to name anyone, any hospital or any plan", () => {
-    const [system, user] = claimMessages(facts, "amount");
+    const [system, user] = claimMessages(facts, CLAIM_ANGLES[0]);
     expect(system.content).toContain("ห้ามใส่ชื่อคน ชื่อโรงพยาบาล");
     expect(system.content).toContain("ห้ามบอกชื่อแบบประกัน");
     expect(user.content).toContain(factsBlock(facts));
     expect(user.content).toContain(CLAIM_ANGLES[0].say);
+  });
+});
+
+describe("the round's angles", () => {
+  it("takes the first three in turn when left to the AI", () => {
+    expect(claimAngleLines({}, 3).map((a) => a.label)).toEqual(["ยอดเงินชัดๆ", "เล่าเหตุการณ์", "ข้อคิด"]);
+    expect(claimAngleLines({ angle: "nonsense" }, 2).map((a) => a.label)).toEqual(["ยอดเงินชัดๆ", "เล่าเหตุการณ์"]);
+  });
+
+  it("gives every piece the owner's angle, each opening another way", () => {
+    const lines = claimAngleLines({ angle: "without" }, 3);
+    expect(lines.map((a) => a.label)).toEqual(["ถ้าไม่มีประกัน", "ถ้าไม่มีประกัน", "ถ้าไม่มีประกัน"]);
+    expect(new Set(lines.map((a) => a.say)).size).toBe(3);
+    // one piece: the angle as it is
+    expect(claimAngleLines({ angle: "speed" }, 1)[0]).toEqual(CLAIM_ANGLES.find((a) => a.id === "speed"));
+  });
+
+  it("uses the owner's own words, and the AI's turns when those are empty", () => {
+    expect(claimAngleLines({ angle: "custom", custom: "  เคลมได้แม้เพิ่งทำ 1 ปี " }, 1)[0]).toEqual({ label: "เคลมได้แม้เพิ่งทำ 1 ปี", say: "เคลมได้แม้เพิ่งทำ 1 ปี" });
+    expect(claimAngleLines({ angle: "custom", custom: " " }, 1)[0].label).toBe("ยอดเงินชัดๆ");
+  });
+
+  it("tells the writer who reads it, under Facebook's rule", () => {
+    const [, user] = claimMessages(facts, CLAIM_ANGLES[1], "พ่อแม่ลูกเล็ก");
+    expect(user.content).toContain("คนอ่านคือ: พ่อแม่ลูกเล็ก");
+    expect(claimMessages(facts, CLAIM_ANGLES[1])[1].content).not.toContain("คนอ่านคือ");
   });
 });
 
@@ -151,7 +177,7 @@ describe("parseClaimPiece", () => {
     const out = parseClaimPiece(JSON.stringify({
       hook: "เคลมจริง จ่ายจริง", body: "ลูกค้าของผม…", closing: "ทักมาได้ครับ", hashtags: ["รีวิวเคลม", "#ประกันสุขภาพ"],
       poster: { headline: "จ่ายแล้ว 48,250 บาท" },
-    }), facts, "story")!;
+    }), facts, "เล่าเหตุการณ์")!;
     expect(out.hooks).toEqual(["เคลมจริง จ่ายจริง"]);
     expect(out.hashtags).toEqual(["#รีวิวเคลม", "#ประกันสุขภาพ"]);
     expect(out.angle).toBe("รีวิวเคลม · เล่าเหตุการณ์");
@@ -196,5 +222,41 @@ describe("pictures in a message, per provider", () => {
 
   it("Gemini: inline data, then the text", () => {
     expect(googleParts(m)).toEqual([{ inlineData: { mimeType: "image/jpeg", data: "QUJD" } }, { text: "อ่านนี่" }]);
+  });
+});
+
+describe("the three kinds of work", () => {
+  const reply = JSON.stringify({
+    hook: "เคลมจริง", body: "[3–15 วิ] ลูกค้าของผม…", closing: "[50–60 วิ] ทักมาได้ครับ", hashtags: ["รีวิวเคลม"],
+    poster: { headline: "จ่ายแล้ว 48,250 บาท" },
+  });
+
+  it("asks for a clip of the length picked, with time marks and no poster", () => {
+    const sys = claimSystem("script", "30");
+    expect(sys).toContain("สคริปต์พูดหน้ากล้อง");
+    expect(sys).toContain("30 วินาที");
+    expect(sys).not.toContain("poster");
+    expect(claimSystem("script")).toContain("60 วินาที");
+  });
+
+  it("asks an ad for Ads Manager's three fields", () => {
+    const sys = claimSystem("ad");
+    expect(sys).toContain("headline");
+    expect(sys).toContain("primary text");
+    expect(sys).toContain("description");
+  });
+
+  it("keeps the same rules for all three", () => {
+    for (const f of ["post", "script", "ad"] as const) expect(claimSystem(f)).toContain("ห้ามใส่ชื่อคน ชื่อโรงพยาบาล");
+  });
+
+  it("makes a script without a poster, and an ad without tags", () => {
+    const script = parseClaimPiece(reply, facts, "เล่าเหตุการณ์", "script")!;
+    expect(script.poster).toBeUndefined();
+    expect(script.hashtags).toEqual(["#รีวิวเคลม"]);
+    const ad = parseClaimPiece(reply, facts, "ยอดเงินชัดๆ", "ad")!;
+    expect(ad.hashtags).toEqual([]);
+    expect(ad.ad).toEqual({ angle: "ยอดเงินชัดๆ", tone: "รีวิวเคลม" });
+    expect(ad.poster?.blocks[0].text).toBe("รีวิวเคลมจริง");
   });
 });

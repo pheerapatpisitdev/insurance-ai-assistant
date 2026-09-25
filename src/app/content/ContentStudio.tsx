@@ -664,8 +664,9 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           {mode === "claim" ? (
             <div id={formId} className={formOpen ? "" : "hidden lg:block"}>
               <ClaimTools
-                writer={writer} onWriter={(w) => pick({ writer: w })} left={left} pending={pending} making={making}
-                run={(asked, send) => runRound(asked, "post", send)}
+                writer={writer} onWriter={(w) => pick({ writer: w })} reader={reader} onReader={setReader}
+                left={left} pending={pending} making={making}
+                run={(asked, fmt, send) => runRound(asked, fmt, send)}
               />
             </div>
           ) : (
