@@ -297,24 +297,29 @@ const cents = (n: number) => Math.round(n * 100) / 100;
 
 /** The main contract and its riders; the refusals are the calculator's own sentences. */
 /**
- * Someone working from a premium is told the premium, not the sum, that the limits come to:
- * the whole-baht instalment at the edge, found by the same arithmetic that turns it into a sum.
+ * The whole-baht instalments, smallest and largest, that come to a sum inside the limits —
+ * found by the same arithmetic that turns a premium into a sum. Undefined off the premium basis.
  */
-function premiumBound(input: PensionInput, rate: number, edge: "min" | "max"): string {
-  if (input.basis !== "premium" || !(rate > 0)) return "";
+export function premiumRange(input: PensionInput): { min: number; max: number } | undefined {
+  const plan = pensionPlan(input.annuityAge, input.pay);
+  const rate = plan ? mainRate(plan, input.sex, input.age) : 0;
+  if (input.basis !== "premium" || !(rate > 0)) return undefined;
   const sa = (p: number) => sumAssuredFor({ ...input, amount: p }, rate);
   const per = MODE_FACTOR[input.mode] * rate / 1000;
-  const when = MODE_LABEL[input.mode];
-  if (edge === "min") {
-    let p = Math.max(1, Math.ceil(PENSION_LIMITS.saMin * per));
-    while (sa(p) < PENSION_LIMITS.saMin) p++;
-    while (p > 1 && sa(p - 1) >= PENSION_LIMITS.saMin) p--;
-    return ` — เบี้ยขั้นต่ำ ${p.toLocaleString("en-US")} บาท (${when})`;
-  }
-  let p = Math.floor(PENSION_LIMITS.saMax * per);
-  while (sa(p) > PENSION_LIMITS.saMax) p--;
-  while (sa(p + 1) <= PENSION_LIMITS.saMax) p++;
-  return ` — เบี้ยสูงสุด ${p.toLocaleString("en-US")} บาท (${when})`;
+  let min = Math.max(1, Math.ceil(PENSION_LIMITS.saMin * per));
+  while (sa(min) < PENSION_LIMITS.saMin) min++;
+  while (min > 1 && sa(min - 1) >= PENSION_LIMITS.saMin) min--;
+  let max = Math.floor(PENSION_LIMITS.saMax * per);
+  while (sa(max) > PENSION_LIMITS.saMax) max--;
+  while (sa(max + 1) <= PENSION_LIMITS.saMax) max++;
+  return { min, max };
+}
+
+/** Someone working from a premium is told the premium, not the sum, that the limits come to. */
+function premiumBound(input: PensionInput, edge: "min" | "max"): string {
+  const range = premiumRange(input);
+  if (!range) return "";
+  return ` — เบี้ย${edge === "min" ? "ขั้นต่ำ" : "สูงสุด"} ${range[edge].toLocaleString("en-US")} บาท (${MODE_LABEL[input.mode]})`;
 }
 
 export function quotePension(input: PensionInput): PensionResult {
@@ -332,10 +337,10 @@ export function quotePension(input: PensionInput): PensionResult {
   const rate = mainRate(plan, sex, age);
   const sumAssured = sumAssuredFor(input, rate);
   if (sumAssured < PENSION_LIMITS.saMin) {
-    return { ok: false, error: `ทุนประกันที่ได้ (${sumAssured.toLocaleString("en-US")}) ต่ำกว่าขั้นต่ำ 75,000 บาท${premiumBound(input, rate, "min")}` };
+    return { ok: false, error: `ทุนประกันที่ได้ (${sumAssured.toLocaleString("en-US")}) ต่ำกว่าขั้นต่ำ 75,000 บาท${premiumBound(input, "min")}` };
   }
   if (sumAssured > PENSION_LIMITS.saMax) {
-    return { ok: false, error: `ทุนประกันที่ได้ (${sumAssured.toLocaleString("en-US")}) สูงกว่าสูงสุด 20,000,000 บาท${premiumBound(input, rate, "max")}` };
+    return { ok: false, error: `ทุนประกันที่ได้ (${sumAssured.toLocaleString("en-US")}) สูงกว่าสูงสุด 20,000,000 บาท${premiumBound(input, "max")}` };
   }
 
   const annualPremium = rdown(rate * rdown(sumAssured / 1000, 3), 2);

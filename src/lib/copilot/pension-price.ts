@@ -1,6 +1,6 @@
 import { peopleIn, coverIn } from "@/lib/assistant/common";
 import {
-  availablePensionAges, PENSION_AGES, quotePension, WAIVER_LABEL,
+  availablePensionAges, PENSION_AGES, premiumRange, quotePension, WAIVER_LABEL,
   type PensionBasis, type PensionMode, type PensionPay, type PensionRiders, type WaiverOption,
 } from "@/calc/pension/engine";
 import type { GuideItem } from "./guide";
@@ -48,21 +48,53 @@ function amountOf(m: RegExpMatchArray, at: number): number {
   return m[at] ? Number(m[at]) * UNIT[m[at + 1]] : Number(m[at + 2].replace(/,/g, ""));
 }
 
-interface Asked { basis: PensionBasis; amount: number; mode: PensionMode }
+/** the instalment is left open only for a premium said without one: "มีงบ 50,000" */
+interface Asked { basis: PensionBasis; amount: number; mode?: PensionMode }
+
+/** words that make the figure after them money going in, not a pension coming out */
+const PAYING = String.raw`(?:จ่าย|ชำระ|ผ่อน|ส่ง|งบ|เก็บ(?:เงิน)?|ออม(?:เงิน)?|เบี้ย|งวดละ)`;
+/** what may stand between those words and the figure: "จ่ายได้ไม่เกิน", "มีงบประมาณ" */
+const FILLER = String.raw`(?:\s|ได้|ไหว|ประมาณ|ไม่เกิน|สัก|แค่|เบี้ย|ประกัน|ละ)*`;
+/** an instalment: 6 and 3 before เดือน first, or "จ่าย 6 เดือนละ" is read as monthly */
+const PERIOD = String.raw`(6\s*เดือน|3\s*เดือน|ครึ่งปี|ไตรมาส|เดือน|ปี)`;
+
+function modeOf(period: string): PensionMode {
+  const p = period.replace(/\s/g, "");
+  return p === "6เดือน" || p === "ครึ่งปี" ? "semi" : p === "3เดือน" || p === "ไตรมาส" ? "quarterly"
+    : p === "เดือน" ? "monthly" : "annual";
+}
+
+/** how a premium is said back, on the buttons; each form reads back as the same premium */
+const PAY_WORDS: Record<PensionMode, string> = {
+  annual: "จ่ายปีละ", semi: "จ่าย 6 เดือนละ", quarterly: "จ่าย 3 เดือนละ", monthly: "จ่ายเดือนละ",
+};
 
 /**
  * Which of the three figures the message gave.
  *
- * A premium first, because it is the only one of them written with จ่าย in front: "จ่ายเดือน
- * ละ 5,000" is an instalment, "ได้เดือนละ 10,000" is a pension. After that a bare "เดือนละ"
- * is a pension, since that is what this plan is bought for; and a sum is last.
+ * A premium first, because only a premium is written with a paying word in front — จ่าย,
+ * ผ่อน, ส่ง, งบ, เก็บเงิน, เบี้ย: "งบเดือนละ 3,000" is an instalment, "ได้เดือนละ 10,000" is a
+ * pension. A bare "ปีละ" is a premium too (the pension is asked for by the month), unless
+ * ได้/รับ/บำนาญ stands before it. After that a bare "เดือนละ" is a pension, since that is what
+ * this plan is bought for; and a sum is last.
  */
 function figureIn(said: string): Asked | undefined {
-  const premium = said.match(new RegExp(String.raw`(?:จ่าย|ชำระ|ผ่อน)(?:ได้)?\s*(?:เบี้ย)?\s*(เดือน|ปี)ละ\s*(?:${AMOUNT})`))
-    ?? said.match(new RegExp(String.raw`เบี้ย\s*(ปี|เดือน)ละ\s*(?:${AMOUNT})`));
-  if (premium) {
-    return { basis: "premium", amount: amountOf(premium, 2), mode: premium[1] === "เดือน" ? "monthly" : "annual" };
+  // "จ่ายเดือนละ 3,000", "จ่าย 6 เดือนละ 25,000", "จ่ายทุก 3 เดือน 10,000", "งบปีละ 5 หมื่น"
+  const before = said.match(new RegExp(String.raw`${PAYING}${FILLER}(?:ทุก|ราย)?\s*${PERIOD}\s*(?:ละ)?\s*(?:${AMOUNT})`));
+  if (before) return { basis: "premium", amount: amountOf(before, 2), mode: modeOf(before[1]) };
+  // "จ่ายได้ 3,000 ต่อเดือน", "เบี้ย 3000/เดือน", "มีงบ 50,000 ต่อปี"
+  const after = said.match(new RegExp(String.raw`${PAYING}${FILLER}(?:${AMOUNT})\s*(?:บาท)?\s*(?:ต่อ|\/|ทุก|ราย)\s*${PERIOD}`));
+  if (after) return { basis: "premium", amount: amountOf(after, 1), mode: modeOf(after[4]) };
+  // "จ่ายงวดละ 3000 รายเดือน", "มีงบ 50,000" — the instalment said elsewhere, or not at all;
+  // "จ่าย 6 ปี" is the paying term, not six baht
+  const bare = said.match(new RegExp(String.raw`${PAYING}${FILLER}(?:${AMOUNT})(?!\s*(?:ปี|เดือน|งวด|\d))`));
+  if (bare && amountOf(bare, 1) >= 100) {
+    const elsewhere = said.match(new RegExp(String.raw`(?:ราย|ทุก)\s*${PERIOD}`));
+    return { basis: "premium", amount: amountOf(bare, 1), ...(elsewhere ? { mode: modeOf(elsewhere[1]) } : {}) };
   }
+  const yearly = said.match(new RegExp(String.raw`(ได้|รับ|บำนาญ)?\s*ปีละ\s*(?:${AMOUNT})`));
+  if (yearly && !yearly[1]) return { basis: "premium", amount: amountOf(yearly, 2), mode: "annual" };
+
   const pension = said.match(new RegExp(String.raw`เดือนละ\s*(?:${AMOUNT})`))
     ?? said.match(new RegExp(String.raw`(?:${AMOUNT})\s*(?:บาท)?\s*(?:ต่อ|\/)\s*เดือน`));
   if (pension) return { basis: "monthlyPension", amount: amountOf(pension, 1), mode: "annual" };
@@ -175,7 +207,7 @@ function ridersIn(text: string): RidersAsked {
 
 /** A person's premium, split and totalled, in the instalments a customer can pick from. */
 function totalsFor(input: Parameters<typeof quotePension>[0], sumAssured: number) {
-  return (["semi", "monthly"] as const).map((mode) => {
+  return (["annual", "semi", "quarterly", "monthly"] as const).map((mode) => {
     const r = quotePension({ ...input, basis: "sumAssured", amount: sumAssured, mode });
     return { mode, total: r.ok ? r.quote.totalModePremium : 0 };
   });
@@ -209,7 +241,7 @@ export function pricePension(text: string): PriceReply {
     ...(at ? [`รับบำนาญ ${at.age}`] : []),
     ...(pay === "6" ? ["จ่าย 6 ปี"] : pay ? ["จ่ายจนรับบำนาญ"] : []),
     ...(figure ? [figure.basis === "monthlyPension" ? `เดือนละ ${figure.amount.toLocaleString("en-US")}`
-      : figure.basis === "premium" ? `จ่าย${figure.mode === "monthly" ? "เดือน" : "ปี"}ละ ${figure.amount.toLocaleString("en-US")}`
+      : figure.basis === "premium" ? (figure.mode ? `${PAY_WORDS[figure.mode]} ${figure.amount.toLocaleString("en-US")}` : `งบ ${figure.amount.toLocaleString("en-US")}`)
         : `ทุน ${figure.amount.toLocaleString("en-US")}`] : []),
     ...asked.words,
   ];
@@ -220,6 +252,12 @@ export function pricePension(text: string): PriceReply {
   if (!figure) {
     missing.push("อยากได้บำนาญเดือนละเท่าไหร่ (เช่น “เดือนละ 10,000”) หรือจ่ายเบี้ยได้ปีละเท่าไหร่ หรือทุนประกัน");
     if (who) for (const n of [10_000, 20_000]) guide.push({ label: `เดือนละ ${n.toLocaleString("en-US")}`, ask: ask([...given, `เดือนละ ${n.toLocaleString("en-US")}`]) });
+  }
+  if (figure?.basis === "premium" && !figure.mode) {
+    const n = figure.amount.toLocaleString("en-US");
+    missing.push(`เบี้ย ${n} บาท จ่ายเป็นรายปีหรือรายเดือน`);
+    const rest = given.filter((w) => !w.startsWith("งบ "));
+    for (const m of ["annual", "monthly"] as const) guide.push({ label: `${PAY_WORDS[m]} ${n}`, ask: ask([...rest, `${PAY_WORDS[m]} ${n}`]) });
   }
   const ages = who ? availablePensionAges(who.age, pay ?? "untilAnnuity") : PENSION_AGES;
   if (!at) {
@@ -249,14 +287,19 @@ export function pricePension(text: string): PriceReply {
   }
 
   const input = {
-    age: who!.age, sex: who!.sex, annuityAge: at!.age, pay: pay!, mode: figure!.mode, basis: figure!.basis, amount: figure!.amount,
+    age: who!.age, sex: who!.sex, annuityAge: at!.age, pay: pay!, mode: figure!.mode ?? "annual", basis: figure!.basis, amount: figure!.amount,
     riders: asked.riders,
   };
   const result = quotePension(input);
   if (!result.ok) {
+    // a premium out of range comes back with the one that fits, one press away
+    const range = premiumRange(input);
+    const fit = range && (figure!.amount < range.min ? range.min : figure!.amount > range.max ? range.max : undefined);
+    const words = fit === undefined ? undefined : `${PAY_WORDS[input.mode]} ${fit.toLocaleString("en-US")}`;
     return {
       priced: false,
       text: `แบบ **${PENSION_LABEL}** ยังคิดให้ไม่ได้ด้วยเงื่อนไขนี้ครับ\n\n- ${result.error}\n\nลองปรับดู หรือใช้ [เครื่องคิดบำนาญ](/bumnan95)`,
+      ...(words ? { guide: [{ label: words, ask: ask([...given.filter((w) => !w.startsWith("จ่าย") || w === "จ่าย 6 ปี" || w === "จ่ายจนรับบำนาญ"), words]) }] } : {}),
     };
   }
   const q = result.quote;
@@ -267,7 +310,7 @@ export function pricePension(text: string): PriceReply {
     `**${PENSION_LABEL}** · รับบำนาญอายุ ${q.plan.annuityStartAge}–95 · ${payWords}`,
     `${who!.sex === "F" ? "หญิง" : "ชาย"} อายุ ${who!.age} ปี · ทุน ${q.sumAssured.toLocaleString("en-US")} บาท`,
     "",
-    ...premiumLines(q, totalsFor(input, q.sumAssured)),
+    ...premiumLines(q, totalsFor(input, q.sumAssured), figure!.basis === "premium" ? input.mode : "annual"),
     "",
     `🎁 บำนาญช่วงแรก เดือนละ **${q.monthlyPension.toLocaleString("en-US")} บาท** (หรือปีละ ${first.annual.toLocaleString("en-US")}) อายุ ${first.fromAge}–${first.toAge}`,
     `เพิ่มเป็นปีละ ${lastBand.annual.toLocaleString("en-US")} บาท ตั้งแต่อายุ ${lastBand.fromAge} · รับประกันจ่าย 15 ปีแรก`,
@@ -293,20 +336,26 @@ export function pricePension(text: string): PriceReply {
 /**
  * The premium block. Without riders it is the one line every plan in this chat answers with;
  * with them it leads with the total — what the customer actually pays — and itemises under it.
+ * Someone who gave a monthly premium is answered in months first: the figure they know.
  */
 function premiumLines(
   q: Extract<ReturnType<typeof quotePension>, { ok: true }>["quote"],
-  instalments: { mode: "semi" | "monthly"; total: number }[],
+  instalments: { mode: PensionMode; total: number }[],
+  lead: PensionMode,
 ): string[] {
-  const per = (m: "semi" | "monthly") => floorBaht(instalments.find((i) => i.mode === m)!.total);
-  const tail = [`ราย 6 เดือน ${per("semi")} บาท`, `รายเดือน ${per("monthly")} บาท`];
-  if (!q.riders.length) return [`💰 เบี้ยปีละ **${floorBaht(q.annualPremium)} บาท**`, ...tail];
+  const per = (m: PensionMode) => floorBaht(instalments.find((i) => i.mode === m)!.total);
+  const WORD: Record<PensionMode, string> = { annual: "ปีละ", semi: "ราย 6 เดือน", quarterly: "ราย 3 เดือน", monthly: "รายเดือน" };
+  const headWord = `${WORD[lead]} `;
+  const tail = (["annual", "semi", "monthly"] as const).filter((m) => m !== lead).map((m) => `${WORD[m]} ${per(m)} บาท`);
+  if (!q.riders.length) return [`💰 เบี้ย${headWord}**${per(lead)} บาท**`, ...tail];
+  // itemised in the lead instalment, which is the mode the quote was taken in
+  const own = (annual: number, modal: number) => floorBaht(lead === "annual" ? annual : modal);
   return [
-    `💰 เบี้ยรวมปีละ **${floorBaht(q.totalAnnualPremium)} บาท**`,
+    `💰 เบี้ยรวม${headWord}**${per(lead)} บาท**`,
     ...tail,
-    `- สัญญาหลัก ${floorBaht(q.annualPremium)} บาท`,
+    `- สัญญาหลัก ${own(q.annualPremium, q.modePremium)} บาท`,
     ...q.riders.map((r) => r.error
       ? `- ${r.label}: ซื้อไม่ได้ — ${r.error}`
-      : `- ${r.label} ${floorBaht(r.annual)} บาท${r.code === "DCI" ? " (เบี้ยปีแรก ปรับขึ้นตามอายุ)" : ""}`),
+      : `- ${r.label} ${own(r.annual, r.modePremium)} บาท${r.code === "DCI" ? " (เบี้ยปีแรก ปรับขึ้นตามอายุ)" : ""}`),
   ];
 }
