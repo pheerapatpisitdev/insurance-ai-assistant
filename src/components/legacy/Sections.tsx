@@ -2,6 +2,7 @@ import Link from "next/link";
 import { riderDiseases } from "@/calc/riders/diseases";
 import type { LegacyCopyFacts } from "@/lib/legacy-facts";
 import { Fold, H2, Rule } from "@/components/sales/Blocks";
+import { DiseaseCard } from "@/components/sales/DiseaseCard";
 
 /**
  * Why any of this matters, in the three obligations that do not stop when an income does.
@@ -132,24 +133,15 @@ export function DiseaseSection() {
     <section className="py-12">
       <Rule />
       <div className="pt-8">
-        {/* the list as a picture is handed over from the calculator's buttons — the owner
-            took this section's download link out (2026-09-25) */}
-        <H2>คุ้มครอง {info.diseases.length} โรคร้ายแรง</H2>
-        <div className="mt-5 border-t border-[var(--lg-panel-line)]">
-          <Fold summary={`ดูรายชื่อ ${info.diseases.length} โรคที่คุ้มครอง`}>
-            <ol className="space-y-1.5 sm:columns-2 sm:gap-x-8">
-              {info.diseases.map((d, i) => (
-                <li key={d} className="flex gap-2.5 break-inside-avoid">
-                  <span className="shrink-0 tabular-nums text-[var(--lg-gold)] opacity-70">
-                    {i + 1}.
-                  </span>
-                  <span>{d}</span>
-                </li>
-              ))}
-            </ol>
-            <p className="mt-4 text-xs opacity-75">{info.note}</p>
-          </Fold>
-        </div>
+        {/* a card, open from the start, in place of the fold (the owner's request,
+            2026-09-25); the picture of it is handed over from the calculator's buttons.
+            Named in Thai, as every page of this bundle is — see SALES_SECTIONS */}
+        <DiseaseCard
+          plan="ประกันมรดกเพื่อครอบครัว"
+          total={info.diseases.length}
+          groups={[{ names: info.diseases }]}
+          footnote={info.note}
+        />
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Fold, H2, Rule } from "@/components/sales/Blocks";
+import { DiseaseCard } from "@/components/sales/DiseaseCard";
 import type { IShieldCopyFacts } from "@/lib/ishield-facts";
 import diseases from "../../../data/riders/ishield-diseases.json";
 
@@ -89,44 +90,29 @@ export function WhySection({ facts }: { facts: IShieldCopyFacts }) {
 }
 
 /**
- * The illnesses, in the company's own two groups. Folded because seventy names is a wall,
- * and the number in the summary is what most readers came to check.
+ * The illnesses, in the company's own two groups, shown as a card and open from the start —
+ * the owner asked for the card in place of the folds (2026-09-25). The picture of the same
+ * list is handed over from the calculator's buttons; the section's own download link was
+ * taken out the same day.
  */
 export function IllnessSection({ facts }: { facts: IShieldCopyFacts }) {
   const groups = [
-    { key: "early", heading: `ระยะเริ่มต้น ${facts.illness.earlyCount} โรค`, names: diseases.early, note: `รับ ${facts.illness.earlyPercent}% ของทุนประกันต่อโรค` },
-    { key: "major", heading: `ระยะรุนแรง ${facts.illness.majorCount} โรค`, names: diseases.major, note: `รับสูงสุด ${facts.illness.majorPercent}% ของทุนประกัน` },
+    { title: `ระยะเริ่มต้น ${facts.illness.earlyCount} โรค`, names: diseases.early, note: `รับ ${facts.illness.earlyPercent}% ของทุนประกันต่อโรค` },
+    { title: `ระยะรุนแรง ${facts.illness.majorCount} โรค`, names: diseases.major, note: `รับสูงสุด ${facts.illness.majorPercent}% ของทุนประกัน` },
   ];
   return (
     <section className="py-12">
       <Rule />
       <div className="pt-8">
-        {/* the list as a picture is handed over from the calculator's buttons, not from here —
-            the owner took this section's download link out (2026-09-25) */}
-        <H2>คุ้มครอง {facts.illnessTotal} โรคร้ายแรง</H2>
-        <div className="mt-5 border-t border-[var(--lg-panel-line)]">
-          {/* Open on arrival. The names are what the plan is — a customer weighing seventy
-              illnesses against a premium cannot do it from a heading, and the fold asked them
-              to press twice before they could start. It stays a fold so the page can be
-              collapsed back down once they have read it. */}
-          {groups.map((g) => (
-            <Fold key={g.key} open summary={g.heading}>
-              <p className="mb-3 text-xs text-[var(--lg-gold)]">{g.note}</p>
-              <ol className="space-y-1.5 sm:columns-2 sm:gap-x-8">
-                {g.names.map((d, i) => (
-                  <li key={d} className="flex gap-2.5 break-inside-avoid">
-                    <span className="shrink-0 tabular-nums text-[var(--lg-gold)] opacity-70">{i + 1}.</span>
-                    <span>{d}</span>
-                  </li>
-                ))}
-              </ol>
-            </Fold>
-          ))}
-        </div>
-        <p className="mt-4 text-xs leading-[1.9] text-[var(--lg-mute)] opacity-80">
-          {diseases.note} · ไม่คุ้มครองโรคร้ายแรงที่เกิดขึ้นภายใน {facts.illness.waitingDays} วันแรก
-          นับจากวันที่กรมธรรม์เริ่มมีผลบังคับ
-        </p>
+        <DiseaseCard
+          plan="iShield"
+          total={facts.illnessTotal}
+          groups={groups}
+          footnote={<>
+            {diseases.note} · ไม่คุ้มครองโรคร้ายแรงที่เกิดขึ้นภายใน {facts.illness.waitingDays} วันแรก
+            นับจากวันที่กรมธรรม์เริ่มมีผลบังคับ
+          </>}
+        />
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Ci123Table } from "@/lib/ci123-table";
 import { Fold, H2, Rule } from "@/components/sales/Blocks";
+import { DiseaseCard } from "@/components/sales/DiseaseCard";
 
 /** A share of the CI 123 sum, as the leaflet writes it. */
 const pct = (share: number) => `${Math.round(share * 100)}%`;
@@ -179,31 +180,24 @@ export function StructureSection({ table }: { table: Ci123Table }) {
 }
 
 /**
- * The conditions, named, in the policy's own groups. From `ci123-diseases.json`, the same
- * list the chat answers from, so the page and the bot cannot name different illnesses.
+ * The conditions, named, in the policy's own groups, shown as a card and open from the start
+ * (the owner's request, 2026-09-25). From `ci123-diseases.json`, the same list the chat
+ * answers from, so the page and the bot cannot name different illnesses. The picture of the
+ * list is handed over from the calculator's buttons.
  */
 export function DiseaseSection({ table }: { table: Ci123Table }) {
   return (
     <section className="py-12">
       <Rule />
       <div className="pt-8">
-        {/* the list as a picture is handed over from the calculator's buttons — the owner
-            took this section's download link out (2026-09-25) */}
-        <H2>คุ้มครอง {table.diseaseCount} โรคร้ายแรง</H2>
-        <div className="mt-5 border-t border-[var(--lg-panel-line)]">
-          {table.groups.map((g) => (
-            <Fold key={g.title} summary={`${g.title.replace(/\s*\(.*$/, "")} (${g.diseases.length})`}>
-              <ol className="space-y-1.5 sm:columns-2 sm:gap-x-8">
-                {g.diseases.map((d, i) => (
-                  <li key={d} className="flex gap-2.5 break-inside-avoid">
-                    <span className="shrink-0 tabular-nums text-[var(--lg-gold)] opacity-70">{i + 1}.</span>
-                    <span>{d}</span>
-                  </li>
-                ))}
-              </ol>
-            </Fold>
-          ))}
-        </div>
+        <DiseaseCard
+          plan="CI 123"
+          total={table.diseaseCount}
+          groups={table.groups.map((g) => ({
+            title: `${g.title.replace(/\s*\(.*$/, "")} (${g.diseases.length})`,
+            names: g.diseases,
+          }))}
+        />
       </div>
     </section>
   );
