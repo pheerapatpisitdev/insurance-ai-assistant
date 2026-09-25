@@ -172,7 +172,7 @@ export function PosterPanel({ value, onChange, onDraw, busy, people, person: dra
         </fieldset>
         {value.document ? (
           <p className="rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-2.5 text-sm text-[var(--ct-mute)]">
-            โปสเตอร์รีวิวเคลม — ใช้รูปเอกสารที่ถมดำและตรวจแล้ว ไม่ต้องวาดภาพพื้นหลัง
+            โปสเตอร์รีวิวเคลม — ใช้รูปเอกสารที่ปิดข้อมูลและตรวจแล้ว ไม่ต้องวาดภาพพื้นหลัง
           </p>
         ) : (
         <fieldset disabled={shut} className="m-0 min-w-0 space-y-2 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-2.5">

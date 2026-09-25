@@ -118,7 +118,7 @@ export function ClaimTools({ writer, onWriter, left, pending, making, run }: {
   const thin = !facts.illness.trim() && !facts.paid.trim() && !facts.billTotal.trim();
   const blocked = !docs ? "ให้ AI อ่านเอกสารก่อน"
     : !consent ? "ติ๊กยืนยันความยินยอมของลูกค้าก่อน"
-      : unchecked ? "ตรวจแถบดำของรูปที่ใช้ทำโปสเตอร์ แล้วกด “ตรวจแล้ว” ก่อน"
+      : unchecked ? "ตรวจสติ๊กเกอร์ปิดข้อมูลของรูปที่ใช้ทำโปสเตอร์ แล้วกด “ตรวจแล้ว” ก่อน"
         : thin ? "ใส่โรค/อาการ หรือยอดเงินก่อน" : null;
 
   const pick = writerOf(writer, left);
@@ -177,7 +177,7 @@ export function ClaimTools({ writer, onWriter, left, pending, making, run }: {
           ) : (
             <PhotoDrop files={files} onChange={setFiles} limit={MAX_DOCS} />
           )}
-          <p className="mt-1.5 text-xs text-[var(--ct-mute)]">หนังสืออนุมัติ บิลโรงพยาบาล ใบรับรองแพทย์ แคปแชท/สลิป · PDF ให้แคปหน้าจอก่อน · ระบบเก็บเฉพาะรูปที่ถมดำแล้ว</p>
+          <p className="mt-1.5 text-xs text-[var(--ct-mute)]">หนังสืออนุมัติ บิลโรงพยาบาล ใบรับรองแพทย์ แคปแชท/สลิป · PDF ให้แคปหน้าจอก่อน · ระบบเก็บเฉพาะรูปที่ปิดข้อมูลแล้ว</p>
         </div>
 
         <label className="flex items-start gap-2.5 rounded-lg border border-[var(--ct-warn-line)] bg-[var(--ct-warn-bg)] p-3 text-sm text-[var(--ct-warn-ink)]">
@@ -280,7 +280,7 @@ function ReviewDialog({ docs, onDocs, facts, onFacts, posterDoc, onPosterDoc, on
         <div className="flex items-center justify-between gap-3 border-b border-[var(--ct-hair)] px-4 py-3">
           <div>
             <h2 className="font-semibold">ตรวจเอกสารเคลม</h2>
-            <p className="text-xs text-[var(--ct-mute)]">แถบดำคือที่จะถูกปิดจริงบนโปสเตอร์ · แตะแถบเพื่อเอาออก</p>
+            <p className="text-xs text-[var(--ct-mute)]">สติ๊กเกอร์คือที่จะถูกปิดจริงบนโปสเตอร์ · แตะสติ๊กเกอร์เพื่อเอาออก</p>
           </div>
           <button type="button" data-autofocus onClick={onClose} aria-label="ปิด" className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-[var(--ct-line)]">
             <XIcon className="size-5" />
@@ -292,7 +292,7 @@ function ReviewDialog({ docs, onDocs, facts, onFacts, posterDoc, onPosterDoc, on
             {docs.map((d, i) => (
               <section key={i} aria-label={`เอกสาร ${i + 1}`} className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium">รูปที่ {i + 1} · {DOC_KINDS.find((k) => k.id === d.kind)?.label} <span className="font-normal text-[var(--ct-mute)]">· แถบดำ {d.boxes.length} จุด</span></p>
+                  <p className="text-sm font-medium">รูปที่ {i + 1} · {DOC_KINDS.find((k) => k.id === d.kind)?.label} <span className="font-normal text-[var(--ct-mute)]">· ปิดไว้ {d.boxes.length} จุด</span></p>
                   <button
                     type="button" aria-pressed={drawing === i} onClick={() => setDrawing(drawing === i ? null : i)}
                     className={chip(drawing === i)}
@@ -301,7 +301,7 @@ function ReviewDialog({ docs, onDocs, facts, onFacts, posterDoc, onPosterDoc, on
                   </button>
                 </div>
                 <RedactImage
-                  src={d.src} boxes={d.boxes} drawing={drawing === i} alt={`เอกสาร ${i + 1}`}
+                  src={d.src} width={d.width} height={d.height} boxes={d.boxes} drawing={drawing === i} alt={`เอกสาร ${i + 1}`}
                   onChange={(boxes) => change(i, { boxes, checked: false })}
                 />
                 <div className="flex flex-wrap gap-2">

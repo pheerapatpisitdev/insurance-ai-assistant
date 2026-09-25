@@ -1,9 +1,10 @@
 import { DOC_MAX_SIDE, type Box } from "@/lib/content/claim";
+import { drawSticker } from "./stickers";
 
 /**
- * รีวิวเคลม in the browser: photographs shrunk before they are sent, and the black bars burnt
- * into the pixels before a paper is uploaded. A bar laid over a picture with CSS hides nothing
- * once the picture is saved; one painted into it cannot be lifted off.
+ * รีวิวเคลม in the browser: photographs shrunk before they are sent, and the covers burnt into
+ * the pixels before a paper is uploaded. A cover laid over a picture with CSS hides nothing once
+ * the picture is saved; one painted into it cannot be lifted off.
  */
 
 export interface Shrunk {
@@ -29,7 +30,10 @@ export async function shrink(file: Blob): Promise<Shrunk> {
   return { blob: await toJpeg(canvas), width: canvas.width, height: canvas.height };
 }
 
-/** The photograph with every box painted solid black, as a new JPEG. */
+/** the page's own font, so a sticker's Thai draws as the page shows it */
+export const pageFont = () => getComputedStyle(document.body).fontFamily || "sans-serif";
+
+/** The photograph with a sticker painted over every box, as a new JPEG. */
 export async function burn(photo: Blob, boxes: Box[]): Promise<Blob> {
   const bitmap = await createImageBitmap(photo);
   const canvas = document.createElement("canvas");
@@ -38,14 +42,7 @@ export async function burn(photo: Blob, boxes: Box[]): Promise<Blob> {
   const g = canvas.getContext("2d")!;
   g.drawImage(bitmap, 0, 0);
   bitmap.close();
-  g.fillStyle = "black";
-  for (const b of boxes) {
-    // whole pixels, rounded outward, so no sliver of a letter is left at a bar's edge
-    const x0 = Math.floor(b.x * canvas.width);
-    const y0 = Math.floor(b.y * canvas.height);
-    const x1 = Math.ceil((b.x + b.w) * canvas.width);
-    const y1 = Math.ceil((b.y + b.h) * canvas.height);
-    g.fillRect(x0, y0, x1 - x0, y1 - y0);
-  }
+  const font = pageFont();
+  boxes.forEach((b, i) => drawSticker(g, b, i, canvas.width, canvas.height, font));
   return toJpeg(canvas);
 }
