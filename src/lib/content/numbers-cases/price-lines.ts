@@ -9,8 +9,8 @@ import { money } from "../numbers";
 /**
  * A premium as the ตัวเลขชัดๆ post says it, from an engine's modes.
  *
- * Monthly while the company takes it, yearly under its monthly floor — displayPremium, as the
- * sales pages decide. The day figure is the yearly premium ÷ 365 rounded up, also as they say
+ * Monthly while the company takes it; under its monthly floor, the day figure alone — the
+ * owner wants no yearly premium in content (2026-09-25). The day figure is the yearly premium ÷ 365 rounded up, also as they say
  * it. A premium that rises with age (the health and critical-illness riders) is said as the
  * first year's, on every line: the owner's rule, and the only true one.
  */
@@ -31,10 +31,12 @@ export function priceLines(modes: ModePremium[] | undefined, expired: boolean, f
   const word = firstYear ? "เบี้ยปีแรก" : "เบี้ย";
   const monthly = shown.mode === "monthly";
   const day = money(perDay(annual.total));
+  // a month's premium or the day's, never a year's (owner, 2026-09-25): below the monthly
+  // floor the day figure leads, and there is no premium line above it
   return {
-    premiumLine: `${word} ${formatBaht(shown.total)} บาท ${monthly ? "ต่อเดือน" : "ต่อปี"}`,
+    premiumLine: monthly ? `${word} ${formatBaht(shown.total)} บาท ต่อเดือน` : "",
     perDayLine: `${firstYear ? "ปีแรกตกวันละ" : "ตกวันละ"} ${day} บาท`,
-    big: `${word} ${formatBaht(shown.total)} บาท${monthly ? "/เดือน" : "/ปี"}`,
+    big: monthly ? `${word} ${formatBaht(shown.total)} บาท/เดือน` : `${firstYear ? "ปีแรกตกวันละ" : "ตกวันละ"} ${day} บาท`,
     day,
     annualSatang: annual.total,
   };

@@ -17,7 +17,7 @@ export interface NumberSheet {
   sumLine: string;
   /** when the sum line is not the plain sum, how it is reached, shown in brackets under it */
   sumNote?: string;
-  /** "เบี้ย 1,548 บาท ต่อเดือน", or ต่อปี under the monthly floor, or เบี้ยปีแรก … for a rising premium */
+  /** "เบี้ย 1,548 บาท ต่อเดือน", or เบี้ยปีแรก … for a rising premium; empty under the monthly floor, where the day figure leads */
   premiumLine: string;
   /** "ตกวันละ 48 บาท": the yearly premium ÷ 365, rounded up, as the sales pages say it */
   perDayLine: string;
@@ -58,7 +58,7 @@ export const money = (baht: number) => baht.toLocaleString("en-US");
 export const NUMBERS_CLOSING = "ทักแชทเช็กเบี้ยตามอายุคุณ";
 
 export function numbersBody(s: NumberSheet): string {
-  return [s.sumLine, ...(s.sumNote ? [`(${s.sumNote})`] : []), s.premiumLine, s.perDayLine, ...s.claims, `(${s.who})`].join("\n");
+  return [s.sumLine, ...(s.sumNote ? [`(${s.sumNote})`] : []), s.premiumLine, s.perDayLine, ...s.claims, `(${s.who})`].filter(Boolean).join("\n");
 }
 
 /** Everything the code wrote, as the number check's yardstick: it wrote them, so they are allowed. */
@@ -73,7 +73,8 @@ export function numbersPoster(s: NumberSheet, theme: Theme = "navy"): PosterSpec
     blocks: [
       { kind: "badge", text: s.product },
       { kind: "headline", text: s.poster.big },
-      { kind: "sub", text: s.poster.small },
+      // when the day figure is the big line, the small one does not say it twice
+      { kind: "sub", text: /วันละ/.test(s.poster.big) ? s.poster.small.replace(/\s*·\s*(?:ปีแรก)?ตกวันละ [\d,]+ บาท$/, "") : s.poster.small },
       { kind: "footer", text: s.who },
     ],
   };

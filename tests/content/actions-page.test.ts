@@ -253,8 +253,10 @@ describe("saving an edit", () => {
   });
 
   it("checks a numbers post against the figures it was written from, not only the brief", async () => {
-    const href = Object.keys(NUMBERS_PLANS)[0];
-    const [s] = numberSheets(href, 1);
+    // a sheet whose figures the brief does not carry (the brief prices one example person)
+    const { href, s } = Object.keys(NUMBERS_PLANS)
+      .flatMap((h) => numberSheets(h, 3).map((sheet) => ({ href: h, s: sheet })))
+      .find(({ href: h, s: sheet }) => strayNumbers(numbersBody(sheet), briefFor(h)!.text).length > 0)!;
     const figures = numbersYardstick([s]);
     const numbers: ContentOutput = {
       hooks: ["เบี้ยจริงของคนจริง"], body: numbersBody(s), closing: NUMBERS_CLOSING, hashtags: [], imagePrompt: "",

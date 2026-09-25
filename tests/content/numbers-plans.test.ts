@@ -30,8 +30,17 @@ describe("every plan's number sheets", () => {
       });
       it(RISING.includes(href) ? "says เบี้ยปีแรก, its premium rises with age" : "says a level premium plainly", () => {
         for (const s of numberSheets(href, 3, today)) {
-          expect(s.premiumLine.startsWith("เบี้ยปีแรก")).toBe(RISING.includes(href));
+          // no premium line under the monthly floor: the day figure leads alone
+          if (s.premiumLine) expect(s.premiumLine.startsWith("เบี้ยปีแรก")).toBe(RISING.includes(href));
           expect(s.perDayLine.startsWith("ปีแรก")).toBe(RISING.includes(href));
+        }
+      });
+      it("says a month's premium or a day's, never a year's, and ตลอดชีพ for cover to 99 (owner, 2026-09-25)", () => {
+        for (const s of numberSheets(href, 3, today)) {
+          const all = [numbersBody(s), ...numbersPoster(s).blocks.map((b) => b.text)].join("\n");
+          // a premium by the year; a health plan's วงเงินปีละ is its limit, not what it costs
+          expect(all).not.toMatch(/เบี้ย(?:ปีแรก)?\s*[\d,]+\s*บาท\s*(?:ต่อปี|\/ปี)|เบี้ย(?:ปีแรก)?ปีละ/);
+          expect(all).not.toMatch(/(?<![\d,.])99(?![\d,])/);
         }
       });
     });
@@ -40,8 +49,13 @@ describe("every plan's number sheets", () => {
 
 describe("figures that match each sales page", () => {
   const first = (href: string) => numberSheets(href, 3, today);
-  it("Protection Life: ชาย 35 ทุน 1 ล้าน 10 ปี = 5,130 บาท/ปี", () => {
-    expect(first("/plb")[0].premiumLine).toBe("เบี้ย 5,130 บาท ต่อปี");
+  it("Protection Life: ชาย 35 ทุน 1 ล้าน 10 ปี = 5,130 บาท/ปี, said as 15 a day", () => {
+    const [s] = first("/plb");
+    expect(s.premiumLine).toBe("");
+    expect(s.perDayLine).toBe("ตกวันละ 15 บาท");
+    expect(s.poster.big).toBe("ตกวันละ 15 บาท");
+    // the small line does not say the day figure a second time
+    expect(numbersPoster(s).blocks.find((b) => b.kind === "sub")?.text).toBe("ทุน 1,000,000 บาท");
   });
   it("Easy Protect 6: ชาย 35 ทุน 5 แสน = 3,060 บาท/เดือน", () => {
     expect(first("/easyprotect")[0].premiumLine).toBe("เบี้ย 3,060 บาท ต่อเดือน");
@@ -58,10 +72,12 @@ describe("figures that match each sales page", () => {
     expect(first("/ishield")[0].premiumLine).toBe("เบี้ย 6,028 บาท ต่อเดือน");
   });
   it("CI 123: หญิง 30 ทุน 5 แสน = เบี้ยปีแรก 3,613", () => {
-    expect(first("/ci123")[0].premiumLine).toBe("เบี้ยปีแรก 3,613 บาท ต่อปี");
+    expect(first("/ci123")[0].premiumLine).toBe("");
+    expect(first("/ci123")[0].perDayLine).toBe("ปีแรกตกวันละ 10 บาท");
   });
   it("Cancer: หญิง 30 ทุน 3 แสน = เบี้ยปีแรก 2,176", () => {
-    expect(first("/cancer")[0].premiumLine).toBe("เบี้ยปีแรก 2,176 บาท ต่อปี");
+    expect(first("/cancer")[0].premiumLine).toBe("");
+    expect(first("/cancer")[0].perDayLine).toBe("ปีแรกตกวันละ 6 บาท");
   });
   it("iHealthy: the package's yearly limit leads", () => {
     expect(first("/ihealthy-ultra")[0].sumLine).toBe("ประกันสุขภาพวงเงินค่ารักษาปีละ 3,000,000 บาท");

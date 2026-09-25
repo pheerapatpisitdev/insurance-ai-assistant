@@ -67,12 +67,13 @@ describe("Life Protect's number sheets", () => {
     expect(first.sumNote).toBe("ทุน 1,000,000 บาท × 2 เมื่อเสียชีวิตก่อนอายุ 60");
     expect(first.premiumLine).toBe("เบี้ย 1,548 บาท ต่อเดือน");
     expect(first.perDayLine).toBe("ตกวันละ 48 บาท");
-    expect(first.who).toBe("ชาย 35 ปี จ่ายถึงอายุ 99");
+    // ตลอดชีพ, the owner's word for cover to 99 (2026-09-25)
+    expect(first.who).toBe("ชาย 35 ปี จ่ายตลอดชีพ");
   });
   it("gives each piece of a round a different person, wrapping past three", () => {
     const sheets = numberSheets("/lifeprotect", 4, today);
     expect(sheets.map((s) => s.who)).toEqual([
-      "ชาย 35 ปี จ่ายถึงอายุ 99", "หญิง 30 ปี จ่าย 19 ปี", "ชาย 45 ปี จ่าย 19 ปี", "ชาย 35 ปี จ่ายถึงอายุ 99",
+      "ชาย 35 ปี จ่ายตลอดชีพ", "หญิง 30 ปี จ่าย 19 ปี", "ชาย 45 ปี จ่าย 19 ปี", "ชาย 35 ปี จ่ายตลอดชีพ",
     ]);
   });
   it("takes two claim lines a piece, only from the approved list", () => {

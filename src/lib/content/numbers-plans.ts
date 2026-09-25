@@ -1,4 +1,5 @@
 import type { NumberSheet, PricedPlan } from "./numbers";
+import { lifelong } from "./wording";
 import { cancerNumbers } from "./numbers-cases/cancer";
 import { ci123Numbers } from "./numbers-cases/ci123";
 import { easyProtectNumbers } from "./numbers-cases/easyprotect";
@@ -42,5 +43,19 @@ export function numberSheets(href: string, count: number, today: Date = new Date
   if (!plan) return [];
   const priced = Array.from({ length: plan.caseCount }, (_, i) => i).filter((i) => plan.price(i, plan.claims, today) !== null);
   if (priced.length === 0) return [];
-  return Array.from({ length: count }, (_, n) => plan.price(priced[n % priced.length], claimsFor(plan.claims, n), today)!);
+  return Array.from({ length: count }, (_, n) => lifelongSheet(plan.price(priced[n % priced.length], claimsFor(plan.claims, n), today)!));
+}
+
+/** every line of a sheet with ตลอดชีพ in place of 99 (wording.ts) — the engines say "ถึงอายุ 99" */
+function lifelongSheet(s: NumberSheet): NumberSheet {
+  return {
+    ...s,
+    sumLine: lifelong(s.sumLine),
+    ...(s.sumNote ? { sumNote: lifelong(s.sumNote) } : {}),
+    premiumLine: lifelong(s.premiumLine),
+    perDayLine: lifelong(s.perDayLine),
+    claims: s.claims.map(lifelong),
+    who: lifelong(s.who),
+    poster: { big: lifelong(s.poster.big), small: lifelong(s.poster.small) },
+  };
 }

@@ -48,21 +48,24 @@ export interface ContentProduct {
 
 const sexWord = (s: Sex) => (s === "F" ? "ผู้หญิง" : "ผู้ชาย");
 const baht = (n: number) => n.toLocaleString("en-US");
-/** a bundle table's premiums are in satang: [annual, semi-annual, monthly, …] */
-const annualBaht = (satang: number) => baht(Math.round(satang / 100));
+
+/** a formatted figure ("58,968") as a number */
+const num = (v: string) => Number(v.replace(/,/g, ""));
+/** a yearly premium in baht as the day figure the sales pages say: ÷ 365, rounded up */
+const dayOf = (annual: number) => baht(Math.ceil(annual / 365));
 
 /**
- * A premium and the total it adds up to, said so the sum works.
- *
- * The totals are the yearly premium times the years; stood beside a monthly premium they
- * were a sum no reader could make ("4,914 บาท/เดือน รวม 491,400" — twelve payments of 4,914
- * a year come to more). So a monthly figure carries its yearly one, and the total says it
- * is for paying yearly.
+ * A premium as a post may say it (owner, 2026-09-25): a month's, or the average a day —
+ * never a year's and never the total of the contract. Totals stood side by side ("จ่าย 9 ปี
+ * รวม 491,400 เทียบจ่ายถึง 99 ปี รวม 1,100,800") read as an argument about money paid in,
+ * which is not what these plans are sold on; the brief no longer carries them, so a writer
+ * has nothing to add up.
  */
-function premiumLine(t: { premium: string | null; per: string | null; annualPremium: string | null; total: string | null }, totalWords = "รวมทั้งสัญญา"): string {
-  const yearly = t.annualPremium && t.per !== "/ปี" ? ` หรือ ${t.annualPremium} บาท/ปี` : "";
-  const total = t.total ? ` · ถ้าจ่ายรายปี${totalWords} ${t.total} บาท` : "";
-  return `เบี้ย ${t.premium} บาท${t.per}${yearly}${total}`;
+function premiumWords(t: { premium: string | null; per: string | null; annualPremium?: string | null }): string {
+  const annual = t.per === "/ปี" ? t.premium : t.annualPremium ?? null;
+  const day = annual ? dayOf(num(annual)) : null;
+  if (t.per === "/เดือน") return `เบี้ย ${t.premium} บาท/เดือน${day ? ` (เฉลี่ยวันละ ${day} บาท)` : ""}`;
+  return day ? `เบี้ยเฉลี่ยวันละ ${day} บาท` : `เบี้ย ${t.premium} บาท${t.per ?? ""}`;
 }
 
 export const CONTENT_PRODUCTS: ContentProduct[] = [
@@ -92,10 +95,10 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         prices.push(`- เริ่มต้น: ผู้หญิงอายุ ${f.fromAge} ทุน ${f.fromSum} บาท (คุ้มครอง ${f.fromDouble} บาท) เบี้ยเฉลี่ยวันละ ${f.fromPerDay} บาท`);
       }
       for (const t of f.example.terms) {
-        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: ${premiumLine(t)}`);
+        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: ${premiumWords(t)}`);
       }
       if (f.newborn.premium) {
-        prices.push(`- ซื้อให้ลูกแรกเกิด: ทุน ${f.newborn.sum} บาท (คุ้มครอง ${f.newborn.double} บาท) ${f.newborn.termLabel} เบี้ย ${f.newborn.premium} บาท${f.newborn.per}`);
+        prices.push(`- ซื้อให้ลูกแรกเกิด: ทุน ${f.newborn.sum} บาท (คุ้มครอง ${f.newborn.double} บาท) ${f.newborn.termLabel} ${premiumWords(f.newborn)}`);
       }
       return { expired: f.expired, rateVersion: f.rateVersion, facts, prices };
     },
@@ -128,7 +131,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         prices.push(`- เริ่มต้น: ${f.from.sexWord}อายุ ${f.from.age} ทุน ${f.from.sum} บาท ${f.from.termShort} เบี้ยเฉลี่ยวันละ ${f.from.perDay} บาท`);
       }
       for (const t of f.example.terms) {
-        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label} (คุ้มครองถึงอายุ ${t.endsAtAge}): เบี้ย ${t.premium} บาท${t.per}`);
+        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label} (คุ้มครองถึงอายุ ${t.endsAtAge}): ${premiumWords(t)}`);
       }
       if (f.scale?.savedPercent) prices.push(`- ทุน ${f.scale.big.sum} เทียบทุน ${f.scale.small.sum} (${f.scale.termLabel}): เบี้ยต่อล้านถูกลงราว ${f.scale.savedPercent}%`);
       return { expired: f.expired, rateVersion: f.rateVersion, facts, prices };
@@ -156,9 +159,9 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         `- รับอายุ ${f.ageMin}–${f.ageMax} ปี · จ่ายเบี้ย ${f.payYears} ปี · คุ้มครองถึงอายุ ${f.coverToAge} · ทุน ${f.saMin}–${f.saMax} บาท`,
         `- เสียชีวิต ได้อย่างน้อย ${f.premiumFloorPercent}% ของเบี้ยที่จ่ายมาแล้วเสมอ`,
       ];
-      if (f.from.premium) prices.push(`- เริ่มต้น: ${sexWord(f.from.sex)}อายุ ${f.from.age} เบี้ย ${f.from.premium} บาท${f.from.per}`);
+      if (f.from.premium) prices.push(`- เริ่มต้น: ${sexWord(f.from.sex)}อายุ ${f.from.age} ${premiumWords(f.from)}`);
       for (const a of f.example.ages) {
-        if (a.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${a.age} ทุน ${f.example.sum} บาท: ${premiumLine(a, `รวม ${f.payYears} ปี`)}`);
+        if (a.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${a.age} ทุน ${f.example.sum} บาท: ${premiumWords(a)}`);
       }
       if (f.growth?.breakEvenAge) prices.push(`- ตัวอย่างอายุ ${f.growth.age}: มูลค่าเวนคืนแซงเบี้ยที่จ่ายเมื่ออายุ ${f.growth.breakEvenAge}`);
       return { expired: f.expired, rateVersion: f.rateVersion, facts, prices };
@@ -185,7 +188,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         `- รับอายุ ${f.ageMin}–${f.ageMax} ปี · คุ้มครองถึงอายุ ${f.coverToAge} · ทุน ${f.saMin}–${f.saMax} บาท`,
       ];
       for (const t of f.example.terms) {
-        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: ${premiumLine(t, "รวม")} (ส่งต่อได้ ${t.leverage} เท่าของเบี้ยที่จ่ายรายปี)`);
+        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: ${premiumWords(t)} (ส่งต่อได้ ${t.leverage} เท่าของเบี้ยที่จ่ายรายปี)`);
       }
       return { expired: f.expired, rateVersion: f.rateVersion, facts, prices };
     },
@@ -212,7 +215,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         `- แผน 1 ล้าน: ป่วยโรคร้ายแรงได้เงินสด ${f.plan1.critical} บาท · เสียชีวิตก่อนอายุ 60 ได้ ${f.plan1.before60} บาท`,
       ];
       if (f.fromPerDay !== null) prices.push(`- เริ่มต้น: อายุ ${f.fromAge} แผนเล็กสุด เบี้ยปีแรกเฉลี่ยวันละ ${f.fromPerDay} บาท`);
-      if (f.waiting) prices.push(`- เริ่มอายุ ${f.waiting.youngAge} เบี้ยปีแรก ${f.waiting.young} บาท · รอถึงอายุ ${f.waiting.olderAge} เบี้ยปีแรก ${f.waiting.older} บาท`);
+      if (f.waiting) prices.push(`- เริ่มอายุ ${f.waiting.youngAge} เบี้ยปีแรกเฉลี่ยวันละ ${dayOf(num(f.waiting.young))} บาท · รอถึงอายุ ${f.waiting.olderAge} เบี้ยปีแรกเฉลี่ยวันละ ${dayOf(num(f.waiting.older))} บาท`);
       return { expired: f.expired, rateVersion: f.rateVersion, facts, prices };
     },
   },
@@ -242,7 +245,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
       ];
       if (f.fromPerDay !== null) prices.push(`- เริ่มต้น: อายุ ${f.fromAge} ทุน ${f.fromSum} บาท เบี้ยเฉลี่ยวันละ ${f.fromPerDay} บาท`);
       for (const t of f.example.terms) {
-        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: ${premiumLine(t, "รวม")}`);
+        if (t.premium) prices.push(`- ${sexWord(f.example.sex)}อายุ ${f.example.age} ทุน ${f.example.sum} บาท ${t.label}: ${premiumWords(t)}`);
       }
       return { expired: f.expired, rateVersion: f.rateVersion, facts, prices };
     },
@@ -269,7 +272,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         `- คู่กับประกันชีวิต Life Protect x 2 ทุน ${baht(t.baseSum)} บาท`,
       ];
       const at30 = t.premiums.F[0]?.[30 - t.ageMin];
-      if (at30) prices.push(`- เริ่มต้น: ผู้หญิงอายุ 30 ทุน CI 123 ${sumWords(t.sums[0])} เบี้ยปีแรกรวม ${annualBaht(at30[0])} บาท เฉลี่ยวันละ ${perDay(at30[0])} บาท`);
+      if (at30) prices.push(`- เริ่มต้น: ผู้หญิงอายุ 30 ทุน CI 123 ${sumWords(t.sums[0])} เบี้ยปีแรกเฉลี่ยวันละ ${perDay(at30[0])} บาท`);
       return { expired: t.expired, rateVersion: t.rateVersion, facts, prices };
     },
   },
@@ -296,7 +299,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         `- รับอายุ ${t.ageMin}–${t.ageMax} ปี · ทุนมะเร็ง (CPR) ${sumWords(low.cpr)} ถึง ${sumWords(top.cpr)} · ชดเชยนอนโรงพยาบาลวันละ ${baht(low.hic)}–${baht(top.hic)} บาท`,
       ];
       const at30 = t.premiums.F[0]?.[30 - t.ageMin];
-      if (at30) prices.push(`- เริ่มต้น: ผู้หญิงอายุ 30 ทุนมะเร็ง ${sumWords(low.cpr)} เบี้ยปีแรกรวม ${annualBaht(at30[0])} บาท เฉลี่ยวันละ ${perDay(at30[0])} บาท`);
+      if (at30) prices.push(`- เริ่มต้น: ผู้หญิงอายุ 30 ทุนมะเร็ง ${sumWords(low.cpr)} เบี้ยปีแรกเฉลี่ยวันละ ${perDay(at30[0])} บาท`);
       return { expired: t.expired, rateVersion: t.rateVersion, facts, prices };
     },
   },
@@ -352,7 +355,7 @@ export const CONTENT_PRODUCTS: ContentProduct[] = [
         `- รับอายุ ${f.ageMin}–${f.ageMax} ปี · เริ่มรับบำนาญได้ที่อายุ ${f.pensionAges.join(" / ")}`,
         `- บำนาญต่อปีเป็นขั้นตามอายุ: ${q.bands.map((b) => `อายุ ${b.fromAge}–${b.toAge} รับ ${Math.round(b.percent * 100)}% ของทุน`).join(" · ")}`,
       ];
-      prices.push(`- ตัวอย่าง: ${sexWord(f.example.sex)}อายุ ${f.example.age} อยากได้บำนาญเดือนละ ${baht(q.monthlyPension)} บาท ตั้งแต่อายุ ${q.plan.annuityStartAge} → ทุน ${baht(q.sumAssured)} บาท เบี้ยปีละ ${baht(q.annualPremium)} บาท จ่าย ${q.payYears} ปี`);
+      prices.push(`- ตัวอย่าง: ${sexWord(f.example.sex)}อายุ ${f.example.age} อยากได้บำนาญเดือนละ ${baht(q.monthlyPension)} บาท ตั้งแต่อายุ ${q.plan.annuityStartAge} → ทุน ${baht(q.sumAssured)} บาท เบี้ยเฉลี่ยวันละ ${dayOf(q.annualPremium)} บาท จ่าย ${q.payYears} ปี`);
       return { expired: false, rateVersion: f.rateVersion, facts, prices };
     },
   },

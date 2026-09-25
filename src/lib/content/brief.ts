@@ -1,4 +1,5 @@
 import { contentProduct, type ContentProduct, type Figures } from "./products";
+import { lifelong } from "./wording";
 
 /**
  * Everything the model is allowed to know about one product, as one block of Thai.
@@ -35,7 +36,8 @@ export function briefFor(href: string, today: Date = new Date()): Brief | null {
   if (!product) return null;
   const fig = figuresOf(product, today);
 
-  const text = [
+  // ตลอดชีพ, never "ถึงอายุ 99": the owner's word for these plans in content (wording.ts)
+  const text = lifelong([
     `## ${product.name}`,
     `ประเภท: ${product.kind}`,
     `เหมาะกับ: ${product.audience}`,
@@ -49,7 +51,7 @@ export function briefFor(href: string, today: Date = new Date()): Brief | null {
     "",
     "### ข้อควรระวัง (ห้ามเขียนขัดกับข้อนี้)",
     ...product.cautions.map((c) => `- ${c}`),
-  ].join("\n");
+  ].join("\n"));
 
   return { product, text, expired: fig.expired, rateVersion: fig.rateVersion };
 }
