@@ -16,6 +16,12 @@ export interface CashValueTableProps {
   cardPath?: string;
   /** the plan's own name, for the heading of the printed sheet */
   planName?: string;
+  /**
+   * The three lines under the table — the years with no surrender value, the total paid,
+   * what the last row means. On unless a page says otherwise; iShield's owner took them off
+   * that page (2026-09-25).
+   */
+  notes?: boolean;
 }
 
 const HEAD = ["ปีที่", "อายุ", "เบี้ย/ปี", "เบี้ยสะสม", "เวนคืนได้", "คุ้มครอง"];
@@ -37,7 +43,7 @@ const CELL = "whitespace-nowrap border-b border-white/5 px-[5px] py-1.5";
  * try to surrender — and it is said plainly, by the 0 in the column and by the note
  * underneath, rather than by making the numbers harder to read.
  */
-export function CashValueTable({ projection, caption, cardPath, planName }: CashValueTableProps) {
+export function CashValueTable({ projection, caption, cardPath, planName, notes = true }: CashValueTableProps) {
   const { rows, breakEven, zeroYears, maturityAge } = projection;
   if (!rows.length) return null;
 
@@ -213,7 +219,7 @@ export function CashValueTable({ projection, caption, cardPath, planName }: Cash
         </table>
       </div>
 
-      {zeroYears > 0 && (
+      {notes && zeroYears > 0 && (
         <p className="mt-2.5 border-l-2 border-[var(--lg-gold-deep)] py-2 pl-3 text-xs leading-[1.8] text-[var(--lg-mute)]">
           <span className="font-medium text-[var(--lg-gold-lit)]">
             {zeroYears === 1 ? "ปีที่ 1" : `ปีที่ 1–${zeroYears}`} ยังไม่มีมูลค่าเวนคืน
@@ -225,16 +231,18 @@ export function CashValueTable({ projection, caption, cardPath, planName }: Cash
       {/* Said once, here, because the column no longer says it on every row. It is the figure
           every later row is measured against — "have I got back more than I put in" — so it
           cannot simply be dropped along with the repetition. */}
-      {totalPaid !== null && (
+      {notes && totalPaid !== null && (
         <p className="mt-2.5 px-0.5 text-xs leading-[1.7] text-[var(--lg-mute)]">
           จ่ายเบี้ยทั้งหมด{" "}
           <span className="font-medium tabular-nums text-[var(--lg-white)]">{formatBaht(totalPaid)}</span>{" "}
           บาท ({payingYears} ปี) — ตั้งแต่ปีที่ {payingYears + 1} เป็นต้นไปไม่ต้องจ่ายเพิ่ม
         </p>
       )}
-      <p className="mt-2 px-0.5 text-[11.5px] leading-[1.7] text-[var(--lg-mute)] opacity-80">
-        แถวสุดท้าย (ปีที่ {rows.length}) คือเงินที่ได้รับเมื่อครบสัญญาอายุ {maturityAge} ปี
-      </p>
+      {notes && (
+        <p className="mt-2 px-0.5 text-[11.5px] leading-[1.7] text-[var(--lg-mute)] opacity-80">
+          แถวสุดท้าย (ปีที่ {rows.length}) คือเงินที่ได้รับเมื่อครบสัญญาอายุ {maturityAge} ปี
+        </p>
+      )}
 
       {/* What the proposal this is modelled on carries at the foot of every sheet: who
           underwrites it, who is presenting it, and the sentence that has to travel with any

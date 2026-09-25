@@ -294,6 +294,7 @@ export function IShieldCalculator({ table, sticky = false }: IShieldCalculatorPr
                     caption={tableCaption}
                     cardPath={tableCard}
                     planName={getPlan(table.planCode)?.planLabel}
+                    notes={false}
                   />
                 </>
               )}

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { diseaseCardPath } from "@/lib/card-link";
 import { Fold, H2, Rule } from "@/components/sales/Blocks";
 import type { IShieldCopyFacts } from "@/lib/ishield-facts";
 import diseases from "../../../data/riders/ishield-diseases.json";
@@ -89,43 +88,6 @@ export function WhySection({ facts }: { facts: IShieldCopyFacts }) {
   );
 }
 
-/** The four payment terms side by side, on one arrangement, so the choice is a comparison. */
-export function TermsSection({ facts }: { facts: IShieldCopyFacts }) {
-  const { example } = facts;
-  return (
-    <section className="py-12">
-      <Rule />
-      <div className="pt-8">
-        <H2>จ่ายกี่ปีดี</H2>
-        <p className="mt-2 text-sm text-[var(--lg-mute)]">
-          {example.sex === "M" ? "ชาย" : "หญิง"} {example.age} ปี · ทุน {example.sum} บาท
-        </p>
-        <div className="mt-7 space-y-6">
-          {example.terms.map((t) => (
-            <div key={t.label} className="border-b border-[var(--lg-panel-line)] pb-5 last:border-b-0">
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="font-medium text-[var(--lg-white)]">{t.label}</div>
-                {t.premium && (
-                  <div className="lg-figure text-lg tabular-nums text-[var(--lg-white)]">
-                    {t.premium} <span className="text-sm text-[var(--lg-mute)]">บาท{t.per}</span>
-                  </div>
-                )}
-              </div>
-              <p className="mt-1.5 text-sm leading-[1.85] text-[var(--lg-mute)]">
-                จ่าย {t.years} ปี{t.total ? <> รวมทั้งหมด {t.total} บาท</> : null} แล้วคุ้มครองต่อถึงอายุ {facts.maturityAge}
-              </p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-5 text-sm leading-[1.85] text-[var(--lg-mute)]">
-          จ่ายสั้นกว่าคือจบเร็วกว่าและจ่ายรวมน้อยกว่า จ่ายยาวกว่าคือเบี้ยต่อเดือนเบากว่า
-          ผลประโยชน์เท่ากันทุกแบบ
-        </p>
-      </div>
-    </section>
-  );
-}
-
 /**
  * The illnesses, in the company's own two groups. Folded because seventy names is a wall,
  * and the number in the summary is what most readers came to check.
@@ -139,13 +101,9 @@ export function IllnessSection({ facts }: { facts: IShieldCopyFacts }) {
     <section className="py-12">
       <Rule />
       <div className="pt-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <H2>คุ้มครอง {facts.illnessTotal} โรคร้ายแรง</H2>
-          {/* the same list as a picture, for the agent who has to send it to somebody */}
-          <a href={diseaseCardPath("ISHIELD")} download={`iShield-${facts.illnessTotal}-โรคร้ายแรง.png`} className="rounded-sm border border-[var(--lg-gold)] px-3 py-1.5 text-xs font-medium text-[var(--lg-gold)]">
-            ดาวน์โหลดรูปรายชื่อโรค
-          </a>
-        </div>
+        {/* the list as a picture is handed over from the calculator's buttons, not from here —
+            the owner took this section's download link out (2026-09-25) */}
+        <H2>คุ้มครอง {facts.illnessTotal} โรคร้ายแรง</H2>
         <div className="mt-5 border-t border-[var(--lg-panel-line)]">
           {/* Open on arrival. The names are what the plan is — a customer weighing seventy
               illnesses against a premium cannot do it from a heading, and the fold asked them
