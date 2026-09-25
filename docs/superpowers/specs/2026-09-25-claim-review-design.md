@@ -67,3 +67,19 @@ facts block so edits are checked against it again.
 - poster.ts / poster-draw.tsx — `document`.
 
 Budget: reading and writing count against the content cap and the hourly limits like a round.
+
+## Revised the same day (owner)
+
+- **One press, as for a plan.** The form shows everything from the start — papers, consent,
+  ทำอะไร (โพสต์ / สคริปต์ + length / โฆษณา), มุมที่อยากเล่า (AI's turns, five angles, or own
+  words), คนอ่าน (shared with the plan form), เล่าเพิ่ม, count, writer. สร้าง reads the papers,
+  burns the AI's stickers onto the one for the poster (approval letter first) and writes.
+  The review dialog before writing is gone; facts are no longer edited before writing.
+- **Covers are stickers**, not black bars: opaque pastel pills with a face and a word, padded so
+  their rounded corners still cover the box.
+- **The check moved to the editor.** A piece with a paper carries `paperChecked: false`; the
+  editor shows the paper, the owner drags on more stickers if the AI missed anything and ticks
+  ตรวจแล้ว (a new stickered picture replaces the old). `clear()` in publish-flow refuses to post
+  or schedule until then. Stickers can be added there, never lifted.
+- A script has no poster, so no paper goes with it and nothing needs checking.
+

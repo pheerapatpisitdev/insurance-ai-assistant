@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  CLAIM_ANGLES, amountLine, claimAngleLines, claimMessages, claimSystem, claimPoster, cleanAmount, cleanBoxes, cleanFacts, factsBlock, parseClaimPiece,
-  parseRead, scrub, toBox, EMPTY_FACTS,
+  CLAIM_ANGLES, amountLine, claimAngleLines, claimMessages, claimSystem, claimPoster, cleanAmount, cleanFacts, factsBlock, parseClaimPiece,
+  parseRead, scrub, toBox,
 } from "@/lib/content/claim";
 import { strayNumbers } from "@/lib/content/check";
 import { anthropicMessage, googleParts, openAiMessage } from "@/lib/ai/providers";
@@ -43,7 +43,7 @@ describe("cleanFacts", () => {
     expect(f.illness).toBe("ไข้เลือดออก ของ");
     expect(f.paid).toBe("12,000");
     expect(f.who).toBe("ผู้ชาย วัย 30+");
-    expect(cleanFacts(null)).toEqual({ ...EMPTY_FACTS, kind: "other" });
+    expect(cleanFacts(null)).toEqual({ kind: "other", illness: "", nights: "", billTotal: "", paid: "", selfPaid: "", daysToApprove: "", who: "", note: "" });
   });
 
   it("cuts each field to its limit", () => {
@@ -91,16 +91,6 @@ describe("parseRead", () => {
 
   it("is null for a reply that is not JSON", () => {
     expect(parseRead("sorry, I cannot", 1)).toBeNull();
-  });
-});
-
-describe("cleanBoxes", () => {
-  it("keeps boxes on the photograph and drops the rest", () => {
-    expect(cleanBoxes([{ x: 0.1, y: 0.2, w: 0.3, h: 0.1 }, { x: "a" }, null, { x: -1, y: 2, w: 0.5, h: 0.5 }])).toEqual([
-      { x: 0.1, y: 0.2, w: 0.3, h: 0.1 },
-      { x: 0, y: 1, w: 0.5, h: 0.5 },
-    ]);
-    expect(cleanBoxes("nope")).toEqual([]);
   });
 });
 

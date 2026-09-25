@@ -9,7 +9,8 @@ import { readClaim, writeClaim } from "@/lib/content/claim-run";
  *
  * POST reads the papers; PUT writes the pieces. Both refuse without the consent tick — the
  * page asks for it too, but the rule is the server's. The photographs POST receives are sent
- * to the model and dropped; only the blacked-out paper PUT receives is ever kept.
+ * to the model and dropped; only the stickered paper PUT receives is ever kept, and a piece
+ * with one waits for the owner's ตรวจแล้ว in the editor before it may be posted.
  */
 
 export const maxDuration = 300;
@@ -57,8 +58,6 @@ export async function PUT(req: NextRequest) {
   const files = images(form, "paper");
   if (typeof files === "string") return bad(files);
   const ratio = Number(form.get("ratio"));
-  // a paper comes only with its ตรวจแล้ว; one without is refused rather than quietly dropped
-  if (files.length > 0 && form.get("checked") !== "on") return bad("กด “ตรวจแล้ว” ที่รูปที่จะใช้ทำโปสเตอร์ก่อนนะครับ");
   if (files.length > 0 && !(ratio >= 0.2 && ratio <= 5)) return bad("ขนาดรูปเอกสารไม่ถูกต้อง ลองเลือกรูปใหม่นะครับ");
   if (!roundsPerHour(`claim-write:${clientIp(req.headers)}`)) return bad("สร้างครบ 10 รอบในชั่วโมงนี้แล้ว รอสักพักแล้วลองใหม่นะครับ", 429);
   const paper = files[0] ? { bytes: Buffer.from(await files[0].arrayBuffer()), mimeType: files[0].type, ratio } : null;

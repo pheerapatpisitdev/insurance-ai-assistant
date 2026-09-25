@@ -55,6 +55,8 @@ export interface Cleared {
   at: Date | undefined;
 }
 
+export const PAPER_UNCHECKED = "ตรวจรูปเอกสารเคลมก่อนโพสต์ — กด “แก้ไข” แล้วดูว่าสติ๊กเกอร์ปิดชื่อและเลขครบ จากนั้นกด “ตรวจแล้ว”";
+
 export const refused = (c: Cleared | Refusal): c is Refusal => "ok" in c;
 
 /**
@@ -79,6 +81,8 @@ export async function clear(
     if (state === "posting" && !stalePosting(p)) return { ok: false, error: "ชิ้นนี้กำลังส่งไปเพจอยู่ รอสักครู่" };
     if (maybeOnPage(p) && !input.force) return { ok: false, error: POSSIBLY_POSTED, confirmRepost: true };
   }
+  // a claim paper's stickers were laid by the AI; a person looks before the Page does
+  if (item.output.poster?.document && item.output.paperChecked === false) return { ok: false, error: PAPER_UNCHECKED };
   const blocked = (item.flags.policy ?? []).filter((f) => f.severity === "block");
   if (blocked.length > 0) return { ok: false, error: `ยังผิดกฎโฆษณาของ Facebook: ${blocked[0].message} — แก้ก่อนแล้วค่อยโพสต์` };
   if (item.flags.numbers.length > 0 && !input.confirmNumbers) {

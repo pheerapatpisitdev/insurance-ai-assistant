@@ -12,6 +12,7 @@ import type { PiecePerson } from "@/lib/content/people";
 import type { PersonOption } from "./PersonPicker";
 import { PosterPanel } from "./PosterPanel";
 import { PublishPanel } from "./PublishPanel";
+import { ClaimPaperCheck } from "./claim/ClaimPaperCheck";
 import { ask } from "./ask";
 import { AlertIcon, BackIcon, CheckIcon, LockIcon } from "./ui/editor-icons";
 import { AutoTextarea, errorNote, Note, okNote, type NoteState } from "./ui/editor-fields";
@@ -115,6 +116,12 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
   useEffect(() => {
     if (landed && !plain) setDraft((d) => (d.poster.background === landed ? d : { ...d, poster: { ...d.poster, background: landed } }));
   }, [landed, plain]);
+
+  // a รีวิวเคลม paper replaced by the owner's check joins the draft the same way
+  const paper = item.output.poster?.document;
+  useEffect(() => {
+    if (paper) setDraft((d) => (d.poster.document?.path === paper.path ? d : { ...d, poster: { ...d.poster, document: paper } }));
+  }, [paper]);
 
   // the proofreader runs on first opening and is kept: one small call per piece, ever — and
   // none for a piece already on the Page, whose words can no longer change here
@@ -298,6 +305,10 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
           <LockIcon className="mt-0.5 size-4" />
           <span>{ON_PAGE_NOTE}</span>
         </p>
+      )}
+
+      {item.output.poster?.document && item.output.paperChecked === false && !locked && (
+        <ClaimPaperCheck item={item} onChecked={onSaved} />
       )}
 
       {item.format !== "script" && <div className="mt-4">

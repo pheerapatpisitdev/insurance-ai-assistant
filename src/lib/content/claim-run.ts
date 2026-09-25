@@ -12,8 +12,8 @@ import { checkPolicy } from "./policy";
 import { posterText } from "./poster";
 import { LENGTHS, MAX_READER, type Format, type Length } from "./prompt";
 import {
-  contentCap, contentSpentThisMonth, holdContentBudget, listWords, releaseContentBudget, removeBackground, saveBackground,
-  saveContent, saveOutputIf, type ContentItem,
+  backgroundDataUri, contentCap, contentSpentThisMonth, getContent, holdContentBudget, listWords, releaseContentBudget,
+  removeBackground, saveBackground, saveContent, saveOutputIf, type ContentItem,
 } from "./store";
 import { fallbackWriters, UnreadableReply } from "./write";
 
@@ -86,14 +86,14 @@ function checkedText(o: ContentOutput): string {
   return [...o.hooks, o.body, o.closing, o.hashtags.join(" "), posterText(o.poster)].join("\n");
 }
 
-/** Facts the owner left with nothing to tell: no illness and no amount is no story. */
+/** Facts with nothing to tell: no illness, no amount and nothing from the owner is no story. */
 export function tooThin(f: ClaimFacts): boolean {
-  return !f.illness && !f.paid && !f.billTotal;
+  return !f.illness && !f.paid && !f.billTotal && !f.note;
 }
 
 export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult> {
   const facts = cleanFacts(input.facts);
-  if (tooThin(facts)) return { ok: false, error: "ใส่อย่างน้อยโรค/อาการ หรือยอดเงินก่อนนะครับ" };
+  if (tooThin(facts)) return { ok: false, error: "AI อ่านโรคหรือยอดเงินจากเอกสารไม่ได้ — ลองรูปที่ชัดขึ้น หรือเล่าในช่อง “เล่าเพิ่ม” นะครับ" };
   const count = Math.min(MAX_CLAIM_PIECES, Math.max(1, Math.round(Number(input.count) || 1)));
   const format: Format = input.format === "script" || input.format === "ad" ? input.format : "post";
   const length: Length | null = format === "script" ? (LENGTHS.find((l) => l.id === input.length)?.id ?? "60") : null;
@@ -176,7 +176,8 @@ async function withPaper(item: ContentItem, paper: NonNullable<ClaimWriteInput["
     path = await saveBackground(item.id, paper.bytes, paper.mimeType);
     const poster = item.output.poster;
     if (!poster) return item;
-    const saved = await saveOutputIf(item.id, { ...item.output, poster: { ...poster, document: { path, ratio: paper.ratio } } }, undefined, item.output.rev ?? null);
+    // the stickers are the AI's until the owner ticks them in the editor
+    const saved = await saveOutputIf(item.id, { ...item.output, poster: { ...poster, document: { path, ratio: paper.ratio } }, paperChecked: false }, undefined, item.output.rev ?? null);
     if (saved) return saved;
     await removeBackground(item.id, path);
     return item;
@@ -186,3 +187,45 @@ async function withPaper(item: ContentItem, paper: NonNullable<ClaimWriteInput["
     return item;
   }
 }
+
+/** A claim piece's paper, for the editor to show and add stickers to; null when it has none. */
+export async function claimPaper(id: string): Promise<{ bytes: Buffer; mimeType: string } | null> {
+  const item = await getContent(id);
+  const path = item?.planHref === CLAIM_HREF ? item.output.poster?.document?.path : null;
+  if (!path) return null;
+  const uri = await backgroundDataUri(path);
+  const m = uri && /^data:([^;]+);base64,(.*)$/.exec(uri);
+  return m ? { mimeType: m[1], bytes: Buffer.from(m[2], "base64") } : null;
+}
+
+export type CheckResult = { ok: true; item: ContentItem } | { ok: false; error: string };
+
+/**
+ * ตรวจแล้ว on a claim paper: the owner looked, and perhaps laid more stickers — then `paper`
+ * is the new picture, stickers burnt in, and it replaces the old one. Either way the piece may
+ * now go to a Page. Stickers can be added this way, never lifted: the picture on file is
+ * already covered, and nothing uncovered is kept to lift them from.
+ */
+export async function checkPaper(id: string, paper: NonNullable<ClaimWriteInput["paper"]> | null): Promise<CheckResult> {
+  let added: string | null = null;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const item = await getContent(id);
+      const doc = item?.output.poster?.document;
+      if (!item || item.planHref !== CLAIM_HREF || !doc || !item.output.poster) return { ok: false, error: "ไม่พบรูปเอกสารของชิ้นนี้" };
+      if (paper && !added) added = await saveBackground(item.id, paper.bytes, paper.mimeType);
+      const document = added ? { path: added, ratio: paper!.ratio } : doc;
+      const saved = await saveOutputIf(item.id, { ...item.output, poster: { ...item.output.poster, document }, paperChecked: true }, undefined, item.output.rev ?? null);
+      if (!saved) continue;
+      if (added) await removeBackground(item.id, doc.path);
+      return { ok: true, item: saved };
+    }
+    if (added) await removeBackground(id, added);
+    return { ok: false, error: "ชิ้นนี้ถูกแก้ระหว่างบันทึก ลองกดอีกครั้งนะครับ" };
+  } catch (e) {
+    console.error("claim paper check failed:", e);
+    if (added) await removeBackground(id, added);
+    return { ok: false, error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
+  }
+}
+

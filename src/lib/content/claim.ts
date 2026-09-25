@@ -64,10 +64,6 @@ export interface ClaimFacts {
   note: string;
 }
 
-export const EMPTY_FACTS: ClaimFacts = {
-  kind: "ipd", illness: "", nights: "", billTotal: "", paid: "", selfPaid: "", daysToApprove: "", who: "", note: "",
-};
-
 export const FACT_LIMIT: Record<Exclude<keyof ClaimFacts, "kind">, number> = {
   illness: 60, nights: 6, billTotal: 16, paid: 16, selfPaid: 16, daysToApprove: 6, who: 40, note: 200,
 };
@@ -207,17 +203,6 @@ export function parseRead(reply: string, count: number): ClaimRead | null {
       return { kind: DOC_KINDS.some((k) => k.id === d.kind) ? (d.kind as DocKind) : "other", boxes };
     }),
   };
-}
-
-/** Boxes from the page, kept only when they are boxes on the photograph. */
-export function cleanBoxes(input: unknown): Box[] {
-  return (Array.isArray(input) ? input : []).flatMap((b) => {
-    if (!b || typeof b !== "object") return [];
-    const { x, y, w, h } = b as Record<string, unknown>;
-    if (![x, y, w, h].every((n) => typeof n === "number" && Number.isFinite(n))) return [];
-    const box = { x: unit(x as number), y: unit(y as number), w: unit(w as number), h: unit(h as number) };
-    return box.w > 0 && box.h > 0 ? [box] : [];
-  }).slice(0, 80);
 }
 
 /* -------------------------------- writing -------------------------------- */

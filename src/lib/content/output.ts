@@ -61,6 +61,12 @@ export interface ContentOutput {
    */
   figures?: string;
   /**
+   * รีวิวเคลม: false while the claim paper on the poster carries only the AI's stickers. The
+   * owner looks at it in the editor, adds any the AI missed, and ticks it; until then the
+   * piece may not go to a Page (publish-flow's clear()). Absent on every other piece.
+   */
+  paperChecked?: boolean;
+  /**
    * Which of `hooks` went to the Page, for older pieces that carry three; absent is the
    * first. A held post taken back and sent again (a move, an edit) goes with the same one.
    */

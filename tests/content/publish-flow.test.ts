@@ -21,7 +21,7 @@ vi.mock("@/lib/facebook/publish", async (orig) => ({ ...(await orig<typeof impor
 vi.mock("@/lib/content/poster-draw", () => ({ drawPoster: vi.fn(async () => Buffer.from("png")) }));
 vi.mock("@/app/content/actions", () => ({ setContentStatus: vi.fn(async () => ({ ok: true })) }));
 
-const { CONCURRENT, MISSED, MOVE_LOST, POSSIBLY_POSTED, forgetChecks, move, publish, verifyDue, withdraw, VERIFY_MAX } =
+const { CONCURRENT, MISSED, MOVE_LOST, PAPER_UNCHECKED, POSSIBLY_POSTED, forgetChecks, move, publish, verifyDue, withdraw, VERIFY_MAX } =
   await import("@/lib/content/publish-flow");
 const { publishView, STUCK_MESSAGE, POSTING_STALE_MS } = await import("@/lib/content/publish-label");
 const { PublishError } = await import("@/lib/facebook/publish");
@@ -67,6 +67,26 @@ beforeEach(() => {
   let n = 100;
   fb.postPhoto.mockImplementation(async () => ({ id: String(n++) }));
   fb.deletePost.mockResolvedValue(undefined);
+});
+
+describe("a รีวิวเคลม paper the owner has not looked at", () => {
+  const PAPER = { path: "0b7d3f4e-1c2a-4b5d-8e9f-0a1b2c3d4e5f/9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d.jpg", ratio: 0.75 };
+  const withPaper = (paperChecked: boolean): ContentOutput => ({
+    ...output, paperChecked, poster: { layout: "top", theme: "navy", blocks: [{ kind: "headline", text: "x" }], document: PAPER },
+  });
+
+  it("keeps the piece off the Page, now or later, until it is ticked", async () => {
+    row = { ...piece(null, withPaper(false)), planHref: "claim-review" };
+    expect(await publish({ id: "p1", pageId: PAGE, at: null })).toEqual({ ok: false, error: PAPER_UNCHECKED });
+    expect(await publish({ id: "p1", pageId: PAGE, at: hoursAhead(2).toISOString() })).toEqual({ ok: false, error: PAPER_UNCHECKED });
+    expect(fb.postPhoto).not.toHaveBeenCalled();
+  });
+
+  it("goes up once it is ticked", async () => {
+    row = { ...piece(null, withPaper(true)), planHref: "claim-review" };
+    expect((await publish({ id: "p1", pageId: PAGE, at: null })).ok).toBe(true);
+    expect(fb.postPhoto).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("a send that died half way (posting)", () => {
