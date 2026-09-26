@@ -5,7 +5,7 @@ const PIXEL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcS
 const stored = vi.fn(async (_path: string): Promise<string | null> => PIXEL);
 vi.mock("@/lib/content/store", () => ({ backgroundDataUri: (p: string) => stored(p) }));
 
-const { drawPoster } = await import("@/lib/content/poster-draw");
+const { drawPoster, paperGrid } = await import("@/lib/content/poster-draw");
 const { claimPoster, cleanFacts } = await import("@/lib/content/claim");
 
 const PATH = "0b7d3f4e-1c2a-4b5d-8e9f-0a1b2c3d4e5f/9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d.jpg";
@@ -35,4 +35,37 @@ describe("a รีวิวเคลม poster, drawn for real", () => {
     const png = await drawPoster(spec, "square");
     expect(size(png)).toEqual({ width: 1080, height: 1080 });
   }, 30_000);
+});
+
+describe("the papers on a claim poster (owner, 2026-09-26: too small, one over another)", () => {
+  const overlap = (a: { left: number; top: number; w: number; h: number }, b: typeof a, frame: number) =>
+    a.left < b.left + b.w + 2 * frame && b.left < a.left + a.w + 2 * frame && a.top < b.top + b.h + 2 * frame && b.top < a.top + a.h + 2 * frame;
+
+  it("never lays one paper over another, and keeps every card inside the area", () => {
+    for (const ratios of [[1.45, 1.45], [0.72, 0.7, 0.8], [4.5, 3, 2], [0.72, 4.5], [1]]) {
+      for (const [w, h] of [[936, 420], [936, 640], [936, 1100]]) {
+        const boxes = paperGrid(ratios, w, h, 24, 14);
+        expect(boxes).toHaveLength(ratios.length);
+        boxes.forEach((a, i) => {
+          expect(a.left).toBeGreaterThanOrEqual(0);
+          expect(a.top).toBeGreaterThanOrEqual(0);
+          expect(a.left + a.w + 28).toBeLessThanOrEqual(w + 1);
+          expect(a.top + a.h + 28).toBeLessThanOrEqual(h + 1);
+          boxes.slice(i + 1).forEach((b) => expect(overlap(a, b, 14)).toBe(false));
+        });
+      }
+    }
+  });
+
+  it("puts two landscape papers side by side on a square, each wider than the old pile's", () => {
+    const [a, b] = paperGrid([1.45, 1.45], 936, 420, 24, 14);
+    expect(a.top).toBe(b.top);
+    expect(a.w).toBeGreaterThan(380);
+  });
+
+  it("stacks long claims-table screenshots one above the next", () => {
+    const [a, b] = paperGrid([4.5, 4.5], 936, 640, 24, 14);
+    expect(a.left).toBe(b.left);
+    expect(b.top).toBeGreaterThan(a.top + a.h);
+  });
 });

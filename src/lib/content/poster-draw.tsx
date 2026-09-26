@@ -114,17 +114,46 @@ function Poster({ spec, canvas, photo }: { spec: PosterSpec; canvas: Canvas; pho
 /** the words' share of a claim poster's height; the papers take the rest */
 const WORDS_SHARE = 0.44;
 
+/** Where a paper's card sits in the papers' area: its top-left corner and the paper's own size. */
+export interface PaperBox { left: number; top: number; w: number; h: number }
+
 /**
- * Where each paper of a pile sits, as fractions of the pile's area: its box (fx × fy) and its
- * centre's offset, and a tilt. Portrait papers fan out side by side, landscape ones (a
- * screenshot of a claims table is five times wider than tall) one above another. Every card
- * stays inside the area: an offset is never more than half of what its box leaves free.
+ * The papers laid out on a grid with a gap between them, never over one another (owner,
+ * 2026-09-26: a fanned pile hid half of each paper and drew them small). Every grid from one
+ * row to one column is tried, and the one whose smallest paper is largest wins — two
+ * landscape papers on a square go side by side, a long claims-table screenshot goes above
+ * the next. `frame` is the white border each card adds around its paper.
  */
-const FAN: Record<number, { f: number; at: number[]; tilt: number[] }> = {
-  1: { f: 1, at: [0], tilt: [-2.5] },
-  2: { f: 0.64, at: [-0.17, 0.17], tilt: [-4, 3] },
-  3: { f: 0.5, at: [-0.24, 0, 0.24], tilt: [-5, 1.5, 5] },
-};
+export function paperGrid(ratios: number[], areaW: number, areaH: number, gap: number, frame: number): PaperBox[] {
+  const n = ratios.length;
+  let best: { boxes: PaperBox[]; least: number; total: number } | null = null;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols);
+    const cellW = (areaW - (cols - 1) * gap) / cols;
+    const cellH = (areaH - (rows - 1) * gap) / rows;
+    const sized = ratios.map((r) => {
+      const w = Math.max(1, Math.round(Math.min(cellW - 2 * frame, (cellH - 2 * frame) * r)));
+      return { w, h: Math.max(1, Math.round(w / r)) };
+    });
+    const boxes = sized.map(({ w, h }, i) => {
+      const row = Math.floor(i / cols);
+      const inRow = Math.min(cols, n - row * cols);
+      // a short last row is centred under the full ones
+      const rowLeft = (areaW - (inRow * cellW + (inRow - 1) * gap)) / 2;
+      const cx = rowLeft + (i % cols) * (cellW + gap) + cellW / 2;
+      const cy = row * (cellH + gap) + cellH / 2;
+      return { left: Math.round(cx - w / 2 - frame), top: Math.round(cy - h / 2 - frame), w, h };
+    });
+    const areas = sized.map(({ w, h }) => w * h);
+    const least = Math.min(...areas);
+    const total = areas.reduce((a, b) => a + b, 0);
+    if (!best || least > best.least || (least === best.least && total > best.total)) best = { boxes, least, total };
+  }
+  return best?.boxes ?? [];
+}
+
+/** a slight lean, alternating, so the cards read as paper; small enough not to touch a neighbour */
+const TILT = [-1.5, 1.5, -1];
 
 /**
  * รีวิวเคลม: the words at the top, the owner's stickered papers below them as a pile of white
@@ -143,8 +172,8 @@ function DocumentPoster({ spec, canvas, papers, photo }: {
   const frame = Math.round(14 * m.k);
   const areaW = m.usableWidth;
   const areaH = room - wordsH - m.gap;
-  const fan = FAN[Math.min(3, papers.length)];
-  const wide = papers.reduce((sum, p) => sum + p.doc.ratio, 0) / papers.length >= 1.3;
+  const shown = papers.slice(0, 3);
+  const boxes = paperGrid(shown.map((p) => p.doc.ratio), areaW, areaH, Math.round(24 * m.k), frame);
   const cover = Math.max(canvas.width, canvas.height);
 
   return (
@@ -168,27 +197,21 @@ function DocumentPoster({ spec, canvas, papers, photo }: {
         {lines(spec, m, scale, true)}
       </div>
       <div style={{ display: "flex", position: "relative", width: areaW, height: areaH, marginTop: m.gap }}>
-        {papers.slice(0, 3).map((p, i) => {
-          // the box this card may fill, less its white frame, then the paper fitted inside it
-          const boxW = areaW * (wide ? 0.94 : fan.f) - 2 * frame;
-          const boxH = areaH * (wide ? fan.f : 0.94) - 2 * frame;
-          const w = Math.max(1, Math.round(Math.min(boxW, boxH * p.doc.ratio)));
-          const h = Math.max(1, Math.round(w / p.doc.ratio));
-          const cx = areaW / 2 + (wide ? 0 : fan.at[i] * areaW);
-          const cy = areaH / 2 + (wide ? fan.at[i] * areaH : 0);
+        {shown.map((p, i) => {
+          const { left, top, w, h } = boxes[i];
           return (
             <div
               key={i}
               style={{
                 position: "absolute",
-                left: Math.round(cx - w / 2 - frame),
-                top: Math.round(cy - h / 2 - frame),
+                left,
+                top,
                 display: "flex",
                 padding: frame,
                 backgroundColor: CARD_PALETTE.ground,
                 borderRadius: Math.round(10 * m.k),
                 boxShadow: "0 18px 40px rgba(0, 0, 0, 0.35)",
-                transform: `rotate(${fan.tilt[i]}deg)`,
+                transform: `rotate(${TILT[i]}deg)`,
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- drawn by satori, not a page */}
