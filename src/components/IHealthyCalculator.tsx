@@ -278,6 +278,20 @@ export function IHealthyCalculator(
   // step with the choice the agent can already see.
   const dciRider = (answered?.riders ?? picked ?? []).find((r) => r.code === "DCI");
   const hasDci = Boolean(dciRider);
+  /** The DCI illnesses, on the card on screen and under the benefit table on paper. */
+  const dciList = (
+    <section className="mt-4 border-t border-[var(--lg-panel-line)] pt-4">
+      <h3 className="font-medium text-[var(--lg-white)]">
+        {w.dciTitle(dciRider?.sumAssured?.toLocaleString("en-US") ?? "")}
+      </h3>
+      <p className="mt-1 text-xs leading-relaxed">
+        {w.dciNote}
+      </p>
+      <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-relaxed">
+        {dciDiseases.map((disease) => <li key={disease}>{disease}</li>)}
+      </ol>
+    </section>
+  );
 
   const label = "block text-sm text-[var(--lg-mute)]";
   const field =
@@ -293,14 +307,21 @@ export function IHealthyCalculator(
   return (
     <div className="space-y-6">
       {/* On paper the form is gone, so what it held has to be said in words: a premium and
-          a benefit table with nothing naming who they are for is not a quote. */}
+          a benefit table with nothing naming who they are for is not a quote.
+
+          And on paper it is a proposal for all six plans, not for the one on the card: the
+          owner hands the sheet over so the customer can choose, and the table's premium rows
+          already price every plan in every instalment. So the heading names no plan and no
+          instalment, and the card stays on screen. What the card carries that the table does
+          not — the DCI illnesses — prints under the table, after the health plan it rides
+          on. */}
       <div className="ihu-print-head hidden print:block">
         <h2 className="text-lg font-medium">
-          iHealthy Ultra {plan ? planLabel(plan.code) : "—"} · {territory ? territoryName(territory) : "—"}
+          {w.tableCaption(data.plans.length)} · {territory ? territoryName(territory) : "—"}
           {coverage && coverage !== "Full Coverage" ? ` · ${w.coverage[coverage]}` : ""}
         </h2>
         <p className="mt-1 text-sm">
-          {w.sex[sex]} {w.years(age)} · {w.baseWithSum(bases(base).label, sumAssured)} {w.baht} · {w.mode[mode]}
+          {w.sex[sex]} {w.years(age)} · {w.baseWithSum(bases(base).label, sumAssured)} {w.baht}
         </p>
       </div>
 
@@ -421,7 +442,7 @@ export function IHealthyCalculator(
         </div>
       </div>
 
-      <div className="ihu-quote space-y-4 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5">
+      <div className="space-y-4 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5 print:hidden">
         {plan === undefined || priced === undefined ? (
           // Nothing the pickers can reach lands here; a rate revision that took a rate away
           // from either half would, and the half it came from is not worth guessing at — so
@@ -519,19 +540,7 @@ export function IHealthyCalculator(
               {shown && (
                 <p className="mt-1 opacity-80">{w.firstYearOnly}</p>
               )}
-              {hasDci && (
-                <section className="mt-4 border-t border-[var(--lg-panel-line)] pt-4">
-                  <h3 className="font-medium text-[var(--lg-white)]">
-                    {w.dciTitle(dciRider?.sumAssured?.toLocaleString("en-US") ?? "")}
-                  </h3>
-                  <p className="mt-1 text-xs leading-relaxed">
-                    {w.dciNote}
-                  </p>
-                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-relaxed">
-                    {dciDiseases.map((disease) => <li key={disease}>{disease}</li>)}
-                  </ol>
-                </section>
-              )}
+              {hasDci && dciList}
             </div>
           </>
         )}
@@ -578,6 +587,8 @@ export function IHealthyCalculator(
           }
         />
       </div>
+
+      {hasDci && <div className="ihu-print-dci hidden print:block">{dciList}</div>}
 
       {/* The way out of the page, and last of the three things on it: a health rider is
           bought on the twenty-eight rows above, so the buttons sit where a reader arrives

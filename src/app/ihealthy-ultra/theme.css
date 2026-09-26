@@ -215,37 +215,19 @@
   /* the three figures say again what the sentence above them has just said */
   .ihu-highlights { display: none; }
 
-  /* Who the quote is for, and the quote itself, side by side in one band: the card is a
-     phone's column of lines, and down the full width of a sheet it was a third of a page
-     of mostly white. */
+  /* Who the proposal is for, under the title. No card: on paper this is all six plans,
+     and the table's premium rows are the price. */
   .ihealthy-scope #calc > div > * { margin-block: 0; }
   .ihealthy-scope #calc > div > * + * { margin-top: 6px; }
   .ihu-print-head { border-top: 1px solid var(--lg-hair); padding-top: 6px; }
   .ihu-print-head h2 { font-size: 13px; }
-  .ihu-print-head p { margin-top: 0; font-size: 10px; }
-  .ihu-quote {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 20px;
-    padding: 8px 12px;
-    font-size: 9.5px;
-    break-inside: avoid;
-  }
-  .ihu-quote > * { margin: 0 !important; }
-  .ihu-quote :is(p, li, dt, dd, div) { font-size: 9.5px; line-height: 1.55; }
-  .ihu-quote :is(ul, dl) > * { margin-block: 0; }
-  .ihu-quote .border-t { padding-top: 4px; }
-  .ihu-quote > ul + div { border-top: 0; padding-top: 0; }
-  .ihu-quote .lg-figure.mt-1 { font-size: 22px; margin-top: 0; }
-  /* a price beside its instalment, not across half a sheet from it */
-  .ihu-quote dl { margin-top: 2px; max-width: 220px; }
-  /* the ceiling and the first-year line run under both halves */
-  .ihu-quote > :last-child { grid-column: 1 / -1; margin-top: 4px !important; }
+  .ihu-print-head > p { margin-top: 0; font-size: 10px; }
   /* the thirty-one DCI illnesses, three to a row rather than a page-long column */
-  .ihu-quote section { margin-top: 6px; padding-top: 4px; }
-  .ihu-quote section :is(p, li) { font-size: 8.5px; line-height: 1.45; }
-  .ihu-quote section ol { margin-top: 2px; columns: 3; column-gap: 16px; }
-  .ihu-quote section ol > li { margin-top: 0; break-inside: avoid; }
+  .ihu-print-dci section { margin-top: 6px; padding-top: 4px; break-inside: avoid; }
+  .ihu-print-dci h3 { font-size: 10px; }
+  .ihu-print-dci :is(p, li) { margin-top: 0; font-size: 8.5px; line-height: 1.45; }
+  .ihu-print-dci ol { margin-top: 2px; columns: 3; column-gap: 16px; }
+  .ihu-print-dci ol > li { margin-block: 0; break-inside: avoid; }
 
   /* The table: the row titles get a third of the sheet and wrap as prose, instead of
      keeping the screen's hand-set line breaks in a quarter of it. */
@@ -271,6 +253,9 @@
   .ihealthy-scope .ihu-benefit-table td > span { font-size: inherit; }
   .ihealthy-scope .ihu-benefit-table th[scope="colgroup"] { padding-top: 2.5px; padding-bottom: 2.5px; }
   .ihealthy-scope .ihu-benefit-table th[scope="colgroup"] > span { width: auto; padding-left: 0; }
+  /* no column is the chosen one on a sheet that proposes all six */
+  .ihealthy-scope .ihu-benefit-table [data-picked] { font-weight: inherit; }
+  .ihealthy-scope .ihu-benefit-table thead th[data-plan][data-picked] { box-shadow: none; }
   /* a section band goes with the first row under it, never alone at the foot of a sheet */
   .ihealthy-scope .ihu-benefit-table tr:has(> th[scope="colgroup"]) { break-after: avoid; }
   .ihu-bleed > div > p { padding-top: 3px; padding-bottom: 0; font-size: 8px; line-height: 1.5; }
