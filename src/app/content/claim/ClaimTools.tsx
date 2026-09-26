@@ -3,11 +3,13 @@ import { useId, useState } from "react";
 import {
   CLAIM_ANGLES, FACT_LIMIT, MAX_CLAIM_CUSTOM, MAX_CLAIM_PIECES, MAX_DOCS, claimAngleLines, type ClaimFacts, type DocRead,
 } from "@/lib/content/claim";
-import { AUTO, AUTO_FLOOR_THB, OVERHEAD_THB, PAINTERS, WRITERS, painterOf, writerOf } from "@/lib/content/models";
+import { AUTO, AUTO_FLOOR_THB, OVERHEAD_THB, PAINTERS, WRITERS, painterFor, writerOf } from "@/lib/content/models";
+import type { PiecePerson } from "@/lib/content/people";
 import { MAX_PAPERS } from "@/lib/content/poster";
 import { FORMAT_LABEL, LENGTHS, MAX_READER, NICHES, type Format, type Length } from "@/lib/content/prompt";
 import type { GenerateResult } from "../actions";
 import { PhotoDrop } from "../people/PhotoDrop";
+import { PersonPicker, type PersonOption } from "../PersonPicker";
 import { burn, shrink } from "./redact";
 
 /**
@@ -30,12 +32,16 @@ const chip = (on: boolean) =>
 const field = "min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
 const solid = "min-h-11 w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50";
 
-export function ClaimTools({ writer, onWriter, painter, onPainter, reader, onReader, left, pending, making, run }: {
+export function ClaimTools({ writer, onWriter, painter, onPainter, people, person, onPerson, reader, onReader, left, pending, making, run }: {
   writer: string;
   onWriter: (id: string) => void;
   /** the picture behind the poster, as on the plan form; shared with it and remembered */
   painter: string;
   onPainter: (id: string) => void;
+  /** a person from the library in the photograph, as on the plan form; shared with it and remembered */
+  people: PersonOption[];
+  person: PiecePerson | null;
+  onPerson: (p: PiecePerson | null) => void;
   /** who the posts talk to — the plan form's, remembered on this device for both */
   reader: string;
   onReader: (r: string) => void;
@@ -43,8 +49,8 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, reader, onRea
   left: number;
   pending: boolean;
   making: number;
-  /** `paintWith` is the painter settled at the press; the page draws each new poster's picture with it */
-  run: (asked: number, format: Format, send: () => Promise<GenerateResult>, paintWith: string) => Promise<void>;
+  /** `paintWith` and `who` are the painter and person at the press; the page draws each new poster's picture with them */
+  run: (asked: number, format: Format, send: () => Promise<GenerateResult>, paintWith: string, who: PiecePerson | null) => Promise<void>;
 }) {
   const id = useId();
   const [files, setFiles] = useState<File[]>([]);
@@ -62,7 +68,8 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, reader, onRea
       : angle === "custom" && !custom.trim() ? "พิมพ์มุมที่อยากเล่า หรือเลือก “ให้ AI เลือก”" : null;
 
   const pick = writerOf(writer, left);
-  const paints = painterOf(painter, left);
+  // a person in the picture is drawn by Gemini whatever was picked, at Gemini's price
+  const paints = painterFor(painter, left, Boolean(person));
   const drawn = format === "script" ? 0 : paints.thb * count;
   const estimate = (READ_THB + count * (pick.thb + OVERHEAD_THB) + drawn).toFixed(2);
   const unit = format === "ad" ? "แบบ" : "ชิ้น";
@@ -73,7 +80,8 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, reader, onRea
     const papers = files;
     const round = { format, length, angle, custom: custom.trim(), reader: reader.trim(), note: note.trim(), count, writer };
     // อัตโนมัติ settled at the press, on the money left then, as the plan form does
-    const paintWith = round.format === "script" ? "none" : painterOf(painter, left).id;
+    const paintWith = round.format === "script" ? "none" : painterFor(painter, left, Boolean(person)).id;
+    const who = person;
     await run(count, round.format, async (): Promise<GenerateResult> => {
       const shrunk = await Promise.all(papers.map((f) => shrink(f)));
       const readForm = new FormData();
@@ -103,7 +111,7 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, reader, onRea
         }
       }
       return await (await fetch("/api/content-claim", { method: "PUT", body: form })).json() as GenerateResult;
-    }, paintWith);
+    }, paintWith, who);
   }
 
   return (
@@ -204,6 +212,14 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, reader, onRea
                 : painter === "none" ? "ใช้พื้นสีตามโทน วาดทีหลังได้ในหน้าแก้ไข" : `${paints.short} · AI วาดภาพพื้นหลังหลังรูปเอกสาร ให้ทุกชิ้นหลังเขียนเสร็จ`}
             </span>
           </label>
+        )}
+
+        {format !== "script" && painter !== "none" && (
+          <div>
+            <span className="mb-1.5 block text-sm font-medium">ใส่บุคคลในภาพ <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+            <PersonPicker people={people} value={person} onChange={onPerson} />
+            {person && <span className="mt-1 block text-xs text-[var(--ct-mute)]">วาดด้วย Gemini Image ราวภาพละ ฿2.4 · บุคคลยืนด้านขวา เอกสารเลื่อนไปทางซ้ายให้</span>}
+          </div>
         )}
 
         <label className="block">

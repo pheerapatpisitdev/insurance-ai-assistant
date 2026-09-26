@@ -71,12 +71,15 @@ const PERSON_SIDE: Record<Layout, string> = {
  * The person block: the reference photos are the person, kept recognisable. No uniform of
  * any kind — an agent drawn as a doctor or a nurse would be a claim the owner did not make.
  */
-function personLines(pose: string, layout: Layout): string[] {
+/** รีวิวเคลม: the papers cover the left of the lower half, so the person stands to their right */
+const PERSON_ASIDE = "Place the person in the right third of the frame, in its lower half, turned slightly toward the left. Keep the left two-thirds of the lower half simple and uncluttered: cards will be laid over it.";
+
+function personLines(pose: string, layout: Layout, aside = false): string[] {
   return [
     "The person:",
     "- The person shown in the reference photos is the main subject. Keep them clearly recognisable: the same face, hairstyle, skin tone and build.",
     `- Pose: ${poseText(pose)}`,
-    `- ${PERSON_SIDE[layout]}`,
+    `- ${aside ? PERSON_ASIDE : PERSON_SIDE[layout]}`,
     "- Ordinary smart-casual clothes unless the owner's request says otherwise; never a doctor's, nurse's or any other uniform.",
     "- No other clearly identifiable faces; anyone else stays in soft focus or turned away.",
   ];
@@ -90,7 +93,7 @@ export function backgroundPrompt(opts: {
   /** the owner's request, already in English */
   request?: string | null;
   /** a person from the reference photos sent with the prompt, and the pose they take */
-  person?: { pose: string } | null;
+  person?: { pose: string; aside?: boolean } | null;
 }): string {
   const scene = stripThai(opts.scene) || "A believable everyday moment of a Thai family at home, warm and unposed.";
   const request = opts.request ? stripThai(opts.request) : "";
@@ -100,7 +103,7 @@ export function backgroundPrompt(opts: {
     "Scene:",
     scene,
     ...(request ? ["", "The page owner asks for this — follow it closely:", request] : []),
-    ...(opts.person ? ["", ...personLines(opts.person.pose, opts.layout)] : []),
+    ...(opts.person ? ["", ...personLines(opts.person.pose, opts.layout, opts.person.aside)] : []),
     "",
     "Absolute rules:",
     "- NO text, letters, numbers or words, and NO logos, watermarks, signatures or user-interface elements anywhere in the image.",

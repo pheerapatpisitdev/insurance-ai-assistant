@@ -43,6 +43,11 @@ describe("a person in the picture", () => {
   it("puts the person below words that sit at the top", () => {
     expect(backgroundPrompt({ ...base, layout: "top", person: { pose: "auto" } })).toMatch(/lower half/i);
   });
+  it("stands the person right of a claim poster's papers", () => {
+    const p = backgroundPrompt({ ...base, layout: "top", person: { pose: "auto", aside: true } });
+    expect(p).toMatch(/right third/i);
+    expect(p).not.toMatch(/lower half of the frame, clear/i);
+  });
   it("says nothing of a person when there is none", () => {
     const p = backgroundPrompt(base);
     expect(p).not.toContain("reference photos");

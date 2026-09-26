@@ -46,6 +46,11 @@ export interface PosterSpec {
    * under the words — one to MAX_PAPERS. Same path shape as a background; ratio is width over height.
    */
   documents?: PosterDocument[];
+  /**
+   * รีวิวเคลม with a person from the library in the photograph: they stand in its right third,
+   * so the papers keep to the left and leave them in sight.
+   */
+  personAside?: boolean;
 }
 
 /** papers on one claim poster: more and each is too small to read */
@@ -170,6 +175,7 @@ export function parsePoster(input: unknown): PosterSpec | null {
     blocks,
     ...(isBackgroundPath(raw.background) ? { background: raw.background } : {}),
     ...documentsOf(raw),
+    ...(raw.personAside === true ? { personAside: true } : {}),
   };
 }
 

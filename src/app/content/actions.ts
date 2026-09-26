@@ -566,7 +566,8 @@ export async function drawBackground(id: string, request = "", painter?: string,
     const prompt = backgroundPrompt({
       scene: item.output.imagePrompt, layout: poster.layout, theme: poster.theme,
       request: await inEnglish(request),
-      person: who ? { pose: who.pose } : null,
+      // on a claim poster the papers cover the lower half, so the person stands beside them
+      person: who ? { pose: who.pose, aside: Boolean(poster.documents?.length) } : null,
     });
     const img = await drawImage({ task: "content-image", prompt, prefer: chosen.modelId, references: found?.photos });
     // the fallback may have drawn it; name what actually did
@@ -584,7 +585,9 @@ export async function drawBackground(id: string, request = "", painter?: string,
       const previous = latest.output.poster?.background;
       const words = latest.output.poster ?? poster;
       // the person as drawn now: set when there is one, gone when the picture has none
-      const output = { ...latest.output, poster: { ...words, background }, pictureBy: by, person: who };
+      // the papers make room only while a person is in the picture (undefined is not stored)
+      const drawn = { ...words, background, personAside: who && words.documents?.length ? true : undefined };
+      const output = { ...latest.output, poster: drawn, pictureBy: by, person: who };
       if (!who) delete output.person;
       // the output alone: the words are unchanged, so the checks' flags are left as they are now
       const saved = await saveOutputIf(item.id, output, undefined, latest.output.rev ?? null);

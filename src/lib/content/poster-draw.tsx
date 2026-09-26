@@ -152,6 +152,9 @@ export function paperGrid(ratios: number[], areaW: number, areaH: number, gap: n
   return best?.boxes ?? [];
 }
 
+/** the papers' share of the width when a person stands beside them */
+const PAPERS_BESIDE_PERSON = 0.6;
+
 /** a slight lean, alternating, so the cards read as paper; small enough not to touch a neighbour */
 const TILT = [-1.5, 1.5, -1];
 
@@ -170,7 +173,8 @@ function DocumentPoster({ spec, canvas, papers, photo }: {
   // the words fitted to their share alone: a canvas whose usable height is that share
   const scale = fitScale(spec, { width: canvas.width, height: wordsH + 2 * m.padX });
   const frame = Math.round(14 * m.k);
-  const areaW = m.usableWidth;
+  // a person drawn into the photograph stands in its right third; the papers keep left of them
+  const areaW = spec.personAside ? Math.round(m.usableWidth * PAPERS_BESIDE_PERSON) : m.usableWidth;
   const areaH = room - wordsH - m.gap;
   const shown = papers.slice(0, 3);
   const boxes = paperGrid(shown.map((p) => p.doc.ratio), areaW, areaH, Math.round(24 * m.k), frame);

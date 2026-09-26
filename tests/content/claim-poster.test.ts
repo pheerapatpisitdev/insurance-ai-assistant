@@ -63,6 +63,14 @@ describe("the papers on a claim poster (owner, 2026-09-26: too small, one over a
     expect(a.w).toBeGreaterThan(380);
   });
 
+  it("keeps the person-aside mark through the URL, and nothing else", async () => {
+    const { decodePoster, encodePoster } = await import("@/lib/content/poster");
+    const base = claimPoster({ headline: "นอน 3 คืน" }, cleanFacts({ kind: "ipd", illness: "x", paid: "1,000" }), "hook");
+    expect(decodePoster(encodePoster({ ...base, personAside: true }))?.personAside).toBe(true);
+    expect(decodePoster(encodePoster(base))).not.toHaveProperty("personAside");
+    expect(decodePoster(encodePoster({ ...base, personAside: "yes" } as never))).not.toHaveProperty("personAside");
+  });
+
   it("stacks long claims-table screenshots one above the next", () => {
     const [a, b] = paperGrid([4.5, 4.5], 936, 640, 24, 14);
     expect(a.left).toBe(b.left);
