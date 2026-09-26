@@ -233,7 +233,7 @@ export function IHealthyCalculator(
         territory: territory ?? wantTerritory,
         coverage: coverage ?? wantCoverage,
         riders: answered?.riders ?? picked,
-      })
+      }, lang)
     : undefined;
 
   /**
@@ -259,8 +259,6 @@ export function IHealthyCalculator(
     minMonthly: table.minMonthly,
     shown,
   };
-  // Stays in Thai whatever the page is read in: the copied quote is the agent's.
-  const quoteText = iHealthyQuoteText(cta);
   /**
    * What the card calls the attached riders, in the reader's language. `extras.label` and the
    * table's own label are Thai because the quote text is built from them; this is the same
@@ -272,6 +270,10 @@ export function IHealthyCalculator(
       : w.riderCount(answered.codes.length)
     : standardPlan !== null ? w.dailyCash(standardPlan) : undefined;
   const bases = (b: (typeof table.bases)[number]) => baseWords(w, b.variant, b);
+  // In the language the page is read in: the text goes to the customer the page is shown to.
+  const quoteText = iHealthyQuoteText(
+    { ...cta, baseLabel: bases(base).label, standardLabel: standardLine }, w,
+  );
   const territoryName = (t: string) => w.territory[t] ?? t;
   // Show the list from the moment DCI is ticked, not only after its premium round trip has
   // returned. `answered` keeps the card's price honest; `picked` keeps this explanation in

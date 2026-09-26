@@ -1,9 +1,9 @@
 import { formatBaht } from "@/calc/money";
 import type { DeathBenefit, PayMode, Sex } from "@/calc/types";
-import { PAY_MODE_LABEL } from "@/calc/types";
 import { PER } from "@/lib/legacy-cta";
 import { deathBenefitRows } from "@/lib/death-benefit";
 import type { IHealthyShown } from "@/lib/ihealthy-quote";
+import { WORDS, type IHealthyWords } from "@/lib/ihealthy-words";
 
 const SEX_WORD: Record<Sex, string> = { M: "ชาย", F: "หญิง" };
 const INSTALMENT_ORDER: PayMode[] = ["monthly", "semi", "annual"];
@@ -64,6 +64,11 @@ export interface IHealthyCtaFacts {
    * exclude any instalment the company refuses, so nothing below has to ask that either.
    */
   shown: IHealthyShown | undefined;
+  /**
+   * What the attached riders are called, already in the reader's language. The engine names
+   * them in Thai, and `shown.standard.label` is that Thai; left out, the Thai is used.
+   */
+  standardLabel?: string;
 }
 
 /**
@@ -102,8 +107,11 @@ export function iHealthyMessage(f: IHealthyCtaFacts): string {
  *
  * Undefined when no price may be shown — `ContactButtons` then hides the copy button, and
  * there is no half-quote for an agent to send by mistake.
+ *
+ * Written in the page's language, `w`, since it goes to the customer the page is being read
+ * for. Thai unless told otherwise, which is also what the bot sends.
  */
-export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
+export function iHealthyQuoteText(f: IHealthyCtaFacts, w: IHealthyWords = WORDS.th): string | undefined {
   const shown = f.shown;
   // the two cannot in fact disagree — nothing is priced without an arrangement to price it
   // for — but the types say they might, and a summary is not worth guessing a plan name for
@@ -111,50 +119,52 @@ export function iHealthyQuoteText(f: IHealthyCtaFacts): string | undefined {
   if (!shown || a === undefined) return undefined;
   const baht = (n: number) => n.toLocaleString("en-US");
   // what the plan pays and what the customer keeps of the bill, exactly as the card pairs them
-  const ceiling = `วงเงินค่ารักษา ${baht(a.annualMax)} บาทต่อปี`
-    + (a.coverage === "Deductible" ? ` · รับผิดส่วนแรก ${baht(a.deductible)} บาทต่อปี` : "")
-    + (a.coverage === "Co-Payment" ? ` · ร่วมจ่าย ${f.copayPercent} เปอร์เซ็นต์ของค่าใช้จ่ายที่คุ้มครอง` : "");
+  const s = w.share;
+  const ceiling = s.ceiling(a.annualMax)
+    + (a.coverage === "Deductible" ? ` · ${w.deductible(a.deductible)}` : "")
+    + (a.coverage === "Co-Payment" ? ` · ${w.copay(f.copayPercent)}` : "");
   const instalments = [{ mode: f.mode, total: shown.total }, ...shown.others];
   return [
     // an emoji a heading, no more: the text is pasted into a customer's chat, where a wall
     // of them reads as a broadcast rather than as an agent answering
     `🏥 iHealthy Ultra ${a.planName}`,
-    `${ceiling} · อาณาเขต${a.territory}`,
+    `${ceiling} · ${s.territory(w.territory[a.territory] ?? a.territory)}`,
     "",
-    `${SEX_WORD[f.sex]} อายุ ${f.age} ปี`,
+    s.insured(w.sex[f.sex], f.age),
     // the total, and under it what that total buys — named, not priced. This text is pasted
     // into a customer's chat, and a split there reads as an invitation to take one half out
-    `💰 เบี้ยรวมประมาณ ${formatBaht(shown.total)} บาท${PER[f.mode]}`,
-    `- ${f.baseLabel} ทุน ${baht(f.sumAssured)} บาท`,
-    "- ค่ารักษาพยาบาล",
+    `💰 ${s.total(formatBaht(shown.total), f.mode)}`,
+    `- ${s.baseLine(f.baseLabel, f.sumAssured)}`,
+    `- ${s.treatment}`,
     // the daily cash the agency attaches as standard; above the age it is written at there
     // is no line rather than a line of nothing. Its premium is what says whether it is on the
     // arrangement at all, which is the last thing a premium is read for here.
-    ...(shown.standard && shown.standard.total > 0 ? [`- ${shown.standard.label}`] : []),
+    ...(shown.standard && shown.standard.total > 0 ? [`- ${f.standardLabel ?? shown.standard.label}`] : []),
     "",
     // one instalment a line, smallest first, whichever the card is showing
     ...INSTALMENT_ORDER.flatMap((mode) => {
       const m = instalments.find((x) => x.mode === mode);
       if (!m) return [];
-      const line = `${PAY_MODE_LABEL[mode]} ${formatBaht(m.total)} บาท`;
+      const line = s.instalment(w.mode[mode], formatBaht(m.total));
       // The flag belongs to the instalment the card is showing. Any other instalment the
       // company refuses never reaches `others` at all — `shownAt` drops it, the way every
       // sibling calculator does — and is named instead by the line below this list.
       return [mode === f.mode && shown.belowMinimum
-        ? `${line} (ต่ำกว่าขั้นต่ำ ${baht(f.minMonthly)} บาท บริษัทไม่รับชำระรายเดือน)`
+        ? `${line} ${s.monthlyRefused(f.minMonthly)}`
         : line];
     }),
     "",
-    "👪 ครอบครัวได้รับเมื่อเสียชีวิต",
-    ...deathBenefitRows(f.death).map((r) => `- ${r.label} ${baht(r.amount)} บาท`),
+    `👪 ${s.family}`,
+    ...deathBenefitRows(f.death, w.death).map((r) => `- ${r.label} ${baht(r.amount)} ${w.baht}`),
     "",
     // The instalments that are missing from the list above, and why. A reader who counted
     // three ways to pay on the page and two here is owed the reason.
     ...(shown.refused.length > 0
-      ? [`${shown.refused.map((m) => PAY_MODE_LABEL[m]).join(" และ ")} ต่ำกว่าขั้นต่ำ ${baht(f.minMonthly)} บาท บริษัทไม่รับชำระ`]
+      ? [w.refused(shown.refused.map((m) => w.mode[m]), f.minMonthly)]
       : []),
-    "📌 เบี้ยปีแรก เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
-    "เบี้ยของอาชีพชั้น 1 · ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกัน"
-      + "และที่ระบุในกรมธรรม์",
+    `📌 ${s.firstYear}`,
+    s.fineprint,
+    // a translation says which version binds, here as on the page: the text outlives the page
+    ...(w.translationNote ? [w.translationNote] : []),
   ].join("\n");
 }

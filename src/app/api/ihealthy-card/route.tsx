@@ -1,9 +1,10 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { iHealthyCard, type IHealthyCard } from "@/lib/ihealthy-card";
+import { WORDS } from "@/lib/ihealthy-words";
 import {
   band, CARD_HEADERS, GOLD, GOLD_LIT, GROUND, GROUND_DEEP, H, Line, loadFonts, MUTE, PAD, PlanTable, RULE,
-  spacer, WHITE, widthOf,
+  geometryOf, scriptFonts, spacer, WHITE, widthOf,
 } from "./draw";
 
 export const runtime = "nodejs";
@@ -42,7 +43,19 @@ function heightOf(card: IHealthyCard): number {
  * is a rendering of the engine's answer, not of whatever the link happened to say.
  */
 export async function GET(req: NextRequest) {
-  const card = iHealthyCard(req.nextUrl.searchParams);
+  let card = iHealthyCard(req.nextUrl.searchParams);
+  // Chinese, Russian and Burmese need letters the Thai face does not have. Where they cannot
+  // be had the card is drawn in Thai: a picture in the page's own language is a quote, and
+  // one in empty boxes is not.
+  let extra = await scriptFonts(card.lang, JSON.stringify(card));
+  if (extra === undefined) {
+    const thai = new URLSearchParams(req.nextUrl.searchParams);
+    thai.delete("l");
+    card = iHealthyCard(thai);
+    extra = [];
+  }
+  const w = WORDS[card.lang];
+  const geo = geometryOf(card.lang);
   const selected = card.columns.findIndex((c) => c.selected);
 
 
@@ -87,12 +100,12 @@ export async function GET(req: NextRequest) {
               {card.premium.amount}
             </div>
             <div style={{ display: "flex", fontSize: 29, color: MUTE, marginLeft: 16 }}>
-              บาท {card.premium.per}
+              {w.baht} {card.premium.per}
             </div>
           </div>
         ) : (
           <div style={{ ...band(H.noPrice), fontSize: 32, color: GOLD, alignItems: "center" }}>
-            ขอราคาปัจจุบันได้ทางแชท
+            {w.share.askPrice}
           </div>
         )}
         {card.lines.map((l) => <Line key={l.label} label={l.label} />)}
@@ -107,7 +120,7 @@ export async function GET(req: NextRequest) {
             style={{ ...band(H.death), fontSize: 23, color: GOLD, alignItems: "center", justifyContent: "space-between" }}
           >
             <div style={{ display: "flex" }}>{row.label}</div>
-            <div style={{ display: "flex" }}>{row.amount.toLocaleString("en-US")} บาท</div>
+            <div style={{ display: "flex" }}>{row.amount.toLocaleString("en-US")} {w.baht}</div>
           </div>
         ))}
 
@@ -117,15 +130,15 @@ export async function GET(req: NextRequest) {
           <div style={spacer(H.afterHairline)} />
 
           {/* the yearly ceiling of the plan quoted is what a health plan is chosen by */}
-          <PlanTable card={card} selected={selected} markLabel="วงเงินค่ารักษาต่อปี" />
+          <PlanTable card={card} selected={selected} markLabel={w.annualLimit} w={w} geo={geo} />
         </div>
 
       </div>
     ),
     {
-      width: widthOf(card.columns.length),
+      width: widthOf(card.columns.length, geo),
       height: heightOf(card),
-      fonts: await loadFonts(),
+      fonts: [...await loadFonts(), ...extra],
       // The card is a customer-facing quote. Its URL already contains the complete
       // arrangement, and the cache version in cardQuery invalidates older card formats.
       // Do not let an old rendered image be reused after the selected base/sum changes.

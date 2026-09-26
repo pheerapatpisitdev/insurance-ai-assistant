@@ -1,6 +1,7 @@
 import type { PayMode } from "@/calc/types";
 import type { AttachedRider } from "@/lib/ihealthy-rider-quote";
 import type { IHealthyTable } from "@/lib/ihealthy-table";
+import type { Lang } from "@/lib/ihealthy-lang";
 import { CARD_PALETTE, cardPaletteVersion } from "@/lib/card-theme";
 import {
   IHEALTHY_OPENING, baseFor, resolveArrangement, sumFor, type IHealthyInitial,
@@ -266,7 +267,10 @@ export function cardQuery(table: IHealthyTable, v: IHealthyInitial): string {
 /**
  * Where the same quote is drawn as a picture: the arrangement on screen, and the riders
  * attached to it, in one address the route can price from scratch.
+ *
+ * `lang` is the language the page is being read in, so the saved picture says what the
+ * screen says. Thai is left out of the address, which keeps every Thai link as it was.
  */
-export function cardPath(table: IHealthyTable, v: IHealthyInitial): string {
-  return `/api/ihealthy-card?${cardQuery(table, v)}`;
+export function cardPath(table: IHealthyTable, v: IHealthyInitial, lang: Lang = "th"): string {
+  return `/api/ihealthy-card?${cardQuery(table, v)}${lang === "th" ? "" : `&l=${lang}`}`;
 }

@@ -3,6 +3,8 @@ import path from "node:path";
 import type { CardCell, CardColumn, CardTableRow } from "@/lib/ihealthy-card";
 import { CARD_PALETTE } from "@/lib/card-theme";
 import { highlighterUri } from "@/lib/highlighter";
+import type { Lang } from "@/lib/ihealthy-lang";
+import { WORDS, type IHealthyWords } from "@/lib/ihealthy-words";
 
 /**
  * The ink both health pictures are drawn with: the palette, the bands, and the three
@@ -45,6 +47,22 @@ export const TINT = CARD_PALETTE.tint;
 export const PAD = 45;
 export const TITLE_W = 330;
 export const COL_W = 170;
+
+/** How wide the title column and each plan column are drawn. */
+export interface Geometry { title: number; col: number }
+
+/**
+ * Wider columns for the two readings whose words run longest.
+ *
+ * "По фактическим расходам" is the Russian for ตามที่จ่ายจริง, and Burmese writes the same
+ * thing as one unbroken run with no space to wrap at. In a Thai-width column the one breaks
+ * into three lines on a one-line row, and the other runs across its neighbours.
+ */
+export function geometryOf(lang: Lang): Geometry {
+  if (lang === "ru") return { title: 390, col: 280 };
+  if (lang === "my") return { title: 440, col: 305 };
+  return { title: TITLE_W, col: COL_W };
+}
 
 /**
  * Every band of the card, in pixels.
@@ -137,8 +155,8 @@ export function Cell(
 
 /** One line of the table: a title, then a figure under each plan. */
 export function Row(
-  { label, cells, selected, mark, height = H.row, weight = 400, color = MUTE }: {
-    label: string; cells: CardCell[]; selected: number; height?: number;
+  { label, cells, selected, mark, height = H.row, weight = 400, color = MUTE, geo = geometryOf("th") }: {
+    label: string; cells: CardCell[]; selected: number; height?: number; geo?: Geometry;
     weight?: number; color?: string;
     /** highlight the selected plan's figure on this row */
     mark?: boolean;
@@ -146,12 +164,12 @@ export function Row(
 ) {
   return (
     <div style={{ display: "flex", height, flexShrink: 0, borderTop: `1px solid ${GRID}` }}>
-      <Cell width={TITLE_W} height={height} align="flex-start" size={21} color={WHITE} weight={500} mark={mark}>
+      <Cell width={geo.title} height={height} align="flex-start" size={21} color={WHITE} weight={500} mark={mark}>
         {label}
       </Cell>
       {cells.map((c, i) => (
         <Cell
-          key={i} width={COL_W} height={height} tint={i === selected} dim={c.dim}
+          key={i} width={geo.col} height={height} tint={i === selected} dim={c.dim}
           weight={weight} color={i === selected ? GOLD_LIT : color} mark={mark && i === selected}
         >
           {c.text}
@@ -178,8 +196,8 @@ const loadFont = (file: string) => readFile(path.join(FONT_DIR, file));
  * print them against half a page of empty ground — which in a chat is a picture the reader
  * has to pinch to read the small half of.
  */
-export function widthOf(columns: number): number {
-  return PAD * 2 + TITLE_W + COL_W * columns;
+export function widthOf(columns: number, geo: Geometry = geometryOf("th")): number {
+  return PAD * 2 + geo.title + geo.col * columns;
 }
 
 /** The three faces, loaded once per request, in the shape `ImageResponse` wants them. */
@@ -196,6 +214,49 @@ export async function loadFonts() {
   ];
 }
 
+/**
+ * The Google Fonts face each language needs beyond Thai and Latin, which the Plex face has.
+ *
+ * Fetched per picture and cut down to the letters on it, the way Vercel's own examples load
+ * a face: a Chinese face whole is ten megabytes a weight, and a card uses a hundred of them.
+ * The drawing library falls back from Plex to these letter by letter, so digits and plan names
+ * keep the card's own face. All three are under the SIL Open Font License.
+ */
+const SCRIPT_FAMILY: Partial<Record<Lang, string>> = {
+  zh: "Noto Sans SC",
+  ru: "Noto Sans",
+  my: "Noto Sans Myanmar",
+};
+
+/**
+ * The faces `lang` needs on top of `loadFonts`, or undefined where they could not be had.
+ * Thai and English need none, and get an empty list without asking anyone.
+ */
+export async function scriptFonts(lang: Lang, text: string) {
+  const family = SCRIPT_FAMILY[lang];
+  if (family === undefined) return [];
+  try {
+    const letters = [...new Set(text)].join("");
+    const css = await fetch(
+      `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@400;600`
+        + `&text=${encodeURIComponent(letters)}`,
+      { signal: AbortSignal.timeout(4000) },
+    ).then((r) => (r.ok ? r.text() : Promise.reject(new Error(`css ${r.status}`))));
+    // one @font-face a weight, each naming its weight and then its file
+    const faces = [...css.matchAll(/font-weight:\s*(\d+);[^}]*?src:\s*url\(([^)]+)\)/g)];
+    if (faces.length === 0) return undefined;
+    return await Promise.all(faces.map(async ([, weight, url]) => ({
+      name: family,
+      data: await fetch(url, { signal: AbortSignal.timeout(4000) })
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`font ${r.status}`)))),
+      weight: Number(weight) as 400 | 600,
+      style: "normal" as const,
+    })));
+  } catch {
+    return undefined;
+  }
+}
+
 /** One day at the edge, an hour in a browser — the same as every other card here. */
 export const CARD_HEADERS = {
   "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400",
@@ -210,25 +271,28 @@ export const CARD_HEADERS = {
  * the whole of the difference between them, so it is the whole of what is passed in.
  */
 export function PlanTable(
-  { card, selected, markLabel }: {
+  { card, selected, markLabel, w = WORDS.th, geo = geometryOf("th") }: {
     card: { columns: CardColumn[]; rows: CardTableRow[]; premiumRows: { label: string; cells: CardCell[] }[] };
     selected: number;
     /** the row whose selected figure gets the highlighter; the quote card marks the yearly ceiling */
     markLabel?: string;
+    /** the page's words in the language the picture is drawn in */
+    w?: IHealthyWords;
+    geo?: Geometry;
   },
 ) {
   return (
     <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
       <div style={{ display: "flex", height: H.head, flexShrink: 0 }}>
-        <Cell width={TITLE_W} height={H.head} align="flex-start" size={21} color={MUTE} weight={500}>
-          ผลประโยชน์
+        <Cell width={geo.title} height={H.head} align="flex-start" size={21} color={MUTE} weight={500}>
+          {w.benefitColumn}
         </Cell>
         {card.columns.map((c, i) => (
           <div
             key={c.name}
             style={{
               display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
-              width: COL_W, minWidth: COL_W, maxWidth: COL_W, height: H.head,
+              width: geo.col, minWidth: geo.col, maxWidth: geo.col, height: H.head,
               boxSizing: "border-box", flexShrink: 0, padding: "0 8px",
               borderRight: `1px solid ${GRID}`,
               background: i === selected ? TINT : "transparent",
@@ -238,7 +302,7 @@ export function PlanTable(
               {c.name}
             </div>
             {!c.sold && (
-              <div style={{ display: "flex", fontSize: 15, color: MUTE, marginTop: 2 }}>ไม่ขายที่อายุนี้</div>
+              <div style={{ display: "flex", fontSize: 15, color: MUTE, marginTop: 2 }}>{w.notSold}</div>
             )}
           </div>
         ))}
@@ -246,14 +310,14 @@ export function PlanTable(
 
       {card.rows.map((r) =>
         r.span === undefined ? (
-          <Row key={r.label} label={r.label} cells={r.cells} selected={selected} mark={r.label === markLabel} />
+          <Row key={r.label} label={r.label} cells={r.cells} selected={selected} mark={r.label === markLabel} geo={geo} />
         ) : (
           // One answer across every plan, because it is the same cover whichever is bought
           <div key={r.label} style={{ display: "flex", height: H.row, flexShrink: 0, borderTop: `1px solid ${GRID}` }}>
-            <Cell width={TITLE_W} height={H.row} align="flex-start" size={21} color={WHITE} weight={500}>
+            <Cell width={geo.title} height={H.row} align="flex-start" size={21} color={WHITE} weight={500}>
               {r.label}
             </Cell>
-            <Cell width={COL_W * card.columns.length} height={H.row} size={20} color={WHITE}>{r.span}</Cell>
+            <Cell width={geo.col * card.columns.length} height={H.row} size={20} color={WHITE}>{r.span}</Cell>
           </div>
         ),
       )}
@@ -266,12 +330,12 @@ export function PlanTable(
             fontSize: 21, fontWeight: 600, color: GOLD,
           }}
         >
-          เบี้ยประกัน
+          {w.premiumHeading}
         </div>
       )}
       {card.premiumRows.map((r) => (
         // the chosen plan's price in each instalment, marked as every quote card marks its price lines
-        <Row key={r.label} label={r.label} cells={r.cells} selected={selected} weight={600} color={WHITE} mark={markLabel !== undefined} />
+        <Row key={r.label} label={r.label} cells={r.cells} selected={selected} weight={600} color={WHITE} mark={markLabel !== undefined} geo={geo} />
       ))}
       {/* the table's own bottom edge; every row above draws only its top */}
       <div style={spacer(H.hairline, GRID)} />

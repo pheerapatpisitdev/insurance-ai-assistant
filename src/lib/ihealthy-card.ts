@@ -1,5 +1,5 @@
 import { formatBaht } from "@/calc/money";
-import { PAY_MODE_LABEL, type PayMode } from "@/calc/types";
+import type { PayMode } from "@/calc/types";
 import { benefitCell } from "@/components/ihealthy/BenefitTable";
 import { PHONE_ROW_LABEL, phoneColumns } from "@/lib/ihealthy-phone";
 import { iHealthyFacts, isHeading, planLabel } from "@/lib/ihealthy-facts";
@@ -10,6 +10,9 @@ import {
   MODES, dailyCashLabel, deathBenefitOf, iHealthyPricing, plansFor,
 } from "@/lib/ihealthy-quote";
 import { priceRiders } from "@/lib/ihealthy-rider-quote";
+import { parseLang, type Lang } from "@/lib/ihealthy-lang";
+import { baseWords, WORDS, type IHealthyWords } from "@/lib/ihealthy-words";
+import { translateFacts } from "@/lib/ihealthy-translate";
 
 /**
  * The health quote as a picture: the card a customer is looking at, and the table under it,
@@ -52,6 +55,8 @@ export interface CardTableRow {
 }
 
 export interface IHealthyCard {
+  /** the language the page was read in when the picture was asked for; `l` in the link */
+  lang: Lang;
   /** "iHealthy Ultra Gold" */
   planLine: string;
   /** who it is for, e.g. "ชาย 35 ปี"; drawn large in the corner */
@@ -87,23 +92,12 @@ export interface IHealthyCard {
   premiumRows: { label: string; cells: CardCell[] }[];
 }
 
-const SEX_WORD: Record<string, string> = { M: "ชาย", F: "หญิง" };
-/** As the calculator's printed heading names them; Full Coverage is the ordinary one. */
-const COVERAGE_WORD: Record<string, string> = {
-  "Full Coverage": "",
-  Deductible: "มีความรับผิดส่วนแรก",
-  "Co-Payment": "ร่วมจ่าย",
-};
 const DASH = "-";
-/**
- * How an instalment reads after a figure. The page's own `PER` is written for the middle of a
- * sentence — "47,230 บาท/ปี" — and a card sets the figure large with the unit beside it,
- * where a slash reads as part of the number.
- */
-const PER_WORD: Record<PayMode, string> = {
-  annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน",
+/** A yearly ceiling in the unit the reader counts large sums in, e.g. "10 ล้าน". */
+const millions = (w: IHealthyWords, baht: number) => {
+  const big = w.big(baht);
+  return `${big.num} ${big.unit}`;
 };
-const MILLIONS = (baht: number) => `${(baht / 1_000_000).toLocaleString("en-US")} ล้าน`;
 
 /**
  * What the attached riders are called on one line.
@@ -123,6 +117,16 @@ function extrasLabel(codes: string[], standardCode: string, attachedPlan: number
   return `สัญญาเพิ่มเติม ${codes.length} รายการ`;
 }
 
+/** The same name in the reader's language: the Thai above is what the engine is handed. */
+function extrasWords(
+  w: IHealthyWords, codes: string[], standardCode: string, attachedPlan: number | null,
+): string {
+  if (codes.length === 1 && codes[0] === standardCode && attachedPlan !== null) {
+    return w.dailyCash(attachedPlan);
+  }
+  return w.riderCount(codes.length);
+}
+
 /**
  * The quote a link asks for, drawn from the rate tables as they stand today.
  *
@@ -133,7 +137,10 @@ function extrasLabel(codes: string[], standardCode: string, attachedPlan: number
  */
 export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): IHealthyCard {
   const table = iHealthyTable(today);
-  const facts = iHealthyFacts();
+  // `l` is the page's language; a link without one — the bot's, every old one — is Thai
+  const lang = parseLang(query.get("l") ?? undefined);
+  const w = WORDS[lang];
+  const facts = translateFacts(iHealthyFacts(), lang);
   const v = initialFrom(table, Object.fromEntries(query));
   const asked = ridersFrom(query.getAll("r"));
 
@@ -185,7 +192,7 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
 
   const columns: CardColumn[] = drawn.map((p) => ({
     name: planLabel(p.code),
-    ceiling: MILLIONS(p.annualMax),
+    ceiling: millions(w, p.annualMax),
     selected: p.code === v.plan,
     sold: sellable.includes(p.code),
   }));
@@ -201,9 +208,9 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
    * to fetch at render time, and these rows have the width here to be read by their names.
    */
   const rows: CardTableRow[] = [
-    { label: "วงเงินค่ารักษาต่อปี", cells: cellsOf((code) => {
+    { label: w.annualLimit, cells: cellsOf((code) => {
       const plan = drawn.find((p) => p.code === code)!;
-      return MILLIONS(plan.annualMax);
+      return millions(w, plan.annualMax);
     }) },
   ];
   for (const entry of facts.rows) {
@@ -211,7 +218,7 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
     const short = PHONE_ROW_LABEL[entry.no];
     if (short === undefined) continue;
     rows.push({
-      label: short.label,
+      label: w.phoneRow[entry.no] ?? short.label,
       cells: cellsOf((code) => benefitCell(entry, code, v.age, sellable).text),
     });
   }
@@ -224,14 +231,14 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
     // on either way.
     const attached = extras === undefined ? standardPlan : attachedDailyCash;
     rows.push({
-      label: "ค่าชดเชยรายวัน",
+      label: w.dailyCashRow,
       cells: [],
-      span: attached === null ? DASH : `${attached.toLocaleString("en-US")} ต่อวัน · ทุกแผนเท่ากัน`,
+      span: attached === null ? DASH : `${attached.toLocaleString("en-US")} ${w.perDay} · ${w.samePlans}`,
     });
   }
 
   const premiumRows = table.expired ? [] : MODES.map((mode) => ({
-    label: PAY_MODE_LABEL[mode],
+    label: w.mode[mode],
     cells: cellsOf((code) => {
       // A dash where the company refuses the instalment: its monthly floor is judged on the
       // total, and a picture that printed the figure anyway would be offering a way of
@@ -245,27 +252,32 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
   // the family receives, which `deathBenefitOf` knows nothing about — its own comment says
   // it answers for a contract with no such rider attached.
   const death = priced.deathBenefit ?? deathBenefitOf(table, v.base, v.age, v.sumAssured);
-  const cover = COVERAGE_WORD[v.coverage] ?? "";
+  // Full Coverage is the contract as the page describes it, so the card does not name it
+  const cover = v.coverage === "Full Coverage" ? "" : w.coverage[v.coverage] ?? v.coverage;
+  const baseRow = table.bases.find((b) => b.variant === v.base);
+  const baseName = baseRow ? baseWords(w, baseRow.variant, baseRow).label : v.base;
+  const territory = w.territory[v.territory] ?? v.territory;
+  const standardLabel = extras === undefined
+    ? standardPlan !== null ? w.dailyCash(standardPlan) : undefined
+    : extrasWords(w, priced.extraCodes, table.standard.code, attachedDailyCash);
 
   return {
+    lang,
     planLine: `iHealthy Ultra ${planLabel(v.plan)}`,
-    insuredWho: `${SEX_WORD[v.sex]} ${v.age} ปี`,
-    insuredLine: `${table.bases.find((b) => b.variant === v.base)?.label ?? v.base}`
-      + ` ทุน ${v.sumAssured.toLocaleString("en-US")} บาท · ${v.territory}${cover ? ` · ${cover}` : ""}`,
-    ...(headline ? { premium: { amount: formatBaht(headline.total), per: PER_WORD[v.mode] } } : {}),
+    insuredWho: `${w.sex[v.sex]} ${w.years(v.age)}`,
+    insuredLine: `${w.baseWithSum(baseName, v.sumAssured)} ${w.baht} · ${territory}${cover ? ` · ${cover}` : ""}`,
+    ...(headline ? { premium: { amount: formatBaht(headline.total), per: w.share.per[v.mode] } } : {}),
     lines: here === undefined ? [] : [
-      {
-        label: `${table.bases.find((b) => b.variant === v.base)?.label ?? v.base} ทุน ${v.sumAssured.toLocaleString("en-US")}`,
-      },
+      { label: w.baseWithSum(baseName, v.sumAssured) },
       { label: `iHealthy Ultra ${planLabel(v.plan)}` },
       // An emptied fold is not on the arrangement at all, so it is not named. Its premium is
       // still what says so, which is the one thing a premium is still read for here.
       ...(here.standard && (here.standard.premiums.find((m) => m.mode === v.mode)?.total ?? 0) > 0
-        ? [{ label: here.standard.label }]
+        ? [{ label: standardLabel ?? here.standard.label }]
         : []),
     ],
     ...(headline?.belowMinimum
-      ? { belowMinimum: `ต่ำกว่าเบี้ยรายเดือนขั้นต่ำ ${table.minMonthly.toLocaleString("en-US")} บาท ที่บริษัทรับชำระ` }
+      ? { belowMinimum: w.belowMinimum(table.minMonthly) }
       : {}),
     // The rider covers the illness; this is what the base plan under it is for, and the one
     // figure on the card that the table below has no column for. The same helper writes the
@@ -273,7 +285,7 @@ export function iHealthyCard(query: URLSearchParams, today: Date = new Date()): 
     // Health Ultra Package is the fixed 50,000-baht health vehicle. Its card should not
     // advertise the package's underlying life-death benefit; that line belongs to the
     // selectable life base, while DCI remains described separately when it is attached.
-    death: v.base === "WLF99HX" ? [] : deathBenefitRows(death),
+    death: v.base === "WLF99HX" ? [] : deathBenefitRows(death, w.death),
     columns,
     rows,
     premiumRows,

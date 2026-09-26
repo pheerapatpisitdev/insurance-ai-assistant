@@ -93,6 +93,8 @@ export interface IHealthyWords {
   printOrPdf: string;
   copyLink: string;
   linkCopied: string;
+  /** the card picture and the copied text, which leave the page in the reader's language */
+  share: ShareWords;
 
   // ---------- the contact buttons ----------
   contact: ContactWords;
@@ -133,6 +135,32 @@ export interface IHealthyWords {
 
   /** the rider engine's Thai, read into this language where it is one of the known lines */
   rider: (thai: string) => string;
+}
+
+/**
+ * What the saved card and the copied quote say that the page itself never has to.
+ *
+ * Both leave the page — a picture forwarded to a spouse, a text pasted into a chat — so they
+ * go out in the language the reader chose. The Thai is what the two said before there were
+ * other languages, word for word; the bot still sends that.
+ */
+export interface ShareWords {
+  /** after the large figure on the card, e.g. "ต่อปี" */
+  per: Record<PayMode, string>;
+  /** where a price would be, on a card that may not quote one */
+  askPrice: string;
+  ceiling: (baht: number) => string;
+  territory: (name: string) => string;
+  insured: (sex: string, age: number) => string;
+  total: (amount: string, mode: PayMode) => string;
+  baseLine: (label: string, sum: number) => string;
+  /** what the health rider is, named without its plan */
+  treatment: string;
+  instalment: (mode: string, amount: string) => string;
+  monthlyRefused: (minMonthly: number) => string;
+  family: string;
+  firstYear: string;
+  fineprint: string;
 }
 
 /** The labels the shared sales buttons carry; each defaults to its Thai on every other page. */
@@ -273,6 +301,23 @@ const th: IHealthyWords = {
   printOrPdf: "พิมพ์ หรือบันทึก PDF",
   copyLink: "คัดลอกลิงก์หน้านี้",
   linkCopied: "คัดลอกแล้ว ✓",
+  share: {
+    per: { annual: "ต่อปี", semi: "ต่อ 6 เดือน", monthly: "ต่อเดือน" },
+    askPrice: "ขอราคาปัจจุบันได้ทางแชท",
+    ceiling: (b) => `วงเงินค่ารักษา ${n(b)} บาทต่อปี`,
+    territory: (t) => `อาณาเขต${t}`,
+    insured: (sex, age) => `${sex} อายุ ${age} ปี`,
+    total: (amount, mode) =>
+      `เบี้ยรวมประมาณ ${amount} บาท${{ annual: "/ปี", semi: "/6 เดือน", monthly: "/เดือน" }[mode]}`,
+    baseLine: (label, sum) => `${label} ทุน ${n(sum)} บาท`,
+    treatment: "ค่ารักษาพยาบาล",
+    instalment: (mode, amount) => `${mode} ${amount} บาท`,
+    monthlyRefused: (min) => `(ต่ำกว่าขั้นต่ำ ${n(min)} บาท บริษัทไม่รับชำระรายเดือน)`,
+    family: "ครอบครัวได้รับเมื่อเสียชีวิต",
+    firstYear: "เบี้ยปีแรก เบี้ยปีต่อไปคิดตามอายุที่เพิ่มขึ้น",
+    fineprint: "เบี้ยของอาชีพชั้น 1 · ไม่ใช่ใบเสนอราคา เบี้ยและความคุ้มครองจริงเป็นไปตามผลการพิจารณารับประกัน"
+      + "และที่ระบุในกรมธรรม์",
+  },
 
   contact: THAI_CONTACT,
 
@@ -388,6 +433,23 @@ const en: IHealthyWords = {
   printOrPdf: "Print or save as PDF",
   copyLink: "Copy link to this page",
   linkCopied: "Copied ✓",
+  share: {
+    per: { annual: "a year", semi: "every 6 months", monthly: "a month" },
+    askPrice: "Ask for the current price in chat",
+    ceiling: (b) => `Medical limit ${n(b)} baht a year`,
+    territory: (t) => `Territory: ${t}`,
+    insured: (sex, age) => `${sex}, age ${age}`,
+    total: (amount, mode) =>
+      `Total premium about ${amount} baht${{ annual: "/year", semi: "/6 months", monthly: "/month" }[mode]}`,
+    baseLine: (label, sum) => `${label}, sum assured ${n(sum)} baht`,
+    treatment: "Medical expenses",
+    instalment: (mode, amount) => `${mode} ${amount} baht`,
+    monthlyRefused: (min) => `(below the ${n(min)} baht minimum; monthly payment not accepted)`,
+    family: "Paid to the family on death",
+    firstYear: "First-year premium; later years are priced on the higher age",
+    fineprint: "Premium for occupational class 1 · Not a quotation: actual premiums and cover depend on"
+      + " underwriting and on the policy",
+  },
 
   contact: {
     card: { full: "Send card", compact: "Card", working: "Creating…", copied: "Image copied ✓", failed: "Open image in a new tab" },
@@ -537,6 +599,22 @@ const zh: IHealthyWords = {
   printOrPdf: "打印或保存为PDF",
   copyLink: "复制本页链接",
   linkCopied: "已复制 ✓",
+  share: {
+    per: { annual: "每年", semi: "每半年", monthly: "每月" },
+    askPrice: "请在聊天中询问当前价格",
+    ceiling: (b) => `每年医疗额度 ${n(b)} 泰铢`,
+    territory: (t) => `保障区域：${t}`,
+    insured: (sex, age) => `${sex} ${age}岁`,
+    total: (amount, mode) =>
+      `总保费约 ${amount} 泰铢${{ annual: "/年", semi: "/半年", monthly: "/月" }[mode]}`,
+    baseLine: (label, sum) => `${label} 保额 ${n(sum)} 泰铢`,
+    treatment: "医疗费用",
+    instalment: (mode, amount) => `${mode} ${amount} 泰铢`,
+    monthlyRefused: (min) => `（低于最低 ${n(min)} 泰铢，公司不接受月缴）`,
+    family: "身故时家人可获得",
+    firstYear: "首年保费，之后按增长的年龄计算",
+    fineprint: "职业等级1的保费 · 非正式报价，实际保费及保障以核保结果及保单为准",
+  },
 
   contact: {
     card: { full: "发送卡片", compact: "卡片", working: "正在生成…", copied: "图片已复制 ✓", failed: "在新标签页打开图片" },
@@ -677,6 +755,23 @@ const ru: IHealthyWords = {
   printOrPdf: "Печать или PDF",
   copyLink: "Скопировать ссылку",
   linkCopied: "Скопировано ✓",
+  share: {
+    per: { annual: "в год", semi: "за 6 месяцев", monthly: "в месяц" },
+    askPrice: "Узнайте текущую цену в чате",
+    ceiling: (b) => `Лимит на лечение ${n(b)} бат в год`,
+    territory: (t) => `Территория: ${t}`,
+    insured: (sex, age) => `${sex}, ${age} лет`,
+    total: (amount, mode) =>
+      `Общий взнос около ${amount} бат${{ annual: "/год", semi: "/6 месяцев", monthly: "/месяц" }[mode]}`,
+    baseLine: (label, sum) => `${label}, страховая сумма ${n(sum)} бат`,
+    treatment: "Медицинские расходы",
+    instalment: (mode, amount) => `${mode} ${amount} бат`,
+    monthlyRefused: (min) => `(ниже минимума ${n(min)} бат; ежемесячная оплата не принимается)`,
+    family: "Выплата семье в случае смерти",
+    firstYear: "Взнос за первый год; далее рассчитывается по возрасту",
+    fineprint: "Взнос для 1-го класса профессии · Не является коммерческим предложением: фактические взносы"
+      + " и покрытие зависят от андеррайтинга и условий полиса",
+  },
 
   contact: {
     // the compact four share one row at the bottom of a phone, so each is a single short word
@@ -818,6 +913,23 @@ const my: IHealthyWords = {
   printOrPdf: "ပုံနှိပ်ရန် သို့မဟုတ် PDF သိမ်းရန်",
   copyLink: "ဤစာမျက်နှာလင့်ခ် ကူးယူရန်",
   linkCopied: "ကူးယူပြီး ✓",
+  share: {
+    per: { annual: "တစ်နှစ်လျှင်", semi: "6 လလျှင်", monthly: "တစ်လလျှင်" },
+    askPrice: "လက်ရှိ ဈေးနှုန်းကို chat တွင် မေးမြန်းပါ",
+    ceiling: (b) => `တစ်နှစ်လျှင် ဆေးကုသစရိတ် ကန့်သတ်ငွေ ${n(b)} ဘတ်`,
+    territory: (t) => `အကာအကွယ်နယ်မြေ - ${t}`,
+    insured: (sex, age) => `${sex} အသက် ${age} နှစ်`,
+    total: (amount, mode) =>
+      `စုစုပေါင်း ပရီမီယံ ခန့်မှန်း ${amount} ဘတ် (${{ annual: "တစ်နှစ်လျှင်", semi: "6 လလျှင်", monthly: "တစ်လလျှင်" }[mode]})`,
+    baseLine: (label, sum) => `${label} အာမခံငွေ ${n(sum)} ဘတ်`,
+    treatment: "ဆေးကုသစရိတ်",
+    instalment: (mode, amount) => `${mode} ${amount} ဘတ်`,
+    monthlyRefused: (min) => `(အနည်းဆုံး ${n(min)} ဘတ်ထက် နည်း၍ လစဉ်ပေးချေမှုကို ကုမ္ပဏီက လက်မခံပါ)`,
+    family: "သေဆုံးပါက မိသားစု ရရှိမည့်ငွေ",
+    firstYear: "ပထမနှစ် ပရီမီယံ ဖြစ်ပြီး နောက်နှစ်များတွင် အသက်အလိုက် တွက်ချက်သည်",
+    fineprint: "အလုပ်အကိုင်အဆင့် 1 ၏ ပရီမီယံ · ဈေးနှုန်းကမ်းလှမ်းချက် မဟုတ်ပါ၊ အမှန်တကယ် ပရီမီယံနှင့် အကာအကွယ်မှာ"
+      + " အာမခံလက်ခံစိစစ်မှုရလဒ်နှင့် ပေါ်လစီပါအတိုင်း ဖြစ်သည်",
+  },
 
   contact: {
     // the compact four share one row at the bottom of a phone, so each is one short word
