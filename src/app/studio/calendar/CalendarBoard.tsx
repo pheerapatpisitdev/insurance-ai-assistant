@@ -349,7 +349,7 @@ export function CalendarBoard({ cells, items, errors, today, setup, defaultPage 
             </label>
           )}
           {waiting.length === 0 ? (
-            <p className="mt-3 text-xs text-[var(--ct-mute)]">ยังไม่มีโพสต์ที่รอลงเพจ — สร้างที่หน้า <Link href="/content" className="underline">สร้างคอนเทนต์</Link></p>
+            <p className="mt-3 text-xs text-[var(--ct-mute)]">ยังไม่มีโพสต์ที่รอลงเพจ — สร้างที่หน้า <Link href="/studio" className="underline">สร้างคอนเทนต์</Link></p>
           ) : (
             <div className="mt-3 grid grid-cols-3 gap-2 xl:grid-cols-1">
               {waiting.map((item) => (
@@ -608,7 +608,7 @@ function SheetItem({ item, error, today, pages, pageId, onPage, run, onDone }: {
             )}
           </>
         )}
-        <Link href={`/content?open=${item.id}`} className={`${btn} ml-auto`}>แก้ไข</Link>
+        <Link href={`/studio?open=${item.id}`} className={`${btn} ml-auto`}>แก้ไข</Link>
       </div>
       {item.status === "failed" && (
         <div className="mt-2 space-y-1 rounded-lg border border-[var(--ct-warn-line)] bg-[var(--ct-warn-bg)] p-2 text-xs text-[var(--ct-warn-ink)]">
@@ -635,7 +635,7 @@ export function MonthList({ items }: { items: BoardItem[] }) {
           <ul className="space-y-2">
             {(byDay.get(day) ?? []).map((item) => (
               <li key={item.id}>
-                <Link href={`/content?open=${item.id}`} className="flex gap-3 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-3 hover:bg-[var(--ct-soft)]">
+                <Link href={`/studio?open=${item.id}`} className="flex gap-3 rounded-lg border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-3 hover:bg-[var(--ct-soft)]">
                   {/* eslint-disable-next-line @next/next/no-img-element -- the piece's own poster */}
                   <img src={item.imageUrl} alt="" loading="lazy" className="size-16 shrink-0 rounded object-cover" />
                   <span className="min-w-0">

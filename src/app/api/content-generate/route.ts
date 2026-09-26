@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { generateContent, type GenerateInput } from "@/app/content/actions";
+import { generateContent, type GenerateInput } from "@/app/studio/actions";
 
 /**
  * A round of writing, as a plain request rather than a server action.

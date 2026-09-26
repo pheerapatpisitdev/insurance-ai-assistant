@@ -1,5 +1,5 @@
 import { BudgetExceeded, chat } from "@/lib/ai/client";
-import type { GenerateResult } from "@/app/content/actions";
+import type { GenerateResult } from "@/app/studio/actions";
 import { findWords, strayNumbers } from "./check";
 import { OVERHEAD_THB, writerOf } from "./models";
 import type { ContentOutput } from "./output";

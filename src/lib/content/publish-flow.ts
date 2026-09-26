@@ -1,6 +1,6 @@
 import { pageConnections, pageToken } from "@/lib/facebook/connection";
 import { deletePost, MAX_AHEAD_MS, MIN_AHEAD_MS, postPhoto, postState, PublishError, type Posted } from "@/lib/facebook/publish";
-import { setContentStatus } from "@/app/content/actions";
+import { setContentStatus } from "@/app/studio/actions";
 import { fullText } from "./output";
 import { defaultPoster } from "./poster";
 import { drawPoster } from "./poster-draw";
@@ -12,7 +12,7 @@ import { claimPublish, getContent, listDue, recordPublishIf, saveOutput, type Co
 
 /**
  * Posting a piece to a Facebook Page, the steps behind the workbench's server actions
- * (src/app/content/publish.ts) and behind an edit or a delete of a piece Facebook is holding.
+ * (src/app/studio/publish.ts) and behind an edit or a delete of a piece Facebook is holding.
  *
  * Not a "use server" module on purpose: everything exported from one is a door anyone can
  * knock on, and these take a piece the caller has already checked.

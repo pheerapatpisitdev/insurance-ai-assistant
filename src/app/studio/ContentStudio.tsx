@@ -267,7 +267,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   const [counts, setCounts] = useState(initial.counts);
   const [used, setUsed] = useState(initialUsed);
   const [editing, setEditing] = useState<string | null>(initialOpen?.id ?? null);
-  /** a piece opened from the calendar page (/content?open=…), which may be in neither tab's list */
+  /** a piece opened from the calendar page (/studio?open=…), which may be in neither tab's list */
   const [opened, setOpened] = useState<ContentItem | null>(initialOpen ?? null);
   /** pieces with a status change or a delete under way — one each, several at once */
   const [busy, setBusy] = useState<Set<string>>(() => new Set());
@@ -627,7 +627,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   });
 
   const usedLink = (
-    <Link href="/content/calendar" className="inline-flex min-h-11 items-center text-xs font-medium text-[var(--ct-accent)] underline underline-offset-2">
+    <Link href="/studio/calendar" className="inline-flex min-h-11 items-center text-xs font-medium text-[var(--ct-accent)] underline underline-offset-2">
       ดูโพสต์ที่ลงเพจ/ตั้งเวลาไว้ในปฏิทิน →
     </Link>
   );
@@ -635,7 +635,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   return (
     <div>
       <div>
-        <h1 className="text-xl font-semibold">สร้างคอนเทนต์</h1>
+        <h1 className="text-xl font-semibold">Studio</h1>
         <p className="mt-1 text-sm text-[var(--ct-mute)]">AI เขียนจากข้อมูลจริงของแบบประกัน ตัวเลขทุกตัวมาจากตารางเบี้ย อ่านทวนก่อนโพสต์ทุกครั้ง</p>
       </div>
 

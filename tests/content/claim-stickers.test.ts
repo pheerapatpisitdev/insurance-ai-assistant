@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stickerAt, stickerRect, type Rect } from "@/app/content/claim/stickers";
+import { stickerAt, stickerRect, type Rect } from "@/app/studio/claim/stickers";
 
 /** Is the point inside the rounded rectangle? The corners are quarter circles of r.radius. */
 function inside(r: Rect, px: number, py: number): boolean {

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { drawBackground } from "@/app/content/actions";
+import { drawBackground } from "@/app/studio/actions";
 
 /**
  * The content page's picture orders, as a plain request rather than a server action.

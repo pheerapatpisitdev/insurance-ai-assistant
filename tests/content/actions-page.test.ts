@@ -32,7 +32,7 @@ vi.mock("@/lib/content/people-store", () => ({
   personPhotos: vi.fn(async () => ({ person: { id: "person-1" }, photos: [{ bytes: Buffer.from("x"), mimeType: "image/png" }] })),
 }));
 
-const { drawBackground, generateContent, removeContent, saveContentEdits, setContentStatus } = await import("@/app/content/actions");
+const { drawBackground, generateContent, removeContent, saveContentEdits, setContentStatus } = await import("@/app/studio/actions");
 const { NUMBERS_PLANS, numberSheets } = await import("@/lib/content/numbers-plans");
 const { NUMBERS_CLOSING, numbersBody, numbersPoster, numbersYardstick } = await import("@/lib/content/numbers");
 const { PAINTERS, OVERHEAD_THB } = await import("@/lib/content/models");

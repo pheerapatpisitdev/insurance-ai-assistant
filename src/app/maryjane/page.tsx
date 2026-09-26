@@ -1,5 +1,5 @@
-import { StudioPage } from "../content/StudioPage";
-import { SubNav } from "../content/SubNav";
+import { StudioPage } from "../studio/StudioPage";
+import { SubNav } from "../studio/SubNav";
 
 export const dynamic = "force-dynamic";
 // the same actions as /content, and they run as this page, so the same allowance

@@ -11,15 +11,15 @@ import { CalendarIcon, PenIcon, PeopleIcon, QuoteIcon } from "./ui/icons";
  * Plain links: a page with unsaved words in its editor catches the click itself (ContentStudio).
  */
 const TABS = [
-  { href: "/content", label: "สร้างคอนเทนต์", Icon: PenIcon },
-  { href: "/content/calendar", label: "ปฏิทินโพสต์", Icon: CalendarIcon },
-  { href: "/content/hooks", label: "คลังสูตรประโยคเปิด", Icon: QuoteIcon },
-  { href: "/content/people", label: "คลังบุคคล", Icon: PeopleIcon },
+  { href: "/studio", label: "สร้างคอนเทนต์", Icon: PenIcon },
+  { href: "/studio/calendar", label: "ปฏิทินโพสต์", Icon: CalendarIcon },
+  { href: "/studio/hooks", label: "คลังสูตรประโยคเปิด", Icon: QuoteIcon },
+  { href: "/studio/people", label: "คลังบุคคล", Icon: PeopleIcon },
 ] as const;
 
 export function SubNav() {
   const path = usePathname();
-  const here = (href: string) => (href === "/content" ? path === "/content" : path === href || path.startsWith(`${href}/`));
+  const here = (href: string) => (href === "/studio" ? path === "/studio" : path === href || path.startsWith(`${href}/`));
   return (
     <nav aria-label="เมนูคอนเทนต์" className="grid grid-cols-2 gap-1 rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] p-1 sm:inline-flex sm:flex-wrap">
       {TABS.map(({ href, label, Icon }) => {

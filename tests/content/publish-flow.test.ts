@@ -19,7 +19,7 @@ vi.mock("@/lib/content/store", () => store);
 vi.mock("@/lib/facebook/connection", () => conn);
 vi.mock("@/lib/facebook/publish", async (orig) => ({ ...(await orig<typeof import("@/lib/facebook/publish")>()), ...fb }));
 vi.mock("@/lib/content/poster-draw", () => ({ drawPoster: vi.fn(async () => Buffer.from("png")) }));
-vi.mock("@/app/content/actions", () => ({ setContentStatus: vi.fn(async () => ({ ok: true })) }));
+vi.mock("@/app/studio/actions", () => ({ setContentStatus: vi.fn(async () => ({ ok: true })) }));
 
 const { CONCURRENT, MISSED, MOVE_LOST, PAPER_UNCHECKED, POSSIBLY_POSTED, forgetChecks, move, publish, verifyDue, withdraw, VERIFY_MAX } =
   await import("@/lib/content/publish-flow");

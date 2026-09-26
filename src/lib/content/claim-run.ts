@@ -1,6 +1,6 @@
 import { BudgetExceeded, chat } from "@/lib/ai/client";
 import type { ChatImage } from "@/lib/ai/types";
-import type { GenerateResult } from "@/app/content/actions";
+import type { GenerateResult } from "@/app/studio/actions";
 import { findWords, strayNumbers } from "./check";
 import {
   CLAIM_HREF, MAX_CLAIM_PIECES, MAX_DOCS, claimAngleLines, claimMessages, cleanFacts, factsBlock, parseClaimPiece, parseRead,

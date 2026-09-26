@@ -26,8 +26,16 @@ const nextConfig: NextConfig = {
     // posting draws the poster inside the page the owner pressed from — the workbench and the
     // calendar — so those pages need the same files; without them every post from the
     // calendar failed with ENOENT on index_bg.wasm (2026-09-25)
-    "/content": POSTER_FILES,
-    "/content/**": POSTER_FILES,
+    "/studio": POSTER_FILES,
+    "/studio/**": POSTER_FILES,
+  },
+  // the workbench was /content until the owner renamed it Studio (2026-09-27); old bookmarks
+  // and links keep working, query and all (?open=…, ?hook=…)
+  async redirects() {
+    return [
+      { source: "/content", destination: "/studio", permanent: true },
+      { source: "/content/:path*", destination: "/studio/:path*", permanent: true },
+    ];
   },
 };
 

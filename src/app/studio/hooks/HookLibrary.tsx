@@ -82,7 +82,7 @@ export function HookLibrary({ items }: { items: HookTemplate[] }) {
               </div>
               <span className="shrink-0 rounded bg-[var(--ct-ground)] px-2 py-1 text-xs text-[var(--ct-mute)]">{HOOK_CATEGORY_LABEL[h.category]}</span>
               <span className="w-14 shrink-0 text-right text-sm tabular-nums text-[var(--ct-accent)]" title="จำนวนครั้งที่ใช้">{h.useCount}×</span>
-              <Link href={`/content?hook=${h.id}`} className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-[var(--ct-line)] px-3 text-sm hover:bg-[var(--ct-soft)]">ใช้อันนี้</Link>
+              <Link href={`/studio?hook=${h.id}`} className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-[var(--ct-line)] px-3 text-sm hover:bg-[var(--ct-soft)]">ใช้อันนี้</Link>
               <button type="button" onClick={() => copy(h)} aria-live="polite" className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-sm text-[var(--ct-mute)] hover:bg-[var(--ct-ground)]">
                 {copied === h.id ? <><CheckIcon className="size-4 text-[var(--ct-accent)]" />คัดลอกแล้ว</> : "คัดลอก"}
               </button>

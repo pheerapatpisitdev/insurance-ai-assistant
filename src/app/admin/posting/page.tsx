@@ -145,7 +145,7 @@ export default async function PostingAdminPage() {
             เชื่อมเพจใหม่ / เพิ่มเพจ
           </Link>
           <Link
-            href="/content/calendar"
+            href="/studio/calendar"
             className="inline-block rounded-md border border-[var(--bot-line)] px-4 py-2 text-sm font-medium no-underline"
           >
             เปิดปฏิทินโพสต์

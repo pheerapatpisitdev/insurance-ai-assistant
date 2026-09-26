@@ -28,19 +28,19 @@ export function PersonPicker({ people, value, onChange, disabled, confirmLeave }
   const toLibrary = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!confirmLeave || e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
-    if (await confirmLeave()) router.push("/content/people");
+    if (await confirmLeave()) router.push("/studio/people");
   };
   if (people.length === 0) {
     return (
       <p className="text-sm text-[var(--ct-mute)]">
-        ยังไม่มีใครในคลัง — <Link href="/content/people" onClick={toLibrary} className="underline">เพิ่มคนที่คลังบุคคล</Link>
+        ยังไม่มีใครในคลัง — <Link href="/studio/people" onClick={toLibrary} className="underline">เพิ่มคนที่คลังบุคคล</Link>
       </p>
     );
   }
   return (
     <div className="space-y-2">
       <div className="flex justify-end">
-        <Link href="/content/people" onClick={toLibrary} className="inline-flex min-h-11 items-center text-sm text-[var(--ct-accent)] underline">จัดการคลังบุคคล (เพิ่ม/แก้ไข/ลบ) →</Link>
+        <Link href="/studio/people" onClick={toLibrary} className="inline-flex min-h-11 items-center text-sm text-[var(--ct-accent)] underline">จัดการคลังบุคคล (เพิ่ม/แก้ไข/ลบ) →</Link>
       </div>
       <select
         value={value?.id ?? ""}

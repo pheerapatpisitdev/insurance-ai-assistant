@@ -15,7 +15,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "../ui/icons";
 import { CalendarBoard, MonthList } from "./CalendarBoard";
 
 export const dynamic = "force-dynamic";
-/** the board's own actions (a drop posts through Facebook) run from this page, as /content's do */
+/** the board's own actions (a drop posts through Facebook) run from this page, as /studio's do */
 export const maxDuration = 300;
 
 export const metadata = {
@@ -104,7 +104,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       if (v === undefined) q.delete(k);
       else q.set(k, v);
     }
-    return `/content/calendar?${q.toString()}`;
+    return `/studio/calendar?${q.toString()}`;
   };
   const prev = shiftMonth(year, month, -1);
   const next = shiftMonth(year, month, 1);
