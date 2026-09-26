@@ -3,7 +3,7 @@ import { addPerson, deletePerson, MAX_PHOTO_BYTES, PersonError, PHOTO_TYPES, upd
 import { MAX_PHOTOS } from "@/lib/content/people";
 
 /**
- * Adding and removing people, as plain requests: four photos are more than a server action's
+ * Adding and removing people, as plain requests: ten photos are more than a server action's
  * one-megabyte body takes, and the page resizes them to 1024px before they are sent anyway.
  * The consent tick is checked here as well as on the page — the rule is the server's.
  */

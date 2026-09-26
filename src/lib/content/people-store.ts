@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ReferenceImage } from "@/lib/ai/images";
-import { MAX_PHOTOS } from "./people";
+import { MAX_PHOTOS, pickReferences } from "./people";
 
 /**
  * The people library: consenting people and their reference photos, in a private bucket the
@@ -10,11 +10,11 @@ import { MAX_PHOTOS } from "./people";
 
 const BUCKET = "content-people";
 /**
- * The file names a person's photos may take. More than MAX_PHOTOS, so an edit can add new
- * photos beside the ones it removes before those are gone; the path pattern allows 0–9.
+ * The file names a person's photos may take. Twice MAX_PHOTOS, so an edit can add new
+ * photos beside the ones it removes before those are gone; the path pattern allows 0–99.
  */
-const SLOTS = [0, 1, 2, 3, 4, 5, 6, 7];
-const PHOTO_PATH = /^[0-9a-f-]{36}\/\d\.(jpg|png|webp)$/;
+const SLOTS = Array.from({ length: 2 * MAX_PHOTOS }, (_, n) => n);
+const PHOTO_PATH = /^[0-9a-f-]{36}\/\d{1,2}\.(jpg|png|webp)$/;
 export const isPhotoPath = (v: unknown): v is string => typeof v === "string" && PHOTO_PATH.test(v);
 
 export const PHOTO_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -79,8 +79,8 @@ export async function addPerson(name: string, photos: { bytes: Buffer; mimeType:
 }
 
 /**
- * A person renamed, photos taken away and photos added, in that order, keeping one to four.
- * New photos take the free slots 0–3, so a path never collides with one still in use. The
+ * A person renamed, photos taken away and photos added, in that order, keeping one to
+ * MAX_PHOTOS. New photos take free slots, so a path never collides with one still in use. The
  * consent stands: it was given for this person, and editing does not widen it.
  */
 export async function updatePerson(id: string, change: {
@@ -146,10 +146,10 @@ export async function photoBytes(path: string): Promise<ReferenceImage | null> {
   return { bytes: Buffer.from(await data.arrayBuffer()), mimeType: data.type || "image/jpeg" };
 }
 
-/** A person's photos as the image model wants them; null when the person is gone. */
+/** Four of a person's photos as the image model wants them; null when the person is gone. */
 export async function personPhotos(id: string): Promise<{ person: Person; photos: ReferenceImage[] } | null> {
   const person = await getPerson(id);
   if (!person) return null;
-  const photos = (await Promise.all(person.photos.slice(0, MAX_PHOTOS).map(photoBytes))).filter((p): p is ReferenceImage => p !== null);
+  const photos = (await Promise.all(pickReferences(person.photos).map(photoBytes))).filter((p): p is ReferenceImage => p !== null);
   return photos.length ? { person, photos } : null;
 }

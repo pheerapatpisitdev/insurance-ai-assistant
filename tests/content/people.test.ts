@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { backgroundPrompt } from "@/lib/content/background";
-import { MAX_PHOTOS, POSES, poseText } from "@/lib/content/people";
+import { MAX_PHOTOS, MAX_REFERENCES, pickReferences, POSES, poseText } from "@/lib/content/people";
 
 describe("poses", () => {
   it("offers ให้ AI เลือก first, then five poses, each said in Thai and English", () => {
@@ -15,8 +15,19 @@ describe("poses", () => {
     expect(poseText("nonsense")).toBe(poseText("auto"));
     expect(poseText("auto")).toMatch(/choose/i);
   });
-  it("keeps to what Gemini takes as character references", () => {
-    expect(MAX_PHOTOS).toBe(4);
+  it("keeps ten in the library, and sends Gemini the four it takes as character references", () => {
+    expect(MAX_PHOTOS).toBe(10);
+    expect(MAX_REFERENCES).toBe(4);
+  });
+  it("draws from the first photo always, and three others picked at random", () => {
+    const ten = Array.from({ length: 10 }, (_, i) => i);
+    for (const r of [0, 0.5, 0.99]) {
+      const got = pickReferences(ten, () => r);
+      expect(got).toHaveLength(4);
+      expect(got[0]).toBe(0);
+      expect(new Set(got).size).toBe(4);
+    }
+    expect(pickReferences([7, 8, 9])).toEqual([7, 8, 9]);
   });
 });
 

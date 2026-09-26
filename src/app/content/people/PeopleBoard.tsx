@@ -1,11 +1,11 @@
 "use client";
 import { useState } from "react";
-import { MAX_PHOTOS } from "@/lib/content/people";
+import { MAX_PHOTOS, MAX_REFERENCES } from "@/lib/content/people";
 import type { Person } from "@/lib/content/people-store";
 import { ask } from "../ask";
 import { PhotoDrop } from "./PhotoDrop";
 
-/** the long side a reference photo is sent at: plenty for a face, and four fit one request */
+/** the long side a reference photo is sent at: plenty for a face, and ten fit one request */
 const LONG_SIDE = 1024;
 
 /** A photo shrunk in the browser to LONG_SIDE and re-encoded as JPEG, so an upload stays small. */
@@ -17,7 +17,7 @@ async function shrink(file: File): Promise<Blob> {
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   return await new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("resize failed"))), "image/jpeg", 0.88));
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("resize failed"))), "image/jpeg", 0.85));
 }
 
 const photoUrl = (path: string) => `/api/content-people/photo?path=${encodeURIComponent(path)}`;
@@ -187,6 +187,7 @@ export function PeopleBoard({ initial }: { initial: Person[] }) {
         </label>
         <div>
           <span className="mb-1 block text-sm font-medium">รูปต้นแบบ (1–{MAX_PHOTOS} รูป)</span>
+          <span className="mb-2 block text-xs text-[var(--ct-mute)]">AI วาดจากครั้งละ {MAX_REFERENCES} รูป — รูปแรกทุกครั้ง ที่เหลือสุ่มจากรูปอื่น</span>
           <PhotoDrop files={files} onChange={setFiles} limit={MAX_PHOTOS} />
         </div>
         <label className="flex min-h-11 items-start gap-3 py-1 text-sm">

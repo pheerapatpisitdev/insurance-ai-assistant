@@ -5,8 +5,24 @@
  * docs/superpowers/specs/2026-09-24-people-in-posters-design.md
  */
 
-/** Gemini 3.1 Flash Image takes at most four character images */
-export const MAX_PHOTOS = 4;
+/** how many photos a person may keep in the library (owner, 2026-09-26: up to ten) */
+export const MAX_PHOTOS = 10;
+/** Gemini 3.1 Flash Image takes at most four character images, so a picture is drawn from four */
+export const MAX_REFERENCES = 4;
+
+/**
+ * The four photos a picture is drawn from: the first always — the owner's main photo — and
+ * the rest picked at random each time, so every angle in the library gets used over time.
+ */
+export function pickReferences<T>(photos: T[], random: () => number = Math.random): T[] {
+  if (photos.length <= MAX_REFERENCES) return photos;
+  const rest = photos.slice(1);
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+  return [photos[0], ...rest.slice(0, MAX_REFERENCES - 1)];
+}
 
 export const POSES = [
   { id: "auto", label: "ให้ AI เลือก", en: "Choose a natural pose that fits the scene and the post." },
