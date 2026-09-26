@@ -93,9 +93,60 @@ const ABOUT_THE_READER = new Set(["health_you", "debt_you", "job_you"]);
 // those three patterns are lazy on purpose: a greedy one swallows "ถ้าคุณป่วย… แล้วคุณป่วยอยู่"
 // as a single match that opens on ถ้า, and the second, asserting half goes unread
 
-export function checkPolicy(text: string): PolicyFinding[] {
+/**
+ * หาทีม's own rules, on top of the rest (owner, 2026-09-26). A recruiting post is a job ad to
+ * Facebook — applicants may not be picked by sex, age or status — and an income claim to
+ * คปภ.; the owner's rule is no income figure at all. Only recruit pieces are read with these:
+ * a plan post quoting "เบี้ยเดือนละ 1,200 บาท" is not promising anyone a salary.
+ */
+export const RECRUIT_POLICY_RULES: PolicyRule[] = [
+  {
+    code: "income_promise",
+    pattern: /(?:รายได้|เงินเดือน|ได้เงิน|รับเงิน|ค่าคอม)[^.!?\n]{0,20}?(?:[\d๐-๙][\d๐-๙,]{2,}|[\d๐-๙]+\s?(?:หมื่น|แสน|ล้าน)|หลัก\s?(?:หมื่น|แสน|ล้าน))|(?:หลัก\s?(?:หมื่น|แสน|ล้าน)|[\d๐-๙][\d๐-๙,]{3,}\s?บาท)[^.!?\n]{0,12}?(?:ต่อเดือน|\/เดือน|ต่อปี)/,
+    severity: "block",
+    message: "ระบุตัวเลขรายได้ — ห้ามในโพสต์หาทีม (คปภ. และ Facebook ถือเป็นการอ้างรายได้)",
+    fix: "เขียนว่า “รายได้ขึ้นกับผลงาน” แทนตัวเลข",
+  },
+  {
+    code: "income_guarantee",
+    pattern: /(?:การันตี|รับประกัน|ชัวร์|แน่นอน)[^.!?\n]{0,10}(?:รายได้|เงินเดือน)|(?:รายได้|เงินเดือน)[^.!?\n]{0,10}(?:การันตี|แน่นอน|ชัวร์|ประจำทุกเดือน)/,
+    severity: "block",
+    message: "สัญญาว่ามีรายได้แน่นอน — งานตัวแทนรายได้มาจากผลงาน สัญญาแบบนี้ไม่ได้",
+    fix: "เขียนว่า “รายได้ขึ้นกับผลงาน” และบอกว่าทีมช่วยอะไรบ้าง",
+  },
+  {
+    code: "hire_filter",
+    pattern: /(?:เฉพาะ|รับแต่)[^.!?\n]{0,6}(?:ผู้หญิง|ผู้ชาย|เพศ|หญิง|ชาย|โสด)|(?:ผู้หญิง|ผู้ชาย|โสด|สัญชาติไทย)[^.!?\n]{0,6}เท่านั้น|อายุ\s?[\d๐-๙]{2}\s?(?:-|–|ถึง)\s?[\d๐-๙]{2}|เพศ\s?(?:หญิง|ชาย)|หน้าตาดี|บุคลิกดี/,
+    severity: "block",
+    message: "เลือกผู้สมัครจากเพศ อายุ หรือสถานภาพ — Facebook ห้ามในโฆษณาหางาน",
+    fix: "เปิดให้ทุกคน เช่น “ไม่จำกัดวุฒิ ไม่ต้องมีประสบการณ์”",
+  },
+  {
+    code: "mlm",
+    pattern: /ดาวน์\s?ไลน์|อั[พป]\s?ไลน์|downline|upline|ธุรกิจเครือข่าย|ชวนคน[^.!?\n]{0,10}(?:ได้เงิน|ได้ค่า|รับเงิน)/i,
+    severity: "block",
+    message: "คำแนวธุรกิจเครือข่าย — Facebook ปฏิเสธโฆษณาแบบนี้ และไม่ใช่วิธีทำงานของตัวแทน",
+    fix: "เล่าว่างานคือดูแลลูกค้า ไม่ใช่ชวนคนมาต่อ",
+  },
+  {
+    code: "exam_promise",
+    pattern: /(?:สอบ|ใบอนุญาต)[^.!?\n]{0,25}?(?:จนผ่าน|ผ่านแน่|ผ่านชัวร์|ผ่าน\s?(?:100|๑๐๐)|การันตี)|(?:การันตี|รับรอง)[^.!?\n]{0,10}สอบผ่าน/,
+    severity: "warn",
+    message: "สัญญาว่าสอบใบอนุญาตผ่าน — ผลสอบขึ้นกับผู้สอบ สัญญาแบบนี้ไม่ได้",
+    fix: "เขียนว่า “ทีมช่วยเตรียมตัวสอบ”",
+  },
+  {
+    code: "easy_money",
+    pattern: /รวย|งานสบาย|ไม่ต้องขาย|ไม่ต้องทำอะไร|นอนรับ|เงินไหลเข้า/,
+    severity: "warn",
+    message: "คำแนวรวยง่าย — เสี่ยงโฆษณาถูกปฏิเสธ และคนที่มาเพราะคำนี้มักอยู่ไม่นาน",
+    fix: "บอกตรงๆ ว่างานนี้ต้องเรียนรู้ ทีมช่วยอะไร และรายได้ขึ้นกับผลงาน",
+  },
+];
+
+export function checkPolicy(text: string, opts: { recruit?: boolean } = {}): PolicyFinding[] {
   const out: PolicyFinding[] = [];
-  for (const rule of POLICY_RULES) {
+  for (const rule of opts.recruit ? [...POLICY_RULES, ...RECRUIT_POLICY_RULES] : POLICY_RULES) {
     const every = new RegExp(rule.pattern.source, "g");
     for (const m of text.matchAll(every)) {
       const before = text.slice(Math.max(0, m.index - 14), m.index);

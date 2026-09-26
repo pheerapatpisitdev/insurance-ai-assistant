@@ -1,0 +1,190 @@
+"use client";
+import { useEffect, useId, useState } from "react";
+import { AUTO, AUTO_FLOOR_THB, OVERHEAD_THB, PAINTERS, WRITERS, painterFor, writerOf } from "@/lib/content/models";
+import type { PiecePerson } from "@/lib/content/people";
+import { FORMAT_LABEL, LENGTHS, MAX_READER, type Format, type Length } from "@/lib/content/prompt";
+import {
+  MAX_RECRUIT_CUSTOM, MAX_RECRUIT_PIECES, RECRUIT_NAME, RECRUIT_READERS, RECRUIT_TONES, RECRUIT_TOPICS, recruitTones,
+} from "@/lib/content/recruit";
+import { generateRecruit, type GenerateResult } from "../actions";
+import { PersonPicker, type PersonOption } from "../PersonPicker";
+
+/**
+ * หาทีม's tools (owner, 2026-09-26): pick a topic and who it is for, set the round, press
+ * สร้าง. No income figure is ever asked for — the rules forbid one (recruit.ts, policy.ts).
+ */
+
+/** the recruit reader is its own: the plan form's is a customer, this one a future teammate */
+const READER_KEY = "content-recruit-reader";
+
+const chip = (on: boolean) =>
+  `inline-flex min-h-11 items-center justify-center rounded-full border px-3.5 py-1.5 text-sm ${on
+    ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]"
+    : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-ink)] hover:bg-[var(--ct-soft)]"}`;
+const field = "min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
+const solid = "min-h-11 w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50";
+
+export function RecruitTools({ writer, onWriter, painter, onPainter, people, person, onPerson, left, pending, making, run }: {
+  writer: string;
+  onWriter: (id: string) => void;
+  painter: string;
+  onPainter: (id: string) => void;
+  people: PersonOption[];
+  person: PiecePerson | null;
+  onPerson: (p: PiecePerson | null) => void;
+  /** the month's content money left, for the estimate and for อัตโนมัติ */
+  left: number;
+  pending: boolean;
+  making: number;
+  /** `paintWith` and `who` are the painter and person at the press; the page draws each new poster's picture with them */
+  run: (asked: number, format: Format, send: () => Promise<GenerateResult>, paintWith: string, who: PiecePerson | null) => Promise<void>;
+}) {
+  const id = useId();
+  const [topic, setTopic] = useState<string>(RECRUIT_TOPICS[0].id);
+  const [custom, setCustom] = useState("");
+  const [reader, setReaderState] = useState("");
+  useEffect(() => {
+    try { setReaderState(localStorage.getItem(READER_KEY) ?? ""); } catch { /* storage unavailable */ }
+  }, []);
+  const setReader = (r: string) => {
+    setReaderState(r);
+    try { localStorage.setItem(READER_KEY, r); } catch { /* not kept */ }
+  };
+  const [format, setFormat] = useState<Format>("post");
+  const [length, setLength] = useState<Length>("60");
+  const [tone, setTone] = useState("");
+  const [count, setCount] = useState(1);
+
+  const blocked = topic === "custom" && !custom.trim() ? "พิมพ์หัวข้อ หรือเลือกจากรายการ" : null;
+
+  const pick = writerOf(writer, left);
+  // a person in the picture is drawn by Gemini whatever was picked, at Gemini's price
+  const paints = painterFor(painter, left, Boolean(person));
+  const drawn = format === "script" ? 0 : paints.thb * count;
+  const estimate = (count * (pick.thb + OVERHEAD_THB) + drawn).toFixed(2);
+  const unit = format === "ad" ? "แบบ" : "ชิ้น";
+
+  async function create() {
+    if (pending || blocked) return;
+    // the form as it was at the press, whatever changes while the round is out
+    const round = { topic, custom: custom.trim(), reader: reader.trim(), tone, format, length, count, writer };
+    const paintWith = round.format === "script" ? "none" : painterFor(painter, left, Boolean(person)).id;
+    await run(count, round.format, () => generateRecruit(round), paintWith, person);
+  }
+
+  return (
+    <>
+      <div className="space-y-4 p-4">
+        <div>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">หัวข้อ</span>
+            <select value={topic} onChange={(e) => setTopic(e.target.value)} className={field}>
+              {RECRUIT_TOPICS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              <option value="custom">พิมพ์เอง…</option>
+            </select>
+          </label>
+          {topic === "custom" && (
+            <label className="mt-2 block">
+              <span className="sr-only">หัวข้อ (พิมพ์เอง)</span>
+              <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={MAX_RECRUIT_CUSTOM} placeholder="เช่น ทำไมคนทำงานประจำถึงเริ่มเป็นตัวแทน" className={field} />
+            </label>
+          )}
+          <p className="mt-1.5 text-xs text-[var(--ct-mute)]">โพสต์หาทีมไม่ใส่ตัวเลขรายได้ ไม่จำกัดเพศหรืออายุ — ระบบตรวจให้ทุกชิ้น</p>
+        </div>
+
+        <div role="group" aria-labelledby={`${id}-reader`}>
+          <span id={`${id}-reader`} className="mb-1.5 block text-sm font-medium">อยากชวนใคร <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" aria-pressed={reader === ""} onClick={() => setReader("")} className={chip(reader === "")}>ทุกคน</button>
+            {RECRUIT_READERS.map((r) => (
+              <button key={r} type="button" aria-pressed={reader === r} onClick={() => setReader(r)} className={chip(reader === r)}>{r}</button>
+            ))}
+          </div>
+          <label className="mt-2 block">
+            <span className="sr-only">คนอ่าน (พิมพ์เอง)</span>
+            <input value={reader} onChange={(e) => setReader(e.target.value)} maxLength={MAX_READER} placeholder="หรือพิมพ์เอง เช่น พยาบาลที่อยากมีงานเสริม" className={field} />
+          </label>
+        </div>
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">ทำอะไร</span>
+          <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className={field}>
+            {(["post", "script", "ad"] as const).map((f) => <option key={f} value={f}>{FORMAT_LABEL[f]}</option>)}
+          </select>
+        </label>
+
+        {format === "script" && (
+          <div role="group" aria-labelledby={`${id}-length`}>
+            <span id={`${id}-length`} className="mb-1.5 block text-sm font-medium">ความยาวคลิป</span>
+            <div className="flex flex-wrap gap-2">
+              {LENGTHS.map((l) => (
+                <button key={l.id} type="button" aria-pressed={length === l.id} onClick={() => setLength(l.id)} className={chip(length === l.id)}>{l.label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">วิธีเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
+          <select value={tone} onChange={(e) => setTone(e.target.value)} className={field}>
+            <option value="">ให้ AI เลือก</option>
+            {RECRUIT_TONES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+        </label>
+
+        <div role="group" aria-labelledby={`${id}-count`}>
+          <span id={`${id}-count`} className="mb-1.5 block text-sm font-medium">จำนวน{unit} <span className="font-normal text-[var(--ct-mute)]">(แต่ละ{unit}เล่าต่างกัน)</span></span>
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: MAX_RECRUIT_PIECES }, (_, i) => i + 1).map((n) => (
+              <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={chip(count === n)}>{n}</button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs text-[var(--ct-mute)]">
+            {tone && count > 1 ? `ทุก${unit}ใช้วิธีเล่าที่เลือก เปิดเรื่องต่างกัน` : recruitTones(tone, count).map((t) => t.label).join(" · ")}
+          </p>
+        </div>
+
+        {format !== "script" && (
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">ภาพประกอบ</span>
+            <select value={painter} onChange={(e) => onPainter(e.target.value)} className={field}>
+              <option value={AUTO}>อัตโนมัติ</option>
+              {PAINTERS.map((p) => <option key={p.id} value={p.id}>{p.label}{p.thb > 0 ? ` · ฿${p.thb.toFixed(2)} ต่อภาพ` : ""}</option>)}
+            </select>
+            <span className="mt-1 block text-xs text-[var(--ct-mute)]">
+              {painter === AUTO
+                ? `ตอนนี้${paints.modelId ? `วาดด้วย ${paints.short}` : "ไม่วาดภาพ"} — งบเหลือต่ำกว่า ฿${AUTO_FLOOR_THB} จะหยุดวาดเอง`
+                : painter === "none" ? "ใช้พื้นสีตามโทน วาดทีหลังได้ในหน้าแก้ไข" : `${paints.short} · AI วาดภาพบรรยากาศการทำงานให้ทุกชิ้นหลังเขียนเสร็จ`}
+            </span>
+          </label>
+        )}
+
+        {format !== "script" && painter !== "none" && (
+          <div>
+            <span className="mb-1.5 block text-sm font-medium">ใส่บุคคลในภาพ <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+            <PersonPicker people={people} value={person} onChange={onPerson} />
+            {person && <span className="mt-1 block text-xs text-[var(--ct-mute)]">วาดด้วย Gemini Image ราวภาพละ ฿2.4</span>}
+          </div>
+        )}
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">โมเดลเขียน</span>
+          <select value={writer} onChange={(e) => onWriter(e.target.value)} className={field}>
+            <option value={AUTO}>อัตโนมัติ</option>
+            {WRITERS.map((w) => <option key={w.id} value={w.id}>{w.label} · {w.short}</option>)}
+          </select>
+        </label>
+      </div>
+
+      {/* the press and its price stay in reach, as on the plan form */}
+      <div className="sticky bottom-0 z-10 rounded-b-xl border-t border-[var(--ct-hair)] bg-[var(--ct-panel)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+        <button type="button" onClick={create} disabled={pending || Boolean(blocked)} className={solid}>
+          {pending
+            ? `กำลังเขียน ${making} ${unit}… (ราว 20–40 วินาที)`
+            : `สร้าง${format === "post" ? "โพสต์" : format === "ad" ? "โฆษณา" : "สคริปต์"}${RECRUIT_NAME} ${count} ${unit}`}
+        </button>
+        <p className="mt-2 text-xs text-[var(--ct-mute)]">{blocked ?? `ราว ฿${estimate} · งบคอนเทนต์เดือนนี้เหลือ ฿${left.toFixed(2)}`}</p>
+      </div>
+    </>
+  );
+}

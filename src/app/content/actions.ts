@@ -13,6 +13,8 @@ import { POSES, type PiecePerson } from "@/lib/content/people";
 import { personPhotos } from "@/lib/content/people-store";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { checkPolicy } from "@/lib/content/policy";
+import { RECRUIT_HREF } from "@/lib/content/recruit";
+import { writeRecruit, type RecruitWriteInput } from "@/lib/content/recruit-run";
 import { proofread, type Fix } from "@/lib/content/proofread";
 import { ANGLES, GOALS, LENGTHS, angleText, MAX_FACT, MAX_READER, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
 import {
@@ -57,12 +59,13 @@ const BUDGET_OUT = "ถึงงบค่า AI ของเดือนนี�
 const tooDear = (what: string, left: number) =>
   `งบสร้างคอนเทนต์เดือนนี้เหลือ ${left.toFixed(2)} บาท ไม่พอ${what} — ${what === "รอบนี้" ? "ลดจำนวนชิ้น เลือกโมเดลประหยัด หรือ" : ""}เพิ่มงบได้ที่หน้า /admin/ai`;
 
-function flagsFor(o: ContentOutput, brief: string, words: ContentWord[], fixes: Fix[] | null): Flags {
+/** `recruit`: a หาทีม piece, read with the recruiting rules too (policy.ts) */
+function flagsFor(o: ContentOutput, brief: string, words: ContentWord[], fixes: Fix[] | null, recruit = false): Flags {
   const text = checkedText(o);
   return {
     numbers: strayNumbers(text, brief),
     words: findWords(text, words),
-    policy: checkPolicy(text),
+    policy: checkPolicy(text, { recruit }),
     // a suggestion whose words were edited away cannot be applied any more
     fixes: fixes ? fixes.filter((f) => text.includes(f.find)) : null,
   };
@@ -242,6 +245,14 @@ export async function generateContent(input: GenerateInput): Promise<GenerateRes
     // the real costs are in the ledger by now, call by call
     if (hold) await releaseContentBudget(hold);
   }
+}
+
+/** หาทีม: a round from a picked topic (src/lib/content/recruit.ts), under the plan form's hourly limit. */
+export async function generateRecruit(input: RecruitWriteInput): Promise<GenerateResult> {
+  if (!perHour(`content:${await caller()}`)) {
+    return { ok: false, error: "สร้างครบ 10 รอบในชั่วโมงนี้แล้ว รอสักพักแล้วลองใหม่นะครับ" };
+  }
+  return writeRecruit(input);
 }
 
 export interface ProofreadResult {
@@ -465,7 +476,7 @@ export async function saveContentEdits(
       if (opts.plain && !output.poster?.background) delete output.pictureBy;
       // the figures a numbers post was written from are allowed again, as the brief and the story are
       const yardstick = [brief?.text ?? "", item.output.fact ?? "", item.output.figures ?? ""].join("\n");
-      const flags = flagsFor(output, yardstick, words, item.flags.fixes);
+      const flags = flagsFor(output, yardstick, words, item.flags.fixes, item.planHref === RECRUIT_HREF);
       if (view.kind === "scheduled") {
         const r = await rescheduleEdited(item, output, flags, view.at, opts.confirmNumbers);
         if (r === RACED) continue;

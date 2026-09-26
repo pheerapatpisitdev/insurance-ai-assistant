@@ -4,6 +4,7 @@ import {
   countByPage, DROP_TIME, type BoardItem,
 } from "@/lib/content/calendar";
 import { CLAIM_HREF, CLAIM_NAME } from "@/lib/content/claim";
+import { RECRUIT_HREF, RECRUIT_NAME } from "@/lib/content/recruit";
 import { defaultPoster, posterUrl } from "@/lib/content/poster";
 import { contentProduct } from "@/lib/content/products";
 import { publishView } from "@/lib/content/publish-label";
@@ -30,7 +31,7 @@ export const metadata = {
  */
 
 function toBoard(item: ContentItem, pageName: (id: string | null) => string): BoardItem {
-  const planName = item.planHref === CLAIM_HREF ? CLAIM_NAME : contentProduct(item.planHref)?.name ?? item.planHref;
+  const planName = item.planHref === CLAIM_HREF ? CLAIM_NAME : item.planHref === RECRUIT_HREF ? RECRUIT_NAME : contentProduct(item.planHref)?.name ?? item.planHref;
   const view = publishView(item.publish);
   const at = item.publish?.at ? new Date(item.publish.at) : null;
   const placed = (view.kind === "scheduled" || view.kind === "published") && at;

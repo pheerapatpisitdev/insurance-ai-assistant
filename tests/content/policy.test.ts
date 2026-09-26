@@ -53,3 +53,43 @@ describe("checkPolicy", () => {
     expect(codes("อันดับ ๑ ของประเทศ")).toEqual(["superlative"]);
   });
 });
+
+describe("checkPolicy — หาทีม's own rules", () => {
+  const recruit = (text: string) => checkPolicy(text, { recruit: true }).map((f) => f.code);
+
+  it("stops an income figure or a promise of one", () => {
+    expect(recruit("รายได้เดือนละ 50,000 บาท")).toEqual(["income_promise"]);
+    expect(recruit("สร้างรายได้หลักแสนต่อเดือน")).toEqual(["income_promise"]);
+    expect(recruit("การันตีรายได้ทุกเดือน")).toEqual(["income_guarantee"]);
+    expect(recruit("มีรายได้แน่นอน")).toEqual(["income_guarantee"]);
+  });
+
+  it("stops picking applicants by sex, age or status", () => {
+    expect(recruit("รับสมัครเฉพาะผู้หญิง")).toEqual(["hire_filter"]);
+    expect(recruit("อายุ 25-35 ปี สมัครได้เลย")).toContain("hire_filter");
+    expect(recruit("รับคนโสดเท่านั้น")).toEqual(["hire_filter"]);
+  });
+
+  it("stops network-marketing words and warns on easy money", () => {
+    expect(recruit("สร้างดาวน์ไลน์ของคุณเอง")).toEqual(["mlm"]);
+    const [f] = checkPolicy("งานสบาย รวยเร็ว", { recruit: true });
+    expect(f.code).toBe("easy_money");
+    expect(f.severity).toBe("warn");
+  });
+
+  it("warns on a promise to pass the licence exam", () => {
+    const [f] = checkPolicy("ทีมเราช่วยเตรียมสอบให้ตั้งแต่ต้นจนผ่าน", { recruit: true });
+    expect(f.code).toBe("exam_promise");
+    expect(f.severity).toBe("warn");
+    expect(recruit("การันตีสอบผ่าน")).toContain("exam_promise");
+  });
+
+  it("lets the honest line through", () => {
+    expect(recruit("รายได้ขึ้นกับผลงาน ทีมสอนตั้งแต่ศูนย์ ต้องสอบใบอนุญาต คปภ.")).toEqual([]);
+    expect(recruit("ทุกเพศทุกวัยสมัครได้")).toEqual([]);
+  });
+
+  it("is off for the plan posts, which quote premiums in baht", () => {
+    expect(codes("รายได้เดือนละ 50,000 บาท")).toEqual([]);
+  });
+});

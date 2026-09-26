@@ -21,7 +21,9 @@ import { PieceCard, PieceSkeleton } from "./PieceCard";
 import { PieceEditor } from "./PieceEditor";
 import { ScriptCard } from "./ScriptCard";
 import { ClaimTools } from "./claim/ClaimTools";
+import { RecruitTools } from "./recruit/RecruitTools";
 import { CLAIM_HREF, CLAIM_NAME } from "@/lib/content/claim";
+import { RECRUIT_HREF, RECRUIT_NAME } from "@/lib/content/recruit";
 import { CheckIcon, ChevronDownIcon, SearchIcon, XIcon } from "./ui/icons";
 import { PlainText } from "./ui/editor-fields";
 
@@ -174,8 +176,8 @@ function HookPicker({ hooks, value, onChange }: { hooks: HookTemplate[]; value: 
 export function ContentStudio({ products, lengths, hooks, initialHook, initial, initialUsed, spend: initialSpend, initialOpen, people }: Props) {
   const [href, setHref] = useState(products[0]?.href ?? "");
   const [format, setFormat] = useState<Format>("post");
-  /** จากแบบประกัน or รีวิวเคลม: the two forms share the pieces, the models and the budget line */
-  const [mode, setMode] = useState<"plan" | "claim">("plan");
+  /** จากแบบประกัน, รีวิวเคลม or หาทีม: the forms share the pieces, the models and the budget line */
+  const [mode, setMode] = useState<"plan" | "claim" | "recruit">("plan");
   const [writer, setWriter] = useState(DEFAULT_WRITER);
   const [painter, setPainter] = useState(DEFAULT_PAINTER);
   useEffect(() => {
@@ -363,7 +365,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     return () => document.removeEventListener("click", onClick, true);
   }, [editorDirty, router]);
 
-  const nameOf = (h: string) => (h === CLAIM_HREF ? CLAIM_NAME : products.find((p) => p.href === h)?.name ?? h);
+  const nameOf = (h: string) => (h === CLAIM_HREF ? CLAIM_NAME : h === RECRUIT_HREF ? RECRUIT_NAME : products.find((p) => p.href === h)?.name ?? h);
   // gone from the list — deleted, moved to the other tab, filtered out — and the list is back
   const editingItem = editing ? (items.find((x) => x.id === editing) ?? (opened?.id === editing ? opened : undefined)) : undefined;
 
@@ -649,11 +651,11 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           </div>
 
           <div className={`px-4 pt-4 ${formOpen ? "" : "hidden lg:block"}`}>
-            <div role="group" aria-label="สร้างจาก" className="grid grid-cols-2 gap-1 rounded-lg bg-[var(--ct-soft)] p-1">
-              {([["plan", "จากแบบประกัน"], ["claim", CLAIM_NAME]] as const).map(([m, label]) => (
+            <div role="group" aria-label="สร้างจาก" className="flex gap-1 rounded-lg bg-[var(--ct-soft)] p-1">
+              {([["plan", "จากแบบประกัน"], ["claim", CLAIM_NAME], ["recruit", RECRUIT_NAME]] as const).map(([m, label]) => (
                 <button
                   key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}
-                  className={`min-h-10 rounded-md px-2 text-sm ${mode === m ? "bg-[var(--ct-panel)] font-medium shadow-sm" : "text-[var(--ct-mute)]"}`}
+                  className={`min-h-10 flex-auto whitespace-nowrap rounded-md px-1.5 text-sm ${mode === m ? "bg-[var(--ct-panel)] font-medium shadow-sm" : "text-[var(--ct-mute)]"}`}
                 >
                   {label}
                 </button>
@@ -669,6 +671,18 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
                 reader={reader} onReader={setReader} left={left} pending={pending} making={making}
                 run={(asked, fmt, send, paintWith, who) => runRound(asked, fmt, send, (fresh) => {
                   // the photograph behind each new claim poster, drawn as a plan round's are
+                  if (paintWith !== "none") void drawPictures(fresh.filter((i) => i.format !== "script"), paintWith, "", who);
+                })}
+              />
+            </div>
+          ) : mode === "recruit" ? (
+            <div id={formId} className={formOpen ? "" : "hidden lg:block"}>
+              <RecruitTools
+                writer={writer} onWriter={(w) => pick({ writer: w })} painter={painter} onPainter={(p) => pick({ painter: p })}
+                people={people} person={person} onPerson={setPerson}
+                left={left} pending={pending} making={making}
+                run={(asked, fmt, send, paintWith, who) => runRound(asked, fmt, send, (fresh) => {
+                  // the photograph behind each new recruit poster, drawn as a plan round's are
                   if (paintWith !== "none") void drawPictures(fresh.filter((i) => i.format !== "script"), paintWith, "", who);
                 })}
               />
@@ -919,6 +933,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
                 <option value="">ทุกแบบ</option>
                 {products.map((p) => <option key={p.href} value={p.href}>{p.name}</option>)}
                 <option value={CLAIM_HREF}>{CLAIM_NAME}</option>
+                <option value={RECRUIT_HREF}>{RECRUIT_NAME}</option>
               </select>
             </label>
           </div>
