@@ -204,7 +204,14 @@
   margin: 8mm 9mm;
 }
 @media print {
-  .ihealthy-scope { page: ihu; }
+  /* The colours go to paper whatever the print dialog says. Left to its default the
+     browser drops every background — and the plan names in the table header are white
+     lettering on their plan's colour, so they printed as white on white. */
+  .ihealthy-scope {
+    page: ihu;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 
   /* the title block, cut from a poster to a letterhead */
   .ihu-hero { padding: 0 0 4px; }
@@ -212,6 +219,16 @@
   .ihu-title-label { font-size: 11px; margin-bottom: 0; }
   .ihu-title-name { font-size: 24px; line-height: 1.2; letter-spacing: -0.5px; }
   .ihu-intro { margin-top: 2px; max-width: none; font-size: 9.5px; line-height: 1.6; }
+  /* a letterhead in the brand's navy, the one band of full colour on the sheet */
+  .ihu-hero {
+    background: var(--bot-navy);
+    border-radius: 6px;
+    padding: 8px 14px 9px;
+    margin-bottom: 8px;
+  }
+  .ihu-hero :is(.ihu-title-label, .ihu-title-name) { color: var(--bot-surface); }
+  .ihu-hero .ihu-title-name > span { color: var(--bot-sand); }
+  .ihu-hero .ihu-intro { color: var(--bot-navy-soft); }
   /* the three figures say again what the sentence above them has just said */
   .ihu-highlights { display: none; }
 
@@ -219,12 +236,16 @@
      and the table's premium rows are the price. */
   .ihealthy-scope #calc > div > * { margin-block: 0; }
   .ihealthy-scope #calc > div > * + * { margin-top: 6px; }
-  .ihu-print-head { border-top: 1px solid var(--lg-hair); padding-top: 6px; }
-  .ihu-print-head h2 { font-size: 13px; }
+  .ihu-print-head { border-left: 4px solid var(--bot-sand); padding: 1px 0 1px 8px; }
+  .ihu-print-head h2 { font-size: 13px; color: var(--bot-navy); }
   .ihu-print-head > p { margin-top: 0; font-size: 10px; }
   /* the thirty-one DCI illnesses, three to a row rather than a page-long column */
-  .ihu-print-dci section { margin-top: 6px; padding-top: 4px; break-inside: avoid; }
-  .ihu-print-dci h3 { font-size: 10px; }
+  .ihu-print-dci section {
+    margin-top: 6px; padding: 6px 10px; break-inside: avoid;
+    border: 1px solid var(--bot-navy-soft); border-top: 3px solid var(--bot-navy);
+    border-radius: 6px; background: var(--bot-navy-soft);
+  }
+  .ihu-print-dci h3 { font-size: 10px; color: var(--bot-navy); }
   .ihu-print-dci :is(p, li) { margin-top: 0; font-size: 8.5px; line-height: 1.45; }
   .ihu-print-dci ol { margin-top: 2px; columns: 3; column-gap: 16px; }
   .ihu-print-dci ol > li { margin-block: 0; break-inside: avoid; }
@@ -264,7 +285,7 @@
      already is — the summaries are whole sentences — two to a row, and the heading kept
      with them. */
   .ihu-terms { padding: 8px 0 0; break-inside: avoid; }
-  .ihu-terms h2 { font-size: 12px; margin: 0; break-after: avoid; }
+  .ihu-terms h2 { font-size: 12px; margin: 0; break-after: avoid; color: var(--bot-navy); }
   .ihu-terms h2 + div {
     margin-top: 2px;
     display: grid;
@@ -274,7 +295,7 @@
   .ihu-terms details { border-bottom: 0; }
   .ihu-terms details > div { display: none !important; }
   .ihu-terms summary { display: block; padding: 1px 0; font-size: 9px; font-weight: 400; line-height: 1.5; }
-  .ihu-terms summary::before { content: "• "; }
+  .ihu-terms summary::before { content: "● "; color: var(--bot-sand-line); }
 
   .ihu-disclaimer { padding: 6px 0 0; break-inside: avoid; }
   .ihu-disclaimer > p { padding-top: 4px; margin-top: 0; font-size: 7.5px; line-height: 1.55; }
