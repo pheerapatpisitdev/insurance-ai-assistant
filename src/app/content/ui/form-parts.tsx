@@ -129,3 +129,31 @@ export function pictureSummary({ format, writer, painter, theme, person }: {
   ];
   return [`เขียนด้วย ${writer}`, ...picture].join(" · ");
 }
+
+/** คลิปวนลูป on or off, kept in this browser and shared by the three forms */
+const LOOP_KEY = "content-script-loop";
+
+export function useLoop(): [boolean, (on: boolean) => void] {
+  const [loop, setLoopState] = useState(false);
+  useEffect(() => {
+    try { setLoopState(localStorage.getItem(LOOP_KEY) === "on"); } catch { /* storage unavailable */ }
+  }, []);
+  const setLoop = (on: boolean) => {
+    setLoopState(on);
+    try { localStorage.setItem(LOOP_KEY, on ? "on" : "off"); } catch { /* not kept */ }
+  };
+  return [loop, setLoop];
+}
+
+/** คลิปวนลูป (owner, 2026-09-27): the ending runs back into the opening line — see prompt.ts LOOP_RULES */
+export function LoopToggle({ value, onChange }: { value: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <label className={`flex min-h-11 cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-sm ${value ? "border-[var(--ct-solid)] bg-[var(--ct-soft)]" : "border-[var(--ct-line)]"}`}>
+      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 size-5 shrink-0" />
+      <span>
+        <span className="font-medium">คลิปวนลูป ↻</span> <span className="text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span>
+        <span className="mt-0.5 block text-xs text-[var(--ct-mute)]">ประโยคปิดพูดค้างไว้ แล้ววนกลับไปต่อที่ประโยคเปิด คนดูจะดูซ้ำโดยไม่รู้ตัว · การชวนทักแชทย้ายไปไว้กลางคลิป</span>
+      </span>
+    </label>
+  );
+}

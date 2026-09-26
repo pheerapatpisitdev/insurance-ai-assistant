@@ -398,6 +398,9 @@ export function PieceEditor({ item, productName, drawing, onSaved, onDraw, onSta
         <label className="mt-3 block">
           <span className="mb-1 block text-sm font-medium">ประโยคปิด</span>
           <AutoTextarea value={draft.closing} minRows={2} readOnly={locked} onChange={(e) => edit({ ...draft, closing: e.target.value })} className={field} />
+          {item.output.loop && (
+            <span className="mt-1 block text-xs text-[var(--ct-mute)]">↻ คลิปวนลูป: ประโยคสุดท้ายต้องพูดค้างไว้ แล้วอ่านต่อด้วยประโยคเปิดได้พอดี — แก้แล้วลองอ่านต่อกันดู</span>
+          )}
         </label>
         <label className="mt-3 block">
           <span className="mb-1 block text-sm font-medium">แฮชแท็ก</span>

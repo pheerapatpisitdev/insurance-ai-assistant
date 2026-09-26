@@ -65,7 +65,7 @@ export async function PUT(req: NextRequest) {
   const papers = await Promise.all(files.map(async (f, i) => ({ bytes: Buffer.from(await f.arrayBuffer()), mimeType: f.type, ratio: ratios[i] })));
   return Response.json(await writeClaim({
     facts, count: Number(form.get("count")), writer: String(form.get("writer") ?? ""), papers,
-    format: String(form.get("format") ?? ""), length: String(form.get("length") ?? ""),
+    format: String(form.get("format") ?? ""), length: String(form.get("length") ?? ""), loop: form.get("loop") === "on",
     angle: String(form.get("angle") ?? ""), custom: String(form.get("custom") ?? ""), reader: String(form.get("reader") ?? ""),
   }));
 }

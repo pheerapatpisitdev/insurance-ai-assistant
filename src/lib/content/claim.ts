@@ -3,7 +3,7 @@ import { parseJsonReply } from "@/lib/ai/client";
 import { DISCLAIMER, type ContentOutput } from "./output";
 import { POLICY_RULES_TH } from "./policy";
 import { AD_LIMITS } from "./ads";
-import { steerLines, type Format, type Length } from "./prompt";
+import { LOOP_RULES, steerLines, type Format, type Length } from "./prompt";
 import { clip, MAX_CHARS, parsePoster, THEME_MOOD, THEMES, type PosterBlock, type PosterSpec } from "./poster";
 
 /**
@@ -280,7 +280,7 @@ const POSTER_SHAPE = '"imagePrompt":"…","poster":{"theme":"navy","headline":"�
 const LENGTH_LABEL: Record<Length, string> = { "30": "30 วินาที", "60": "60 วินาที", "180": "2–3 นาที" };
 
 /** The writer's brief for one kind of work — the rules are the same for all three. */
-export function claimSystem(format: Format, length: Length | null = null): string {
+export function claimSystem(format: Format, length: Length | null = null, loop = false): string {
   const task: Record<Format, string[]> = {
     post: [
       "งาน: โพสต์เฟซบุ๊กรีวิวการเคลมจริงของลูกค้า",
@@ -317,15 +317,17 @@ export function claimSystem(format: Format, length: Length | null = null): strin
     WRITE_RULES,
     "",
     ...task[format],
+    // a คลิปวนลูป's ending runs back into its hook (prompt.ts)
+    ...(format === "script" && loop ? [LOOP_RULES] : []),
   ].join("\n");
 }
 
 export function claimMessages(
-  facts: ClaimFacts, angle: { say: string }, reader = "", format: Format = "post", length: Length | null = null,
+  facts: ClaimFacts, angle: { say: string }, reader = "", format: Format = "post", length: Length | null = null, loop = false,
 ): ChatMessage[] {
   const steer = steerLines({ reader: reader.trim() });
   return [
-    { role: "system", content: claimSystem(format, length) },
+    { role: "system", content: claimSystem(format, length, loop) },
     {
       role: "user",
       content: [

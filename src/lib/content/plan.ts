@@ -2,7 +2,7 @@ import { parseJsonReply } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { hookTemplateSection } from "./hooks";
 import { POLICY_RULES_TH } from "./policy";
-import { steerLines, type Steer } from "./prompt";
+import { LOOP_PLAN, steerLines, type Steer } from "./prompt";
 
 /**
  * The planner: before a word of body is written, decide each piece's angle and hook.
@@ -55,11 +55,14 @@ export function planMessages(opts: {
   angle: string;
   avoid: string[];
   template: { template: string; category: string } | null;
+  /** the hooks open a คลิปวนลูป, so each must also finish its closing */
+  loop?: boolean;
 } & Steer): ChatMessage[] {
   const user = [
     `ข้อมูลผลิตภัณฑ์:\n${opts.brief}`,
     opts.angle ? `มุมที่เจ้าของเพจอยากเล่า: ${opts.angle}` : "",
     steerLines(opts),
+    opts.loop ? LOOP_PLAN : "",
     avoidSection(opts.avoid),
     opts.template ? hookTemplateSection(opts.template) : "",
     [

@@ -10,7 +10,7 @@ import { LENGTHS, MAX_READER, NICHES, type Format, type Length } from "@/lib/con
 import type { GenerateResult } from "../actions";
 import { PhotoDrop } from "../people/PhotoDrop";
 import { PersonPicker, type PersonOption } from "../PersonPicker";
-import { FormatPicker, FormSection, PictureFold, PressBar, pictureSummary } from "../ui/form-parts";
+import { FormatPicker, FormSection, LoopToggle, PictureFold, PressBar, pictureSummary, useLoop } from "../ui/form-parts";
 import { burn, shrink } from "./redact";
 
 /**
@@ -57,6 +57,7 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, people, perso
   const [consent, setConsent] = useState(false);
   const [format, setFormat] = useState<Format>("post");
   const [length, setLength] = useState<Length>("60");
+  const [loop, setLoop] = useLoop();
   /** an angle id, "custom", or "" for ให้ AI เลือก */
   const [angle, setAngle] = useState("");
   const [custom, setCustom] = useState("");
@@ -78,7 +79,7 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, people, perso
     if (pending || blocked) return;
     // the form as it was at the press, whatever changes while the round is out
     const papers = files;
-    const round = { format, length, angle, custom: custom.trim(), reader: reader.trim(), note: note.trim(), count, writer };
+    const round = { format, length, loop: format === "script" && loop, angle, custom: custom.trim(), reader: reader.trim(), note: note.trim(), count, writer };
     // อัตโนมัติ settled at the press, on the money left then, as the plan form does
     const paintWith = round.format === "script" ? "none" : painterFor(painter, left, Boolean(person)).id;
     const who = person;
@@ -97,6 +98,7 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, people, perso
       form.set("writer", round.writer);
       form.set("format", round.format);
       form.set("length", round.length);
+      if (round.loop) form.set("loop", "on");
       form.set("angle", round.angle);
       form.set("custom", round.custom);
       form.set("reader", round.reader);
@@ -140,6 +142,8 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, people, perso
             </div>
           </div>
         )}
+
+        {format === "script" && <LoopToggle value={loop} onChange={setLoop} />}
 
         <FormSection title="เรื่องที่เล่า">
         <div>

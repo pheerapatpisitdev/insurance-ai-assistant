@@ -35,7 +35,7 @@ export function ScriptCard({ item, index, busy, onEdit, onStatus, onDelete, onCo
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--ct-hair)] px-3 py-2.5">
         <span className="rounded-full bg-[var(--ct-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--ct-accent)]">สคริปต์ {index + 1}</span>
         <span className="text-xs text-[var(--ct-mute)]">
-          {["วิดีโอ", length, `${list.length} ช่วง`, item.model && `เขียนโดย ${shortModel(item.model)}`].filter(Boolean).join(" · ")}
+          {["วิดีโอ", length, `${list.length} ช่วง`, item.output.loop && "วนลูป ↻", item.model && `เขียนโดย ${shortModel(item.model)}`].filter(Boolean).join(" · ")}
         </span>
         {toCheck > 0 && (
           <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs ${blocking ? "bg-[var(--ct-alert-bg)] text-[var(--ct-alert)]" : "bg-[var(--ct-warn-bg)] text-[var(--ct-warn-ink)]"}`}>
@@ -61,6 +61,13 @@ export function ScriptCard({ item, index, busy, onEdit, onStatus, onDelete, onCo
               </div>
             </li>
           ))}
+          {/* a คลิปวนลูป: the last words run on into the first, as the replay will play them */}
+          {item.output.loop && list.length > 0 && (
+            <li className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-3 bg-[var(--ct-ground)] px-3 py-2.5">
+              <span className="pt-0.5 text-xs font-medium text-[var(--ct-accent)]">↻ วนกลับ</span>
+              <p className="line-clamp-2 text-xs text-[var(--ct-mute)]">ต่อด้วยประโยคเปิด: “{list[0].say}”</p>
+            </li>
+          )}
         </ol>
       </div>
 

@@ -154,6 +154,24 @@ export function steerLines(s: Steer): string {
   ].filter(Boolean).join("\n");
 }
 
+/**
+ * คลิปวนลูป (owner, 2026-09-27): Reels and TikTok replay a clip on their own, so the ending is
+ * left mid-sentence and finished by the opening line — the replay reads as one sentence and
+ * the viewer stays for a second round. The invitation cannot close such a clip (a goodbye tells
+ * the viewer it is over), so it moves to one short line in the middle — the owner's pick.
+ * Read by every script writer: the plan's, รีวิวเคลม's and หาทีม's.
+ */
+export const LOOP_RULES = [
+  "คลิปวนลูป (กฎนี้มาก่อนคำสั่งเรื่อง closing ด้านบน): คลิปจะเล่นวนซ้ำเอง ท้ายคลิปต้องต่อกลับไปที่ hook เนียนเป็นประโยคเดียวกัน",
+  "- closing ขึ้นต้นด้วยเวลาในวงเล็บเหลี่ยมเหมือนเดิม แต่ประโยคสุดท้ายต้องพูดค้างไว้ไม่จบ แล้วอ่านต่อด้วย hook ได้พอดีทั้งความหมายและไวยากรณ์ เช่น “…และนั่นคือเหตุผลที่” แล้วต่อด้วย hook",
+  "- ห้ามมีคำลาหรือคำชวนท้ายคลิป เช่น กดติดตาม ทักแชทเลย แล้วเจอกันใหม่ ขอบคุณที่ดู",
+  "- ย้ายการชวน (ทักแชทหรือคอมเมนต์) ไปไว้กลางคลิป เป็นประโยคสั้นประโยคเดียวใน body ถ้ามี “เป้าหมาย” ให้ใช้กับประโยคชวนกลางคลิปนี้แทน closing",
+  "- ท่าทางและข้อความขึ้นจอช่วงท้ายให้กลับไปเหมือนช่วงแรก ภาพจะได้ต่อกันตอนวน",
+].join("\n");
+
+/** what the planner is told when its hooks will close a คลิปวนลูป too */
+export const LOOP_PLAN = "คลิปวนลูป: ท้ายคลิปจะพูดค้างไว้แล้ววนกลับมาที่ hook ดังนั้น hook ต้องอ่านต่อจากท้ายประโยคอื่นได้ ห้ามขึ้นต้นด้วยคำทักทายหรือคำเรียกคนดู";
+
 export interface Ask extends Steer {
   brief: string;
   format: Format;
@@ -161,6 +179,8 @@ export interface Ask extends Steer {
   /** the owner's own angle, used when `angle` is "custom" */
   custom: string;
   length: Length | null;
+  /** a คลิปวนลูป: the closing runs back into the hook (scripts only) */
+  loop?: boolean;
   /** one per piece, from the planner; the writer writes to them and does not change their hooks */
   plans: PiecePlan[];
 }
@@ -230,6 +250,7 @@ function formatBrief(a: Ask): string {
     "- ใส่ท่าทางในวงเล็บ เช่น (ชี้ไปที่กล้อง) และข้อความขึ้นจอเป็น {จอ: …} เฉพาะจุดสำคัญ",
     "- closing คือช่วงปิดท้าย ขึ้นต้นด้วยเวลาในวงเล็บเหลี่ยมเช่นกัน",
     "- hashtags ใช้สำหรับแคปชันใต้คลิป",
+    ...(a.loop ? [LOOP_RULES] : []),
   ].join("\n");
 }
 

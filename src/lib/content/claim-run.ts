@@ -72,6 +72,8 @@ export interface ClaimWriteInput {
   /** โพสต์, สคริปต์วิดีโอ or โฆษณา, as on the plan form; a script has a length and no poster */
   format?: string;
   length?: string;
+  /** a คลิปวนลูป (scripts only): the closing runs back into the hook */
+  loop?: boolean;
   writer?: string;
   /** an angle id, "custom" with the owner's words, or "" for the AI's turn-taking */
   angle?: string;
@@ -104,6 +106,7 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
   const count = Math.min(MAX_CLAIM_PIECES, Math.max(1, Math.round(Number(input.count) || 1)));
   const format: Format = input.format === "script" || input.format === "ad" ? input.format : "post";
   const length: Length | null = format === "script" ? (LENGTHS.find((l) => l.id === input.length)?.id ?? "60") : null;
+  const loop = format === "script" && Boolean(input.loop);
   const yardstick = factsBlock(facts);
   let hold: string | null = null;
   try {
@@ -119,7 +122,7 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
     const reader = (input.reader ?? "").trim().slice(0, MAX_READER);
     const settled = await Promise.allSettled(angles.map(async (a) => {
       const r = await chat({
-        tier: "large", task: "content", messages: claimMessages(facts, a, reader, format, length),
+        tier: "large", task: "content", messages: claimMessages(facts, a, reader, format, length, loop),
         maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low",
         prefer: writer.model, within: fallbackWriters(writer.model),
       });
@@ -129,7 +132,7 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
         console.error(`claim piece unreadable (${r.model}, ${r.outputTokens} tokens):`, r.text.slice(0, 600));
         throw new UnreadableReply();
       }
-      return { output, model: r.model, costThb: r.costThb };
+      return { output: loop ? { ...output, loop: true } : output, model: r.model, costThb: r.costThb };
     }));
     const written = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
     const reasons = settled.flatMap((s) => (s.status === "rejected" ? [s.reason as unknown] : []));

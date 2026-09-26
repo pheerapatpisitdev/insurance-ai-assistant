@@ -26,7 +26,7 @@ import { CLAIM_HREF, CLAIM_NAME } from "@/lib/content/claim";
 import { RECRUIT_HREF, RECRUIT_NAME } from "@/lib/content/recruit";
 import { CheckIcon, ChevronDownIcon, SearchIcon, XIcon } from "./ui/icons";
 import { PlainText } from "./ui/editor-fields";
-import { FormatPicker, FormSection, PictureFold, PressBar, pictureSummary } from "./ui/form-parts";
+import { FormatPicker, FormSection, LoopToggle, PictureFold, PressBar, pictureSummary, useLoop } from "./ui/form-parts";
 
 /**
  * The content workbench, laid out as the owner's Maryjane project lays out its run page:
@@ -243,6 +243,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   const [fact, setFact] = useState("");
   const [custom, setCustom] = useState("");
   const [length, setLength] = useState<Length>("60");
+  const [loop, setLoop] = useLoop();
   const [count, setCount] = useState(3);
   const [adAngles, setAdAngles] = useState(2);
   const [adTones, setAdTones] = useState(2);
@@ -384,7 +385,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     const pictureBrief = brief.trim();
     const pictureOf = person;
     await runRound(pieceCount, format, () => generateRound({
-      href, format, angle, custom, length: format === "script" ? length : null, count,
+      href, format, angle, custom, length: format === "script" ? length : null, loop: format === "script" && loop, count,
       hookTemplateId: format === "ad" ? null : hookId || null, adAngles, adTones, writer,
       reader, goal: format === "ad" ? "" : goal, fact: format === "ad" ? "" : fact, theme,
     }), (fresh) => {
@@ -715,6 +716,8 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
               </div>
             </div>
           )}
+
+          {format === "script" && <LoopToggle value={loop} onChange={setLoop} />}
 
           {format === "ad" && (
             <div className="space-y-3 rounded-lg bg-[var(--ct-ground)] p-3">

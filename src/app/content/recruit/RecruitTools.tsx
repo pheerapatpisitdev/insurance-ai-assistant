@@ -8,7 +8,7 @@ import {
 } from "@/lib/content/recruit";
 import { generateRecruit, type GenerateResult } from "../actions";
 import { PersonPicker, type PersonOption } from "../PersonPicker";
-import { FormatPicker, FormSection, PictureFold, PressBar, pictureSummary } from "../ui/form-parts";
+import { FormatPicker, FormSection, LoopToggle, PictureFold, PressBar, pictureSummary, useLoop } from "../ui/form-parts";
 
 /**
  * หาทีม's tools (owner, 2026-09-26): pick a topic and who it is for, set the round, press
@@ -52,6 +52,7 @@ export function RecruitTools({ writer, onWriter, painter, onPainter, people, per
   };
   const [format, setFormat] = useState<Format>("post");
   const [length, setLength] = useState<Length>("60");
+  const [loop, setLoop] = useLoop();
   const [tone, setTone] = useState("");
   const [count, setCount] = useState(1);
 
@@ -67,7 +68,7 @@ export function RecruitTools({ writer, onWriter, painter, onPainter, people, per
   async function create() {
     if (pending || blocked) return;
     // the form as it was at the press, whatever changes while the round is out
-    const round = { topic, custom: custom.trim(), reader: reader.trim(), tone, format, length, count, writer };
+    const round = { topic, custom: custom.trim(), reader: reader.trim(), tone, format, length, loop: format === "script" && loop, count, writer };
     const paintWith = round.format === "script" ? "none" : painterFor(painter, left, Boolean(person)).id;
     await run(count, round.format, () => generateRecruit(round), paintWith, person);
   }
@@ -104,6 +105,8 @@ export function RecruitTools({ writer, onWriter, painter, onPainter, people, per
             </div>
           </div>
         )}
+
+        {format === "script" && <LoopToggle value={loop} onChange={setLoop} />}
 
         <FormSection title="เรื่องที่เล่า">
         <div role="group" aria-labelledby={`${id}-reader`}>

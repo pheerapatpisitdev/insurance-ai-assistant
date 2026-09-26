@@ -66,6 +66,8 @@ export interface ContentOutput {
    * piece may not go to a Page (publish-flow's clear()). Absent on every other piece.
    */
   paperChecked?: boolean;
+  /** a คลิปวนลูป: the script's closing runs back into its hook, and the card says so (prompt.ts LOOP_RULES) */
+  loop?: boolean;
   /**
    * Which of `hooks` went to the Page, for older pieces that carry three; absent is the
    * first. A held post taken back and sent again (a move, an edit) goes with the same one.
