@@ -179,7 +179,7 @@ export function defaultPoster(hook: string, productName: string): PosterSpec {
   const badge = clip(productName.replace(/\s*\(.*\)\s*$/, ""), MAX_CHARS.badge);
   if (badge) blocks.push({ kind: "badge", text: badge });
   blocks.push({ kind: "headline", text: clip(hook || productName, MAX_CHARS.headline) });
-  blocks.push({ kind: "footer", text: "ทักแชทสอบถามได้เลยครับ" });
+  blocks.push({ kind: "footer", text: "ทักแชทสอบถามได้เลย" });
   return { layout: "bottom", theme: "navy", blocks };
 }
 

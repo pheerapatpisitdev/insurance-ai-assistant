@@ -78,10 +78,11 @@ describe("buildMessages", () => {
     expect(user.content).toContain(`hook: ${plans[1].hook}`);
   });
 
-  it("tells the writer Facebook's rules and to speak with ครับ", () => {
+  it("tells the writer Facebook's rules and to speak without ครับ or ค่ะ", () => {
     const [system] = buildMessages(ask);
     expect(system.content).toContain("กฎโฆษณาของ Facebook");
-    expect(system.content).toContain("ใช้คำลงท้าย “ครับ” เท่านั้น");
+    expect(system.content).toContain("ไม่บอกเพศผู้เขียน");
+    expect(system.content).not.toContain("ตัวแทนผู้ชาย");
   });
 
   it("asks a script for its length and its time markers", () => {

@@ -6,7 +6,7 @@ import { WRITERS } from "./models";
 import { headlineMessages, parseHeadlines, type NumberSheet } from "./numbers";
 import { parsePlans, planMessages, type PiecePlan } from "./plan";
 import { buildMessages, type AngleId, type Ask } from "./prompt";
-import { lifelongOutput } from "./wording";
+import { ownerWording } from "./wording";
 
 export { DISCLAIMER, TAX_LINE, fullText, type ContentOutput } from "./output";
 
@@ -148,8 +148,8 @@ export async function write(ask: Ask, opts: { only?: string; prefer?: string } =
       maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low", only: opts.only, prefer: opts.prefer, within,
     });
     const [parsed] = parsePieces(r.text, [p], ask.angle) ?? [];
-    // told to say ตลอดชีพ, a model may still copy an "ถึงอายุ 99" from somewhere; the net catches it
-    const output = parsed && lifelongOutput(parsed);
+    // told to say ตลอดชีพ and no ครับ, a model may still write "ถึงอายุ 99" or ครับ; the net catches it
+    const output = parsed && ownerWording(parsed);
     if (!output) {
       // the reply is the only evidence of why; its opening is enough to tell the shapes apart
       console.error(`content piece unreadable (${r.model}, ${r.outputTokens} tokens):`, r.text.slice(0, 600));
@@ -192,7 +192,7 @@ export async function writeAds(opts: { brief: string; angles: number; tones: num
       ...(poster ? { poster } : {}),
       ad: { angle: cell.angle.label, tone: cell.tone.label },
     };
-    return { output: lifelongOutput(output), model: r.model, costThb: r.costThb };
+    return { output: ownerWording(output), model: r.model, costThb: r.costThb };
   }));
   return { ...gather(settled), planThb: m?.costThb ?? 0, planned: cells.length };
 }

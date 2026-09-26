@@ -16,6 +16,7 @@ import {
   removeBackground, saveBackground, saveContent, saveOutputIf, type ContentItem,
 } from "./store";
 import { fallbackWriters, UnreadableReply } from "./write";
+import { ownerWording } from "./wording";
 
 /**
  * รีวิวเคลม on the server: reading the papers, and writing the pieces. Called by
@@ -122,7 +123,8 @@ export async function writeClaim(input: ClaimWriteInput): Promise<GenerateResult
         maxTokens: 4000, json: true, timeoutMs: WRITE_TIMEOUT_MS, effort: "low",
         prefer: writer.model, within: fallbackWriters(writer.model),
       });
-      const output = parseClaimPiece(r.text, facts, a.label, format);
+      const parsed = parseClaimPiece(r.text, facts, a.label, format);
+      const output = parsed && ownerWording(parsed);
       if (!output) {
         console.error(`claim piece unreadable (${r.model}, ${r.outputTokens} tokens):`, r.text.slice(0, 600));
         throw new UnreadableReply();

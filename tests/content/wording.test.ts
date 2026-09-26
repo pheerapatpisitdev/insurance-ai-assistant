@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { briefFor } from "@/lib/content/brief";
 import { CONTENT_PRODUCTS } from "@/lib/content/products";
-import { lifelong, lifelongOutput } from "@/lib/content/wording";
+import { lifelong, neutral, ownerWording } from "@/lib/content/wording";
 
 describe("ตลอดชีพ for cover to 99 (owner, 2026-09-25)", () => {
   it("says the verb, then ตลอดชีพ", () => {
@@ -17,11 +17,30 @@ describe("ตลอดชีพ for cover to 99 (owner, 2026-09-25)", () => {
   });
 
   it("reaches every line of a piece, the poster's too", () => {
-    const o = lifelongOutput({
+    const o = ownerWording({
       hooks: ["คุ้มครองถึงอายุ 99"], body: "จ่ายถึงอายุ 99", closing: "x",
       poster: { blocks: [{ kind: "headline", text: "ถึง 99 ปี" }] },
     });
     expect([...o.hooks, o.body, o.poster!.blocks[0].text]).toEqual(["คุ้มครองตลอดชีพ", "จ่ายตลอดชีพ", "ตลอดชีพ"]);
+  });
+});
+
+describe("no gender in the voice (owner, 2026-09-26)", () => {
+  it("takes off ครับ, ค่ะ and คะ, and keeps นะ", () => {
+    expect(neutral("ทักแชทมาได้เลยครับ")).toBe("ทักแชทมาได้เลย");
+    expect(neutral("ถ้าพรุ่งนี้ไม่มีเรา บ้านนี้ไปต่อได้ไหมครับ?")).toBe("ถ้าพรุ่งนี้ไม่มีเรา บ้านนี้ไปต่อได้ไหม?");
+    expect(neutral("ลองคิดดูนะคะ\nสวัสดีค่ะ ทุกคน")).toBe("ลองคิดดูนะ\nสวัสดี ทุกคน");
+    expect(neutral("ได้เลยครับผม 🙏")).toBe("ได้เลย 🙏");
+    expect(neutral("ดิฉันดูแลลูกค้ามา 10 ปี")).toBe("เราดูแลลูกค้ามา 10 ปี");
+  });
+
+  it("leaves words that only look alike", () => {
+    for (const t of ["คะแนนสุขภาพ", "ผมร่วงจากคีโม", "ค่าห้อง 4,000 บาท"]) expect(neutral(t)).toBe(t);
+  });
+
+  it("reaches every line of a piece, the poster's too", () => {
+    const o = ownerWording({ hooks: ["จริงไหมครับ"], body: "สวัสดีค่ะ", closing: "ทักมานะครับ", poster: { blocks: [{ kind: "footer", text: "ทักแชทได้เลยครับ" }] } });
+    expect([...o.hooks, o.body, o.closing, o.poster!.blocks[0].text]).toEqual(["จริงไหม", "สวัสดี", "ทักมานะ", "ทักแชทได้เลย"]);
   });
 });
 
