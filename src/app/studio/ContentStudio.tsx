@@ -878,7 +878,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
         </aside>
 
         {/* ---------------------------------- pieces ---------------------------------- */}
-        <section ref={pieces} className="@container min-w-0 scroll-mt-4 space-y-3 lg:row-span-2 xl:row-span-1">
+        <section ref={pieces} className="studio-desk @container min-w-0 scroll-mt-4 space-y-3 rounded-xl border border-[var(--ct-hair)] p-3 lg:row-span-2 lg:min-h-[70dvh] lg:self-stretch xl:row-span-1">
           {editingItem ? (
             <>
               {pending && (
@@ -956,7 +956,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           )}
 
           {items.length === 0 && !pending ? (
-            <div className="rounded-xl border border-dashed border-[var(--ct-line)] px-4 py-10 text-center text-sm text-[var(--ct-mute)]">
+            <div className="rounded-xl border border-dashed border-[var(--ct-line)] bg-[var(--ct-panel)] px-4 py-10 text-center text-sm text-[var(--ct-mute)]">
               {tab === "draft" ? (
                 <p>ยังไม่มีชิ้นงานรอตรวจ — เลือกแบบประกันแล้วกดสร้างได้เลย</p>
               ) : tab === "trashed" ? (

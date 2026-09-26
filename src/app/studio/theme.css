@@ -38,6 +38,18 @@
 
 body:has(.content-page) { background: var(--ct-ground); }
 
+/* the pieces column is a desk: squared paper in the palette's faint line, so the empty space
+   reads as somewhere work lands. Cards and notes sit on it in the panel colour. */
+.studio-desk {
+  --ct-grid: color-mix(in srgb, var(--bot-line) 55%, transparent);
+  background-color: var(--ct-ground);
+  background-image:
+    linear-gradient(var(--ct-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ct-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+}
+
 /* the calendar's cards are role=button divs, so they are named here with the real buttons */
 .content-page :is(button, a, select, input, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
   outline: 3px solid var(--ct-accent);
