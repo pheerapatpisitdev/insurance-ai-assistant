@@ -33,7 +33,8 @@ export type MenuIcon =
   | "clock"
   | "pulse"
   | "ribbon"
-  | "pen";
+  | "pen"
+  | "studio";
 
 export interface MenuLink {
   href: string;
@@ -246,7 +247,7 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
       { href: "/other-plans", label: "จัดแบบเอง", icon: "calc", hue: "#327d86" },
       { href: "/", label: "ถาม AI", icon: "spark", hue: "#2b5f73" },
       // open to everyone, as the owner asked: its own hourly and monthly limits are the guard
-      { href: "/studio", label: "Studio", icon: "pen", hue: "#2e5a80" },
+      { href: "/studio", label: "Studio", icon: "studio", hue: "#2e5a80" },
     ],
   }];
 

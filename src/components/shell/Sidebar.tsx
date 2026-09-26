@@ -91,6 +91,10 @@ function Icon({ name }: { name: MenuIcon }) {
     // the content generator: a pen writing a line
     case "pen":
       return <svg {...common}><path d="M15.5 4.5l4 4L9 19H5v-4zM13 7l4 4M4.5 20.5h15" /></svg>;
+    // Studio makes posters and clips, so its mark is a picture with a play button — the pen
+    // stayed with ออโต้โพสต์, which had worn it too (owner's pick, 2026-09-27)
+    case "studio":
+      return <svg {...common}><path d="M4 5.5h16v13H4zM10 9.3v5.4l4.5-2.7z" /></svg>;
     // อีซี่ โพรเทค 6 is sold on the premium having a last year, so its mark is a clock
     case "clock":
       return <svg {...common}><path d="M12 4.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zM12 8v4.3l3 1.7" /></svg>;
