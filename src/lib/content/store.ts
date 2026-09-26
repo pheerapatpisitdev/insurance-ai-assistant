@@ -55,13 +55,13 @@ export interface Publish {
 }
 
 /**
- * รอตรวจ and ใช้จริง — the star this replaced meant ใช้จริง.
+ * รอตรวจ, ใช้จริง and ถังขยะ — the star this replaced meant ใช้จริง.
  *
- * There was a third, ถังขยะ, and the owner took it out on 2026-09-23: deleting a piece now
- * deletes it. Rows thrown away before that still say "trashed" in the table (the column's
- * check allows it) and are never listed.
+ * The owner took the bin out on 2026-09-23 (ลบ deleted outright) and asked for it back on
+ * 2026-09-26: ทิ้ง moves a piece here, and only ลบถาวร from the bin deletes it. Rows thrown
+ * away before the bin went out show up in it again.
  */
-export const CONTENT_STATUSES = ["draft", "used"] as const;
+export const CONTENT_STATUSES = ["draft", "used", "trashed"] as const;
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];
 export const isContentStatus = (v: unknown): v is ContentStatus =>
   typeof v === "string" && (CONTENT_STATUSES as readonly string[]).includes(v);

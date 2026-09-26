@@ -314,11 +314,16 @@ async function learnFormula(item: ContentItem): Promise<void> {
   }
 }
 
-export async function setContentStatus(id: string, status: ContentStatus): Promise<{ ok: boolean }> {
+/** a piece Facebook shows or holds stays out of the bin: throwing it away here would leave the post up */
+const ON_PAGE_TRASH = "ชิ้นนี้ขึ้นเพจหรือตั้งเวลาไว้แล้ว — ยกเลิกในปฏิทินโพสต์ก่อน แล้วค่อยทิ้ง";
+
+export async function setContentStatus(id: string, status: ContentStatus): Promise<{ ok: boolean; error?: string }> {
   if (!isContentStatus(status)) return { ok: false };
   try {
     const item = await getContent(id);
     if (!item) return { ok: false };
+    const kind = publishView(item.publish).kind;
+    if (status === "trashed" && (kind === "posting" || kind === "scheduled" || kind === "published")) return { ok: false, error: ON_PAGE_TRASH };
     await setStatus(id, status);
     if (status === "used" && item.status !== "used") await learnFormula(item);
     return { ok: true };
@@ -336,7 +341,7 @@ const ON_PAGE_DELETE = "ชิ้นนี้ขึ้นเพจแล้ว �
 const MAYBE_ON_PAGE_DELETE = "โพสต์นี้อาจขึ้นเพจไปแล้ว — เปิดเพจเช็กก่อน ถ้าขึ้นแล้วให้ลบในเพจ";
 
 /**
- * Deletes a piece outright — the owner asked for no bin. The page confirms before calling.
+ * Deletes a piece outright — ลบถาวร, from the bin. The page confirms before calling.
  *
  * Not a piece on the Page: deleting the row would leave the post up with nothing here saying
  * so. A piece Facebook is holding has its post taken back first, and is deleted only if that
@@ -506,7 +511,7 @@ export async function contentWorkbench(filter: { status: ContentStatus; planHref
     return { items, counts };
   } catch (e) {
     console.error("content workbench failed:", e);
-    return { items: [], counts: { draft: 0, used: 0 } };
+    return { items: [], counts: { draft: 0, used: 0, trashed: 0 } };
   }
 }
 

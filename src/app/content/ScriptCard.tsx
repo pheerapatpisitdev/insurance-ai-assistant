@@ -31,7 +31,7 @@ export function ScriptCard({ item, index, busy, onEdit, onStatus, onDelete, onCo
   const cell = "flex min-h-11 items-center justify-center gap-1.5 text-sm hover:bg-[var(--ct-soft)] disabled:opacity-50";
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)]">
+    <article className={`flex flex-col overflow-hidden rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] ${item.status === "trashed" ? "opacity-70" : ""}`}>
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--ct-hair)] px-3 py-2.5">
         <span className="rounded-full bg-[var(--ct-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--ct-accent)]">สคริปต์ {index + 1}</span>
         <span className="text-xs text-[var(--ct-mute)]">
@@ -64,18 +64,25 @@ export function ScriptCard({ item, index, busy, onEdit, onStatus, onDelete, onCo
         </ol>
       </div>
 
-      <div className="grid grid-cols-3 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
-        {item.status === "used" ? (
-          <button type="button" onClick={onCopy} className={cell}>คัดลอก</button>
-        ) : (
-          <button type="button" disabled={busy} onClick={() => onStatus("used")} className={`${cell} font-medium text-[var(--ct-accent)]`}>
-            <CheckIcon className="size-4" />
-            ใช้จริง
-          </button>
-        )}
-        <button type="button" onClick={onEdit} className={cell}>แก้ไข</button>
-        <button type="button" disabled={busy} onClick={onDelete} className={`${cell} text-[var(--ct-alert)]`}>ลบ</button>
-      </div>
+      {item.status === "trashed" ? (
+        <div className="grid grid-cols-2 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
+          <button type="button" disabled={busy} onClick={() => onStatus("draft")} className={`${cell} font-medium text-[var(--ct-accent)]`}>↩ กู้คืน</button>
+          <button type="button" disabled={busy} onClick={onDelete} className={`${cell} text-[var(--ct-alert)]`}>ลบถาวร</button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
+          {item.status === "used" ? (
+            <button type="button" onClick={onCopy} className={cell}>คัดลอก</button>
+          ) : (
+            <button type="button" disabled={busy} onClick={() => onStatus("used")} className={`${cell} font-medium text-[var(--ct-accent)]`}>
+              <CheckIcon className="size-4" />
+              ใช้จริง
+            </button>
+          )}
+          <button type="button" onClick={onEdit} className={cell}>แก้ไข</button>
+          <button type="button" disabled={busy} onClick={() => onStatus("trashed")} className={`${cell} text-[var(--ct-alert)]`}>ทิ้ง</button>
+        </div>
+      )}
     </article>
   );
 }

@@ -14,7 +14,7 @@ const order: string[] = [];
 const store = vi.hoisted(() => ({
   getContent: vi.fn(), saveOutput: vi.fn(), saveOutputIf: vi.fn(), recordPublishIf: vi.fn(), claimPublish: vi.fn(), deleteContent: vi.fn(),
   removeBackground: vi.fn(), listWords: vi.fn(), holdContentBudget: vi.fn(), releaseContentBudget: vi.fn(),
-  contentSpentThisMonth: vi.fn(), contentCap: vi.fn(), setFixes: vi.fn(), saveBackground: vi.fn(),
+  contentSpentThisMonth: vi.fn(), contentCap: vi.fn(), setFixes: vi.fn(), saveBackground: vi.fn(), setStatus: vi.fn(),
 }));
 const fb = vi.hoisted(() => ({ postPhoto: vi.fn(), deletePost: vi.fn(), isPublished: vi.fn() }));
 const ai = vi.hoisted(() => ({ chat: vi.fn(), drawImage: vi.fn() }));
@@ -32,7 +32,7 @@ vi.mock("@/lib/content/people-store", () => ({
   personPhotos: vi.fn(async () => ({ person: { id: "person-1" }, photos: [{ bytes: Buffer.from("x"), mimeType: "image/png" }] })),
 }));
 
-const { drawBackground, generateContent, removeContent, saveContentEdits } = await import("@/app/content/actions");
+const { drawBackground, generateContent, removeContent, saveContentEdits, setContentStatus } = await import("@/app/content/actions");
 const { NUMBERS_PLANS, numberSheets } = await import("@/lib/content/numbers-plans");
 const { NUMBERS_CLOSING, numbersBody, numbersPoster, numbersYardstick } = await import("@/lib/content/numbers");
 const { PAINTERS, OVERHEAD_THB } = await import("@/lib/content/models");
@@ -192,6 +192,27 @@ describe("deleting a held piece", () => {
     expect(r.ok).toBe(false);
     expect(r.error).toBeTruthy();
     expect(store.deleteContent).not.toHaveBeenCalled();
+  });
+});
+
+describe("the bin", () => {
+  it("takes a piece off the Page's list only — ทิ้ง keeps the row and its pictures", async () => {
+    expect(await setContentStatus("p1", "trashed")).toEqual({ ok: true });
+    expect(store.setStatus).toHaveBeenCalledWith("p1", "trashed");
+    expect(store.deleteContent).not.toHaveBeenCalled();
+  });
+
+  it("will not take a piece Facebook holds or shows — the post would stay up", async () => {
+    for (const publish of [held(5 * 3_600_000), held(-3_600_000)]) {
+      row = make(publish);
+      expect(await setContentStatus("p1", "trashed")).toEqual({ ok: false, error: expect.stringContaining("ปฏิทินโพสต์") });
+    }
+    expect(store.setStatus).not.toHaveBeenCalled();
+  });
+
+  it("takes a failed send, which is not on the Page", async () => {
+    row = make({ state: "failed", pageId: PAGE, postId: null, at: null, error: "x" });
+    expect(await setContentStatus("p1", "trashed")).toEqual({ ok: true });
   });
 });
 

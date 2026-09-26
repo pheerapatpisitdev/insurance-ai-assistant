@@ -36,8 +36,9 @@ import { PlainText } from "./ui/editor-fields";
  * along the bottom of the tools (sticky), so the long form never hides them. After a round is
  * written the form folds away and the page scrolls to the pieces.
  *
- * A piece is รอตรวจ or ใช้จริง. Maryjane's workbench has a bin as well; the owner did not want
- * one, so ลบ deletes, after one confirmation. Marking a piece ใช้จริง also teaches the formula
+ * A piece is รอตรวจ, ใช้จริง or in the ถังขยะ, the three tabs of Maryjane's workbench. ทิ้ง moves
+ * a piece to the bin with no question; from there it is กู้คืน'd to รอตรวจ, or ลบถาวร deletes it
+ * and its pictures after one confirmation. Marking a piece ใช้จริง also teaches the formula
  * library its hook.
  */
 
@@ -60,6 +61,7 @@ const FORMATS: Format[] = ["post", "script", "ad"];
 const TABS: { id: ContentStatus; label: string }[] = [
   { id: "draft", label: "รอตรวจ" },
   { id: "used", label: "ใช้จริง" },
+  { id: "trashed", label: "ถังขยะ" },
 ];
 
 /** the models last picked, kept in this browser; a private window simply starts on the defaults */
@@ -511,9 +513,9 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     if (moving.current.has(item.id)) return;
     moving.current.add(item.id);
     mark(item.id, true);
-    const res = await setContentStatus(item.id, status).catch(() => ({ ok: false })).finally(() => moving.current.delete(item.id));
+    const res: { ok: boolean; error?: string } = await setContentStatus(item.id, status).catch(() => ({ ok: false })).finally(() => moving.current.delete(item.id));
     mark(item.id, false);
-    if (!res.ok) { say("status", "เปลี่ยนสถานะไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
+    if (!res.ok) { say("status", res.error || "เปลี่ยนสถานะไม่สำเร็จ ลองใหม่อีกครั้งนะครับ"); return; }
     hush("status");
     if (view.current.editing === item.id) setEditing(null);
     // the copy on screen now, not the one the button was drawn with: an edit saved or a
@@ -521,7 +523,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     const newest = [...view.current.items, ...view.current.used].find((x) => x.id === item.id) ?? item;
     setItems((list) => list.filter((x) => x.id !== item.id));
     setCounts((c) => ({ ...c, [item.status]: Math.max(0, c[item.status] - 1), [status]: c[status] + 1 }));
-    setUsedTotal((n) => Math.max(0, n + (status === "used" ? 1 : -1)));
+    setUsedTotal((n) => Math.max(0, n + (status === "used" ? 1 : 0) - (item.status === "used" ? 1 : 0)));
     // one row per piece in the rail, whatever order the updates arrive in
     setUsed((list) => {
       const others = list.filter((x) => x.id !== item.id);
@@ -534,7 +536,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
     const question = scheduled
       ? "ลบชิ้นนี้ถาวร และเอาโพสต์ที่ตั้งเวลาไว้ออกจากเพจด้วย? กู้คืนไม่ได้"
       : "ลบชิ้นนี้ถาวร? ลบแล้วกู้คืนไม่ได้";
-    if (!(await ask(question, "ลบ"))) return;
+    if (!(await ask(question, "ลบถาวร"))) return;
     mark(item.id, true);
     type Removed = Awaited<ReturnType<typeof removeContent>>;
     const dropped: Removed = { ok: false, error: "ลบไม่สำเร็จ ลองใหม่อีกครั้งนะครับ" };
@@ -940,6 +942,9 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           {tab === "used" && (
             <p className="text-xs text-[var(--ct-mute)]">ชิ้นที่ใช้แล้วแต่ยังไม่ได้ลงเพจจากระบบ — ชิ้นที่ลงเพจหรือตั้งเวลาแล้วอยู่ในปฏิทินโพสต์</p>
           )}
+          {tab === "trashed" && (
+            <p className="text-xs text-[var(--ct-mute)]">ชิ้นที่ทิ้งไว้ กด “กู้คืน” เพื่อเอากลับไปรอตรวจ หรือ “ลบถาวร” เพื่อลบทิ้งพร้อมภาพ</p>
+          )}
 
           {pending && (
             <div role="status" className="space-y-3">
@@ -960,6 +965,8 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
             <div className="rounded-xl border border-dashed border-[var(--ct-line)] px-4 py-10 text-center text-sm text-[var(--ct-mute)]">
               {tab === "draft" ? (
                 <p>ยังไม่มีชิ้นงานรอตรวจ — เลือกแบบประกันแล้วกดสร้างได้เลย</p>
+              ) : tab === "trashed" ? (
+                <p>ถังขยะว่าง</p>
               ) : (
                 <>
                   <p>ยังไม่มีชิ้นที่ใช้แล้วแต่ยังไม่ได้ลงเพจ</p>

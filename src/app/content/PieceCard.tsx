@@ -36,7 +36,7 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
   const saver = usePictureSaver(picture, `poster-${item.id.slice(0, 8)}.png`);
 
   return (
-    <article className="overflow-hidden rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)]">
+    <article className={`overflow-hidden rounded-xl border border-[var(--ct-hair)] bg-[var(--ct-panel)] ${item.status === "trashed" ? "opacity-70" : ""}`}>
       <button type="button" onClick={onEdit} className="relative block w-full text-left">
         {/* eslint-disable-next-line @next/next/no-img-element -- a drawn PNG from our own route, not an asset to optimise */}
         <img
@@ -78,22 +78,29 @@ export function PieceCard({ item, index, productName, busy, drawing, onEdit, onS
         )}
       </div>
 
-      <div className="grid grid-cols-4 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
-        {item.status === "used" ? (
-          <button type="button" onClick={onCopy} className={cell}>คัดลอก</button>
-        ) : (
-          <button type="button" disabled={busy} onClick={() => onStatus("used")} className={`${cell} font-medium text-[var(--ct-accent)]`}>
-            <CheckIcon className="size-4" />ใช้จริง
+      {item.status === "trashed" ? (
+        <div className="grid grid-cols-2 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
+          <button type="button" disabled={busy} onClick={() => onStatus("draft")} className={`${cell} font-medium text-[var(--ct-accent)]`}>↩ กู้คืน</button>
+          <button type="button" disabled={busy} onClick={onDelete} className={`${cell} text-[var(--ct-alert)]`}>ลบถาวร</button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-4 divide-x divide-[var(--ct-hair)] border-t border-[var(--ct-hair)]">
+          {item.status === "used" ? (
+            <button type="button" onClick={onCopy} className={cell}>คัดลอก</button>
+          ) : (
+            <button type="button" disabled={busy} onClick={() => onStatus("used")} className={`${cell} font-medium text-[var(--ct-accent)]`}>
+              <CheckIcon className="size-4" />ใช้จริง
+            </button>
+          )}
+          <button type="button" disabled={drawing || saver.state === "saving"} onClick={saver.save} className={cell} aria-live="polite">
+            {drawing ? "รอภาพ…" : <>{saver.state === "saved" && <CheckIcon className="size-4" />}{SAVE_LABEL[saver.state]}</>}
           </button>
-        )}
-        <button type="button" disabled={drawing || saver.state === "saving"} onClick={saver.save} className={cell} aria-live="polite">
-          {drawing ? "รอภาพ…" : <>{saver.state === "saved" && <CheckIcon className="size-4" />}{SAVE_LABEL[saver.state]}</>}
-        </button>
-        <button type="button" onClick={onEdit} className={cell}>แก้ไข</button>
-        <button type="button" disabled={busy} onClick={onDelete} className={`${cell} text-[var(--ct-alert)]`}>
-          ลบ
-        </button>
-      </div>
+          <button type="button" onClick={onEdit} className={cell}>แก้ไข</button>
+          <button type="button" disabled={busy} onClick={() => onStatus("trashed")} className={`${cell} text-[var(--ct-alert)]`}>
+            ทิ้ง
+          </button>
+        </div>
+      )}
     </article>
   );
 }
