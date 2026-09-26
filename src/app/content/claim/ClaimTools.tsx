@@ -6,10 +6,11 @@ import {
 import { AUTO, AUTO_FLOOR_THB, OVERHEAD_THB, PAINTERS, WRITERS, painterFor, writerOf } from "@/lib/content/models";
 import type { PiecePerson } from "@/lib/content/people";
 import { MAX_PAPERS } from "@/lib/content/poster";
-import { FORMAT_LABEL, LENGTHS, MAX_READER, NICHES, type Format, type Length } from "@/lib/content/prompt";
+import { LENGTHS, MAX_READER, NICHES, type Format, type Length } from "@/lib/content/prompt";
 import type { GenerateResult } from "../actions";
 import { PhotoDrop } from "../people/PhotoDrop";
 import { PersonPicker, type PersonOption } from "../PersonPicker";
+import { FormatPicker, FormSection, PictureFold, PressBar, pictureSummary } from "../ui/form-parts";
 import { burn, shrink } from "./redact";
 
 /**
@@ -30,7 +31,6 @@ const chip = (on: boolean) =>
     ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]"
     : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-ink)] hover:bg-[var(--ct-soft)]"}`;
 const field = "min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
-const solid = "min-h-11 w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50";
 
 export function ClaimTools({ writer, onWriter, painter, onPainter, people, person, onPerson, reader, onReader, left, pending, making, run }: {
   writer: string;
@@ -128,12 +128,7 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, people, perso
           <span>ลูกค้ายินยอมให้ใช้เอกสารนี้ลงเพจแล้ว <span className="block text-xs opacity-80">ข้อมูลสุขภาพเป็นข้อมูลอ่อนไหวตาม PDPA ต้องได้รับความยินยอมก่อนทุกครั้ง</span></span>
         </label>
 
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium">ทำอะไร</span>
-          <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className={field}>
-            {(["post", "script", "ad"] as const).map((f) => <option key={f} value={f}>{FORMAT_LABEL[f]}</option>)}
-          </select>
-        </label>
+        <FormatPicker value={format} onChange={setFormat} />
 
         {format === "script" && (
           <div role="group" aria-labelledby={`${id}-length`}>
@@ -146,6 +141,7 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, people, perso
           </div>
         )}
 
+        <FormSection title="เรื่องที่เล่า">
         <div>
           <label className="block">
             <span className="mb-1 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
@@ -161,6 +157,11 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, people, perso
               <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={MAX_CLAIM_CUSTOM} placeholder="เช่น เคลมได้แม้เพิ่งทำประกันได้ 1 ปี" className={field} />
             </label>
           )}
+          <p className="mt-1.5 text-xs text-[var(--ct-mute)]">
+            {angle && count > 1 && (angle !== "custom" || custom.trim())
+              ? `ทุก${unit}เล่ามุมที่เลือก เปิดเรื่องต่างกัน`
+              : claimAngleLines({ angle, custom }, count).map((a) => a.label).join(" · ")}
+          </p>
         </div>
 
         <div role="group" aria-labelledby={`${id}-reader`}>
@@ -184,20 +185,19 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, people, perso
             placeholder="เช่น ลูกค้าบอกว่าไม่ต้องสำรองจ่ายสักบาท" className={field}
           />
         </label>
+        </FormSection>
 
-        <div role="group" aria-labelledby={`${id}-count`}>
-          <span id={`${id}-count`} className="mb-1.5 block text-sm font-medium">จำนวน{unit} <span className="font-normal text-[var(--ct-mute)]">(แต่ละ{unit}เล่าคนละมุม)</span></span>
-          <div className="flex flex-wrap gap-2">
-            {Array.from({ length: MAX_CLAIM_PIECES }, (_, i) => i + 1).map((n) => (
-              <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={chip(count === n)}>{n}</button>
-            ))}
-          </div>
-          <p className="mt-1.5 text-xs text-[var(--ct-mute)]">
-            {angle && count > 1 && (angle !== "custom" || custom.trim())
-              ? `ทุก${unit}เล่ามุมที่เลือก เปิดเรื่องต่างกัน`
-              : claimAngleLines({ angle, custom }, count).map((a) => a.label).join(" · ")}
-          </p>
-        </div>
+        <PictureFold summary={pictureSummary({
+          format, writer: pick.short, painter: paints.modelId ? paints.short : null,
+          person: person ? people.find((p) => p.id === person.id)?.name : undefined,
+        })}>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">โมเดลเขียน</span>
+          <select value={writer} onChange={(e) => onWriter(e.target.value)} className={field}>
+            <option value={AUTO}>อัตโนมัติ</option>
+            {WRITERS.map((w) => <option key={w.id} value={w.id}>{w.label} · {w.short}</option>)}
+          </select>
+        </label>
 
         {format !== "script" && (
           <label className="block">
@@ -216,30 +216,23 @@ export function ClaimTools({ writer, onWriter, painter, onPainter, people, perso
 
         {format !== "script" && painter !== "none" && (
           <div>
-            <span className="mb-1.5 block text-sm font-medium">ใส่บุคคลในภาพ <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+            <span className="mb-1.5 block text-sm font-medium">ใส่บุคคลในภาพ</span>
             <PersonPicker people={people} value={person} onChange={onPerson} />
             {person && <span className="mt-1 block text-xs text-[var(--ct-mute)]">วาดด้วย Gemini Image ราวภาพละ ฿2.4 · บุคคลยืนด้านขวา เอกสารเลื่อนไปทางซ้ายให้</span>}
           </div>
         )}
-
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium">โมเดลเขียน</span>
-          <select value={writer} onChange={(e) => onWriter(e.target.value)} className={field}>
-            <option value={AUTO}>อัตโนมัติ</option>
-            {WRITERS.map((w) => <option key={w.id} value={w.id}>{w.label} · {w.short}</option>)}
-          </select>
-        </label>
+        </PictureFold>
       </div>
 
-      {/* the press and its price stay in reach, as on the plan form */}
-      <div className="sticky bottom-0 z-10 rounded-b-xl border-t border-[var(--ct-hair)] bg-[var(--ct-panel)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-        <button type="button" onClick={create} disabled={pending || Boolean(blocked)} className={solid}>
-          {pending
-            ? `กำลังอ่านเอกสารและเขียน ${making} ${unit}… (ราว 30–60 วินาที)`
-            : `สร้าง${format === "post" ? "รีวิวเคลม" : format === "ad" ? "โฆษณารีวิวเคลม" : "สคริปต์รีวิวเคลม"} ${count} ${unit}`}
-        </button>
-        <p className="mt-2 text-xs text-[var(--ct-mute)]">{blocked ?? `ราว ฿${estimate} · งบคอนเทนต์เดือนนี้เหลือ ฿${left.toFixed(2)}`}</p>
-      </div>
+      {/* the press, its count and its price stay in reach, as on the plan form */}
+      <PressBar
+        count={count} max={MAX_CLAIM_PIECES} onCount={setCount} unit={unit}
+        onPress={create} disabled={pending || Boolean(blocked)}
+        label={pending
+          ? `กำลังอ่านเอกสารและเขียน ${making} ${unit}… (ราว 30–60 วินาที)`
+          : `สร้าง${format === "post" ? "รีวิวเคลม" : format === "ad" ? "โฆษณารีวิวเคลม" : "สคริปต์รีวิวเคลม"} ${count} ${unit}`}
+        note={blocked ?? `ราว ฿${estimate} · งบคอนเทนต์เดือนนี้เหลือ ฿${left.toFixed(2)}`}
+      />
     </>
   );
 }

@@ -5,10 +5,10 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { HOOK_CATEGORY_LABEL, type HookTemplate } from "@/lib/content/hooks";
 import { footer, fullText } from "@/lib/content/output";
 import type { PiecePerson } from "@/lib/content/people";
-import { defaultPoster, posterUrl, THEMES } from "@/lib/content/poster";
+import { defaultPoster, posterUrl, THEME_LABEL, THEMES } from "@/lib/content/poster";
 import { MAX_PIECES } from "@/lib/content/plan";
 import { onPage, publishView } from "@/lib/content/publish-label";
-import { anglesFor, FORMAT_LABEL, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
+import { anglesFor, FORMAT_SHORT, GOALS, MAX_FACT, MAX_READER, NICHES, type AngleId, type Format, type GoalId, type Length } from "@/lib/content/prompt";
 import { MAX_ANGLES, MAX_TONES } from "@/lib/content/ads";
 import { AUTO, AUTO_FLOOR_THB, DEFAULT_PAINTER, DEFAULT_WRITER, OVERHEAD_THB, PAINTERS, WRITERS, painterFor, painterOf, writerOf } from "@/lib/content/models";
 import type { ContentItem, ContentStatus } from "@/lib/content/store";
@@ -26,6 +26,7 @@ import { CLAIM_HREF, CLAIM_NAME } from "@/lib/content/claim";
 import { RECRUIT_HREF, RECRUIT_NAME } from "@/lib/content/recruit";
 import { CheckIcon, ChevronDownIcon, SearchIcon, XIcon } from "./ui/icons";
 import { PlainText } from "./ui/editor-fields";
+import { FormatPicker, FormSection, PictureFold, PressBar, pictureSummary } from "./ui/form-parts";
 
 /**
  * The content workbench, laid out as the owner's Maryjane project lays out its run page:
@@ -55,8 +56,6 @@ interface Props {
   /** the people library, for ใส่บุคคลในภาพ */
   people: PersonOption[];
 }
-
-const FORMATS: Format[] = ["post", "script", "ad"];
 
 const TABS: { id: ContentStatus; label: string }[] = [
   { id: "draft", label: "รอตรวจ" },
@@ -620,6 +619,11 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
   const perPiece = writes.thb + OVERHEAD_THB + (format === "script" ? 0 : paints.thb);
   const estimate = (pieceCount * perPiece).toFixed(1);
   const more = Math.floor(left / perPiece);
+  const pictureLine = pictureSummary({
+    format, writer: writes.short, painter: paints.modelId ? paints.short : null,
+    theme: theme === AUTO_THEME ? "โทนสี AI เลือก" : `โทน${THEME_LABEL[theme]}`,
+    person: person ? people.find((p) => p.id === person.id)?.name : undefined,
+  });
 
   const usedLink = (
     <Link href="/content/calendar" className="inline-flex min-h-11 items-center text-xs font-medium text-[var(--ct-accent)] underline underline-offset-2">
@@ -699,12 +703,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
             </select>
           </label>
 
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium">ทำอะไร</span>
-            <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className={field}>
-              {FORMATS.map((f) => <option key={f} value={f}>{FORMAT_LABEL[f]}</option>)}
-            </select>
-          </label>
+          <FormatPicker value={format} onChange={setFormat} />
 
           {format === "script" && (
             <div role="group" aria-labelledby={`${formId}-length`}>
@@ -717,6 +716,31 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
             </div>
           )}
 
+          {format === "ad" && (
+            <div className="space-y-3 rounded-lg bg-[var(--ct-ground)] p-3">
+              <p className="text-xs leading-relaxed text-[var(--ct-mute)]">
+                ได้โฆษณาหลายแบบในรอบเดียว: แต่ละ “มุมขาย” เขียนด้วยหลาย “น้ำเสียง” เอาไปยิงเทียบกันใน Ads Manager ว่าแบบไหนได้ผล
+              </p>
+              <div role="group" aria-labelledby={`${formId}-angles`}>
+                <span id={`${formId}-angles`} className="mb-1.5 block text-sm font-medium">มุมขาย</span>
+                <div className="flex gap-2">
+                  {Array.from({ length: MAX_ANGLES }, (_, i) => i + 1).map((n) => (
+                    <button key={n} type="button" aria-pressed={adAngles === n} onClick={() => setAdAngles(n)} className={`${chip(adAngles === n)} min-w-11`}>{n}</button>
+                  ))}
+                </div>
+              </div>
+              <div role="group" aria-labelledby={`${formId}-tones`}>
+                <span id={`${formId}-tones`} className="mb-1.5 block text-sm font-medium">น้ำเสียงต่อมุม</span>
+                <div className="flex gap-2">
+                  {Array.from({ length: MAX_TONES }, (_, i) => i + 1).map((n) => (
+                    <button key={n} type="button" aria-pressed={adTones === n} onClick={() => setAdTones(n)} className={`${chip(adTones === n)} min-w-11`}>{n}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <FormSection title="เรื่องที่เล่า">
           <div>
             <label className="block">
               <span className="mb-1 block text-sm font-medium">มุมที่อยากเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
@@ -732,6 +756,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
                 <input value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={120} placeholder="เช่น ทำไมยิ่งอายุมากยิ่งซื้อยาก" className={field} />
               </label>
             )}
+            {format !== "ad" && !angle && count > 1 && <span className="mt-1 block text-xs text-[var(--ct-mute)]">แต่ละชิ้นเล่าคนละมุม</span>}
           </div>
 
           <div role="group" aria-labelledby={`${formId}-reader`}>
@@ -767,46 +792,13 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
                 className={field} />
               <span className="mt-1 block text-xs text-[var(--ct-mute)]">AI จะเล่าเป็นเรื่องจริงเฉพาะที่พิมพ์ไว้ ไม่เติมรายละเอียดเอง</span>
             </label>
-            </>
-          )}
 
-          {format === "ad" ? (
-            <div className="space-y-3 rounded-lg bg-[var(--ct-ground)] p-3">
-              <p className="text-xs leading-relaxed text-[var(--ct-mute)]">
-                ได้โฆษณาหลายแบบในรอบเดียว: แต่ละ “มุมขาย” เขียนด้วยหลาย “น้ำเสียง” เอาไปยิงเทียบกันใน Ads Manager ว่าแบบไหนได้ผล
-              </p>
-              <div role="group" aria-labelledby={`${formId}-angles`}>
-                <span id={`${formId}-angles`} className="mb-1.5 block text-sm font-medium">มุมขาย</span>
-                <div className="flex gap-2">
-                  {Array.from({ length: MAX_ANGLES }, (_, i) => i + 1).map((n) => (
-                    <button key={n} type="button" aria-pressed={adAngles === n} onClick={() => setAdAngles(n)} className={`${chip(adAngles === n)} min-w-11`}>{n}</button>
-                  ))}
-                </div>
-              </div>
-              <div role="group" aria-labelledby={`${formId}-tones`}>
-                <span id={`${formId}-tones`} className="mb-1.5 block text-sm font-medium">น้ำเสียงต่อมุม</span>
-                <div className="flex gap-2">
-                  {Array.from({ length: MAX_TONES }, (_, i) => i + 1).map((n) => (
-                    <button key={n} type="button" aria-pressed={adTones === n} onClick={() => setAdTones(n)} className={`${chip(adTones === n)} min-w-11`}>{n}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
             <HookPicker hooks={hooks} value={hookId} onChange={setHookId} />
-
-            <div role="group" aria-labelledby={`${formId}-count`}>
-              <span id={`${formId}-count`} className="mb-1.5 block text-sm font-medium">จำนวนชิ้น <span className="font-normal text-[var(--ct-mute)]">(แต่ละชิ้นคนละมุม)</span></span>
-              <div className="flex flex-wrap gap-2">
-                {Array.from({ length: MAX_PIECES }, (_, i) => i + 1).map((n) => (
-                  <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={`${chip(count === n)} min-w-11`}>{n}</button>
-                ))}
-              </div>
-            </div>
             </>
           )}
+          </FormSection>
 
+          <PictureFold summary={pictureLine}>
           <label className="block">
             <span className="mb-1 block text-sm font-medium">โมเดลเขียน</span>
             <select value={writer} onChange={(e) => pick({ writer: e.target.value })} className={field}>
@@ -837,7 +829,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
 
           {format !== "script" && (
             <div>
-              <span className="mb-1.5 block text-sm font-medium">โทนสีโปสเตอร์ <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+              <span className="mb-1.5 block text-sm font-medium">โทนสีโปสเตอร์</span>
               <ThemeSwatches value={theme} onChange={setTheme} allowAuto />
               <span className="mt-1 block text-xs text-[var(--ct-mute)]">
                 {theme === AUTO_THEME ? "แต่ละชิ้นอาจได้คนละโทน ภาพ AI วาดตามโทนของชิ้นนั้น" : "ใช้กับทุกชิ้นในรอบนี้ และภาพ AI จะวาดในโทนเดียวกัน"} · เปลี่ยนทีละชิ้นได้ในหน้าแก้ไข
@@ -847,7 +839,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
 
           {format !== "script" && painter !== "none" && (
             <div>
-              <span className="mb-1.5 block text-sm font-medium">ใส่บุคคลในภาพ <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+              <span className="mb-1.5 block text-sm font-medium">ใส่บุคคลในภาพ</span>
               <PersonPicker people={people} value={person} onChange={setPerson} />
               {person && <span className="mt-1 block text-xs text-[var(--ct-mute)]">วาดด้วย Gemini Image ซึ่งรักษาหน้าคนได้ดีที่สุด ราวภาพละ ฿2.4 · ชุดและสถานที่พิมพ์ในบรีฟภาพด้านล่าง</span>}
             </div>
@@ -856,7 +848,7 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
           {/* the owner's free direction for every picture of the round, on top of the fixed rules */}
           {format !== "script" && painter !== "none" && (
             <label className="block">
-              <span className="mb-1 block text-sm font-medium">บรีฟภาพเพิ่มเติม <span className="font-normal text-[var(--ct-mute)]">(ไม่ใส่ก็ได้ · ระบบจำไว้ให้)</span></span>
+              <span className="mb-1 block text-sm font-medium">บรีฟภาพเพิ่มเติม <span className="font-normal text-[var(--ct-mute)]">(ไม่ใส่ก็ได้)</span></span>
               <textarea
                 value={brief} onChange={(e) => setBrief(e.target.value)} maxLength={MAX_BRIEF} rows={3}
                 placeholder="เช่น โทนอบอุ่นแบบภาพยนตร์ ครอบครัวในสวนตอนเย็น มุมกว้าง ไม่เอาภาพในโรงพยาบาล"
@@ -865,20 +857,19 @@ export function ContentStudio({ products, lengths, hooks, initialHook, initial, 
               <span className="mt-1 block text-xs text-[var(--ct-mute)]">ใช้กับภาพทุกชิ้นในรอบนี้ ภาพจะยังไม่มีตัวหนังสือและเว้นที่ให้ข้อความเสมอ · {brief.length}/{MAX_BRIEF}</span>
             </label>
           )}
+          </PictureFold>
           </div>
 
-          {/* the press and its price stay in reach however long the form runs: pinned to the
-              foot of the column on a desk, to the foot of the screen on a phone */}
-          <div className="sticky bottom-0 z-10 rounded-b-xl border-t border-[var(--ct-hair)] bg-[var(--ct-panel)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-            <button type="button" onClick={generate} disabled={pending || !href} className="min-h-11 w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50">
-              {pending
-                ? `กำลังเขียน ${making} ${makingFormat === "ad" ? "แบบ" : "ชิ้น"}… (ราว 20–40 วินาที)`
-                : format === "ad" ? `สร้างโฆษณา ${pieceCount} แบบ` : `สร้าง ${count} ชิ้น`}
-            </button>
-            <p className="mt-2 text-xs text-[var(--ct-mute)]">
-              ราว ฿{estimate} · สร้างได้อีกราว {more} ชิ้น · งบคอนเทนต์เดือนนี้เหลือ ฿{left.toFixed(2)} จาก ฿{spend.cap}
-            </p>
-          </div>
+          {/* the press, its count and its price stay in reach however long the form runs:
+              pinned to the foot of the column on a desk, to the foot of the screen on a phone */}
+          <PressBar
+            count={count} max={MAX_PIECES} onCount={format === "ad" ? undefined : setCount}
+            unit={format === "ad" ? "แบบ" : "ชิ้น"} onPress={generate} disabled={pending || !href}
+            label={pending
+              ? `กำลังเขียน ${making} ${makingFormat === "ad" ? "แบบ" : "ชิ้น"}… (ราว 20–40 วินาที)`
+              : format === "ad" ? `สร้างโฆษณา ${pieceCount} แบบ` : `สร้าง ${count} ชิ้น`}
+            note={`ราว ฿${estimate} · สร้างได้อีกราว ${more} ชิ้น · งบคอนเทนต์เดือนนี้เหลือ ฿${left.toFixed(2)} จาก ฿${spend.cap}`}
+          />
           </>
           )}
         </aside>

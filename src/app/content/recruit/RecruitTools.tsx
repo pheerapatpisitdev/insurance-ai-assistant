@@ -2,12 +2,13 @@
 import { useEffect, useId, useState } from "react";
 import { AUTO, AUTO_FLOOR_THB, OVERHEAD_THB, PAINTERS, WRITERS, painterFor, writerOf } from "@/lib/content/models";
 import type { PiecePerson } from "@/lib/content/people";
-import { FORMAT_LABEL, LENGTHS, MAX_READER, type Format, type Length } from "@/lib/content/prompt";
+import { LENGTHS, MAX_READER, type Format, type Length } from "@/lib/content/prompt";
 import {
   MAX_RECRUIT_CUSTOM, MAX_RECRUIT_PIECES, RECRUIT_NAME, RECRUIT_READERS, RECRUIT_TONES, RECRUIT_TOPICS, recruitTones,
 } from "@/lib/content/recruit";
 import { generateRecruit, type GenerateResult } from "../actions";
 import { PersonPicker, type PersonOption } from "../PersonPicker";
+import { FormatPicker, FormSection, PictureFold, PressBar, pictureSummary } from "../ui/form-parts";
 
 /**
  * หาทีม's tools (owner, 2026-09-26): pick a topic and who it is for, set the round, press
@@ -22,7 +23,6 @@ const chip = (on: boolean) =>
     ? "border-[var(--ct-solid)] bg-[var(--ct-solid)] text-[var(--ct-solid-ink)]"
     : "border-[var(--ct-line)] bg-[var(--ct-panel)] text-[var(--ct-ink)] hover:bg-[var(--ct-soft)]"}`;
 const field = "min-h-11 w-full rounded-lg border border-[var(--ct-line)] bg-[var(--ct-panel)] px-3 py-2 text-sm outline-none focus:border-[var(--ct-accent)]";
-const solid = "min-h-11 w-full rounded-lg bg-[var(--ct-solid)] px-4 py-2.5 text-sm font-medium text-[var(--ct-solid-ink)] disabled:opacity-50";
 
 export function RecruitTools({ writer, onWriter, painter, onPainter, people, person, onPerson, left, pending, making, run }: {
   writer: string;
@@ -92,6 +92,20 @@ export function RecruitTools({ writer, onWriter, painter, onPainter, people, per
           <p className="mt-1.5 text-xs text-[var(--ct-mute)]">โพสต์หาทีมไม่ใส่ตัวเลขรายได้ ไม่จำกัดเพศหรืออายุ — ระบบตรวจให้ทุกชิ้น</p>
         </div>
 
+        <FormatPicker value={format} onChange={setFormat} />
+
+        {format === "script" && (
+          <div role="group" aria-labelledby={`${id}-length`}>
+            <span id={`${id}-length`} className="mb-1.5 block text-sm font-medium">ความยาวคลิป</span>
+            <div className="flex flex-wrap gap-2">
+              {LENGTHS.map((l) => (
+                <button key={l.id} type="button" aria-pressed={length === l.id} onClick={() => setLength(l.id)} className={chip(length === l.id)}>{l.label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <FormSection title="เรื่องที่เล่า">
         <div role="group" aria-labelledby={`${id}-reader`}>
           <span id={`${id}-reader`} className="mb-1.5 block text-sm font-medium">อยากชวนใคร <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
           <div className="flex flex-wrap gap-2">
@@ -106,43 +120,31 @@ export function RecruitTools({ writer, onWriter, painter, onPainter, people, per
           </label>
         </div>
 
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium">ทำอะไร</span>
-          <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className={field}>
-            {(["post", "script", "ad"] as const).map((f) => <option key={f} value={f}>{FORMAT_LABEL[f]}</option>)}
-          </select>
-        </label>
-
-        {format === "script" && (
-          <div role="group" aria-labelledby={`${id}-length`}>
-            <span id={`${id}-length`} className="mb-1.5 block text-sm font-medium">ความยาวคลิป</span>
-            <div className="flex flex-wrap gap-2">
-              {LENGTHS.map((l) => (
-                <button key={l.id} type="button" aria-pressed={length === l.id} onClick={() => setLength(l.id)} className={chip(length === l.id)}>{l.label}</button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium">วิธีเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
-          <select value={tone} onChange={(e) => setTone(e.target.value)} className={field}>
-            <option value="">ให้ AI เลือก</option>
-            {RECRUIT_TONES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-          </select>
-        </label>
-
-        <div role="group" aria-labelledby={`${id}-count`}>
-          <span id={`${id}-count`} className="mb-1.5 block text-sm font-medium">จำนวน{unit} <span className="font-normal text-[var(--ct-mute)]">(แต่ละ{unit}เล่าต่างกัน)</span></span>
-          <div className="flex flex-wrap gap-2">
-            {Array.from({ length: MAX_RECRUIT_PIECES }, (_, i) => i + 1).map((n) => (
-              <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)} className={chip(count === n)}>{n}</button>
-            ))}
-          </div>
+        <div>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">วิธีเล่า <span className="font-normal text-[var(--ct-mute)]">(ไม่เลือกก็ได้)</span></span>
+            <select value={tone} onChange={(e) => setTone(e.target.value)} className={field}>
+              <option value="">ให้ AI เลือก</option>
+              {RECRUIT_TONES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+            </select>
+          </label>
           <p className="mt-1.5 text-xs text-[var(--ct-mute)]">
             {tone && count > 1 ? `ทุก${unit}ใช้วิธีเล่าที่เลือก เปิดเรื่องต่างกัน` : recruitTones(tone, count).map((t) => t.label).join(" · ")}
           </p>
         </div>
+        </FormSection>
+
+        <PictureFold summary={pictureSummary({
+          format, writer: pick.short, painter: paints.modelId ? paints.short : null,
+          person: person ? people.find((p) => p.id === person.id)?.name : undefined,
+        })}>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">โมเดลเขียน</span>
+          <select value={writer} onChange={(e) => onWriter(e.target.value)} className={field}>
+            <option value={AUTO}>อัตโนมัติ</option>
+            {WRITERS.map((w) => <option key={w.id} value={w.id}>{w.label} · {w.short}</option>)}
+          </select>
+        </label>
 
         {format !== "script" && (
           <label className="block">
@@ -161,30 +163,23 @@ export function RecruitTools({ writer, onWriter, painter, onPainter, people, per
 
         {format !== "script" && painter !== "none" && (
           <div>
-            <span className="mb-1.5 block text-sm font-medium">ใส่บุคคลในภาพ <span className="font-normal text-[var(--ct-mute)]">(ระบบจำไว้ให้)</span></span>
+            <span className="mb-1.5 block text-sm font-medium">ใส่บุคคลในภาพ</span>
             <PersonPicker people={people} value={person} onChange={onPerson} />
             {person && <span className="mt-1 block text-xs text-[var(--ct-mute)]">วาดด้วย Gemini Image ราวภาพละ ฿2.4</span>}
           </div>
         )}
-
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium">โมเดลเขียน</span>
-          <select value={writer} onChange={(e) => onWriter(e.target.value)} className={field}>
-            <option value={AUTO}>อัตโนมัติ</option>
-            {WRITERS.map((w) => <option key={w.id} value={w.id}>{w.label} · {w.short}</option>)}
-          </select>
-        </label>
+        </PictureFold>
       </div>
 
-      {/* the press and its price stay in reach, as on the plan form */}
-      <div className="sticky bottom-0 z-10 rounded-b-xl border-t border-[var(--ct-hair)] bg-[var(--ct-panel)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-        <button type="button" onClick={create} disabled={pending || Boolean(blocked)} className={solid}>
-          {pending
-            ? `กำลังเขียน ${making} ${unit}… (ราว 20–40 วินาที)`
-            : `สร้าง${format === "post" ? "โพสต์" : format === "ad" ? "โฆษณา" : "สคริปต์"}${RECRUIT_NAME} ${count} ${unit}`}
-        </button>
-        <p className="mt-2 text-xs text-[var(--ct-mute)]">{blocked ?? `ราว ฿${estimate} · งบคอนเทนต์เดือนนี้เหลือ ฿${left.toFixed(2)}`}</p>
-      </div>
+      {/* the press, its count and its price stay in reach, as on the plan form */}
+      <PressBar
+        count={count} max={MAX_RECRUIT_PIECES} onCount={setCount} unit={unit}
+        onPress={create} disabled={pending || Boolean(blocked)}
+        label={pending
+          ? `กำลังเขียน ${making} ${unit}… (ราว 20–40 วินาที)`
+          : `สร้าง${format === "post" ? "โพสต์" : format === "ad" ? "โฆษณา" : "สคริปต์"}${RECRUIT_NAME} ${count} ${unit}`}
+        note={blocked ?? `ราว ฿${estimate} · งบคอนเทนต์เดือนนี้เหลือ ฿${left.toFixed(2)}`}
+      />
     </>
   );
 }
