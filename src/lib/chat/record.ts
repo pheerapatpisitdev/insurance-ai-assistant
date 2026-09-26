@@ -24,6 +24,8 @@ export type EventKind =
   | "quoted"
   | "form_sent" | "form_done"
   | "agent_replied" | "stalled" | "handover"
+  /** a would-be agent handed to the owner (src/lib/assistant/recruit.ts) */
+  | "recruit_interest"
   | "failed";
 
 /** One thing that happened, and the figures describing it — never the customer's words. */

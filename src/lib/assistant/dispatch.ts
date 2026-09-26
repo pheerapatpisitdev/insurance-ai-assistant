@@ -18,6 +18,7 @@ import { asksCancerPrice, cancerNamedIn, priceCancer } from "@/lib/copilot/cance
 import type { GuideItem } from "@/lib/copilot/guide";
 import { writtenFor, type Channel } from "./channel";
 import { answerFromLibrary } from "@/lib/copilot/library";
+import { recruitReply } from "./recruit";
 
 /** The last line of the menu, which is how a turn knows the menu was the last thing said. */
 const ASKED_WHICH = "สนใจแบบไหนครับ";
@@ -43,6 +44,8 @@ export type AnyAnswer = Reply & {
    * anything itself.
    */
   guide?: GuideItem[];
+  /** someone who wants to join the team, handed to the owner (recruit.ts) — never a customer */
+  recruit?: true;
 };
 
 /** A message that asks something, as against one that announces an interest. */
@@ -134,6 +137,14 @@ export async function answerAny(
   if (aboutAGroup(asked)) {
     return { ...handOverGroup(), slots: stored ?? { product: "undecided", ...personIn(stored) } };
   }
+
+  /**
+   * Someone who wants to become an agent, from a หาทีม post. First of all, for the reason the
+   * group question above is early: it is not a plan question, and any brain would answer it
+   * with a plan. Fixed words, no model; the slots ride through untouched.
+   */
+  const joining = recruitReply(asked, [...history].reverse().find((m) => m.role === "assistant")?.content);
+  if (joining) return { ...joining, slots: stored ?? { product: "undecided", ...personIn(stored) } };
 
   /**
    * The pension plan, priced whatever conversation it interrupts.

@@ -27,8 +27,12 @@ const PAGE_FOR_KEY: Record<string, string> = {
  * states something false about the customer; a strange word at least says there is something
  * here the list does not know yet.
  */
+/** a would-be agent from a หาทีม post, filed by the chat as this product (src/lib/assistant/recruit.ts) */
+export const RECRUIT_PRODUCT = "recruit";
+
 export function planName(key: string | null | undefined): string {
   if (!key || key === UNDECIDED) return "ยังไม่เลือกแผน";
+  if (key === RECRUIT_PRODUCT) return "หาทีม";
   const href = PAGE_FOR_KEY[key] ?? `/${key}`;
   return SALES_PAGES.find((p) => p.href === href)?.label ?? key;
 }

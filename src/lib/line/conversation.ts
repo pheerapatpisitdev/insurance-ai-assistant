@@ -8,6 +8,7 @@ import { BudgetExceeded } from "@/lib/ai/client";
 import type { ChatMessage } from "@/lib/ai/types";
 import { openConversation, openLead, record, type RecordedEvent } from "@/lib/chat/record";
 import { WANTS_IN } from "@/lib/assistant/common";
+import { RECRUIT_PRODUCT } from "@/lib/crm/plans";
 import { botTurn, keepTranscript } from "@/lib/chat/transcript";
 
 /**
@@ -135,16 +136,20 @@ export async function handle(event: LineEvent, destination = ""): Promise<void> 
       answer.slots, undefined, conversationId,
     );
 
-    const product = productOf(answer.slots);
+    // a would-be agent is filed under หาทีม, whatever plan the thread was about before
+    const product = answer.recruit ? RECRUIT_PRODUCT : productOf(answer.slots);
     if (answer.priced) ledger.push({ kind: "quoted", data: { ...answer.quote } });
     if (wantsIn) ledger.push({ kind: "handover" });
     if (justSent) ledger.push({ kind: "form_sent" });
     if (answer.formDone) ledger.push({ kind: "form_done" });
+    if (answer.recruit) ledger.push({ kind: "recruit_interest" });
 
     // written last, and its failure is its own: the customer has already been answered
     await record(conversationId, ledger, product);
     const formSent = handedOver(answer.slots);
-    if (wantsIn || formSent || answer.formDone) {
+    if (answer.recruit) {
+      await openLead(conversationId, userId, "interested", product);
+    } else if (wantsIn || formSent || answer.formDone) {
       const stage = answer.formDone ? "form_done" : formSent ? "form_sent" : "interested";
       await openLead(conversationId, userId, stage, product);
     }

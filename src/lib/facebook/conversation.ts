@@ -11,6 +11,7 @@ import { agentTyped, customerOf, eventKey, referralOf, textOf, type Messaging } 
 import { productFromAd } from "@/lib/facebook/from-ad";
 import { attribute, openConversation, openLead, record, type RecordedEvent } from "@/lib/chat/record";
 import { WANTS_IN } from "@/lib/assistant/common";
+import { RECRUIT_PRODUCT } from "@/lib/crm/plans";
 import { botTurn, keepTranscript } from "@/lib/chat/transcript";
 
 /**
@@ -258,7 +259,8 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
      * The life plan alone for now: its words offer a shorter term and a lighter sum, which
      * the health contract does not have.
      */
-    const product = (answer.slots as { product?: string }).product ?? null;
+    // a would-be agent is filed under หาทีม, whatever plan the thread was about before
+    const product = answer.recruit ? RECRUIT_PRODUCT : (answer.slots as { product?: string }).product ?? null;
     if (answer.priced && product === "lifeprotect") {
       await armFollowup("facebook", userHash, psid, pageId)
         .catch((e) => console.error("followup:", e));
@@ -270,10 +272,13 @@ export async function handle(event: Messaging, pageId?: string): Promise<void> {
     const formSent = handedOver(answer.slots);
     if (justSent) ledger.push({ kind: "form_sent" });
     if (answer.formDone) ledger.push({ kind: "form_done" });
+    if (answer.recruit) ledger.push({ kind: "recruit_interest" });
 
     // written last, and its failure is its own: the customer has already been answered
     await record(conversationId, ledger, product);
-    if (wantsIn || formSent || answer.formDone) {
+    if (answer.recruit) {
+      await openLead(conversationId, psid, "interested", product);
+    } else if (wantsIn || formSent || answer.formDone) {
       const stage = answer.formDone ? "form_done" : formSent ? "form_sent" : "interested";
       await openLead(conversationId, psid, stage, product);
     }
