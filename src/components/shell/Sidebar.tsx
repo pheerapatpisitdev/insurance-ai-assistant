@@ -208,15 +208,16 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
   return (
     <>
       {/* the desk: simply there, and out of the way of anything fixed on the page */}
-      <div className="shell-desk fixed inset-y-0 left-0 z-30 hidden lg:block">{panel}</div>
+      <div className="shell-desk fixed inset-y-0 left-0 z-30 hidden lg:block print:hidden">{panel}</div>
 
-      {/* the phone: a button, and the menu over the page when it is pressed */}
+      {/* the phone: a button, and the menu over the page when it is pressed — never on paper,
+          where it printed over the first line of every sheet */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="เปิดเมนู"
         aria-expanded={open}
-        className="shell-hamburger fixed left-3 top-3 z-30 flex size-11 items-center justify-center rounded-full border backdrop-blur lg:hidden"
+        className="shell-hamburger fixed left-3 top-3 z-30 flex size-11 items-center justify-center rounded-full border backdrop-blur lg:hidden print:hidden"
         style={{ background: "var(--shell-bg)", borderColor: "var(--shell-line)", color: "var(--shell-ink)" }}
       >
         <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">

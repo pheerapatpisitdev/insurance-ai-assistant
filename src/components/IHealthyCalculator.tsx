@@ -294,7 +294,7 @@ export function IHealthyCalculator(
     <div className="space-y-6">
       {/* On paper the form is gone, so what it held has to be said in words: a premium and
           a benefit table with nothing naming who they are for is not a quote. */}
-      <div className="hidden print:block">
+      <div className="ihu-print-head hidden print:block">
         <h2 className="text-lg font-medium">
           iHealthy Ultra {plan ? planLabel(plan.code) : "—"} · {territory ? territoryName(territory) : "—"}
           {coverage && coverage !== "Full Coverage" ? ` · ${w.coverage[coverage]}` : ""}
@@ -421,7 +421,7 @@ export function IHealthyCalculator(
         </div>
       </div>
 
-      <div className="space-y-4 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5">
+      <div className="ihu-quote space-y-4 rounded-sm border border-[var(--lg-hair)] bg-[var(--lg-raise)] p-5">
         {plan === undefined || priced === undefined ? (
           // Nothing the pickers can reach lands here; a rate revision that took a rate away
           // from either half would, and the half it came from is not worth guessing at — so

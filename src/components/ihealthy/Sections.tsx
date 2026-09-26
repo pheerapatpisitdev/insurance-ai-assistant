@@ -34,7 +34,7 @@ export function Hero({ facts, w }: { facts: IHealthyFacts; w: IHealthyWords }) {
 export function TermsSection({ facts, w }: { facts: IHealthyFacts; w: IHealthyWords }) {
   const t = facts.terms;
   return (
-    <section className="py-10">
+    <section className="ihu-terms py-10">
       <H2>{w.termsHeading}</H2>
       <div className="mt-5">
         <Fold summary={w.waitingSummary(t.waitingDays, t.specialWaitingDays)}>
@@ -75,7 +75,7 @@ export function Disclaimer(
   { facts, rateVersion, w }: { facts: IHealthyFacts; rateVersion: string; w: IHealthyWords },
 ) {
   return (
-    <section className="py-10">
+    <section className="ihu-disclaimer py-10">
       <Rule />
       <p className="pt-6 text-xs leading-[1.9] text-[var(--lg-mute)] opacity-80">
         {facts.disclaimer}

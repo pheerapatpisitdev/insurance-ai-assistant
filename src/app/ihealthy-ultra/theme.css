@@ -187,3 +187,110 @@
     padding-left: 0;
   }
 }
+
+/* ── the printed sheet: two A4 pages ─────────────────────────────────────────────────────
+ *
+ * What the owner hands a customer is the page on paper, and it came out as five sheets: a
+ * poster-sized title, a table whose row titles wrapped to six lines in a quarter of the
+ * width, a section band stranded at the foot of a page over an empty box, and the conditions
+ * as a heading on one sheet and a list of closed folds on the next. The owner asked for two
+ * A4 pages, so everything below is sized to that and nothing else on screen changes.
+ *
+ * A named page rather than a bare `@page`: the stylesheet can outlive this route after a
+ * client-side navigation, and the other sales pages keep the paper they were laid out for.
+ */
+@page ihu {
+  size: A4;
+  margin: 8mm 9mm;
+}
+@media print {
+  .ihealthy-scope { page: ihu; }
+
+  /* the title block, cut from a poster to a letterhead */
+  .ihu-hero { padding: 0 0 4px; }
+  .ihu-eyebrow { display: none; }
+  .ihu-title-label { font-size: 11px; margin-bottom: 0; }
+  .ihu-title-name { font-size: 24px; line-height: 1.2; letter-spacing: -0.5px; }
+  .ihu-intro { margin-top: 2px; max-width: none; font-size: 9.5px; line-height: 1.6; }
+  /* the three figures say again what the sentence above them has just said */
+  .ihu-highlights { display: none; }
+
+  /* Who the quote is for, and the quote itself, side by side in one band: the card is a
+     phone's column of lines, and down the full width of a sheet it was a third of a page
+     of mostly white. */
+  .ihealthy-scope #calc > div > * { margin-block: 0; }
+  .ihealthy-scope #calc > div > * + * { margin-top: 6px; }
+  .ihu-print-head { border-top: 1px solid var(--lg-hair); padding-top: 6px; }
+  .ihu-print-head h2 { font-size: 13px; }
+  .ihu-print-head p { margin-top: 0; font-size: 10px; }
+  .ihu-quote {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+    padding: 8px 12px;
+    font-size: 9.5px;
+    break-inside: avoid;
+  }
+  .ihu-quote > * { margin: 0 !important; }
+  .ihu-quote :is(p, li, dt, dd, div) { font-size: 9.5px; line-height: 1.55; }
+  .ihu-quote :is(ul, dl) > * { margin-block: 0; }
+  .ihu-quote .border-t { padding-top: 4px; }
+  .ihu-quote > ul + div { border-top: 0; padding-top: 0; }
+  .ihu-quote .lg-figure.mt-1 { font-size: 22px; margin-top: 0; }
+  /* a price beside its instalment, not across half a sheet from it */
+  .ihu-quote dl { margin-top: 2px; max-width: 220px; }
+  /* the ceiling and the first-year line run under both halves */
+  .ihu-quote > :last-child { grid-column: 1 / -1; margin-top: 4px !important; }
+  /* the thirty-one DCI illnesses, three to a row rather than a page-long column */
+  .ihu-quote section { margin-top: 6px; padding-top: 4px; }
+  .ihu-quote section :is(p, li) { font-size: 8.5px; line-height: 1.45; }
+  .ihu-quote section ol { margin-top: 2px; columns: 3; column-gap: 16px; }
+  .ihu-quote section ol > li { margin-top: 0; break-inside: avoid; }
+
+  /* The table: the row titles get a third of the sheet and wrap as prose, instead of
+     keeping the screen's hand-set line breaks in a quarter of it. */
+  /* paper has no menu to step around: the table takes the sheet's width and no more */
+  .ihu-bleed { margin-inline: 0; width: auto; padding-inline: 0; }
+  .ihealthy-scope .ihu-benefit-table { border-radius: 6px; }
+  .ihealthy-scope .ihu-benefit-table :is(th, td) {
+    font-size: 8.5px;
+    padding: 2px 5px;
+    line-height: 1.4;
+  }
+  .ihealthy-scope .ihu-benefit-table thead th { padding-top: 3px; padding-bottom: 3px; }
+  .ihealthy-scope .ihu-benefit-table thead th > span { margin-top: 0; font-size: 10px; }
+  .ihealthy-scope .ihu-benefit-table tbody th[scope="row"],
+  .ihealthy-scope .ihu-benefit-table thead th:first-child {
+    width: 42%;
+  }
+  .ihealthy-scope .ihu-benefit-table th[scope="row"] > span { white-space: normal; }
+  /* a per-claim cap rides on the end of its title, at the title's size */
+  .ihealthy-scope .ihu-benefit-table th[scope="row"] > span.sm\:block {
+    display: inline; margin: 0 0 0 4px; font-size: inherit; line-height: inherit;
+  }
+  .ihealthy-scope .ihu-benefit-table td > span { font-size: inherit; }
+  .ihealthy-scope .ihu-benefit-table th[scope="colgroup"] { padding-top: 2.5px; padding-bottom: 2.5px; }
+  .ihealthy-scope .ihu-benefit-table th[scope="colgroup"] > span { width: auto; padding-left: 0; }
+  /* a section band goes with the first row under it, never alone at the foot of a sheet */
+  .ihealthy-scope .ihu-benefit-table tr:has(> th[scope="colgroup"]) { break-after: avoid; }
+  .ihu-bleed > div > p { padding-top: 3px; padding-bottom: 0; font-size: 8px; line-height: 1.5; }
+
+  /* The conditions: on paper a fold cannot be opened, so each prints as the one line it
+     already is — the summaries are whole sentences — two to a row, and the heading kept
+     with them. */
+  .ihu-terms { padding: 8px 0 0; break-inside: avoid; }
+  .ihu-terms h2 { font-size: 12px; margin: 0; break-after: avoid; }
+  .ihu-terms h2 + div {
+    margin-top: 2px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+  }
+  .ihu-terms details { border-bottom: 0; }
+  .ihu-terms details > div { display: none !important; }
+  .ihu-terms summary { display: block; padding: 1px 0; font-size: 9px; font-weight: 400; line-height: 1.5; }
+  .ihu-terms summary::before { content: "• "; }
+
+  .ihu-disclaimer { padding: 6px 0 0; break-inside: avoid; }
+  .ihu-disclaimer > p { padding-top: 4px; margin-top: 0; font-size: 7.5px; line-height: 1.55; }
+}
