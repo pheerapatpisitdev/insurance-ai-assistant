@@ -2,7 +2,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { isCurrent, menuGroups, RAIL_KEY, type MenuIcon } from "@/lib/shell/menu";
+import { isCurrent, menuGroups, RAIL_KEY, type MenuGroup, type MenuIcon } from "@/lib/shell/menu";
+
+/** the name at the top of the menu, and where it leads */
+export type Brand = { href: string; label: string };
 
 /**
  * The menu, beside the page on a desk and over it on a phone.
@@ -95,6 +98,13 @@ function Icon({ name }: { name: MenuIcon }) {
     // stayed with ออโต้โพสต์, which had worn it too (owner's pick, 2026-09-27)
     case "studio":
       return <svg {...common}><path d="M4 5.5h16v13H4zM10 9.3v5.4l4.5-2.7z" /></svg>;
+    case "calendar":
+      return <svg {...common}><path d="M5 6.5h14v13H5zM5 10.5h14M9 4v4M15 4v4" /></svg>;
+    case "quote":
+      return <svg {...common}><path d="M9.5 7.5C7 8.5 5.5 10.5 5.5 13.5V17h4.5v-4.5H7.5M18.5 7.5c-2.5 1-4 3-4 6V17H19v-4.5h-2.5" /></svg>;
+    // Maryjane, Studio's writer: a woman with a fringe and her hair down to her shoulders
+    case "woman":
+      return <svg {...common}><path d="M12 3.8c3 0 5 2.2 5 5.2 0 3 .4 5 1.8 6.6-1.9.6-3.8.4-5.3-.6M12 3.8c-3 0-5 2.2-5 5.2 0 3-.4 5-1.8 6.6 1.9.6 3.8.4 5.3-.6M9.2 8.6c1.8-.1 3.9-.9 5-2.4M12 6.4a3.3 3.3 0 0 1 0 8.6M12 6.4a3.3 3.3 0 0 0 0 8.6M4.8 21c.8-2.4 3.7-3.8 7.2-3.8s6.4 1.4 7.2 3.8" /></svg>;
     // อีซี่ โพรเทค 6 is sold on the premium having a last year, so its mark is a clock
     case "clock":
       return <svg {...common}><path d="M12 4.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zM12 8v4.3l3 1.7" /></svg>;
@@ -107,7 +117,7 @@ function Icon({ name }: { name: MenuIcon }) {
  * different things, and naming the pages on the calculator tells a stranger the shape of
  * the tool.
  */
-export function Sidebar({ signedIn }: { signedIn: boolean }) {
+export function Sidebar({ signedIn, menu, brand }: { signedIn: boolean; menu?: MenuGroup[]; brand?: Brand }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const [folded, setFolded] = useState(false);
@@ -124,7 +134,8 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
     try { localStorage.setItem(RAIL_KEY, next ? "1" : "0"); } catch { /* not kept */ }
   };
 
-  const groups = menuGroups(signedIn);
+  const groups = menu ?? menuGroups(signedIn);
+  const home = brand ?? { href: "/", label: "advisortool" };
 
   // a menu left open across a navigation covers the page that was just asked for
   useEffect(() => { setOpen(false); }, [path]);
@@ -149,9 +160,9 @@ export function Sidebar({ signedIn }: { signedIn: boolean }) {
       style={{ background: "var(--shell-bg)", borderColor: "var(--shell-line)", color: "var(--shell-ink)" }}
     >
       <div className="mb-4 flex items-center gap-1 rail:flex-col rail:gap-3">
-        <Link href="/" title="advisortool" className="flex min-w-0 flex-1 items-center gap-2 px-2 no-underline rail:flex-none rail:px-0" style={{ color: "var(--shell-ink)" }}>
+        <Link href={home.href} title={home.label} className="flex min-w-0 flex-1 items-center gap-2 px-2 no-underline rail:flex-none rail:px-0" style={{ color: "var(--shell-ink)" }}>
           <Mark />
-          <span className="text-sm font-semibold rail:sr-only">advisortool</span>
+          <span className="text-sm font-semibold rail:sr-only">{home.label}</span>
         </Link>
         {/* the desk only: on a phone the menu is a drawer that closes by itself */}
         <button

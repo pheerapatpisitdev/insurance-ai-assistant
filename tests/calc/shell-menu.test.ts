@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { isCurrent, menuGroups, SALES_PAGES, SALES_SECTIONS } from "@/lib/shell/menu";
+import { isCurrent, menuGroups, SALES_PAGES, SALES_SECTIONS, studioMenu } from "@/lib/shell/menu";
 
 /**
  * The menu is the answer to "what is there", so a link in it that goes nowhere is worse than
@@ -19,7 +19,7 @@ const routeExists = (href: string) => {
 
 describe("every place the menu says you can go", () => {
   it("is a page that exists", () => {
-    for (const group of [...menuGroups(true), ...menuGroups(false)]) {
+    for (const group of [...menuGroups(true), ...menuGroups(false), ...studioMenu()]) {
       for (const link of group.links) {
         expect(routeExists(link.href), `${link.label} → ${link.href}`).toBe(true);
       }
@@ -83,7 +83,7 @@ describe("every place the menu says you can go", () => {
   });
 
   it("lists no destination twice inside one group", () => {
-    for (const group of [...menuGroups(true), ...menuGroups(false)]) {
+    for (const group of [...menuGroups(true), ...menuGroups(false), ...studioMenu()]) {
       const hrefs = group.links.map((l) => l.href);
       expect(new Set(hrefs).size, group.title ?? "(untitled)").toBe(hrefs.length);
     }
@@ -168,5 +168,18 @@ describe("what the menu shows to somebody who has not signed in", () => {
   it("names no group a signed-out reader has nothing in", () => {
     // an empty heading is a heading that says something is being kept from you
     for (const group of menuGroups(false)) expect(group.links.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Studio's own menu", () => {
+  it("lists Studio's pages and a way back to the main system", () => {
+    const links = studioMenu().flatMap((g) => g.links);
+    expect(links.map((l) => l.href)).toEqual(["/studio", "/studio/calendar", "/studio/hooks", "/studio/people", "/"]);
+  });
+
+  it("lights Maryjane only on /studio itself, not on the pages beside it", () => {
+    expect(isCurrent("/studio", "/studio")).toBe(true);
+    expect(isCurrent("/studio", "/studio/calendar")).toBe(false);
+    expect(isCurrent("/studio/calendar", "/studio/calendar")).toBe(true);
   });
 });

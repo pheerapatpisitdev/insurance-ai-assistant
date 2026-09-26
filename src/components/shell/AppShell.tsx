@@ -1,4 +1,5 @@
-import { Sidebar } from "./Sidebar";
+import type { MenuGroup } from "@/lib/shell/menu";
+import { Sidebar, type Brand } from "./Sidebar";
 
 /**
  * The menu, and the room left for it.
@@ -14,14 +15,21 @@ import { Sidebar } from "./Sidebar";
  * full-width band across the top of all six sales pages. The plain `relative` div takes that
  * rule instead, and costs no height because everything inside it is fixed. `HomeButton`
  * solved the same problem the same way, and this replaces it.
+ *
+ * `menu` and `brand` put a section's own menu in the application's place — Studio's, today.
  */
-export function AppShell({ children, signedIn = false }: { children: React.ReactNode; signedIn?: boolean }) {
+export function AppShell({ children, signedIn = false, menu, brand }: {
+  children: React.ReactNode;
+  signedIn?: boolean;
+  menu?: MenuGroup[];
+  brand?: Brand;
+}) {
   return (
     <>
       {/* the page first, the menu after it, for the painting order the note above describes */}
       <div className="shell-inset">{children}</div>
       <div className="relative">
-        <Sidebar signedIn={signedIn} />
+        <Sidebar signedIn={signedIn} menu={menu} brand={brand} />
       </div>
     </>
   );

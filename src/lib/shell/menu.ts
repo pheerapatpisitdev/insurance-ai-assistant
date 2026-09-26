@@ -34,7 +34,10 @@ export type MenuIcon =
   | "pulse"
   | "ribbon"
   | "pen"
-  | "studio";
+  | "studio"
+  | "calendar"
+  | "quote"
+  | "woman";
 
 export interface MenuLink {
   href: string;
@@ -260,6 +263,27 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
 }
 
 /**
+ * Studio's own menu. Pressing Studio leaves the application's menu behind for this one, so
+ * the workbench reads as a place of its own (owner, 2026-09-27) — its pages down the side
+ * where the tab row used to be, and one way back out. New Studio tools are added here.
+ */
+export function studioMenu(): MenuGroup[] {
+  return [
+    {
+      title: "Studio",
+      links: [
+        // the writer is called Maryjane and wears a woman, as the owner named her (2026-09-27)
+        { href: "/studio", label: "Maryjane", icon: "woman", hue: "#2e5a80" },
+        { href: "/studio/calendar", label: "ปฏิทินโพสต์", icon: "calendar", hue: "#2e4a7a" },
+        { href: "/studio/hooks", label: "คลังสูตรประโยคเปิด", icon: "quote", hue: "#302f79" },
+        { href: "/studio/people", label: "คลังบุคคล", icon: "users", hue: "#352f80" },
+      ],
+    },
+    { links: [{ href: "/", label: "กลับระบบหลัก", icon: "home", hue: "#2b5f73" }] },
+  ];
+}
+
+/**
  * Whether a link is the page being looked at.
  *
  * "/" has to be exact or it marks itself current on every page in the site; everything else
@@ -267,7 +291,8 @@ export function menuGroups(signedIn: boolean): MenuGroup[] {
  */
 export function isCurrent(href: string, path: string): boolean {
   if (href === "/") return path === "/";
-  if (href === "/admin") return path === "/admin";
+  // an overview with its pages beside it in the same menu: lit only on itself
+  if (href === "/admin" || href === "/studio") return path === href;
   return path === href || path.startsWith(`${href}/`);
 }
 
